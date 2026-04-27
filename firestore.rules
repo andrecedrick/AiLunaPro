@@ -1,0 +1,377 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI Luna Pro — Firestore Security Rules
+// Branch:  audit
+// Phase:   1D — Security rules
+//
+// Security model: multi-tenant RBAC
+//
+//   Isolation layer
+//     Every document carries organizationId.
+//     Subcollection rules enforce org isolation via the {orgId} path segment.
+//     Root collection rules (subscriptions, billing_events, email_logs) use
+//     resource.data.organizationId to resolve the org, then check membership.
+//
+//   Role layer
+//     Source of truth: /organizations/{orgId}/members/{uid}
+//     Roles: 'owner' | 'admin' | 'member' | 'billing'
+//
+//     isOwnerOrAdmin    → write access to most content
+//     isContentMember   → read access to audits / reports / registry
+//                         (billing role intentionally excluded)
+//     isAnyMember       → read access to org metadata and member list
+//     canManageBilling  → read access to subscriptions and billing events
+//
+//   Backend-only collections (client writes always blocked)
+//     /subscriptions          → Stripe Firebase Extension + Cloud Functions
+//     /billing_events         → Stripe Firebase Extension
+//     /email_logs             → Cloud Functions
+//     /activity_logs          → Cloud Functions
+// ═══════════════════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HELPER FUNCTIONS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** True if the request is authenticated. */
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    /** The current user's Firebase Auth UID. */
+    function uid() {
+      return request.auth.uid;
+    }
+
+    /**
+     * Returns the role of the current user in the given organization.
+     *
+     * Reads from: /organizations/{orgId}/members/{uid}
+     * If the document does not exist, .data.role evaluates to null,
+     * which fails every role check safely (null is not in any role list).
+     *
+     * Costs: 1 Firestore read per rule evaluation.
+     */
+    function getMemberRole(orgId) {
+      return get(
+        /databases/$(database)/documents/organizations/$(orgId)/members/$(uid())
+      ).data.role;
+    }
+
+    /**
+     * True if the user is an owner or admin of the org.
+     * Required for: all write operations on org content.
+     */
+    function isOwnerOrAdmin(orgId) {
+      return isAuth() && getMemberRole(orgId) in ['owner', 'admin'];
+    }
+
+    /**
+     * True if the user is a content-level member: owner, admin, or member.
+     * The billing role is intentionally excluded — billing staff have no
+     * business need to read audit results, reports, or the AI registry.
+     */
+    function isContentMember(orgId) {
+      return isAuth() && getMemberRole(orgId) in ['owner', 'admin', 'member'];
+    }
+
+    /**
+     * True if the user holds any role in the org (owner, admin, member, billing).
+     * Used for org-level metadata and member list reads.
+     */
+    function isAnyMember(orgId) {
+      return isAuth() && getMemberRole(orgId) in ['owner', 'admin', 'member', 'billing'];
+    }
+
+    /**
+     * True if the user can access billing data.
+     * Owner, admin, and the dedicated billing role.
+     */
+    function canManageBilling(orgId) {
+      return isAuth() && getMemberRole(orgId) in ['owner', 'admin', 'billing'];
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // /users/{userId}
+    //
+    // User profiles, created on first sign-in.
+    // Document ID = Firebase Auth UID.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /users/{userId} {
+      // Users can always read their own profile.
+      allow read: if isAuth() && uid() == userId;
+
+      // Owners and admins can read profiles of users in their org.
+      // Uses resource.data.organizationId (the target user's org) to resolve
+      // the org, then checks if the requesting user is owner/admin there.
+      allow read: if isOwnerOrAdmin(resource.data.organizationId);
+
+      // Users initialize their own profile document on first sign-in.
+      allow create: if isAuth() && uid() == userId;
+
+      // Users can update their own profile.
+      // organizationId is immutable via client write — org membership is
+      // managed through the members subcollection, not here.
+      allow update: if isAuth() && uid() == userId
+        && request.resource.data.organizationId == resource.data.organizationId;
+
+      // Deletion is blocked for client — handled by admin SDK or Cloud Functions.
+      allow delete: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // /organizations/{orgId}
+    //
+    // Top-level org document (one per workspace).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /organizations/{orgId} {
+      // Any org member (all four roles) can read the org document.
+      allow read: if isAnyMember(orgId);
+
+      // Any authenticated user can create an org.
+      // They must set themselves as ownerId.
+      allow create: if isAuth()
+        && request.resource.data.ownerId == uid();
+
+      // Owners and admins can update the org.
+      // ownerId cannot be transferred via a client write — preventing
+      // admins from elevating themselves to owner.
+      allow update: if isOwnerOrAdmin(orgId)
+        && request.resource.data.ownerId == resource.data.ownerId;
+
+      // Only the owner can delete the org document.
+      // Prefer soft-delete (set deletedAt) over hard-delete.
+      allow delete: if isAuth() && getMemberRole(orgId) == 'owner';
+
+
+      // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/members/{memberId}
+      //
+      // memberId = userId — source of truth for role within this org.
+      // Read by Firestore security rules via getMemberRole().
+      // ───────────────────────────────────────────────────────────────────
+
+      match /members/{memberId} {
+        // All org members can view the member list (used to render team pages).
+        allow read: if isAnyMember(orgId);
+
+        // Only owners and admins can invite, update roles, or remove members.
+        allow create, update: if isOwnerOrAdmin(orgId);
+        allow delete:         if isOwnerOrAdmin(orgId);
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/audits/{auditId}
+      //
+      // Audit session documents — drives the multi-step compliance flow.
+      // ───────────────────────────────────────────────────────────────────
+
+      match /audits/{auditId} {
+        // Content members (owner, admin, member) can read audits.
+        // Billing role has no access to audit content.
+        allow read: if isContentMember(orgId);
+
+        // Only owners/admins can create audit sessions.
+        // organizationId must match the path; createdBy must be the requester.
+        allow create: if isOwnerOrAdmin(orgId)
+          && request.resource.data.organizationId == orgId
+          && request.resource.data.createdBy == uid();
+
+        // Only owners/admins can update audit metadata (status, score, etc.).
+        // Members interact with the audit through the answers subcollection.
+        allow update: if isOwnerOrAdmin(orgId);
+
+        // Only owners/admins can delete or archive audit sessions.
+        allow delete: if isOwnerOrAdmin(orgId);
+
+
+        // ─────────────────────────────────────────────────────────────────
+        // /organizations/{orgId}/audits/{auditId}/answers/{answerId}
+        //
+        // Individual question responses within an audit session.
+        // ─────────────────────────────────────────────────────────────────
+
+        match /answers/{answerId} {
+          // Content members can read all answers in an audit.
+          allow read: if isContentMember(orgId);
+
+          // Any content member can submit an answer.
+          // auditId on the document must match the path segment (no spoofing).
+          // answeredBy must be the requesting user.
+          allow create: if isContentMember(orgId)
+            && request.resource.data.auditId == auditId
+            && request.resource.data.answeredBy == uid();
+
+          // Any content member can update an existing answer (collaborative mode).
+          // The auditId field cannot be changed after creation.
+          allow update: if isContentMember(orgId)
+            && request.resource.data.auditId == resource.data.auditId;
+
+          // Only owners/admins can delete answers.
+          allow delete: if isOwnerOrAdmin(orgId);
+        }
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/reports/{reportId}
+      //
+      // Compliance reports generated from completed audits.
+      // Members see only published reports. Owners/admins see all statuses.
+      // ───────────────────────────────────────────────────────────────────
+
+      match /reports/{reportId} {
+        // Owners/admins read reports in any status (draft, published, archived).
+        // Regular members can only read published reports.
+        allow read: if isOwnerOrAdmin(orgId)
+          || (isContentMember(orgId) && resource.data.status == 'published');
+
+        // Only owners/admins can create reports.
+        // organizationId must match the path.
+        allow create: if isOwnerOrAdmin(orgId)
+          && request.resource.data.organizationId == orgId;
+
+        // Only owners/admins can update reports (e.g. publish, archive, edit).
+        allow update: if isOwnerOrAdmin(orgId);
+
+        // Only owners/admins can delete reports.
+        allow delete: if isOwnerOrAdmin(orgId);
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/registry/{systemId}
+      //
+      // AI system registry — one entry per deployed AI tool or model.
+      // ───────────────────────────────────────────────────────────────────
+
+      match /registry/{systemId} {
+        // Content members can read the registry.
+        allow read: if isContentMember(orgId);
+
+        // Only owners/admins can add or modify registry entries.
+        // organizationId must match the path.
+        allow create, update: if isOwnerOrAdmin(orgId)
+          && request.resource.data.organizationId == orgId;
+
+        // Only owners/admins can remove registry entries.
+        allow delete: if isOwnerOrAdmin(orgId);
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/exports/{exportId}
+      //
+      // Records of generated report exports (PDF, CSV, JSON).
+      // Points to Firebase Storage via storageURL.
+      // ───────────────────────────────────────────────────────────────────
+
+      match /exports/{exportId} {
+        // Content members can read (download) exports.
+        allow read: if isContentMember(orgId);
+
+        // Only owners/admins can generate export records.
+        // organizationId must match the path.
+        allow create: if isOwnerOrAdmin(orgId)
+          && request.resource.data.organizationId == orgId;
+
+        // Exports are immutable after creation — no updates allowed.
+        allow update: if false;
+
+        // Only owners/admins can delete expired or revoked exports.
+        allow delete: if isOwnerOrAdmin(orgId);
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/activity_logs/{logId}
+      //
+      // Immutable audit trail. Written by Cloud Functions only.
+      // ───────────────────────────────────────────────────────────────────
+
+      match /activity_logs/{logId} {
+        // Only owners and admins can read the activity trail.
+        allow read: if isOwnerOrAdmin(orgId);
+
+        // All client writes are permanently blocked.
+        // Activity logs are appended exclusively by Cloud Functions
+        // using the Firebase Admin SDK (which bypasses these rules).
+        allow write: if false;
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // /subscriptions/{subscriptionId}
+    //
+    // Managed by the Stripe Firebase Extension and Cloud Functions.
+    // Document ID = Stripe subscription ID.
+    // organizationId is enriched by onStripeSubscriptionCreated Cloud Function.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /subscriptions/{subscriptionId} {
+      // Owners, admins, and the billing role can read subscription data.
+      // Uses resource.data.organizationId to resolve the org.
+      allow read: if canManageBilling(resource.data.organizationId);
+
+      // All client writes are blocked.
+      // Subscriptions are written by the Stripe extension and Cloud Functions.
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // /billing_events/{eventId}
+    //
+    // Written exclusively by the Stripe Firebase Extension.
+    // Stores the complete webhook payload for every Stripe event.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /billing_events/{eventId} {
+      // Owners, admins, and the billing role can read the billing event history.
+      allow read: if canManageBilling(resource.data.organizationId);
+
+      // All client writes are blocked.
+      // Billing events are written exclusively by the Stripe extension.
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // /email_logs/{emailId}
+    //
+    // Written exclusively by Cloud Functions.
+    // Provides a complete audit trail of every outbound email.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /email_logs/{emailId} {
+      // Only owners and admins can read the email log.
+      allow read: if isOwnerOrAdmin(resource.data.organizationId);
+
+      // All client writes are blocked.
+      // Email logs are written exclusively by Cloud Functions.
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DEFAULT DENY
+    //
+    // Any path not explicitly matched above is denied for both read and write.
+    // This is the safe-by-default baseline for Firestore security.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

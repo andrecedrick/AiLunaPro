@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap');
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════
+   AI Luna Pro — Theme tokens
+   Light mode lives on :root, dark mode on [data-theme="dark"].
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Surfaces */
+  --page-bg:        #F4F6FB;
+  --surface:        #FFFFFF;
+  --surface-2:      #F8F9FD;       /* subtle inner surface (chip rows, tiles) */
+  --sidebar-bg:     #FFFFFF;
+  --hover-bg:       rgba(0,0,0,0.03);
+
+  /* Borders */
+  --border:         rgba(0,0,0,0.07);
+  --border-strong:  rgba(0,0,0,0.12);
+  --row-border:     #F8FAFC;
+
+  /* Shadows */
+  --card-shadow:    0 2px 10px rgba(0,0,0,0.06);
+  --card-shadow-glow: 0 4px 24px rgba(124,58,237,0.15), 0 2px 10px rgba(0,0,0,0.06);
+  --card-radius:    20px;
+
+  /* Text */
+  --text-primary:   #0F172A;
+  --text-secondary: #334155;
+  --text-muted:     #64748B;
+  --text-inverse:   #FFFFFF;
+
+  /* Brand (identical in both themes) */
+  --violet:         #7C3AED;
+  --violet-text:    #7C3AED;
+  --cyan:           #22D3EE;
+  --brand-gradient: linear-gradient(135deg, #7C3AED, #22D3EE);
+  --brand-soft-bg:  linear-gradient(135deg, rgba(124,58,237,0.10), rgba(34,211,238,0.08));
+  --brand-tint-bg:  #EDE9FE;       /* used for secondary buttons */
+
+  /* Status palette (background / text pairs) */
+  --green:          #10B981;
+  --green-bg:       #D1FAE5;
+  --green-text:     #065F46;
+
+  --red:            #EF4444;
+  --red-bg:         #FEE2E2;
+  --red-text:       #991B1B;
+
+  --amber:          #F59E0B;
+  --amber-bg:       #FEF3C7;
+  --amber-text:     #92400E;
+
+  --blue:           #3B82F6;
+  --blue-bg:        #DBEAFE;
+  --blue-text:      #1E40AF;
+
+  --neutral-bg:     #F1F5F9;
+  --neutral-text:   #475569;
+
+  --critical-bg:    #FDE8D8;
+  --critical-text:  #7C2D12;
+
+  /* Gauge / track */
+  --track-bg:       #EDE9FE;
+  --bar-track:      #F1F5F9;
+
+  /* Score-trend chart */
+  --chart-grid:     #F1F5F9;
+  --chart-tooltip-bg: #0F172A;
+  --chart-tooltip-fg: #FFFFFF;
+
+  /* Topbar input bg */
+  --input-bg:       #F8F9FD;
+  --input-border:   rgba(0,0,0,0.08);
+
+  /* CTA banner */
+  --cta-glass-bg:   rgba(255,255,255,0.15);
+  --cta-glass-border: rgba(255,255,255,0.35);
+
+  /* Fonts */
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-heading: 'Sora', system-ui, sans-serif;
+}
+
+/* ── Dark mode ─────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --page-bg:        #0B0E14;
+  --surface:        #161B25;
+  --surface-2:      #1E2530;
+  --sidebar-bg:     #11151D;
+  --hover-bg:       rgba(255,255,255,0.04);
+
+  --border:         rgba(255,255,255,0.08);
+  --border-strong:  rgba(255,255,255,0.16);
+  --row-border:     rgba(255,255,255,0.05);
+
+  --card-shadow:    0 2px 12px rgba(0,0,0,0.45);
+  --card-shadow-glow: 0 4px 28px rgba(124,58,237,0.25), 0 2px 12px rgba(0,0,0,0.45);
+
+  --text-primary:   #F1F5F9;
+  --text-secondary: #CBD5E1;
+  --text-muted:     #94A3B8;
+
+  --violet-text:    #A78BFA;
+  --brand-soft-bg:  linear-gradient(135deg, rgba(124,58,237,0.18), rgba(34,211,238,0.10));
+  --brand-tint-bg:  rgba(124,58,237,0.22);
+
+  /* Status — tinted bg + brighter foreground for AA contrast on dark */
+  --green-bg:       rgba(16,185,129,0.18);
+  --green-text:     #34D399;
+
+  --red-bg:         rgba(239,68,68,0.18);
+  --red-text:       #F87171;
+
+  --amber-bg:       rgba(245,158,11,0.18);
+  --amber-text:     #FBBF24;
+
+  --blue-bg:        rgba(59,130,246,0.20);
+  --blue-text:      #60A5FA;
+
+  --neutral-bg:     rgba(255,255,255,0.06);
+  --neutral-text:   #CBD5E1;
+
+  --critical-bg:    rgba(124,45,18,0.30);
+  --critical-text:  #FB923C;
+
+  --track-bg:       rgba(124,58,237,0.22);
+  --bar-track:      rgba(255,255,255,0.08);
+
+  --chart-grid:     rgba(255,255,255,0.06);
+  --chart-tooltip-bg: #F1F5F9;
+  --chart-tooltip-fg: #0F172A;
+
+  --input-bg:       #1E2530;
+  --input-border:   rgba(255,255,255,0.10);
+
+  --cta-glass-bg:   rgba(255,255,255,0.12);
+  --cta-glass-border: rgba(255,255,255,0.25);
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--page-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  text-align: left;
+  border: none;
+  display: block;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }

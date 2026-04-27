@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "model": "claude-opus-4-7",
+  "theme": "dark",
+  "allowedTools": {
+    "filesystem": ["Read", "Write", "Edit", "Glob", "Grep"],
+    "bash": ["Bash"],
+    "git": ["Bash"],
+    "mcp": ["*"]
+  },
+  "permissions": {
+    "global": [
+      "bash:npm",
+      "bash:git",
+      "bash:node",
+      "bash:python",
+      "bash:docker",
+      "mcp:read"
+    ]
+  },
+  "hooks": {
+    "beforeWrite": "Verify file doesn't contain secrets",
+    "afterCommit": "Update memory with significant changes"
+  }
+}

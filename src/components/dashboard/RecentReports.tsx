@@ -1,0 +1,215 @@
+import { mockReports } from '../../data/mockDashboard';
+import { Badge } from '../ui/Badge';
+import type { ReportStatus, RiskLevel } from '../../types/firestore';
+
+function riskColor(risk: RiskLevel): string {
+  const map: Record<RiskLevel, string> = {
+    low: '#10B981',
+    medium: '#F59E0B',
+    high: '#EF4444',
+    critical: '#7C2D12',
+  };
+  return map[risk];
+}
+
+function ReportCard({ report }: { report: { id: string; title: string; date: string; status: ReportStatus; score: number; risk: RiskLevel } }) {
+  return (
+    <div
+      style={{
+        background: 'var(--surface-2)',
+        borderRadius: 14,
+        padding: '16px 18px',
+        border: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+          {report.title}
+        </div>
+        <Badge variant={report.status} />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{report.date}</span>
+        <span
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: '50%',
+            background: 'var(--text-muted)',
+            display: 'inline-block',
+            opacity: 0.4,
+          }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontWeight: 700,
+              fontSize: 13,
+              color: riskColor(report.risk),
+            }}
+          >
+            {report.score}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/100</span>
+        </div>
+        <Badge variant={report.risk} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        {[
+          { label: 'Download', svg: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></> },
+          { label: 'Share',    svg: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></> },
+        ].map(b => (
+          <button
+            key={b.label}
+            type="button"
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: '1.5px solid var(--border-strong)',
+              color: 'var(--text-secondary)',
+              borderRadius: 8,
+              padding: '6px 0',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-body)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              {b.svg}
+            </svg>
+            {b.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          style={{
+            background: 'var(--brand-gradient)',
+            border: 'none',
+            color: '#fff',
+            borderRadius: 8,
+            padding: '6px 14px',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          View
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function RecentReports() {
+  return (
+    <div
+      style={{
+        background: 'var(--surface)',
+        borderRadius: 'var(--card-radius)',
+        boxShadow: 'var(--card-shadow)',
+        border: '1px solid var(--border)',
+        padding: '24px 28px',
+        transition: 'background 0.2s ease, border-color 0.2s ease',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
+            Recent Reports
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+            {mockReports.length} reports generated
+          </div>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--violet-text)', cursor: 'pointer' }}>
+          View all →
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) 260px', gap: 14 }}>
+        {mockReports.map(report => (
+          <ReportCard key={report.id} report={report} />
+        ))}
+
+        {/* Export options card */}
+        <div
+          style={{
+            background: 'var(--brand-soft-bg)',
+            borderRadius: 14,
+            padding: '16px 18px',
+            border: '1.5px dashed var(--violet-text)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Export Options
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            Export your compliance data in multiple formats for stakeholders.
+          </div>
+
+          {(['PDF', 'CSV', 'JSON'] as const).map(fmt => {
+            const tone =
+              fmt === 'PDF' ? { bg: 'var(--red-bg)',   fg: 'var(--red-text)' } :
+              fmt === 'CSV' ? { bg: 'var(--green-bg)', fg: 'var(--green-text)' } :
+                              { bg: 'var(--blue-bg)',  fg: 'var(--blue-text)' };
+            return (
+              <button
+                key={fmt}
+                type="button"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)',
+                  borderRadius: 8,
+                  padding: '7px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: '100%',
+                  textAlign: 'left' as const,
+                }}
+              >
+                <span
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 6,
+                    background: tone.bg,
+                    color: tone.fg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 9,
+                    fontWeight: 700,
+                  }}
+                >
+                  {fmt[0]}
+                </span>
+                Export as {fmt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

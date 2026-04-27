@@ -1,0 +1,29 @@
+/// <reference types="vite/client" />
+
+/**
+ * Global TypeScript declarations for Vite environment variables.
+ * Augments ImportMetaEnv so that import.meta.env.VITE_* vars
+ * are fully typed and autocomplete throughout the codebase.
+ */
+
+interface ImportMetaEnv {
+  // ── Required: Firebase Web App configuration ──────────────────────────
+  // Source: Firebase Console → Project Settings → Your apps → Web app
+  readonly VITE_FIREBASE_API_KEY: string;
+  readonly VITE_FIREBASE_AUTH_DOMAIN: string;
+  readonly VITE_FIREBASE_PROJECT_ID: string;
+  readonly VITE_FIREBASE_STORAGE_BUCKET: string;
+  readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
+  readonly VITE_FIREBASE_APP_ID: string;
+
+  // ── Optional: Firebase Analytics ──────────────────────────────────────
+  readonly VITE_FIREBASE_MEASUREMENT_ID?: string;
+
+  // ── Optional: Local Firebase emulators (development only) ─────────────
+  readonly VITE_FIRESTORE_EMULATOR_HOST?: string; // e.g. localhost:8080
+  readonly VITE_AUTH_EMULATOR_URL?: string;       // e.g. http://localhost:9099
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}

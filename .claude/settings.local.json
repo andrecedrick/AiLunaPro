@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__1e37f88e-36e7-4de5-a9ae-4bdb1a069166__create_file",
+      "mcp__6199d1a9-7525-4b6b-b3e2-bde55121fd78__notion-create-pages",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer",
+      "mcp__6199d1a9-7525-4b6b-b3e2-bde55121fd78__notion-fetch",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "Bash(npm run *)",
+      "Bash(npm --version)",
+      "Bash(git --version)",
+      "Bash(npm create *)",
+      "Bash(shopt -s dotglob)",
+      "Bash(mv _scaffold/* .)",
+      "Bash(npm install *)",
+      "Bash(git init *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('firebase:', p.dependencies.firebase\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(node -e ' *)",
+      "Bash(grep -v \"^\\\\s*//\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git add *)"
+    ]
+  }
+}
