@@ -61,6 +61,7 @@ export interface AuditDraft {
 export type Route =
   | { name: 'dashboard' }
   | { name: 'audit/new' }
-  | { name: 'audit/result'; auditId?: string };
+  | { name: 'audit/result'; auditId?: string }
+  | { name: 'audit/assistance'; auditId?: string };
 
 export type RouteName = Route['name'];

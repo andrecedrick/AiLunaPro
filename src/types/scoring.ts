@@ -40,6 +40,9 @@ export interface Finding {
   recommendationIds: string[];
 }
 
+/** Recommendation category for the assistance layer. */
+export type RecommendationCategory = 'automate' | 'structure' | 'process' | 'train';
+
 /** A recommendation is an actionable step. */
 export interface Recommendation {
   id: string;
@@ -51,6 +54,12 @@ export interface Recommendation {
   timeframeDays: Timeframe;
   /** Section the recommendation primarily addresses. */
   relatedSection: SectionKey;
+  /** Operational category: how should this be carried out? */
+  category: RecommendationCategory;
+  /** One-line plain-English rationale used in the assistance layer. */
+  whyItMatters?: string;
+  /** Tangible outcome the user should expect once it's done. */
+  expectedOutcome?: string;
 }
 
 /** A roadmap bucket by time horizon. */

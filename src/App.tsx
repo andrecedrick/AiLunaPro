@@ -7,6 +7,7 @@ import { Topbar } from './components/layout/Topbar';
 import { DashboardPage } from './pages/DashboardPage';
 import { NewAuditPage } from './pages/NewAuditPage';
 import { AuditResultPage } from './pages/AuditResultPage';
+import { AuditAssistancePage } from './pages/AuditAssistancePage';
 
 function PageOutlet() {
   const { route } = useRoute();
@@ -16,6 +17,8 @@ function PageOutlet() {
       return <NewAuditPage />;
     case 'audit/result':
       return <AuditResultPage />;
+    case 'audit/assistance':
+      return <AuditAssistancePage />;
     case 'dashboard':
     default:
       return <DashboardPage />;

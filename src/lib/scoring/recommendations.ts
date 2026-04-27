@@ -1,6 +1,8 @@
 /**
  * Recommendation catalog.
  * Findings reference these by id. Phase 4: hand-curated list.
+ * Phase 5: each recommendation now carries a `category` (automate / structure / process / train),
+ * a one-line `whyItMatters` rationale, and an `expectedOutcome` for the assistance layer.
  */
 
 import type { Recommendation } from '../../types/scoring';
@@ -15,6 +17,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'high',
     timeframeDays: 30,
     relatedSection: 'governance',
+    category: 'structure',
+    whyItMatters:
+      'Without a designated owner, AI decisions are made ad hoc and accountability is unclear when something goes wrong.',
+    expectedOutcome:
+      'A single body that approves new AI use cases, owns risk acceptance, and signs off on incident response.',
   },
   {
     id: 'R002',
@@ -25,6 +32,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'high',
     timeframeDays: 60,
     relatedSection: 'governance',
+    category: 'structure',
+    whyItMatters:
+      'Policies make governance enforceable. Without one, "responsible AI" is a value, not a control.',
+    expectedOutcome:
+      'A short, leadership-approved document referenced in onboarding, vendor reviews, and audits.',
   },
   {
     id: 'R003',
@@ -35,6 +47,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'high',
     timeframeDays: 90,
     relatedSection: 'governance',
+    category: 'structure',
+    whyItMatters:
+      'A recognised reference gives you defensible posture in audits, deals, and regulator conversations.',
+    expectedOutcome:
+      'A control matrix you can hand to a customer or auditor with confidence.',
   },
   {
     id: 'R004',
@@ -45,6 +62,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'high',
     timeframeDays: 60,
     relatedSection: 'security',
+    category: 'process',
+    whyItMatters:
+      'Adversaries are already probing your AI surfaces. Better that you find the gaps first, on a schedule.',
+    expectedOutcome:
+      'A repeatable quarterly red-team motion with tracked findings and SLAs to close them.',
   },
   {
     id: 'R005',
@@ -55,6 +77,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'high',
     timeframeDays: 90,
     relatedSection: 'security',
+    category: 'automate',
+    whyItMatters:
+      'These are the controls customers, regulators, and incident responders all expect to see in the first 5 minutes.',
+    expectedOutcome:
+      'AI workloads operate under the same security baseline as the rest of your platform.',
   },
   {
     id: 'R006',
@@ -65,6 +92,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'medium',
     timeframeDays: 30,
     relatedSection: 'transparency',
+    category: 'automate',
+    whyItMatters:
+      'EU AI Act Article 50 and most consumer-protection regimes require it. It is also a trust signal.',
+    expectedOutcome:
+      'Every customer-facing AI surface labels itself; privacy notice references it.',
   },
   {
     id: 'R007',
@@ -75,6 +107,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'high',
     timeframeDays: 30,
     relatedSection: 'human-oversight',
+    category: 'structure',
+    whyItMatters:
+      'When an AI system harms a user, response time is unpredictable without a runbook. That delay is the actual risk.',
+    expectedOutcome:
+      'A runbook your on-call can follow at 3am — pause the model, page the right owner, file the post-mortem.',
   },
   {
     id: 'R008',
@@ -85,6 +122,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'medium',
     timeframeDays: 60,
     relatedSection: 'training-maturity',
+    category: 'train',
+    whyItMatters:
+      'Untrained users are the leading cause of AI mishaps — data leaks via prompts, blind trust in outputs.',
+    expectedOutcome:
+      'A baseline literacy session for everyone and an advanced track for builders, refreshed yearly.',
   },
   {
     id: 'R009',
@@ -95,6 +137,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'critical',
     timeframeDays: 90,
     relatedSection: 'data',
+    category: 'structure',
+    whyItMatters:
+      'GDPR and the EU AI Act both treat data governance as a precondition for processing sensitive data. Skipping it is the single highest-impact gap.',
+    expectedOutcome:
+      'A live data inventory with classification, retention, and access controls — defensible to any regulator.',
   },
   {
     id: 'R010',
@@ -105,6 +152,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'high',
     timeframeDays: 60,
     relatedSection: 'security',
+    category: 'process',
+    whyItMatters:
+      'Untested plans fail under pressure. AI incidents look different from classical security ones; rehearsal is non-negotiable.',
+    expectedOutcome:
+      'Two rehearsed AI scenarios per year integrated into your SOC tabletop programme.',
   },
   {
     id: 'R011',
@@ -115,6 +167,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'medium',
     timeframeDays: 90,
     relatedSection: 'transparency',
+    category: 'automate',
+    whyItMatters:
+      'When affected users do not understand a decision, they appeal, escalate, and erode trust. Explainability cuts that loop.',
+    expectedOutcome:
+      'Every consequential AI decision ships with a category-level reason, with on-request individual detail.',
   },
   {
     id: 'R012',
@@ -125,6 +182,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'high',
     timeframeDays: 60,
     relatedSection: 'human-oversight',
+    category: 'process',
+    whyItMatters:
+      'High-stakes autonomous decisions are precisely the ones regulators and courts will scrutinise.',
+    expectedOutcome:
+      'A documented list of high-stakes decision types, each with a named reviewer and SLA.',
   },
   {
     id: 'R013',
@@ -135,6 +197,11 @@ export const RECOMMENDATIONS: Recommendation[] = [
     impact: 'medium',
     timeframeDays: 30,
     relatedSection: 'transparency',
+    category: 'automate',
+    whyItMatters:
+      'Cards are how your team, customers, and auditors find out what each AI system actually is and is not.',
+    expectedOutcome:
+      'A living card per AI system, linked from the AI registry, refreshed on every release.',
   },
 ];
 
