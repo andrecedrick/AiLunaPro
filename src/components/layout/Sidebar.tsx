@@ -1,5 +1,21 @@
 import type { ReactNode } from 'react';
 import { mockNavItems, mockOrg, mockUser } from '../../data/mockDashboard';
+import { useRoute } from '../../context/RouteContext';
+import type { Route, RouteName } from '../../types/audit';
+
+/* Map Sidebar nav item ids to routes (only the ones wired so far). */
+const NAV_ROUTES: Partial<Record<string, Route>> = {
+  dashboard: { name: 'dashboard' },
+  'new-audit': { name: 'audit/new' },
+};
+
+/* Map current route → nav item id that should appear active. */
+function routeToActiveId(name: RouteName): string {
+  if (name === 'dashboard') return 'dashboard';
+  if (name === 'audit/new') return 'new-audit';
+  if (name === 'audit/result') return 'new-audit';
+  return '';
+}
 
 const LOGO_URL =
   'https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/6_xldhxr.png';
@@ -75,6 +91,9 @@ function NavIcon({ id }: { id: string }): ReactNode {
 
 /* ── Component ─────────────────────────────────────────────── */
 export function Sidebar() {
+  const { route, navigate } = useRoute();
+  const activeId = routeToActiveId(route.name);
+
   return (
     <aside
       style={{
@@ -207,7 +226,15 @@ export function Sidebar() {
       {/* Nav */}
       <nav style={{ flex: 1, padding: '2px 12px', overflowY: 'auto' }}>
         {mockNavItems.map(item => (
-          <NavItem key={item.id} {...item} />
+          <NavItem
+            key={item.id}
+            {...item}
+            active={item.id === activeId}
+            onClick={() => {
+              const target = NAV_ROUTES[item.id];
+              if (target) navigate(target);
+            }}
+          />
         ))}
       </nav>
 
@@ -265,9 +292,22 @@ export function Sidebar() {
   );
 }
 
-function NavItem({ label, icon, active }: { id: string; label: string; icon: string; active: boolean }) {
+function NavItem({
+  label,
+  icon,
+  active,
+  onClick,
+}: {
+  id: string;
+  label: string;
+  icon: string;
+  active: boolean;
+  onClick?: () => void;
+}) {
   return (
     <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
       style={{
         display: 'flex',
         alignItems: 'center',

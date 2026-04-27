@@ -21,7 +21,8 @@
       "Bash(node -e ' *)",
       "Bash(grep -v \"^\\\\s*//\")",
       "mcp__Claude_Preview__preview_start",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
