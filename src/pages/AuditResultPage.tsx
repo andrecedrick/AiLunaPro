@@ -1,24 +1,26 @@
 import { useMemo } from 'react';
-import { Button } from '../components/ui/Button';
 import { useAudit } from '../context/AuditContext';
-import { useRoute } from '../context/RouteContext';
-import { auditSections } from '../data/mockAuditQuestions';
+import { computeAuditResult } from '../lib/scoring/computeAuditResult';
+import { ResultHero } from '../components/result/ResultHero';
+import { SectionScores } from '../components/result/SectionScores';
+import { FindingsList } from '../components/result/FindingsList';
+import { RecommendationsList } from '../components/result/RecommendationsList';
+import { Roadmap } from '../components/result/Roadmap';
+import { ResultActions } from '../components/result/ResultActions';
 
 /**
- * Audit Result — UI shell only.
- * Score and recommendations are derived from a placeholder formula
- * (overall completion %), NOT real compliance scoring.
- * Phase 3+ will replace with real evaluation logic.
+ * Audit Result page.
+ * Phase 4: scoring runs client-side from the submitted draft answers.
+ * No backend, no Firestore. Result data lives only in localStorage.
  */
 export function AuditResultPage() {
-  const { draft, completionByStep, overallCompletion, resetDraft } = useAudit();
-  const { navigate } = useRoute();
+  const { draft } = useAudit();
 
-  // Mock score: scaled completion (40 + 60 × completion). UI placeholder only.
-  const score = useMemo(() => Math.round(40 + overallCompletion * 60), [overallCompletion]);
-  const riskLabel = score >= 80 ? 'Low risk' : score >= 60 ? 'Medium risk' : 'High risk';
-  const riskColor =
-    score >= 80 ? 'var(--green-text)' : score >= 60 ? 'var(--amber-text)' : 'var(--red-text)';
+  const result = useMemo(() => computeAuditResult(draft.answers), [draft.answers]);
+
+  const submittedAt = draft.submittedAt
+    ? new Date(draft.submittedAt).toLocaleString()
+    : new Date(draft.updatedAt).toLocaleString();
 
   return (
     <div>
@@ -38,7 +40,7 @@ export function AuditResultPage() {
             marginBottom: 12,
           }}
         >
-          ✓ Audit submitted
+          ✓ {draft.status === 'submitted' ? 'Audit submitted' : 'Audit preview'}
         </div>
         <h1
           style={{
@@ -55,7 +57,7 @@ export function AuditResultPage() {
         <p
           style={{
             margin: '6px 0 0',
-            fontSize: 14,
+            fontSize: 13,
             color: 'var(--text-muted)',
           }}
         >
@@ -63,199 +65,34 @@ export function AuditResultPage() {
           <code style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)' }}>
             {draft.id}
           </code>
+          &nbsp;·&nbsp;{submittedAt}
         </p>
       </div>
 
-      {/* Hero score card */}
-      <div
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--card-radius)',
-          padding: 28,
-          boxShadow: 'var(--card-shadow)',
-          display: 'grid',
-          gridTemplateColumns: '180px 1fr',
-          gap: 28,
-          alignItems: 'center',
-          marginBottom: 20,
-          transition: 'background 0.2s, border-color 0.2s',
-        }}
-      >
-        {/* Big score */}
-        <div
-          style={{
-            background: 'var(--brand-gradient)',
-            borderRadius: 16,
-            padding: '24px 12px',
-            color: '#fff',
-            textAlign: 'center',
-            boxShadow: 'var(--card-shadow-glow)',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              letterSpacing: 1.2,
-              textTransform: 'uppercase',
-              opacity: 0.85,
-              fontWeight: 600,
-            }}
-          >
-            Overall score
-          </div>
-          <div
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontWeight: 800,
-              fontSize: 56,
-              lineHeight: 1,
-              marginTop: 6,
-            }}
-          >
-            {score}
-          </div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>out of 100</div>
-        </div>
-
-        {/* Risk + summary */}
-        <div>
-          <div
-            style={{
-              fontSize: 11,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-              fontWeight: 600,
-              color: 'var(--text-muted)',
-            }}
-          >
-            Risk classification
-          </div>
-          <div
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: 22,
-              fontWeight: 700,
-              color: riskColor,
-              marginTop: 4,
-            }}
-          >
-            {riskLabel}
-          </div>
-          <p
-            style={{
-              margin: '12px 0 0',
-              fontSize: 13,
-              color: 'var(--text-secondary)',
-              lineHeight: 1.55,
-            }}
-          >
-            This is a <strong>UI shell preview</strong>. Real scoring, recommendations and
-            evidence-linked findings will be wired up in the next phase. The number above is
-            derived from your overall completion rate as a placeholder.
-          </p>
-        </div>
-      </div>
+      {/* Hero */}
+      <ResultHero result={result} />
 
       {/* Section breakdown */}
+      <SectionScores result={result} />
+
+      {/* Findings + Recommendations side-by-side */}
       <div
         style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--card-radius)',
-          padding: 24,
-          boxShadow: 'var(--card-shadow)',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 20,
           marginBottom: 20,
-          transition: 'background 0.2s, border-color 0.2s',
         }}
       >
-        <h3
-          style={{
-            margin: '0 0 16px',
-            fontFamily: 'var(--font-heading)',
-            fontWeight: 700,
-            fontSize: 16,
-            color: 'var(--text-primary)',
-          }}
-        >
-          Section breakdown
-        </h3>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {auditSections.map((section, idx) => {
-            const pct = Math.round((completionByStep[idx] ?? 0) * 100);
-            return (
-              <div key={section.key}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                    marginBottom: 6,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    {section.title}
-                  </span>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
-                    {pct}%
-                  </span>
-                </div>
-                <div
-                  style={{
-                    height: 6,
-                    background: 'var(--bar-track)',
-                    borderRadius: 999,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${pct}%`,
-                      background: 'var(--brand-gradient)',
-                      borderRadius: 999,
-                      transition: 'width 0.3s ease',
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <FindingsList result={result} />
+        <RecommendationsList result={result} />
       </div>
 
-      {/* CTAs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <Button variant="primary" size="lg" onClick={() => navigate({ name: 'dashboard' })}>
-          View on Dashboard →
-        </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() => {
-            resetDraft();
-            navigate({ name: 'audit/new' });
-          }}
-        >
-          Start a new audit
-        </Button>
-        <Button variant="ghost" size="lg" onClick={() => navigate({ name: 'dashboard' })}>
-          Back to dashboard
-        </Button>
-      </div>
+      {/* Roadmap */}
+      <Roadmap result={result} />
+
+      {/* Actions */}
+      <ResultActions />
     </div>
   );
 }
