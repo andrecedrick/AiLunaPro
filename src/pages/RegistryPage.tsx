@@ -1,0 +1,153 @@
+import { useMemo, useState } from 'react';
+import { Button } from '../components/ui/Button';
+import { useRegistry } from '../context/RegistryContext';
+import { filterRegistry } from '../lib/registry/filterRegistry';
+import { EMPTY_FILTERS } from '../types/registry';
+import type { RegistryFilters as Filters, RegistryItem } from '../types/registry';
+import { RegistrySummary } from '../components/registry/RegistrySummary';
+import { RegistryFilters as RegistryFiltersBar } from '../components/registry/RegistryFilters';
+import { RegistryTable } from '../components/registry/RegistryTable';
+import { RegistryEmptyState } from '../components/registry/RegistryEmptyState';
+import { RegistryItemModal } from '../components/registry/RegistryItemModal';
+
+type ModalState =
+  | { kind: 'closed' }
+  | { kind: 'add' }
+  | { kind: 'edit'; itemId: string };
+
+export function RegistryPage() {
+  const { items, addItem, updateItem, deleteItem, getItem } = useRegistry();
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [modal, setModal] = useState<ModalState>({ kind: 'closed' });
+
+  const filtered = useMemo(() => filterRegistry(items, filters), [items, filters]);
+
+  const handleSave = (
+    data: Omit<RegistryItem, 'id' | 'createdAt' | 'updatedAt'>,
+    mode: { kind: 'add' } | { kind: 'edit'; item: RegistryItem },
+  ) => {
+    if (mode.kind === 'add') {
+      addItem(data);
+    } else {
+      updateItem(mode.item.id, data);
+    }
+    setModal({ kind: 'closed' });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteItem(id);
+    setModal({ kind: 'closed' });
+  };
+
+  const editingItem =
+    modal.kind === 'edit' ? getItem(modal.itemId) : undefined;
+
+  return (
+    <div>
+      {/* Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 16,
+          marginBottom: 22,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              margin: 0,
+              fontFamily: 'var(--font-heading)',
+              fontWeight: 800,
+              fontSize: 28,
+              color: 'var(--text-primary)',
+              letterSpacing: -0.5,
+            }}
+          >
+            AI Registry
+          </h1>
+          <p
+            style={{
+              margin: '6px 0 0',
+              fontSize: 14,
+              color: 'var(--text-muted)',
+              lineHeight: 1.55,
+              maxWidth: 640,
+            }}
+          >
+            Track every AI tool used across your organization — purpose, data, oversight, and
+            mitigations. The registry feeds your audits and reports.
+          </p>
+        </div>
+        <Button variant="primary" size="lg" onClick={() => setModal({ kind: 'add' })}>
+          + Add tool
+        </Button>
+      </div>
+
+      {/* Summary widgets — always reflect the unfiltered totals */}
+      <RegistrySummary items={items} />
+
+      {/* Filters */}
+      <RegistryFiltersBar
+        filters={filters}
+        onChange={setFilters}
+        onClear={() => setFilters(EMPTY_FILTERS)}
+      />
+
+      {/* Body */}
+      {items.length === 0 ? (
+        <RegistryEmptyState
+          variant="no-items"
+          onAdd={() => setModal({ kind: 'add' })}
+          onClearFilters={() => setFilters(EMPTY_FILTERS)}
+        />
+      ) : filtered.length === 0 ? (
+        <RegistryEmptyState
+          variant="no-matches"
+          onAdd={() => setModal({ kind: 'add' })}
+          onClearFilters={() => setFilters(EMPTY_FILTERS)}
+        />
+      ) : (
+        <RegistryTable
+          items={filtered}
+          onRowClick={id => setModal({ kind: 'edit', itemId: id })}
+        />
+      )}
+
+      {/* Footer hint */}
+      {items.length > 0 && (
+        <p
+          style={{
+            margin: '14px 4px 0',
+            fontSize: 11,
+            color: 'var(--text-muted)',
+            fontStyle: 'italic',
+            lineHeight: 1.5,
+          }}
+        >
+          Stored locally for now. Connecting the registry to a real backend is the next milestone —
+          the data shape is the same.
+        </p>
+      )}
+
+      {/* Modal */}
+      {modal.kind === 'add' && (
+        <RegistryItemModal
+          mode={{ kind: 'add' }}
+          onClose={() => setModal({ kind: 'closed' })}
+          onSave={handleSave}
+        />
+      )}
+      {modal.kind === 'edit' && editingItem && (
+        <RegistryItemModal
+          mode={{ kind: 'edit', item: editingItem }}
+          onClose={() => setModal({ kind: 'closed' })}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
+      )}
+    </div>
+  );
+}

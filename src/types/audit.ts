@@ -65,6 +65,7 @@ export type Route =
   | { name: 'audit/assistance'; auditId?: string }
   | { name: 'reports' }
   | { name: 'reports/detail'; reportId: string }
-  | { name: 'reports/share'; reportId: string };
+  | { name: 'reports/share'; reportId: string }
+  | { name: 'registry' };
 
 export type RouteName = Route['name'];

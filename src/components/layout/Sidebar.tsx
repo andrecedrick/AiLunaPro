@@ -8,6 +8,7 @@ const NAV_ROUTES: Partial<Record<string, Route>> = {
   dashboard: { name: 'dashboard' },
   'new-audit': { name: 'audit/new' },
   reports: { name: 'reports' },
+  registry: { name: 'registry' },
 };
 
 /* Map current route → nav item id that should appear active. */
@@ -19,6 +20,7 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'reports') return 'reports';
   if (name === 'reports/detail') return 'reports';
   if (name === 'reports/share') return 'reports';
+  if (name === 'registry') return 'registry';
   return '';
 }
 

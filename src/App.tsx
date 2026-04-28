@@ -3,6 +3,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { RouteProvider, useRoute } from './context/RouteContext';
 import { AuditProvider } from './context/AuditContext';
 import { ReportsProvider } from './context/ReportsContext';
+import { RegistryProvider } from './context/RegistryContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { DashboardPage } from './pages/DashboardPage';
@@ -12,6 +13,7 @@ import { AuditAssistancePage } from './pages/AuditAssistancePage';
 import { ReportsListPage } from './pages/ReportsListPage';
 import { ReportDetailPage } from './pages/ReportDetailPage';
 import { ReportSharePage } from './pages/ReportSharePage';
+import { RegistryPage } from './pages/RegistryPage';
 
 function PageOutlet() {
   const { route } = useRoute();
@@ -29,6 +31,8 @@ function PageOutlet() {
       return <ReportDetailPage />;
     case 'reports/share':
       return <ReportSharePage />;
+    case 'registry':
+      return <RegistryPage />;
     case 'dashboard':
     default:
       return <DashboardPage />;
@@ -70,7 +74,9 @@ function App() {
       <RouteProvider>
         <AuditProvider>
           <ReportsProvider>
-            <AppShell />
+            <RegistryProvider>
+              <AppShell />
+            </RegistryProvider>
           </ReportsProvider>
         </AuditProvider>
       </RouteProvider>
