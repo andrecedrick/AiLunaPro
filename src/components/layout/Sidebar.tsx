@@ -7,6 +7,7 @@ import type { Route, RouteName } from '../../types/audit';
 const NAV_ROUTES: Partial<Record<string, Route>> = {
   dashboard: { name: 'dashboard' },
   'new-audit': { name: 'audit/new' },
+  reports: { name: 'reports' },
 };
 
 /* Map current route → nav item id that should appear active. */
@@ -14,6 +15,10 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'dashboard') return 'dashboard';
   if (name === 'audit/new') return 'new-audit';
   if (name === 'audit/result') return 'new-audit';
+  if (name === 'audit/assistance') return 'new-audit';
+  if (name === 'reports') return 'reports';
+  if (name === 'reports/detail') return 'reports';
+  if (name === 'reports/share') return 'reports';
   return '';
 }
 

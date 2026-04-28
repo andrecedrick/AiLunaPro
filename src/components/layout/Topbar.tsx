@@ -4,6 +4,7 @@ import { ThemeToggle } from '../theme/ThemeToggle';
 export function Topbar() {
   return (
     <header
+      className="topbar"
       style={{
         height: 60,
         background: 'var(--surface)',

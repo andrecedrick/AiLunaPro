@@ -20,3 +20,61 @@
   flex-direction: column;
   gap: 24px;
 }
+
+/* Shared-report layout — chromeless (no sidebar / no topbar) */
+.shared-layout {
+  background: var(--page-bg);
+  display: block;
+}
+.shared-content {
+  margin: 0 auto;
+  padding: 28px 24px;
+  max-width: 1080px;
+}
+
+/* Print stylesheet — used by the Print export action.
+   Hides chrome and interactive bars so the page prints clean. */
+@media print {
+  /* Force white background so ink is reasonable */
+  :root {
+    --page-bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #fafafa;
+  }
+
+  /* Remove navigation and chrome */
+  aside,
+  .topbar,
+  .export-bar,
+  .report-footer-actions,
+  .shared-banner {
+    display: none !important;
+  }
+
+  .dashboard-main {
+    margin-left: 0 !important;
+  }
+
+  .dashboard-content,
+  .shared-content {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Avoid breaking cards across pages where possible */
+  section,
+  .report-aside > section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Drop heavy shadows for print */
+  * {
+    box-shadow: none !important;
+  }
+
+  /* Make the report grid stack nicely on paper */
+  .report-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
