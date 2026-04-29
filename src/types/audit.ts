@@ -66,6 +66,10 @@ export type Route =
   | { name: 'reports' }
   | { name: 'reports/detail'; reportId: string }
   | { name: 'reports/share'; reportId: string }
-  | { name: 'registry' };
+  | { name: 'registry' }
+  | { name: 'login' }
+  | { name: 'signup' }
+  | { name: 'org/create' }
+  | { name: 'team' };
 
 export type RouteName = Route['name'];

@@ -1,0 +1,182 @@
+import { useState } from 'react';
+import { AuthCard } from '../components/auth/AuthCard';
+import { AuthInput, FormField } from '../components/auth/FormField';
+import { Button } from '../components/ui/Button';
+import { useAuth } from '../context/AuthContext';
+import { useRoute } from '../context/RouteContext';
+
+type FormErrors = Partial<Record<'name' | 'email' | 'password' | 'orgName', string>>;
+
+export function SignupPage() {
+  const { signup } = useAuth();
+  const { navigate } = useRoute();
+
+  const [name,     setName]     = useState('');
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [orgName,  setOrgName]  = useState('');
+  const [errors,   setErrors]   = useState<FormErrors>({});
+  const [apiError, setApiError] = useState('');
+  const [loading,  setLoading]  = useState(false);
+
+  const validate = (): FormErrors => {
+    const e: FormErrors = {};
+    if (!name.trim())     e.name    = 'Required';
+    if (!email.trim())    e.email   = 'Required';
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email';
+    if (password.length < 8) e.password = 'Minimum 8 characters';
+    if (!orgName.trim())  e.orgName = 'Required';
+    return e;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
+    setApiError('');
+    setLoading(true);
+    setTimeout(() => {
+      const result = signup(name, email, password, orgName);
+      setLoading(false);
+      if (result.success) {
+        navigate({ name: 'dashboard' });
+      } else {
+        setApiError(result.error ?? 'Could not create account.');
+      }
+    }, 500);
+  };
+
+  return (
+    <AuthCard>
+      <h2
+        style={{
+          margin: '0 0 6px',
+          fontFamily: 'var(--font-heading)',
+          fontWeight: 800,
+          fontSize: 22,
+          color: 'var(--text-primary)',
+          letterSpacing: -0.4,
+          textAlign: 'center',
+        }}
+      >
+        Create your account
+      </h2>
+      <p
+        style={{
+          margin: '0 0 26px',
+          fontSize: 13,
+          color: 'var(--text-muted)',
+          textAlign: 'center',
+          lineHeight: 1.5,
+        }}
+      >
+        Start your AI compliance journey
+      </p>
+
+      <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+        <FormField label="Full name" error={errors.name}>
+          <AuthInput
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Sophie Martin"
+            autoComplete="name"
+            autoFocus
+          />
+        </FormField>
+
+        <FormField label="Work email" error={errors.email}>
+          <AuthInput
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            autoComplete="email"
+          />
+        </FormField>
+
+        <FormField label="Password" error={errors.password} hint="Minimum 8 characters">
+          <AuthInput
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+          />
+        </FormField>
+
+        <FormField
+          label="Workspace name"
+          error={errors.orgName}
+          hint="This is your organisation's workspace in AI Luna Pro."
+        >
+          <AuthInput
+            type="text"
+            value={orgName}
+            onChange={e => setOrgName(e.target.value)}
+            placeholder="Acme Corp"
+          />
+        </FormField>
+
+        {apiError && (
+          <div
+            style={{
+              background: 'var(--red-bg)',
+              color: 'var(--red-text)',
+              borderRadius: 10,
+              padding: '10px 14px',
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            {apiError}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          fullWidth
+          disabled={loading}
+          style={{ marginTop: 4 }}
+        >
+          {loading ? 'Creating account…' : 'Create account'}
+        </Button>
+
+        <p
+          style={{
+            margin: '4px 0 0',
+            textAlign: 'center',
+            fontSize: 11,
+            color: 'var(--text-muted)',
+            lineHeight: 1.5,
+          }}
+        >
+          By creating an account you agree to our{' '}
+          <span style={{ color: 'var(--violet-text)', cursor: 'pointer' }}>Terms of Service</span>
+          {' '}and{' '}
+          <span style={{ color: 'var(--violet-text)', cursor: 'pointer' }}>Privacy Policy</span>.
+        </p>
+      </form>
+
+      <p
+        style={{
+          margin: '22px 0 0',
+          textAlign: 'center',
+          fontSize: 13,
+          color: 'var(--text-muted)',
+        }}
+      >
+        Already have an account?{' '}
+        <span
+          onClick={() => navigate({ name: 'login' })}
+          style={{ color: 'var(--violet-text)', fontWeight: 600, cursor: 'pointer' }}
+        >
+          Sign in
+        </span>
+      </p>
+    </AuthCard>
+  );
+}

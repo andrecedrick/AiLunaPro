@@ -1,6 +1,7 @@
 import './App.css';
 import { ThemeProvider } from './context/ThemeContext';
 import { RouteProvider, useRoute } from './context/RouteContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuditProvider } from './context/AuditContext';
 import { ReportsProvider } from './context/ReportsContext';
 import { RegistryProvider } from './context/RegistryContext';
@@ -14,6 +15,10 @@ import { ReportsListPage } from './pages/ReportsListPage';
 import { ReportDetailPage } from './pages/ReportDetailPage';
 import { ReportSharePage } from './pages/ReportSharePage';
 import { RegistryPage } from './pages/RegistryPage';
+import { TeamPage } from './pages/TeamPage';
+import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
+import { OrgCreatePage } from './pages/OrgCreatePage';
 
 function PageOutlet() {
   const { route } = useRoute();
@@ -33,6 +38,8 @@ function PageOutlet() {
       return <ReportSharePage />;
     case 'registry':
       return <RegistryPage />;
+    case 'team':
+      return <TeamPage />;
     case 'dashboard':
     default:
       return <DashboardPage />;
@@ -41,11 +48,19 @@ function PageOutlet() {
 
 function AppShell() {
   const { route } = useRoute();
-  /* The shared-report page deliberately drops the chrome so it looks like
-     what a stakeholder would receive via the share link. */
-  const chromeless = route.name === 'reports/share';
+  const { isAuthenticated } = useAuth();
 
-  if (chromeless) {
+  /* ── Unauthenticated: auth pages only ──────────────────── */
+  if (!isAuthenticated) {
+    if (route.name === 'signup') return <SignupPage />;
+    return <LoginPage />;
+  }
+
+  /* ── Authenticated: org-creation wizard (no chrome) ────── */
+  if (route.name === 'org/create') return <OrgCreatePage />;
+
+  /* ── Shared-report view (chromeless) ───────────────────── */
+  if (route.name === 'reports/share') {
     return (
       <div className="dashboard-layout shared-layout">
         <main className="dashboard-content shared-content">
@@ -55,6 +70,7 @@ function AppShell() {
     );
   }
 
+  /* ── Full dashboard shell ───────────────────────────────── */
   return (
     <div className="dashboard-layout">
       <Sidebar />
@@ -72,13 +88,15 @@ function App() {
   return (
     <ThemeProvider>
       <RouteProvider>
-        <AuditProvider>
-          <ReportsProvider>
-            <RegistryProvider>
-              <AppShell />
-            </RegistryProvider>
-          </ReportsProvider>
-        </AuditProvider>
+        <AuthProvider>
+          <AuditProvider>
+            <ReportsProvider>
+              <RegistryProvider>
+                <AppShell />
+              </RegistryProvider>
+            </ReportsProvider>
+          </AuditProvider>
+        </AuthProvider>
       </RouteProvider>
     </ThemeProvider>
   );
