@@ -35,6 +35,56 @@
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
+// LOCALSTORAGE ↔ FIRESTORE MAPPING
+// Phase 1B: Feature-flag strategy for progressive migration from mock to real DB
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Mock Layer → Real Layer Migration Path
+ *
+ * During Phase 1B–1D, UI layer uses localStorage + mock data (controlled by
+ * VITE_*_LAYER feature flags). This mapping documents how mock keys translate
+ * to Firestore collections when services are enabled in Phase 2+.
+ *
+ * **Storage Layer (auth.ts, audit.ts):**
+ *   localStorage key               → Firestore path                      → Type
+ *   ─────────────────────────────────────────────────────────────────────────
+ *   'ailunapro-session'            → Firebase Auth (currentUser)         → User
+ *   'ailunapro-user'               → /users/{userId}                     → User
+ *   'ailunapro-orgs'               → /organizations/{orgId}              → Organization[]
+ *   'ailunapro-org-active'         → /organizations/{orgId}              → Organization
+ *   'ailunapro-audits'             → /organizations/{orgId}/audits       → Audit[]
+ *   'ailunapro-audit-current'      → /organizations/{orgId}/audits/{id}  → Audit
+ *   'ailunapro-audit-answers'      → /organizations/{orgId}/audits/{id}  → AuditAnswer[]
+ *   'ailunapro-reports'            → /organizations/{orgId}/reports      → Report[]
+ *   'ailunapro-registry'           → /organizations/{orgId}/registry     → AISystem[]
+ *   'ailunapro-team-members'       → /organizations/{orgId}/members      → OrganizationMember[]
+ *   'ailunapro-subscription'       → /subscriptions/{subscriptionId}     → Subscription
+ *   'ailunapro-billing-invoices'   → /billing_events (filtered)          → BillingEvent[]
+ *
+ * **Timestamp Conversion:**
+ *   Mock Layer:   ISO string (e.g., "2026-04-29T10:30:00Z")
+ *   Firestore:    Date object (browser representation of same instant)
+ *   Service:      Converts ISO → Date on read, Date → serverTimestamp() on write
+ *   API Contract: All timestamps in api.ts use Date type (not ISO strings)
+ *   Firestore.ts: All timestamp fields typed as Date
+ *
+ * **ID Format Differences:**
+ *   Mock Layer:   'u_ts_<random>'    (string prefix + timestamp-based)
+ *   Firestore:    Firebase UIDs      (22-char alphanumeric, auto-generated)
+ *   Migration:    Services abstract away differences; UI types never change
+ *
+ * **Multi-Tenant Enforcement:**
+ *   Every read/write operation includes organizationId parameter.
+ *   Firestore security rules match organizationId from token + doc field.
+ *   Mock layer silently uses localStorage + parameter validation.
+ *
+ * **Feature Flags (Phase 1C):**
+ *   VITE_AUTH_LAYER      'mock' | 'firebase'    — Auth service source
+ *   VITE_DATA_LAYER      'mock' | 'firestore'   — CRUD service source
+ *   VITE_BILLING_LAYER   'mock' | 'stripe'      — Billing/subscription source
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PRIMITIVE UNION TYPES
 // Note: enum is intentionally avoided — incompatible with erasableSyntaxOnly.
 // ─────────────────────────────────────────────────────────────────────────────
