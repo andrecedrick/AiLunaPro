@@ -4,6 +4,7 @@ import { AuthInput, FormField } from '../components/auth/FormField';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { loginValidate } from '../utils/validators/auth';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -16,10 +17,8 @@ export function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
-      return;
-    }
+    const err = loginValidate(email, password);
+    if (err) { setError(err); return; }
     setLoading(true);
     setError('');
     /* Simulate async latency so the UX feels realistic. */

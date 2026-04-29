@@ -4,8 +4,8 @@ import { AuthInput, FormField } from '../components/auth/FormField';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
-
-type FormErrors = Partial<Record<'name' | 'email' | 'password' | 'orgName', string>>;
+import { signupValidate } from '../utils/validators/auth';
+import type { FormErrors } from '../types/form';
 
 export function SignupPage() {
   const { signup } = useAuth();
@@ -19,19 +19,9 @@ export function SignupPage() {
   const [apiError, setApiError] = useState('');
   const [loading,  setLoading]  = useState(false);
 
-  const validate = (): FormErrors => {
-    const e: FormErrors = {};
-    if (!name.trim())     e.name    = 'Required';
-    if (!email.trim())    e.email   = 'Required';
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email';
-    if (password.length < 8) e.password = 'Minimum 8 characters';
-    if (!orgName.trim())  e.orgName = 'Required';
-    return e;
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const errs = validate();
+    const errs = signupValidate(name, email, password, orgName);
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setApiError('');

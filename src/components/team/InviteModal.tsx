@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { RoleSelector } from '../auth/RoleSelector';
 import { AuthInput, FormField } from '../auth/FormField';
 import { Button } from '../ui/Button';
+import { inviteValidate } from '../../utils/validators/auth';
 import type { UserRole } from '../../types/auth';
 
 interface InviteModalProps {
@@ -10,13 +11,11 @@ interface InviteModalProps {
   onInvite: (email: string, name: string, role: UserRole) => void;
 }
 
-type FormErrors = Partial<Record<'email' | 'name', string>>;
-
 export function InviteModal({ currentUserRole, onClose, onInvite }: InviteModalProps) {
   const [name,    setName]    = useState('');
   const [email,   setEmail]   = useState('');
   const [role,    setRole]    = useState<UserRole>('member');
-  const [errors,  setErrors]  = useState<FormErrors>({});
+  const [errors,  setErrors]  = useState<Partial<Record<'email' | 'name', string>>>({});
   const [sending, setSending] = useState(false);
   const [sent,    setSent]    = useState(false);
 
@@ -27,16 +26,8 @@ export function InviteModal({ currentUserRole, onClose, onInvite }: InviteModalP
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const validate = (): FormErrors => {
-    const e: FormErrors = {};
-    if (!name.trim())  e.name  = 'Required';
-    if (!email.trim()) e.email = 'Required';
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email';
-    return e;
-  };
-
   const handleSend = () => {
-    const errs = validate();
+    const errs = inviteValidate(name, email);
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setSending(true);
     /* Simulate network delay */
