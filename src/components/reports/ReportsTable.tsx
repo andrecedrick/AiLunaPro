@@ -1,6 +1,7 @@
 import { Badge } from '../ui/Badge';
 import { useRoute } from '../../context/RouteContext';
 import { useReports } from '../../context/ReportsContext';
+import { formatDate } from '@/utils/formatters';
 import type { Report } from '../../types/report';
 import type { RiskLevel } from '../../types/scoring';
 
@@ -80,11 +81,7 @@ export function ReportsTable({ reports }: Props) {
               </Td>
               <Td>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {new Date(r.createdAt).toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  {formatDate(r.createdAt)}
                 </span>
               </Td>
               <Td align="right">

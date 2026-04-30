@@ -3,13 +3,7 @@ import { useRoute } from '../../context/RouteContext';
 import type { Report } from '../../types/report';
 import type { AuditResult, RiskLevel } from '../../types/scoring';
 import { ExportBar } from './ExportBar';
-
-const RISK_LABEL: Record<RiskLevel, string> = {
-  low: 'Low risk',
-  medium: 'Medium risk',
-  high: 'High risk',
-  critical: 'Critical risk',
-};
+import { formatDate, formatRiskLevel } from '@/utils/formatters';
 
 const RISK_BADGE: Record<RiskLevel, { bg: string; fg: string }> = {
   low: { bg: 'var(--green-bg)', fg: 'var(--green-text)' },
@@ -125,15 +119,10 @@ export function ReportHeader({ report, result }: Props) {
                 fontWeight: 700,
               }}
             >
-              {RISK_LABEL[report.riskSnapshot]}
+              {formatRiskLevel(report.riskSnapshot)}
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Generated{' '}
-              {new Date(report.createdAt).toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })}
+              Generated {formatDate(report.createdAt)}
             </span>
             <Button
               variant="ghost"

@@ -1,5 +1,6 @@
 import { Badge } from '../ui/Badge';
 import { OVERSIGHT_LABEL, APPROVAL_LABEL } from '../../data/mockRegistry';
+import { formatDate } from '@/utils/formatters';
 import type {
   ApprovalStatus,
   RegistryItem,
@@ -117,13 +118,7 @@ export function RegistryTable({ items, onRowClick }: Props) {
               </Td>
               <Td>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {item.reviewDate
-                    ? new Date(item.reviewDate).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })
-                    : '—'}
+                  {formatDate(item.reviewDate)}
                 </span>
               </Td>
             </tr>

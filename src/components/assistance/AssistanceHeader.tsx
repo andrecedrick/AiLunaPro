@@ -1,13 +1,7 @@
 import { Button } from '../ui/Button';
 import { useRoute } from '../../context/RouteContext';
 import type { AuditResult, RiskLevel } from '../../types/scoring';
-
-const RISK_LABEL: Record<RiskLevel, string> = {
-  low: 'Low risk',
-  medium: 'Medium risk',
-  high: 'High risk',
-  critical: 'Critical risk',
-};
+import { formatRiskLevel } from '@/utils/formatters';
 
 const RISK_BADGE: Record<RiskLevel, { bg: string; fg: string }> = {
   low: { bg: 'var(--green-bg)', fg: 'var(--green-text)' },
@@ -105,7 +99,7 @@ export function AssistanceHeader({ result }: { result: AuditResult }) {
               fontWeight: 700,
             }}
           >
-            {RISK_LABEL[result.riskLevel]}
+            {formatRiskLevel(result.riskLevel)}
           </span>
           <Button
             variant="ghost"

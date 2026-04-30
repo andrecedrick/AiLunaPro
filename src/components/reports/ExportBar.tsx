@@ -22,7 +22,7 @@ function buildShareUrl(reportId: string): string {
 function downloadJson(report: Report, result: AuditResult) {
   const payload = {
     meta: {
-      generatedBy: 'AI Luna Pro — UI shell mock',
+      generatedBy: 'AiLunaPro — UI shell mock',
       reportId: report.id,
       title: report.title,
       createdAt: report.createdAt,

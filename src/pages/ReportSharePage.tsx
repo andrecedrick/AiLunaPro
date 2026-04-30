@@ -10,13 +10,7 @@ import { RecommendationsList } from '../components/result/RecommendationsList';
 import { Roadmap } from '../components/result/Roadmap';
 import type { Report } from '../types/report';
 import type { RiskLevel } from '../types/scoring';
-
-const RISK_LABEL: Record<RiskLevel, string> = {
-  low: 'Low risk',
-  medium: 'Medium risk',
-  high: 'High risk',
-  critical: 'Critical risk',
-};
+import { formatDate, formatRiskLevel } from '@/utils/formatters';
 
 const RISK_BADGE: Record<RiskLevel, { bg: string; fg: string }> = {
   low: { bg: 'var(--green-bg)', fg: 'var(--green-text)' },
@@ -196,15 +190,10 @@ function ReportTopline({ report }: { report: Report }) {
             fontWeight: 700,
           }}
         >
-          {RISK_LABEL[report.riskSnapshot]}
+          {formatRiskLevel(report.riskSnapshot)}
         </span>
         <span style={{ color: 'var(--text-muted)' }}>
-          Generated{' '}
-          {new Date(report.createdAt).toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
+          Generated {formatDate(report.createdAt, 'medium')}
         </span>
       </div>
     </div>
@@ -224,7 +213,7 @@ function PoweredByFooter() {
         fontWeight: 600,
       }}
     >
-      Powered by AI Luna Pro · Compliance Suite
+      Powered by AiLunaPro · Compliance Suite
     </div>
   );
 }

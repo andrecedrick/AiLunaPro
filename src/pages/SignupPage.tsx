@@ -99,7 +99,7 @@ export function SignupPage() {
         <FormField
           label="Workspace name"
           error={errors.orgName}
-          hint="This is your organisation's workspace in AI Luna Pro."
+          hint="This is your organisation's workspace in AiLunaPro."
         >
           <AuthInput
             type="text"

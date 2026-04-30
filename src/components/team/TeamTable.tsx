@@ -1,6 +1,7 @@
 import { Badge } from '../ui/Badge';
 import { MemberMenu } from './MemberMenu';
 import { ROLE_LABEL } from '../../data/mockAuth';
+import { formatDate } from '@/utils/formatters';
 import type { OrgMember, UserRole } from '../../types/auth';
 
 interface TeamTableProps {
@@ -156,11 +157,7 @@ export function TeamTable({
 
                 {/* Date */}
                 <td style={{ ...TD_STYLE, color: 'var(--text-muted)', fontSize: 12 }}>
-                  {date
-                    ? new Date(date).toLocaleDateString(undefined, {
-                        year: 'numeric', month: 'short', day: 'numeric',
-                      })
-                    : '—'}
+                  {formatDate(date)}
                 </td>
 
                 {/* Actions */}

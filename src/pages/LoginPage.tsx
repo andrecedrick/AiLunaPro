@@ -57,7 +57,7 @@ export function LoginPage() {
           lineHeight: 1.5,
         }}
       >
-        Welcome back to AI Luna Pro
+        Welcome back to AiLunaPro
       </p>
 
       <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

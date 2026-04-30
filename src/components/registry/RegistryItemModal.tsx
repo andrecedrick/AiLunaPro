@@ -7,6 +7,7 @@ import {
   OVERSIGHT_LABEL,
 } from '../../data/mockRegistry';
 import { makeNewItem } from '../../lib/registry/storage';
+import { formatDate } from '@/utils/formatters';
 import type {
   ApprovalStatus,
   OversightModel,
@@ -408,18 +409,8 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                   lineHeight: 1.5,
                 }}
               >
-                Created{' '}
-                {new Date(mode.item.createdAt).toLocaleDateString(undefined, {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                })}{' '}
-                · Last updated{' '}
-                {new Date(mode.item.updatedAt).toLocaleDateString(undefined, {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                Created {formatDate(mode.item.createdAt)} · Last updated{' '}
+                {formatDate(mode.item.updatedAt)}
               </div>
             )}
           </div>

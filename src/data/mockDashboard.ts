@@ -1,5 +1,5 @@
 /**
- * Mock data for the AI Luna Pro dashboard (Phase 2 — UI only).
+ * Mock data for the AiLunaPro dashboard (Phase 2 — UI only).
  * Replace with real Firestore queries in Phase 3+.
  */
 

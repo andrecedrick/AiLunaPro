@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import type { Report } from '../../types/report';
+import { validateEmail } from '@/utils/validators';
 
 interface Props {
   report: Report;
   onClose: () => void;
   onSent: (recipient: string) => void;
 }
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function EmailDialog({ report, onClose, onSent }: Props) {
   const [email, setEmail] = useState('');
@@ -28,8 +27,9 @@ export function EmailDialog({ report, onClose, onSent }: Props) {
 
   const handleSend = () => {
     setError(null);
-    if (!EMAIL_RE.test(email.trim())) {
-      setError('Please enter a valid email address.');
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      setError(emailErr);
       return;
     }
     setSending(true);
