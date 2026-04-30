@@ -78,7 +78,7 @@ export function CTABlock() {
             maxWidth: 480,
           }}
         >
-          Join 500+ organizations using AI Luna Pro to automate their compliance
+          Join 500+ organizations using AiLunaPro to automate their compliance
           workflows, reduce risk, and build trust with stakeholders.
         </p>
       </div>

@@ -4,6 +4,7 @@ import { AuthInput, FormField } from '../components/auth/FormField';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { validateOrgName } from '../utils/validators';
 import type { Organization } from '../types/auth';
 
 const PLANS: { value: Organization['plan']; label: string; desc: string }[] = [
@@ -24,7 +25,8 @@ export function OrgCreatePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { setError('Workspace name is required.'); return; }
+    const orgErr = validateOrgName(name, 'Workspace name');
+    if (orgErr) { setError(orgErr); return; }
     setError('');
     setLoading(true);
     setTimeout(() => {

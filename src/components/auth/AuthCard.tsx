@@ -42,7 +42,7 @@ export function AuthCard({ children }: AuthCardProps) {
         >
           <img
             src={LOGO_URL}
-            alt="AI Luna Pro"
+            alt="AiLunaPro"
             style={{ width: '100%', height: 'auto', display: 'block', marginTop: -58 }}
           />
         </div>

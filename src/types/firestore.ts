@@ -1,7 +1,7 @@
 /**
  * Firestore Data Model — TypeScript Types
  *
- * Project:   AI Luna Pro
+ * Project:   AiLunaPro
  * Branch:    audit
  * Phase:     1B — Firestore data model
  *

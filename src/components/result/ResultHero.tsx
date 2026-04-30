@@ -1,11 +1,5 @@
 import type { AuditResult, RiskLevel, MaturityLevel } from '../../types/scoring';
-
-const RISK_LABEL: Record<RiskLevel, string> = {
-  low: 'Low risk',
-  medium: 'Medium risk',
-  high: 'High risk',
-  critical: 'Critical risk',
-};
+import { formatRiskLevel } from '@/utils/formatters';
 
 const RISK_BADGE_STYLE: Record<RiskLevel, { bg: string; fg: string }> = {
   low: { bg: 'var(--green-bg)', fg: 'var(--green-text)' },
@@ -100,7 +94,7 @@ export function ResultHero({ result }: Props) {
                 fontFamily: 'var(--font-heading)',
               }}
             >
-              {RISK_LABEL[riskLevel]}
+              {formatRiskLevel(riskLevel)}
             </span>
             {riskBumped && (
               <span

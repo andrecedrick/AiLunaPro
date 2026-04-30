@@ -1,5 +1,7 @@
 import './App.css';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import { RouteProvider, useRoute } from './context/RouteContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuditProvider } from './context/AuditContext';
@@ -23,27 +25,31 @@ import { OrgCreatePage } from './pages/OrgCreatePage';
 function PageOutlet() {
   const { route } = useRoute();
 
-  switch (route.name) {
-    case 'audit/new':
-      return <NewAuditPage />;
-    case 'audit/result':
-      return <AuditResultPage />;
-    case 'audit/assistance':
-      return <AuditAssistancePage />;
-    case 'reports':
-      return <ReportsListPage />;
-    case 'reports/detail':
-      return <ReportDetailPage />;
-    case 'reports/share':
-      return <ReportSharePage />;
-    case 'registry':
-      return <RegistryPage />;
-    case 'team':
-      return <TeamPage />;
-    case 'dashboard':
-    default:
-      return <DashboardPage />;
-  }
+  const page = (() => {
+    switch (route.name) {
+      case 'audit/new':
+        return <NewAuditPage />;
+      case 'audit/result':
+        return <AuditResultPage />;
+      case 'audit/assistance':
+        return <AuditAssistancePage />;
+      case 'reports':
+        return <ReportsListPage />;
+      case 'reports/detail':
+        return <ReportDetailPage />;
+      case 'reports/share':
+        return <ReportSharePage />;
+      case 'registry':
+        return <RegistryPage />;
+      case 'team':
+        return <TeamPage />;
+      case 'dashboard':
+      default:
+        return <DashboardPage />;
+    }
+  })();
+
+  return <ErrorBoundary>{page}</ErrorBoundary>;
 }
 
 function AppShell() {
@@ -86,19 +92,23 @@ function AppShell() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <RouteProvider>
-        <AuthProvider>
-          <AuditProvider>
-            <ReportsProvider>
-              <RegistryProvider>
-                <AppShell />
-              </RegistryProvider>
-            </ReportsProvider>
-          </AuditProvider>
-        </AuthProvider>
-      </RouteProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ToastProvider>
+          <RouteProvider>
+            <AuthProvider>
+              <AuditProvider>
+                <ReportsProvider>
+                  <RegistryProvider>
+                    <AppShell />
+                  </RegistryProvider>
+                </ReportsProvider>
+              </AuditProvider>
+            </AuthProvider>
+          </RouteProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

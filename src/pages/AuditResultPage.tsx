@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAudit } from '../context/AuditContext';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
+import { formatDate } from '../utils/formatters';
 import { ResultHero } from '../components/result/ResultHero';
 import { SectionScores } from '../components/result/SectionScores';
 import { FindingsList } from '../components/result/FindingsList';
@@ -19,9 +20,7 @@ export function AuditResultPage() {
 
   const result = useMemo(() => computeAuditResult(draft.answers), [draft.answers]);
 
-  const submittedAt = draft.submittedAt
-    ? new Date(draft.submittedAt).toLocaleString()
-    : new Date(draft.updatedAt).toLocaleString();
+  const submittedAt = formatDate(draft.submittedAt || draft.updatedAt, 'datetime');
 
   return (
     <div>

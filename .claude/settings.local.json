@@ -25,7 +25,14 @@
       "Bash(git commit -m ' *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174/ --max-time 3)",
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\)\")",
-      "Bash(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://localhost:__TRACKED_VAR__/)"
+      "Bash(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://localhost:__TRACKED_VAR__/)",
+      "Bash(timeout 10 npx vite)",
+      "Bash(findstr \"name\\\\|vitest\\\\|testing\")",
+      "Bash(npm test *)",
+      "Bash(curl -s http://localhost:5176/)",
+      "Bash(grep -rn \"/\\\\\\\\\\\\\\\\S\\\\\\\\+@\\\\\\\\\\\\\\\\S\" src/pages src/components)",
+      "Bash(npx vitest *)",
+      "Bash(timeout 8 bash -c 'sleep 3; curl -s http://localhost:5173/ | head -100')"
     ]
   }
 }
