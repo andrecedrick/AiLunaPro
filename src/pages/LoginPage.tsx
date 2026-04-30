@@ -15,22 +15,19 @@ export function LoginPage() {
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err = loginValidate(email, password);
     if (err) { setError(err); return; }
     setLoading(true);
     setError('');
-    /* Simulate async latency so the UX feels realistic. */
-    setTimeout(() => {
-      const result = login(email, password);
-      setLoading(false);
-      if (result.success) {
-        navigate({ name: 'dashboard' });
-      } else {
-        setError(result.error ?? 'Login failed.');
-      }
-    }, 400);
+    const result = await login(email, password);
+    setLoading(false);
+    if (result.success) {
+      navigate({ name: 'dashboard' });
+    } else {
+      setError(result.error ?? 'Login failed.');
+    }
   };
 
   return (

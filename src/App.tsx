@@ -54,7 +54,11 @@ function PageOutlet() {
 
 function AppShell() {
   const { route } = useRoute();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  /* ── Firebase: wait for onAuthStateChanged before rendering ── */
+  /* Prevents flash of LoginPage for already-authenticated users. */
+  if (isLoading) return null;
 
   /* ── Unauthenticated: auth pages only ──────────────────── */
   if (!isAuthenticated) {
