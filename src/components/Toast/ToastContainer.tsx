@@ -33,7 +33,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
             id={toast.id}
             message={toast.message}
             variant={toast.variant}
-            duration={toast.duration}
+            duration={toast.duration ?? undefined}
             onDismiss={onDismiss}
           />
         ))}

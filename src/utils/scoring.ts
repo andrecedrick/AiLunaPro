@@ -3,7 +3,7 @@
  * Simplified for test validation. Full Phase 4 implementation adds findings, recommendations, roadmap.
  */
 
-import type { AuditAnswers } from '@/types/api';
+import type { AuditAnswers } from '@/types/audit';
 
 export interface AuditResultPhaseC {
   score: number;

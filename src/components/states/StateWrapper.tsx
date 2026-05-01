@@ -13,7 +13,7 @@ import { ErrorBoundary } from '../ErrorBoundary';
  * Discriminated union for state config.
  * Each state variant enforces its required props.
  */
-type StateConfig =
+export type StateConfig =
   | {
       state: 'loading';
       /** Optional loading message. Default: 'Loading...' */
@@ -58,10 +58,10 @@ type StateConfig =
       children: ReactNode;
     };
 
-interface StateWrapperProps extends StateConfig {
+type StateWrapperProps = StateConfig & {
   /** Wrap loaded content with ErrorBoundary. Default: true */
   withErrorBoundary?: boolean;
-}
+};
 
 export function StateWrapper({
   withErrorBoundary = true,

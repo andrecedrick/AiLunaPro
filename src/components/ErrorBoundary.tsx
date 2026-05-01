@@ -54,7 +54,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               <p className="text-gray-700 mb-4">
                 Something went wrong. Please try again.
               </p>
-              {process.env.NODE_ENV === 'development' && (
+              {import.meta.env.DEV && (
                 <details className="mb-4 text-sm bg-gray-100 p-2 rounded">
                   <summary className="font-mono text-red-600 cursor-pointer">
                     Error details
