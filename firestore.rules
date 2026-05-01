@@ -104,22 +104,15 @@ service cloud.firestore {
     // ─────────────────────────────────────────────────────────────────────────
 
     match /users/{userId} {
-      // Users can always read their own profile.
+      // Users can read their own profile.
       allow read: if isAuth() && uid() == userId;
-
-      // Owners and admins can read profiles of users in their org.
-      // Uses resource.data.organizationId (the target user's org) to resolve
-      // the org, then checks if the requesting user is owner/admin there.
-      allow read: if isOwnerOrAdmin(resource.data.organizationId);
 
       // Users initialize their own profile document on first sign-in.
       allow create: if isAuth() && uid() == userId;
 
       // Users can update their own profile.
-      // organizationId is immutable via client write — org membership is
-      // managed through the members subcollection, not here.
-      allow update: if isAuth() && uid() == userId
-        && request.resource.data.organizationId == resource.data.organizationId;
+      // Org membership is managed through the members subcollection.
+      allow update: if isAuth() && uid() == userId;
 
       // Deletion is blocked for client — handled by admin SDK or Cloud Functions.
       allow delete: if false;
