@@ -7,7 +7,7 @@ import { ReportsTable } from '../components/reports/ReportsTable';
 import { EmptyReportsState } from '../components/reports/EmptyReportsState';
 
 export function ReportsListPage() {
-  const { reports, createReport } = useReports();
+  const { reports, createReport, status } = useReports();
   const { draft } = useAudit();
   const { navigate } = useRoute();
 
@@ -73,7 +73,19 @@ export function ReportsListPage() {
       </div>
 
       {/* Body */}
-      {reports.length === 0 ? <EmptyReportsState /> : <ReportsTable reports={reports} />}
+      {status === 'loading' ? (
+        <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+          Loading reports…
+        </p>
+      ) : status === 'error' ? (
+        <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--red-text)', fontSize: 14 }}>
+          Failed to load reports. Please refresh.
+        </p>
+      ) : reports.length === 0 ? (
+        <EmptyReportsState />
+      ) : (
+        <ReportsTable reports={reports} />
+      )}
 
       {/* Hint about traceability */}
       {reports.length > 0 && (

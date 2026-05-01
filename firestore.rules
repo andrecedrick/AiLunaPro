@@ -247,6 +247,31 @@ service cloud.firestore {
 
         // Only owners/admins can delete reports.
         allow delete: if isOwnerOrAdmin(orgId);
+
+
+        // ─────────────────────────────────────────────────────────────────
+        // /organizations/{orgId}/reports/{reportId}/exports/{exportId}
+        //
+        // Export events for a specific report (PDF, email, print, share-link).
+        // Stored as a subcollection so they stay separate from report content.
+        // ─────────────────────────────────────────────────────────────────
+
+        match /exports/{exportId} {
+          // Content members can read export events for reports they can access.
+          allow read: if isOwnerOrAdmin(orgId)
+            || (isContentMember(orgId) && get(/databases/$(database)/documents/organizations/$(orgId)/reports/$(reportId)).data.status == 'published');
+
+          // Only owners/admins can record export events.
+          // reportId on the document must match the path segment.
+          allow create: if isOwnerOrAdmin(orgId)
+            && request.resource.data.reportId == reportId;
+
+          // Export events are immutable after creation.
+          allow update: if false;
+
+          // Only owners/admins can delete export records.
+          allow delete: if isOwnerOrAdmin(orgId);
+        }
       }
 
 

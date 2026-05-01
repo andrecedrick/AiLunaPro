@@ -14,7 +14,7 @@ import { auditSections } from '../data/mockAuditQuestions';
 
 export function ReportDetailPage() {
   const { route, navigate } = useRoute();
-  const { getReport, getExportsForReport, deleteReport } = useReports();
+  const { getReport, getExportsForReport, deleteReport, status } = useReports();
 
   const reportId = route.name === 'reports/detail' ? route.reportId : '';
   const report = getReport(reportId);
@@ -23,6 +23,14 @@ export function ReportDetailPage() {
     () => (report ? computeAuditResult(report.answersSnapshot) : null),
     [report],
   );
+
+  if (status === 'loading') {
+    return (
+      <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+        Loading report…
+      </p>
+    );
+  }
 
   if (!report || !result) {
     return (
