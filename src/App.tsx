@@ -30,6 +30,7 @@ const ProfilePage          = lazy(() => import('./pages/settings/ProfilePage').t
 const OrgPage              = lazy(() => import('./pages/settings/OrgPage').then(m => ({ default: m.OrgPage })));
 const PreferencesPage      = lazy(() => import('./pages/settings/PreferencesPage').then(m => ({ default: m.PreferencesPage })));
 const BillingPage          = lazy(() => import('./pages/BillingPage').then(m => ({ default: m.BillingPage })));
+const BillingSettingsPage  = lazy(() => import('./pages/settings/BillingSettingsPage').then(m => ({ default: m.BillingSettingsPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -64,6 +65,8 @@ function PageOutlet() {
         return <PreferencesPage />;
       case 'billing':
         return <BillingPage />;
+      case 'settings/billing':
+        return <BillingSettingsPage />;
       case 'dashboard':
       default:
         return <DashboardPage />;

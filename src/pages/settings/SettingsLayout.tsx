@@ -1,18 +1,21 @@
 import type { ReactNode } from 'react';
 import { useRoute } from '../../context/RouteContext';
+import { useAuth } from '../../context/AuthContext';
 import type { Route, RouteName } from '../../types/audit';
 
 interface Tab {
-  id: 'profile' | 'org' | 'preferences';
+  id: 'profile' | 'org' | 'preferences' | 'billing';
   label: string;
   route: Route;
   routeName: RouteName;
+  ownerOnly?: boolean;
 }
 
 const TABS: Tab[] = [
   { id: 'profile',     label: 'Profile',          route: { name: 'settings/profile' },     routeName: 'settings/profile' },
   { id: 'org',         label: 'Organization',     route: { name: 'settings/org' },         routeName: 'settings/org' },
   { id: 'preferences', label: 'Preferences',      route: { name: 'settings/preferences' }, routeName: 'settings/preferences' },
+  { id: 'billing',     label: 'Billing',          route: { name: 'settings/billing' },     routeName: 'settings/billing', ownerOnly: true },
 ];
 
 interface Props {
@@ -26,6 +29,9 @@ interface Props {
  */
 export function SettingsLayout({ title, children }: Props) {
   const { route, navigate } = useRoute();
+  const { session } = useAuth();
+  const isOwner = session?.role === 'owner';
+  const visibleTabs = TABS.filter(t => !t.ownerOnly || isOwner);
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 880 }}>
@@ -60,7 +66,7 @@ export function SettingsLayout({ title, children }: Props) {
           marginBottom: 26,
         }}
       >
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const active = route.name === t.routeName;
           return (
             <button

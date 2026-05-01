@@ -29,6 +29,7 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'settings/profile')     return 'settings';
   if (name === 'settings/org')         return 'settings';
   if (name === 'settings/preferences') return 'settings';
+  if (name === 'settings/billing')     return 'settings';
   if (name === 'billing')              return 'billing';
   return '';
 }

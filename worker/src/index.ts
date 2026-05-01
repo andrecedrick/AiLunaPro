@@ -23,6 +23,7 @@ import auditRoutes  from './routes/audits';
 import reportRoutes from './routes/reports';
 import teamRoutes   from './routes/team';
 import stripeRoutes from './routes/stripe';
+import billingConfigRoutes from './routes/billing-config';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ app.route('/', auditRoutes);
 app.route('/', reportRoutes);
 app.route('/', teamRoutes);
 app.route('/', stripeRoutes);
+app.route('/', billingConfigRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));
