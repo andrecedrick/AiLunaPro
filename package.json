@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "test:rules": "vitest run --config vitest.rules.config.ts"
+    "test:rules": "vitest run --config vitest.rules.config.ts",
+    "worker:dev": "cd worker && npx wrangler dev",
+    "worker:deploy": "cd worker && npx wrangler deploy"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",

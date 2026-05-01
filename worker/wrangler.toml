@@ -1,0 +1,17 @@
+name            = "ailunapro-worker"
+main            = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Firebase project ID — used by auth middleware to validate token audience + issuer.
+# Override per environment in [env.production] below.
+FIREBASE_PROJECT_ID = "audit-ai-cc9e2"
+
+# Comma-separated list of allowed CORS origins.
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:5174"
+
+# ── Environments ─────────────────────────────────────────────────────────────
+
+# [env.production]
+# vars = { FIREBASE_PROJECT_ID = "audit-ai-cc9e2", ALLOWED_ORIGINS = "https://app.ailunapro.com" }
