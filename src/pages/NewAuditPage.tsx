@@ -1,6 +1,9 @@
 import { AuditShell } from '../components/audit/AuditShell';
+import { useAudit } from '../context/AuditContext';
 
 export function NewAuditPage() {
+  const { status } = useAudit();
+
   return (
     <div>
       {/* Page header */}
@@ -25,12 +28,36 @@ export function NewAuditPage() {
             lineHeight: 1.55,
           }}
         >
-          Walk through 8 sections to assess your AI compliance posture. Your draft is saved
-          locally as you go — you can leave and come back anytime.
+          Walk through 8 sections to assess your AI compliance posture. Your progress is saved
+          as you go — you can leave and come back anytime.
         </p>
       </div>
 
-      <AuditShell />
+      {status === 'loading' ? (
+        <div
+          style={{
+            padding: '48px 0',
+            textAlign: 'center',
+            fontSize: 14,
+            color: 'var(--text-muted)',
+          }}
+        >
+          Loading audit…
+        </div>
+      ) : status === 'error' ? (
+        <div
+          style={{
+            padding: '48px 0',
+            textAlign: 'center',
+            fontSize: 14,
+            color: 'var(--red-text)',
+          }}
+        >
+          Failed to load audit. Refresh to retry.
+        </div>
+      ) : (
+        <AuditShell />
+      )}
     </div>
   );
 }

@@ -9,6 +9,20 @@ import {
 } from 'react';
 import { auditSections, totalAuditQuestions } from '../data/mockAuditQuestions';
 import type { AnswerValue, AuditAnswers, AuditDraft } from '../types/audit';
+import { resolveLayer } from '../lib/featureFlags';
+import { useAuth } from './AuthContext';
+import {
+  fsListAudits,
+  fsCreateAudit,
+  fsSaveAnswer,
+  fsSubmitAudit,
+} from '../lib/audit/firestoreAuditService';
+
+// ─── Feature flag ─────────────────────────────────────────────────────────────
+
+const LAYER = resolveLayer('audit');
+
+// ─── Mock persistence helpers ─────────────────────────────────────────────────
 
 const STORAGE_KEY = 'ailunapro-audit-draft';
 
@@ -26,7 +40,7 @@ function writeDraft(draft: AuditDraft) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
   } catch {
-    /* swallow — UI shell only */
+    /* swallow */
   }
 }
 
@@ -41,9 +55,14 @@ function newDraft(): AuditDraft {
   };
 }
 
+// ─── Context shape ────────────────────────────────────────────────────────────
+
+export type AuditStatus = 'loading' | 'loaded' | 'error';
+
 interface AuditContextValue {
   /* state */
   draft: AuditDraft;
+  status: AuditStatus;
   currentStep: number;
   totalSteps: number;
   isFirst: boolean;
@@ -66,31 +85,150 @@ interface AuditContextValue {
 
 const AuditContext = createContext<AuditContextValue | undefined>(undefined);
 
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export function AuditProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  const orgId = session?.orgId ?? null;
+  const uid   = session?.userId ?? null;
+
+  // Mock: init synchronously from localStorage.
+  // Firebase: start empty + loading, populate async.
   const [draft, setDraft] = useState<AuditDraft>(() => {
-    const existing = readDraft();
-    // If a previous draft was already submitted, start a fresh one for the next session.
-    if (existing && existing.status === 'draft') return existing;
-    return newDraft();
+    if (LAYER === 'mock') {
+      const existing = readDraft();
+      if (existing && existing.status === 'draft') return existing;
+      return newDraft();
+    }
+    return newDraft(); // placeholder until Firestore loads
   });
+
+  const [status, setStatus] = useState<AuditStatus>(
+    LAYER === 'mock' ? 'loaded' : 'loading',
+  );
   const [currentStep, setCurrentStep] = useState(0);
 
-  const totalSteps = auditSections.length;
-  const isFirst = currentStep === 0;
-  const isLast = currentStep === totalSteps - 1;
+  // ── Firebase: load most-recent draft; create one if none exists ───────────
 
-  /* Mirror to localStorage on every draft change */
   useEffect(() => {
-    writeDraft(draft);
+    if (LAYER === 'mock') return;
+    if (!orgId || !uid) return;
+
+    let cancelled = false;
+    setStatus('loading');
+
+    fsListAudits(orgId)
+      .then(async audits => {
+        if (cancelled) return;
+        const inProgress = audits.find(a => a.status === 'draft');
+        if (inProgress) {
+          setDraft(inProgress);
+        } else {
+          // No existing draft — create a fresh one in Firestore immediately
+          const fresh = newDraft();
+          await fsCreateAudit(orgId, uid, fresh);
+          if (!cancelled) setDraft(fresh);
+        }
+        if (!cancelled) setStatus('loaded');
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error');
+      });
+
+    return () => { cancelled = true; };
+  }, [orgId, uid]);
+
+  // ── Mock: mirror to localStorage on every change ──────────────────────────
+
+  useEffect(() => {
+    if (LAYER === 'mock') writeDraft(draft);
   }, [draft]);
 
-  const setAnswer = useCallback((id: string, value: AnswerValue) => {
+  // ── CRUD — mock path ───────────────────────────────────────────────────────
+
+  const setAnswerMock = useCallback((id: string, value: AnswerValue) => {
     setDraft(prev => ({
       ...prev,
       answers: { ...prev.answers, [id]: value },
       updatedAt: new Date().toISOString(),
     }));
   }, []);
+
+  const saveProgressMock = useCallback(() => {
+    setDraft(prev => ({ ...prev, updatedAt: new Date().toISOString() }));
+  }, []);
+
+  const submitAuditMock = useCallback((): string => {
+    const submittedAt = new Date().toISOString();
+    const submittedId = draft.id;
+    setDraft(prev => ({ ...prev, status: 'submitted', submittedAt, updatedAt: submittedAt }));
+    return submittedId;
+  }, [draft.id]);
+
+  const resetDraftMock = useCallback(() => {
+    setDraft(newDraft());
+    setCurrentStep(0);
+  }, []);
+
+  // ── CRUD — firebase path ───────────────────────────────────────────────────
+
+  const setAnswerFirebase = useCallback((id: string, value: AnswerValue) => {
+    // Optimistic local update first
+    setDraft(prev => ({
+      ...prev,
+      answers: { ...prev.answers, [id]: value },
+      updatedAt: new Date().toISOString(),
+    }));
+    // Async persist to Firestore
+    if (orgId && uid) {
+      fsSaveAnswer(orgId, draft.id, id, value, uid).catch(err =>
+        console.error('[AuditContext] fsSaveAnswer failed:', err),
+      );
+    }
+  }, [orgId, uid, draft.id]);
+
+  const saveProgressFirebase = useCallback(() => {
+    setDraft(prev => ({ ...prev, updatedAt: new Date().toISOString() }));
+    // Firestore updatedAt refreshed via fsSaveAnswer on each answer —
+    // explicit saveProgress touch only needed for mock path.
+  }, []);
+
+  const submitAuditFirebase = useCallback((): string => {
+    const submittedId = draft.id;
+    const submittedAt = new Date().toISOString();
+    setDraft(prev => ({ ...prev, status: 'submitted', submittedAt, updatedAt: submittedAt }));
+    if (orgId && uid) {
+      // Batch: status update + final answers snapshot
+      fsSubmitAudit(orgId, submittedId, uid, draft.answers).catch(err =>
+        console.error('[AuditContext] fsSubmitAudit failed:', err),
+      );
+    }
+    return submittedId;
+  }, [orgId, uid, draft.id, draft.answers]);
+
+  const resetDraftFirebase = useCallback(() => {
+    const fresh = newDraft();
+    setDraft(fresh);
+    setCurrentStep(0);
+    if (orgId && uid) {
+      fsCreateAudit(orgId, uid, fresh).catch(err =>
+        console.error('[AuditContext] fsCreateAudit (reset) failed:', err),
+      );
+    }
+  }, [orgId, uid]);
+
+  // ── Bind correct implementation ────────────────────────────────────────────
+
+  const setAnswer    = LAYER === 'firebase' ? setAnswerFirebase    : setAnswerMock;
+  const saveProgress = LAYER === 'firebase' ? saveProgressFirebase : saveProgressMock;
+  const submitAudit  = LAYER === 'firebase' ? submitAuditFirebase  : submitAuditMock;
+  const resetDraft   = LAYER === 'firebase' ? resetDraftFirebase   : resetDraftMock;
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+
+  const totalSteps = auditSections.length;
+  const isFirst = currentStep === 0;
+  const isLast  = currentStep === totalSteps - 1;
 
   const goToStep = useCallback(
     (idx: number) => {
@@ -108,24 +246,8 @@ export function AuditProvider({ children }: { children: ReactNode }) {
     setCurrentStep(s => Math.max(0, s - 1));
   }, []);
 
-  const saveProgress = useCallback(() => {
-    setDraft(prev => ({ ...prev, updatedAt: new Date().toISOString() }));
-  }, []);
+  // ── Completion math ─────────────────────────────────────────────────────────
 
-  const submitAudit = useCallback((): string => {
-    const submittedAt = new Date().toISOString();
-    const submittedId = draft.id;
-    setDraft(prev => ({ ...prev, status: 'submitted', submittedAt, updatedAt: submittedAt }));
-    return submittedId;
-  }, [draft.id]);
-
-  const resetDraft = useCallback(() => {
-    const fresh = newDraft();
-    setDraft(fresh);
-    setCurrentStep(0);
-  }, []);
-
-  /* Completion math — UI shell only, no scoring logic */
   const completionByStep = useMemo<number[]>(() => {
     return auditSections.map(section => {
       const total = section.questions.length;
@@ -135,7 +257,7 @@ export function AuditProvider({ children }: { children: ReactNode }) {
         if (v === undefined || v === null) return false;
         if (typeof v === 'string') return v.trim().length > 0;
         if (Array.isArray(v)) return v.length > 0;
-        return true; // boolean false counts as answered
+        return true;
       }).length;
       return answered / total;
     });
@@ -157,9 +279,12 @@ export function AuditProvider({ children }: { children: ReactNode }) {
     return totalAuditQuestions === 0 ? 0 : totalAnswered / totalAuditQuestions;
   }, [draft.answers]);
 
+  // ── Context value ──────────────────────────────────────────────────────────
+
   const value = useMemo<AuditContextValue>(
     () => ({
       draft,
+      status,
       currentStep,
       totalSteps,
       isFirst,
@@ -177,6 +302,7 @@ export function AuditProvider({ children }: { children: ReactNode }) {
     }),
     [
       draft,
+      status,
       currentStep,
       totalSteps,
       isFirst,
