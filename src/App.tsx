@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuditProvider } from './context/AuditContext';
 import { ReportsProvider } from './context/ReportsContext';
 import { RegistryProvider } from './context/RegistryContext';
+import { BillingProvider } from './context/BillingContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 
@@ -28,6 +29,7 @@ const OrgCreatePage        = lazy(() => import('./pages/OrgCreatePage').then(m =
 const ProfilePage          = lazy(() => import('./pages/settings/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const OrgPage              = lazy(() => import('./pages/settings/OrgPage').then(m => ({ default: m.OrgPage })));
 const PreferencesPage      = lazy(() => import('./pages/settings/PreferencesPage').then(m => ({ default: m.PreferencesPage })));
+const BillingPage          = lazy(() => import('./pages/BillingPage').then(m => ({ default: m.BillingPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -60,6 +62,8 @@ function PageOutlet() {
         return <OrgPage />;
       case 'settings/preferences':
         return <PreferencesPage />;
+      case 'billing':
+        return <BillingPage />;
       case 'dashboard':
       default:
         return <DashboardPage />;
@@ -133,7 +137,9 @@ function App() {
               <AuditProvider>
                 <ReportsProvider>
                   <RegistryProvider>
-                    <AppShell />
+                    <BillingProvider>
+                      <AppShell />
+                    </BillingProvider>
                   </RegistryProvider>
                 </ReportsProvider>
               </AuditProvider>

@@ -74,6 +74,7 @@ export type Route =
   | { name: 'team' }
   | { name: 'settings/profile' }
   | { name: 'settings/org' }
-  | { name: 'settings/preferences' };
+  | { name: 'settings/preferences' }
+  | { name: 'billing' };
 
 export type RouteName = Route['name'];
