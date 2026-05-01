@@ -19,6 +19,7 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  updateProfile as firebaseUpdateAuthProfile,
   type User as FirebaseUser,
   type Unsubscribe,
 } from 'firebase/auth';
@@ -400,6 +401,72 @@ export async function firebaseRemoveMember(
 /** Expose the current Firebase Auth user for switchOrg calls. */
 export function getCurrentFirebaseUser(): FirebaseUser | null {
   return auth.currentUser;
+}
+
+/**
+ * Update the current user's display name + email.
+ * Writes to:
+ *   - Firebase Auth profile (displayName)
+ *   - /users/{uid}  (displayName, email, initials, updatedAt)
+ *   - /organizations/{orgId}/members/{uid}  (displayName, email, initials)
+ */
+export async function firebaseUpdateProfile(
+  uid: string,
+  orgId: string,
+  name: string,
+  email: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const initials = makeInitials(name);
+    const now = new Date().toISOString();
+
+    const fbUser = auth.currentUser;
+    const ops: Promise<unknown>[] = [
+      updateDoc(doc(db, 'users', uid), {
+        displayName: name,
+        email,
+        initials,
+        updatedAt: now,
+      }),
+      updateDoc(doc(db, 'organizations', orgId, 'members', uid), {
+        displayName: name,
+        email,
+        initials,
+      }),
+    ];
+
+    // Update Firebase Auth displayName if available
+    if (fbUser) {
+      ops.push(firebaseUpdateAuthProfile(fbUser, { displayName: name }));
+    }
+
+    await Promise.all(ops);
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to update profile.';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Rename an organization in Firestore.
+ * Writes to /organizations/{orgId} (name, initials, updatedAt).
+ */
+export async function firebaseUpdateOrgName(
+  orgId: string,
+  name: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await updateDoc(doc(db, 'organizations', orgId), {
+      name,
+      initials: makeInitials(name),
+      updatedAt: new Date().toISOString(),
+    });
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to update organization.';
+    return { success: false, error: msg };
+  }
 }
 
 /**

@@ -33,6 +33,8 @@ import {
   firebaseRemoveMember,
   getCurrentFirebaseUser,
   firebaseSendPasswordReset,
+  firebaseUpdateProfile,
+  firebaseUpdateOrgName,
 } from '../lib/auth/firebaseAuthService';
 
 const LAYER = resolveLayer('auth');
@@ -59,9 +61,21 @@ interface AuthContextValue {
   inviteMember:     (email: string, name: string, role: UserRole) => void;
   updateMemberRole: (userId: string, role: UserRole) => void;
   removeMember:     (userId: string) => void;
+  /* ── Profile ───────────────────────────────────────────── */
+  /**
+   * Update the current user's displayName + email.
+   * Mock layer: persisted to localStorage. Firebase layer: not yet wired —
+   * returns { success: false, error: 'coming-soon' } so the UI can surface a toast.
+   */
+  updateProfile: (name: string, email: string) => Promise<{ success: boolean; error?: string }>;
   /* ── Org ───────────────────────────────────────────────── */
-  createOrg: (name: string, plan: Organization['plan']) => void;
-  switchOrg: (orgId: string) => void;
+  createOrg:     (name: string, plan: Organization['plan']) => void;
+  switchOrg:     (orgId: string) => void;
+  /**
+   * Rename the current organization.
+   * Mock layer: persisted to localStorage. Firebase layer: not yet wired.
+   */
+  updateOrgName: (name: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -313,6 +327,96 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [session],
   );
 
+  /* ── Profile ───────────────────────────────────────────── */
+
+  const updateProfile = useCallback(
+    async (name: string, email: string): Promise<{ success: boolean; error?: string }> => {
+      if (!session) return { success: false, error: 'Not authenticated.' };
+
+      const trimmedName  = name.trim();
+      const trimmedEmail = email.toLowerCase().trim();
+      if (!trimmedName)  return { success: false, error: 'Name is required.' };
+      if (!trimmedEmail) return { success: false, error: 'Email is required.' };
+
+      if (LAYER === 'firebase') {
+        const res = await firebaseUpdateProfile(
+          session.userId,
+          session.orgId,
+          trimmedName,
+          trimmedEmail,
+        );
+        if (res.success) {
+          // Optimistically update local state so UI reflects change immediately.
+          const initials = makeInitials(trimmedName);
+          const updatedUser = { ...session.user, displayName: trimmedName, email: trimmedEmail, initials };
+          setMembers(prev =>
+            prev.map(m =>
+              m.userId === session.userId
+                ? { ...m, displayName: trimmedName, email: trimmedEmail, initials }
+                : m,
+            ),
+          );
+          setSession(prev => (prev ? { ...prev, user: updatedUser } : prev));
+        }
+        return res;
+      }
+
+      const initials = makeInitials(trimmedName);
+      const updatedUser = {
+        ...session.user,
+        displayName: trimmedName,
+        email:       trimmedEmail,
+        initials,
+      };
+
+      // Update mock user record
+      const idx = MOCK_USERS.findIndex(u => u.id === session.userId);
+      if (idx >= 0) MOCK_USERS[idx] = updatedUser;
+
+      // Update denormalised member rows for this user
+      setMembers(prev =>
+        prev.map(m =>
+          m.userId === session.userId
+            ? { ...m, displayName: trimmedName, email: trimmedEmail, initials }
+            : m,
+        ),
+      );
+
+      setSession(prev => (prev ? { ...prev, user: updatedUser } : prev));
+      return { success: true };
+    },
+    [session],
+  );
+
+  /* ── Org ───────────────────────────────────────────────── */
+
+  const updateOrgName = useCallback(
+    async (name: string): Promise<{ success: boolean; error?: string }> => {
+      if (!session) return { success: false, error: 'Not authenticated.' };
+      const trimmed = name.trim();
+      if (!trimmed) return { success: false, error: 'Organization name is required.' };
+
+      if (LAYER === 'firebase') {
+        const res = await firebaseUpdateOrgName(session.orgId, trimmed);
+        if (res.success) {
+          const initials = makeInitials(trimmed);
+          const updatedOrg: Organization = { ...session.org, name: trimmed, initials };
+          setOrgs(prev => prev.map(o => (o.id === session.orgId ? updatedOrg : o)));
+          setSession(prev => (prev ? { ...prev, org: updatedOrg } : prev));
+        }
+        return res;
+      }
+
+      const initials = makeInitials(trimmed);
+      const updatedOrg: Organization = { ...session.org, name: trimmed, initials };
+
+      setOrgs(prev => prev.map(o => (o.id === session.orgId ? updatedOrg : o)));
+      setSession(prev => (prev ? { ...prev, org: updatedOrg } : prev));
+      return { success: true };
+    },
+    [session],
+  );
+
   const switchOrg = useCallback(
     (orgId: string) => {
       if (!session) return;
@@ -358,14 +462,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inviteMember,
       updateMemberRole,
       removeMember,
+      updateProfile,
       createOrg,
       switchOrg,
+      updateOrgName,
     }),
     [
       session, members, orgs, isLoading, currentMember,
       login, signup, logout, resetPassword,
       inviteMember, updateMemberRole, removeMember,
-      createOrg, switchOrg,
+      updateProfile, createOrg, switchOrg, updateOrgName,
     ],
   );
 

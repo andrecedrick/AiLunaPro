@@ -11,6 +11,7 @@ const NAV_ROUTES: Partial<Record<string, Route>> = {
   reports: { name: 'reports' },
   registry: { name: 'registry' },
   team: { name: 'team' },
+  settings: { name: 'settings/profile' },
 };
 
 /* Map current route → nav item id that should appear active. */
@@ -24,6 +25,9 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'reports/share') return 'reports';
   if (name === 'registry') return 'registry';
   if (name === 'team') return 'team';
+  if (name === 'settings/profile')     return 'settings';
+  if (name === 'settings/org')         return 'settings';
+  if (name === 'settings/preferences') return 'settings';
   return '';
 }
 

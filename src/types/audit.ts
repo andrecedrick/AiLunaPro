@@ -71,6 +71,9 @@ export type Route =
   | { name: 'signup' }
   | { name: 'forgot-password' }
   | { name: 'org/create' }
-  | { name: 'team' };
+  | { name: 'team' }
+  | { name: 'settings/profile' }
+  | { name: 'settings/org' }
+  | { name: 'settings/preferences' };
 
 export type RouteName = Route['name'];

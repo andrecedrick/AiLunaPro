@@ -25,6 +25,9 @@ const LoginPage            = lazy(() => import('./pages/LoginPage').then(m => ({
 const SignupPage           = lazy(() => import('./pages/SignupPage').then(m => ({ default: m.SignupPage })));
 const ForgotPasswordPage   = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const OrgCreatePage        = lazy(() => import('./pages/OrgCreatePage').then(m => ({ default: m.OrgCreatePage })));
+const ProfilePage          = lazy(() => import('./pages/settings/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const OrgPage              = lazy(() => import('./pages/settings/OrgPage').then(m => ({ default: m.OrgPage })));
+const PreferencesPage      = lazy(() => import('./pages/settings/PreferencesPage').then(m => ({ default: m.PreferencesPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -51,6 +54,12 @@ function PageOutlet() {
         return <RegistryPage />;
       case 'team':
         return <TeamPage />;
+      case 'settings/profile':
+        return <ProfilePage />;
+      case 'settings/org':
+        return <OrgPage />;
+      case 'settings/preferences':
+        return <PreferencesPage />;
       case 'dashboard':
       default:
         return <DashboardPage />;
