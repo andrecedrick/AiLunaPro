@@ -69,6 +69,7 @@ export type Route =
   | { name: 'registry' }
   | { name: 'login' }
   | { name: 'signup' }
+  | { name: 'forgot-password' }
   | { name: 'org/create' }
   | { name: 'team' };
 

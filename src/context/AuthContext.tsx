@@ -32,6 +32,7 @@ import {
   firebaseUpdateMemberRole,
   firebaseRemoveMember,
   getCurrentFirebaseUser,
+  firebaseSendPasswordReset,
 } from '../lib/auth/firebaseAuthService';
 
 const LAYER = resolveLayer('auth');
@@ -50,9 +51,10 @@ interface AuthContextValue {
   /** The OrgMember row for the currently logged-in user in the current org. */
   currentMember: OrgMember | undefined;
   /* ── Auth ──────────────────────────────────────────────── */
-  login:  (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (name: string, email: string, password: string, orgName: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  login:         (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup:        (name: string, email: string, password: string, orgName: string) => Promise<{ success: boolean; error?: string }>;
+  logout:        () => void;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   /* ── Team ──────────────────────────────────────────────── */
   inviteMember:     (email: string, name: string, role: UserRole) => void;
   updateMemberRole: (userId: string, role: UserRole) => void;
@@ -208,6 +210,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const resetPassword = useCallback(
+    async (email: string): Promise<{ success: boolean; error?: string }> => {
+      if (LAYER === 'firebase') {
+        return firebaseSendPasswordReset(email);
+      }
+      // Mock path — no real email, always succeed silently
+      return { success: true };
+    },
+    [],
+  );
+
   /* ── Team ──────────────────────────────────────────────── */
 
   const inviteMember = useCallback(
@@ -341,6 +354,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       signup,
       logout,
+      resetPassword,
       inviteMember,
       updateMemberRole,
       removeMember,
@@ -349,7 +363,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       session, members, orgs, isLoading, currentMember,
-      login, signup, logout,
+      login, signup, logout, resetPassword,
       inviteMember, updateMemberRole, removeMember,
       createOrg, switchOrg,
     ],

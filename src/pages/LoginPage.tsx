@@ -77,9 +77,9 @@ export function LoginPage() {
             placeholder="••••••••"
             autoComplete="current-password"
           />
-          {/* Forgot password — non-functional placeholder */}
           <div style={{ textAlign: 'right', marginTop: 6 }}>
             <span
+              onClick={() => navigate({ name: 'forgot-password' })}
               style={{
                 fontSize: 11,
                 color: 'var(--violet-text)',

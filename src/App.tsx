@@ -20,6 +20,7 @@ import { RegistryPage } from './pages/RegistryPage';
 import { TeamPage } from './pages/TeamPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { OrgCreatePage } from './pages/OrgCreatePage';
 
 function PageOutlet() {
@@ -62,7 +63,8 @@ function AppShell() {
 
   /* ── Unauthenticated: auth pages only ──────────────────── */
   if (!isAuthenticated) {
-    if (route.name === 'signup') return <SignupPage />;
+    if (route.name === 'signup')           return <SignupPage />;
+    if (route.name === 'forgot-password')  return <ForgotPasswordPage />;
     return <LoginPage />;
   }
 

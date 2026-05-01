@@ -18,6 +18,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   type User as FirebaseUser,
   type Unsubscribe,
 } from 'firebase/auth';
@@ -399,4 +400,29 @@ export async function firebaseRemoveMember(
 /** Expose the current Firebase Auth user for switchOrg calls. */
 export function getCurrentFirebaseUser(): FirebaseUser | null {
   return auth.currentUser;
+}
+
+/**
+ * Send a Firebase password-reset email.
+ * Returns { success: true } on dispatch (Firebase queues delivery).
+ * Maps auth/user-not-found to a safe generic message to prevent email enumeration.
+ */
+export async function firebaseSendPasswordReset(
+  email: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+    return { success: true };
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code ?? '';
+    // Intentionally map user-not-found → generic to prevent email enumeration
+    if (
+      code === 'auth/user-not-found' ||
+      code === 'auth/invalid-email' ||
+      code === 'auth/missing-email'
+    ) {
+      return { success: false, error: 'No account found for that email address.' };
+    }
+    return { success: false, error: 'Failed to send reset email. Please try again.' };
+  }
 }
