@@ -16,7 +16,7 @@ type ModalState =
   | { kind: 'edit'; itemId: string };
 
 export function RegistryPage() {
-  const { items, addItem, updateItem, deleteItem, getItem } = useRegistry();
+  const { items, status, addItem, updateItem, deleteItem, getItem } = useRegistry();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [modal, setModal] = useState<ModalState>({ kind: 'closed' });
 
@@ -97,7 +97,29 @@ export function RegistryPage() {
       />
 
       {/* Body */}
-      {items.length === 0 ? (
+      {status === 'loading' ? (
+        <div
+          style={{
+            padding: '48px 0',
+            textAlign: 'center',
+            fontSize: 14,
+            color: 'var(--text-muted)',
+          }}
+        >
+          Loading registry…
+        </div>
+      ) : status === 'error' ? (
+        <div
+          style={{
+            padding: '48px 0',
+            textAlign: 'center',
+            fontSize: 14,
+            color: 'var(--red-text)',
+          }}
+        >
+          Failed to load registry. Refresh to retry.
+        </div>
+      ) : items.length === 0 ? (
         <RegistryEmptyState
           variant="no-items"
           onAdd={() => setModal({ kind: 'add' })}
@@ -116,21 +138,6 @@ export function RegistryPage() {
         />
       )}
 
-      {/* Footer hint */}
-      {items.length > 0 && (
-        <p
-          style={{
-            margin: '14px 4px 0',
-            fontSize: 11,
-            color: 'var(--text-muted)',
-            fontStyle: 'italic',
-            lineHeight: 1.5,
-          }}
-        >
-          Stored locally for now. Connecting the registry to a real backend is the next milestone —
-          the data shape is the same.
-        </p>
-      )}
 
       {/* Modal */}
       {modal.kind === 'add' && (

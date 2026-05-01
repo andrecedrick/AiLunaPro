@@ -156,9 +156,18 @@ service cloud.firestore {
         // All org members can view the member list (used to render team pages).
         allow read: if isAnyMember(orgId);
 
-        // Only owners and admins can invite, update roles, or remove members.
-        allow create, update: if isOwnerOrAdmin(orgId);
-        allow delete:         if isOwnerOrAdmin(orgId);
+        // Only owners and admins can invite or update roles.
+        // Bootstrap exception: the org owner may self-create their own member doc
+        // during org creation (before getMemberRole can resolve the members subcollection).
+        // Verified by cross-checking /organizations/{orgId}.ownerId.
+        allow create: if isOwnerOrAdmin(orgId)
+          || (isAuth()
+            && uid() == memberId
+            && request.resource.data.role == 'owner'
+            && get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == uid());
+
+        allow update: if isOwnerOrAdmin(orgId);
+        allow delete: if isOwnerOrAdmin(orgId);
       }
 
 
@@ -252,9 +261,8 @@ service cloud.firestore {
         allow read: if isContentMember(orgId);
 
         // Only owners/admins can add or modify registry entries.
-        // organizationId must match the path.
-        allow create, update: if isOwnerOrAdmin(orgId)
-          && request.resource.data.organizationId == orgId;
+        // Org isolation is enforced by the {orgId} path segment.
+        allow create, update: if isOwnerOrAdmin(orgId);
 
         // Only owners/admins can remove registry entries.
         allow delete: if isOwnerOrAdmin(orgId);

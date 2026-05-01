@@ -190,8 +190,10 @@ export function subscribeAuthState(
       if (result) {
         onResolved(result.session, result.members, result.orgs);
       } else {
-        // User exists in Auth but has no Firestore data — treat as signed-out
-        await signOut(auth);
+        // User exists in Auth but Firestore docs not yet available
+        // (e.g. race window right after signup). Do NOT sign out —
+        // the signup function will force a fresh onAuthStateChanged
+        // after writes complete. Just report signed-out state.
         onSignedOut();
       }
     } catch (err) {
@@ -237,7 +239,19 @@ export async function firebaseSignup(
     const orgId   = `org_${uid.slice(0, 8)}`;
     const orgInit = makeInitials(orgName);
 
-    // Write all three docs in parallel
+    // Write org first — member bootstrap rule cross-checks org.ownerId,
+    // so org must be committed before member doc is written.
+    await setDoc(doc(db, 'organizations', orgId), {
+      id:        orgId,
+      name:      orgName.trim(),
+      plan:      'Free',
+      initials:  orgInit,
+      ownerId:   uid,
+      createdAt: now,
+      updatedAt: now,
+    } satisfies FsOrg);
+
+    // User and member docs can now be written in parallel.
     await Promise.all([
       setDoc(doc(db, 'users', uid), {
         id: uid,
@@ -248,15 +262,6 @@ export async function firebaseSignup(
         createdAt: now,
         updatedAt: now,
       } satisfies FsUser),
-      setDoc(doc(db, 'organizations', orgId), {
-        id:        orgId,
-        name:      orgName.trim(),
-        plan:      'Free',
-        initials:  orgInit,
-        ownerId:   uid,
-        createdAt: now,
-        updatedAt: now,
-      } satisfies FsOrg),
       setDoc(doc(db, 'organizations', orgId, 'members', uid), {
         userId:      uid,
         orgId,
@@ -270,7 +275,13 @@ export async function firebaseSignup(
     ]);
 
     setOrgPref(orgId);
-    // onAuthStateChanged fires after createUserWithEmailAndPassword
+
+    // Firestore docs are now committed. Sign out and back in so that
+    // onAuthStateChanged fires again with all docs in place, allowing
+    // buildSession to succeed and establish a full session.
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
+
     return { success: true };
   } catch (err: unknown) {
     const code = (err as { code?: string }).code ?? '';
