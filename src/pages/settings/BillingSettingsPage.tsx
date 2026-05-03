@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { fetchBillingConfigStatus } from '../../lib/billing/configService';
 import type { BillingConfigStatus, KeyStatus, StripeMode } from '../../types/billingConfig';
 import { SettingsLayout } from './SettingsLayout';
+import { MetadataEditor } from '../../components/billing/MetadataEditor';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -220,6 +221,18 @@ export function BillingSettingsPage() {
             Refresh
           </button>
         </>
+      )}
+
+      {/* I.6 — Editable non-secret metadata */}
+      {session?.orgId && session?.userId && (
+        <div style={{ marginTop: 36, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 8px' }}>
+            Configuration (editable)
+          </h3>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+            <MetadataEditor orgId={session.orgId} uid={session.userId} />
+          </div>
+        </div>
       )}
     </SettingsLayout>
   );

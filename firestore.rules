@@ -319,6 +319,21 @@ service cloud.firestore {
 
 
       // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/billing_config/{docId}
+      //
+      // Non-secret Stripe metadata (price IDs, return URLs, plan labels).
+      // Owner-only read/write. Phase I.6.
+      // Secrets (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PUBLISHABLE_KEY)
+      // are NEVER stored here — they live in worker env via `wrangler secret put`.
+      // ───────────────────────────────────────────────────────────────────
+
+      match /billing_config/{docId} {
+        allow read:  if isAuth() && getMemberRole(orgId) == 'owner';
+        allow write: if isAuth() && getMemberRole(orgId) == 'owner';
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
       // /organizations/{orgId}/activity_logs/{logId}
       //
       // Immutable audit trail. Written by Cloud Functions only.
