@@ -78,9 +78,19 @@ export function ReportsListPage() {
           Loading reports…
         </p>
       ) : status === 'error' ? (
-        <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--red-text)', fontSize: 14 }}>
-          Failed to load reports. Please refresh.
-        </p>
+        <div style={{ padding: '40px 0', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 16px' }}>
+            No reports loaded yet. This can happen if the workspace is new or if Firestore is unreachable.
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button variant="primary" size="md" onClick={() => navigate({ name: 'audit/new' })}>
+              Start a new audit
+            </Button>
+            <Button variant="secondary" size="md" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        </div>
       ) : reports.length === 0 ? (
         <EmptyReportsState />
       ) : (

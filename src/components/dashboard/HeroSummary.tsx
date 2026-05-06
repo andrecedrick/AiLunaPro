@@ -1,3 +1,9 @@
+import { useRoute } from '../../context/RouteContext';
+import { useAudit } from '../../context/AuditContext';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../hooks/useToast';
+import { ROLE } from '../../types/auth';
+
 /* ── Radial Score Gauge ─────────────────────────────────────── */
 function RadialScore({ score }: { score: number }) {
   const r = 54;
@@ -93,6 +99,25 @@ function HeroCard({ children, glow = false, style }: { children: React.ReactNode
 
 /* ── HeroSummary ───────────────────────────────────────────── */
 export function HeroSummary() {
+  const { navigate }  = useRoute();
+  const { draft }     = useAudit();
+  const { session }   = useAuth();
+  const { showToast } = useToast();
+
+  const handleContinueAudit = () => {
+    if (!ROLE.canUseFeatures(session?.role)) {
+      showToast('You do not have permission to continue audits.', 'warning');
+      return;
+    }
+    const draftHasContent = draft.status === 'draft' && Object.keys(draft.answers).length > 0;
+    if (draftHasContent) {
+      navigate({ name: 'audit/new' });
+    } else {
+      showToast('No draft audit found — starting a new audit.', 'info');
+      navigate({ name: 'audit/new' });
+    }
+  };
+
   const score = 73;
   const maturity = 60;
 
@@ -274,6 +299,7 @@ export function HeroSummary() {
         <div style={{ marginTop: 'auto', paddingTop: 12 }}>
           <button
             type="button"
+            onClick={handleContinueAudit}
             style={{
               background: 'var(--brand-gradient)',
               color: '#fff',

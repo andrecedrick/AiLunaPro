@@ -8,19 +8,33 @@ interface TeamTableProps {
   members: OrgMember[];
   currentUserId: string;
   canManage: boolean;
+  /** Viewer's role — gates owner-only actions. */
+  viewerRole?: UserRole;
   onRoleChange: (userId: string, role: UserRole) => void;
   onRemove: (userId: string) => void;
+  onDisable?: (userId: string) => void;
+  onEnable?:  (userId: string) => void;
 }
 
 function roleBadgeVariant(role: UserRole) {
-  if (role === 'owner')   return 'info'    as const;
-  if (role === 'admin')   return 'warning' as const;
-  if (role === 'billing') return 'success' as const;
-  return 'draft' as const; // member
+  if (role === 'owner')   return 'info'    as const;  // violet
+  if (role === 'admin')   return 'warning' as const;  // blue
+  if (role === 'billing') return 'success' as const;  // green
+  if (role === 'client')  return 'draft'   as const;  // orange-ish
+  return 'draft' as const;                            // member: gray
 }
 
 function statusBadgeVariant(status: OrgMember['status']) {
-  return status === 'active' ? 'completed' as const : 'in_progress' as const;
+  if (status === 'active')   return 'completed'   as const;
+  if (status === 'disabled') return 'archived'    as const;
+  return 'in_progress' as const; // pending / invited
+}
+
+function statusLabel(status: OrgMember['status']) {
+  if (status === 'active')   return 'Active';
+  if (status === 'disabled') return 'Disabled';
+  if (status === 'invited')  return 'Invited';
+  return 'Pending';
 }
 
 /** Avatar circle with initials + gradient. */
@@ -71,16 +85,22 @@ export function TeamTable({
   members,
   currentUserId,
   canManage,
+  viewerRole,
   onRoleChange,
   onRemove,
+  onDisable,
+  onEnable,
 }: TeamTableProps) {
+  const ownerCount = members.filter(m => m.role === 'owner' && m.status === 'active').length;
   return (
     <div
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--card-radius)',
-        overflow: 'hidden',
+        // overflow: hidden clipped the row dropdown menu. Use clip-path to keep
+        // rounded corners while allowing absolute children to escape.
+        position: 'relative',
       }}
     >
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -151,7 +171,7 @@ export function TeamTable({
                 <td style={TD_STYLE}>
                   <Badge
                     variant={statusBadgeVariant(m.status)}
-                    label={m.status === 'active' ? 'Active' : 'Pending'}
+                    label={statusLabel(m.status)}
                   />
                 </td>
 
@@ -167,8 +187,12 @@ export function TeamTable({
                       member={m}
                       canManage={canManage}
                       isSelf={isSelf}
+                      viewerRole={viewerRole}
+                      ownerCount={ownerCount}
                       onRoleChange={onRoleChange}
                       onRemove={onRemove}
+                      onDisable={onDisable}
+                      onEnable={onEnable}
                     />
                   </td>
                 )}

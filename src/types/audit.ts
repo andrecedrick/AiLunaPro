@@ -77,6 +77,7 @@ export type Route =
   | { name: 'settings/preferences' }
   | { name: 'settings/billing' }
   | { name: 'billing' }
-  | { name: 'billing/success' };
+  | { name: 'billing/success' }
+  | { name: 'accept-invite' };
 
 export type RouteName = Route['name'];

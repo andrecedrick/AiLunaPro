@@ -56,11 +56,13 @@ export const ROLE_LABEL: Record<string, string> = {
   admin:   'Admin',
   member:  'Member',
   billing: 'Billing',
+  client:  'Client',
 };
 
 export const ROLE_DESCRIPTION: Record<string, string> = {
   owner:   'Full access — billing, settings, can transfer ownership',
-  admin:   'Manage team and content; no billing access',
+  admin:   'Manage team and content; no billing admin access',
   member:  'Create and view audits, full registry access',
   billing: 'Billing-only access; read-only on all content',
+  client:  'Limited viewer access',
 };

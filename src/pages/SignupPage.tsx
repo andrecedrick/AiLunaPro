@@ -14,22 +14,40 @@ export function SignupPage() {
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [orgName,  setOrgName]  = useState('');
   const [errors,   setErrors]   = useState<FormErrors>({});
   const [apiError, setApiError] = useState('');
   const [loading,  setLoading]  = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errs = signupValidate(name, email, password, orgName);
+    // J1.3C: workspace name is no longer collected at signup. New users land
+    // on OrgCreatePage where they explicitly create a workspace (becoming
+    // owner of THAT workspace) or accept an invite (gets invite role).
+    const errs = signupValidate(name, email, password, '__skip__');
+    delete errs.orgName; // not collected here anymore
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setApiError('');
     setLoading(true);
-    const result = await signup(name, email, password, orgName);
+    const result = await signup(name, email, password);
     setLoading(false);
     if (result.success) {
-      navigate({ name: 'dashboard' });
+      // J1.3D: if user came via invite link, resume invite flow.
+      let resumedInvite = false;
+      try {
+        const pending = sessionStorage.getItem('ailunapro:pendingInvite');
+        if (pending) {
+          const parsed = JSON.parse(pending) as { orgId: string; inviteId: string; token: string };
+          if (parsed?.orgId && parsed?.inviteId && parsed?.token) {
+            window.location.hash = `#/invite/${parsed.orgId}/${parsed.inviteId}/${parsed.token}`;
+            navigate({ name: 'accept-invite' });
+            resumedInvite = true;
+          }
+        }
+      } catch { /* ignore */ }
+      if (!resumedInvite) {
+        navigate({ name: 'org/create' });
+      }
     } else {
       setApiError(result.error ?? 'Could not create account.');
     }
@@ -91,19 +109,6 @@ export function SignupPage() {
             onChange={e => setPassword(e.target.value)}
             placeholder="••••••••"
             autoComplete="new-password"
-          />
-        </FormField>
-
-        <FormField
-          label="Workspace name"
-          error={errors.orgName}
-          hint="This is your organisation's workspace in AiLunaPro."
-        >
-          <AuthInput
-            type="text"
-            value={orgName}
-            onChange={e => setOrgName(e.target.value)}
-            placeholder="Acme Corp"
           />
         </FormField>
 

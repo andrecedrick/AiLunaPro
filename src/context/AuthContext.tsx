@@ -54,7 +54,7 @@ interface AuthContextValue {
   currentMember: OrgMember | undefined;
   /* ── Auth ──────────────────────────────────────────────── */
   login:         (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup:        (name: string, email: string, password: string, orgName: string) => Promise<{ success: boolean; error?: string }>;
+  signup:        (name: string, email: string, password: string, orgName?: string) => Promise<{ success: boolean; error?: string }>;
   logout:        () => void;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   /* ── Team ──────────────────────────────────────────────── */
@@ -178,38 +178,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: string,
       email: string,
       password: string,
-      orgName: string,
+      orgName?: string,
     ): Promise<{ success: boolean; error?: string }> => {
       if (LAYER === 'firebase') {
         return firebaseSignup(name, email, password, orgName);
-        // Session update happens via onAuthStateChanged — no setSession here
       }
 
-      // ── Mock path ──────────────────────────────────────────
+      // ── Mock path (J1.3C: no auto-workspace) ───────────────
       const norm = email.toLowerCase().trim();
       if (MOCK_USERS.find(u => u.email.toLowerCase() === norm)) {
         return { success: false, error: 'An account with this email already exists.' };
       }
       const userId   = genId('u');
-      const orgId    = genId('org');
       const now      = new Date().toISOString();
       const initials = makeInitials(name);
-
       const newUser = { id: userId, displayName: name.trim(), email: norm, initials };
-      const newOrg: Organization = {
-        id: orgId, name: orgName.trim(), plan: 'Free',
-        initials: makeInitials(orgName), createdAt: now,
-      };
-      const newMember: OrgMember = {
-        userId, orgId, role: 'owner', status: 'active',
-        joinedAt: now, displayName: newUser.displayName, email: norm, initials,
-      };
 
       MOCK_PASSWORDS[norm] = password;
       MOCK_USERS.push(newUser);
-      setOrgs(prev  => [...prev, newOrg]);
-      setMembers(prev => [...prev, newMember]);
-      setSession({ userId, orgId, role: 'owner', user: newUser, org: newOrg });
+
+      if (orgName && orgName.trim()) {
+        // Legacy: explicit workspace creation at signup → owner
+        const orgId = genId('org');
+        const newOrg: Organization = {
+          id: orgId, name: orgName.trim(), plan: 'Free',
+          initials: makeInitials(orgName), createdAt: now,
+        };
+        const newMember: OrgMember = {
+          userId, orgId, role: 'owner', status: 'active',
+          joinedAt: now, displayName: newUser.displayName, email: norm, initials,
+        };
+        setOrgs(prev    => [...prev, newOrg]);
+        setMembers(prev => [...prev, newMember]);
+        setSession({ userId, orgId, role: 'owner', user: newUser, org: newOrg });
+      } else {
+        // Default: user account only — no workspace, no role.
+        // Routes to OrgCreatePage via AppShell when session.orgId is empty.
+        setSession({
+          userId,
+          orgId: '',
+          role:  'member',
+          user:  newUser,
+          org:   { id: '', name: '', plan: 'Free', initials: '', createdAt: now },
+        });
+      }
       return { success: true };
     },
     [],

@@ -374,19 +374,28 @@ export function Sidebar() {
         <OrgSwitcher />
       </div>
 
-      {/* Nav */}
+      {/* Nav — RBAC filtered (J1.3F) */}
       <nav style={{ flex: 1, padding: '2px 12px', overflowY: 'auto' }}>
-        {mockNavItems.map(item => (
-          <NavItem
-            key={item.id}
-            {...item}
-            active={item.id === activeId}
-            onClick={() => {
-              const target = NAV_ROUTES[item.id];
-              if (target) navigate(target);
-            }}
-          />
-        ))}
+        {mockNavItems
+          .filter(item => {
+            const role = session?.role;
+            // Hide Billing for member/client (no access to client billing)
+            if (item.id === 'billing' && role !== 'owner' && role !== 'admin' && role !== 'billing') return false;
+            // Hide Team management for client
+            if (item.id === 'team' && role === 'client') return false;
+            return true;
+          })
+          .map(item => (
+            <NavItem
+              key={item.id}
+              {...item}
+              active={item.id === activeId}
+              onClick={() => {
+                const target = NAV_ROUTES[item.id];
+                if (target) navigate(target);
+              }}
+            />
+          ))}
       </nav>
 
       {/* User footer */}

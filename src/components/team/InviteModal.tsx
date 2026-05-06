@@ -8,16 +8,20 @@ import type { UserRole } from '../../types/auth';
 interface InviteModalProps {
   currentUserRole: UserRole;
   onClose: () => void;
-  onInvite: (email: string, name: string, role: UserRole) => void;
+  /** Returns generated invite link (or void on legacy mock paths). */
+  onInvite: (email: string, name: string, role: UserRole, message?: string) => Promise<string | void> | string | void;
 }
 
 export function InviteModal({ currentUserRole, onClose, onInvite }: InviteModalProps) {
   const [name,    setName]    = useState('');
   const [email,   setEmail]   = useState('');
   const [role,    setRole]    = useState<UserRole>('member');
-  const [errors,  setErrors]  = useState<Partial<Record<'email' | 'name', string>>>({});
+  const [message, setMessage] = useState('');
+  const [errors,  setErrors]  = useState<Partial<Record<'email' | 'name' | 'api', string>>>({});
   const [sending, setSending] = useState(false);
   const [sent,    setSent]    = useState(false);
+  const [link,    setLink]    = useState<string | null>(null);
+  const [copied,  setCopied]  = useState(false);
 
   /* Escape key */
   useEffect(() => {
@@ -26,16 +30,29 @@ export function InviteModal({ currentUserRole, onClose, onInvite }: InviteModalP
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const errs = inviteValidate(name, email);
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
     setSending(true);
-    /* Simulate network delay */
-    setTimeout(() => {
-      onInvite(email, name, role);
-      setSending(false);
+    try {
+      const result = await onInvite(email, name, role, message.trim() || undefined);
+      if (typeof result === 'string') setLink(result);
       setSent(true);
-    }, 500);
+    } catch (err) {
+      setErrors({ api: err instanceof Error ? err.message : 'Failed to create invite' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
   };
 
   /* "Owner" can only be assigned by another owner. */
@@ -100,14 +117,40 @@ export function InviteModal({ currentUserRole, onClose, onInvite }: InviteModalP
                 color: 'var(--text-primary)',
               }}
             >
-              Invite sent!
+              Invitation created
             </h3>
-            <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55 }}>
-              {name} will appear as <strong>Pending</strong> until they accept the invitation.
+            <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55 }}>
+              {name || email} will appear as <strong>Pending</strong> until they accept.
+              Share the invite link below — email delivery comes later.
             </p>
-            <Button variant="primary" size="md" onClick={onClose}>
-              Done
-            </Button>
+
+            {link && (
+              <div style={{
+                background:    'var(--surface-2, #f4f4f7)',
+                border:        '1px solid var(--border)',
+                borderRadius:  10,
+                padding:       12,
+                fontSize:      11,
+                fontFamily:    'monospace',
+                wordBreak:     'break-all',
+                color:         'var(--text-primary)',
+                marginBottom:  16,
+                textAlign:     'left',
+              }}>
+                {link}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {link && (
+                <Button variant="ghost" size="md" onClick={() => void handleCopy()}>
+                  {copied ? 'Copied ✓' : 'Copy link'}
+                </Button>
+              )}
+              <Button variant="primary" size="md" onClick={onClose}>
+                Done
+              </Button>
+            </div>
           </div>
         ) : (
           <>
@@ -181,6 +224,38 @@ export function InviteModal({ currentUserRole, onClose, onInvite }: InviteModalP
                   disabledRoles={disabledRoles}
                 />
               </div>
+
+              <FormField label="Message (optional)">
+                <textarea
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  placeholder="Welcome to the team!"
+                  rows={2}
+                  style={{
+                    width:        '100%',
+                    padding:      '8px 12px',
+                    borderRadius: 8,
+                    border:       '1px solid var(--border)',
+                    background:   'var(--surface)',
+                    color:        'var(--text-primary)',
+                    fontSize:     13,
+                    resize:       'vertical',
+                    fontFamily:   'inherit',
+                  }}
+                />
+              </FormField>
+
+              {errors.api && (
+                <div style={{
+                  background:   'var(--red-bg, #fee)',
+                  color:        'var(--red-text)',
+                  borderRadius: 8,
+                  padding:      '8px 12px',
+                  fontSize:     12,
+                }}>
+                  {errors.api}
+                </div>
+              )}
             </div>
 
             <div
@@ -196,8 +271,8 @@ export function InviteModal({ currentUserRole, onClose, onInvite }: InviteModalP
               <Button variant="ghost" size="md" onClick={onClose}>
                 Cancel
               </Button>
-              <Button variant="primary" size="md" onClick={handleSend} disabled={sending}>
-                {sending ? 'Sending…' : 'Send invite'}
+              <Button variant="primary" size="md" onClick={() => void handleSend()} disabled={sending}>
+                {sending ? 'Creating…' : 'Create invite'}
               </Button>
             </div>
           </>

@@ -24,7 +24,20 @@ export function LoginPage() {
     const result = await login(email, password);
     setLoading(false);
     if (result.success) {
-      navigate({ name: 'dashboard' });
+      // J1.3D: resume pending invite if present
+      let resumed = false;
+      try {
+        const pending = sessionStorage.getItem('ailunapro:pendingInvite');
+        if (pending) {
+          const p = JSON.parse(pending) as { orgId: string; inviteId: string; token: string };
+          if (p?.orgId && p?.inviteId && p?.token) {
+            window.location.hash = `#/invite/${p.orgId}/${p.inviteId}/${p.token}`;
+            navigate({ name: 'accept-invite' });
+            resumed = true;
+          }
+        }
+      } catch { /* ignore */ }
+      if (!resumed) navigate({ name: 'dashboard' });
     } else {
       setError(result.error ?? 'Login failed.');
     }

@@ -80,11 +80,11 @@ service cloud.firestore {
     }
 
     /**
-     * True if the user holds any role in the org (owner, admin, member, billing).
+     * True if the user holds any role in the org (owner, admin, member, billing, client).
      * Used for org-level metadata and member list reads.
      */
     function isAnyMember(orgId) {
-      return isAuth() && getMemberRole(orgId) in ['owner', 'admin', 'member', 'billing'];
+      return isAuth() && getMemberRole(orgId) in ['owner', 'admin', 'member', 'billing', 'client'];
     }
 
     /**
@@ -153,21 +153,34 @@ service cloud.firestore {
       // ───────────────────────────────────────────────────────────────────
 
       match /members/{memberId} {
-        // All org members can view the member list (used to render team pages).
+        // All org members can view the member list.
         allow read: if isAnyMember(orgId);
 
-        // Only owners and admins can invite or update roles.
-        // Bootstrap exception: the org owner may self-create their own member doc
-        // during org creation (before getMemberRole can resolve the members subcollection).
-        // Verified by cross-checking /organizations/{orgId}.ownerId.
-        allow create: if isOwnerOrAdmin(orgId)
-          || (isAuth()
+        // Bootstrap exception only: org owner self-creates member doc on org creation.
+        // All other writes go through the worker (service account bypasses rules).
+        allow create: if (
+            isAuth()
             && uid() == memberId
             && request.resource.data.role == 'owner'
-            && get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == uid());
+            && get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == uid()
+          );
 
-        allow update: if isOwnerOrAdmin(orgId);
-        allow delete: if isOwnerOrAdmin(orgId);
+        // J1.3E: client writes blocked. Worker uses service account.
+        allow update: if false;
+        allow delete: if false;
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/invites/{inviteId}
+      //
+      // Phase J1.3E: invites are managed by the worker via service account.
+      // Client can only READ for display purposes; all writes blocked.
+      // ───────────────────────────────────────────────────────────────────
+
+      match /invites/{inviteId} {
+        allow read:   if isOwnerOrAdmin(orgId);
+        allow write:  if false;
       }
 
 

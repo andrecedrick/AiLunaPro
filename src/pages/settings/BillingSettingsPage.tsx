@@ -234,19 +234,7 @@ export function BillingSettingsPage() {
         </>
       )}
 
-      {/* I.6 — Editable non-secret metadata (kept for compat) */}
-      {session?.orgId && session?.userId && (
-        <div style={{ marginTop: 36, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 8px' }}>
-            Configuration (editable)
-          </h3>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-            <MetadataEditor orgId={session.orgId} uid={session.userId} />
-          </div>
-        </div>
-      )}
-
-      {/* J1.3 — Admin panels */}
+      {/* J1.3 — Admin panels (primary admin surface) */}
       {session?.orgId && (
         <div style={{ marginTop: 36, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 18px' }}>
@@ -254,6 +242,29 @@ export function BillingSettingsPage() {
           </h3>
           <BillingAdminPanels orgId={session.orgId} />
         </div>
+      )}
+
+      {/* I.6 legacy MetadataEditor — collapsed by default */}
+      {session?.orgId && session?.userId && (
+        <details style={{ marginTop: 36, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+          <summary style={{
+            fontSize: 13, fontWeight: 700, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: 0.8,
+            cursor: 'pointer', listStyle: 'revert',
+          }}>
+            Advanced legacy billing config
+          </summary>
+          <div style={{
+            marginTop: 12, padding: 10,
+            background: 'var(--yellow-soft-bg)', color: 'var(--yellow-text)',
+            borderRadius: 8, fontSize: 12,
+          }}>
+            ⚠ This section is deprecated. Use Products &amp; Prices and Currency Settings panels above instead.
+          </div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginTop: 12 }}>
+            <MetadataEditor orgId={session.orgId} uid={session.userId} />
+          </div>
+        </details>
       )}
     </SettingsLayout>
   );

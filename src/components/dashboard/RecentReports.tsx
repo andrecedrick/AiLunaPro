@@ -1,6 +1,8 @@
 import { mockReports } from '../../data/mockDashboard';
 import { Badge } from '../ui/Badge';
 import type { ReportStatus, RiskLevel } from '../../types/firestore';
+import { useRoute } from '../../context/RouteContext';
+import { useToast } from '../../hooks/useToast';
 
 function riskColor(risk: RiskLevel): string {
   const map: Record<RiskLevel, string> = {
@@ -13,6 +15,24 @@ function riskColor(risk: RiskLevel): string {
 }
 
 function ReportCard({ report }: { report: { id: string; title: string; date: string; status: ReportStatus; score: number; risk: RiskLevel } }) {
+  const { navigate } = useRoute();
+  const { showToast } = useToast();
+
+  const handleView = () => {
+    if (report.id) navigate({ name: 'reports/detail', reportId: report.id });
+    else showToast('Report not available yet.', 'info');
+  };
+  const handleDownload = () => showToast('Report PDF export is coming soon.', 'info');
+  const handleShare = async () => {
+    const link = `${window.location.origin}/#/reports/share/${report.id}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast('Share link copied.', 'success');
+    } catch {
+      showToast('Could not copy link. Try again.', 'warning');
+    }
+  };
+
   return (
     <div
       style={{
@@ -68,6 +88,7 @@ function ReportCard({ report }: { report: { id: string; title: string; date: str
           <button
             key={b.label}
             type="button"
+            onClick={b.label === 'Download' ? handleDownload : () => void handleShare()}
             style={{
               flex: 1,
               background: 'transparent',
@@ -93,6 +114,7 @@ function ReportCard({ report }: { report: { id: string; title: string; date: str
         ))}
         <button
           type="button"
+          onClick={handleView}
           style={{
             background: 'var(--brand-gradient)',
             border: 'none',
@@ -112,7 +134,37 @@ function ReportCard({ report }: { report: { id: string; title: string; date: str
   );
 }
 
+function downloadBlob(content: string, filename: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function RecentReports() {
+  const { navigate } = useRoute();
+  const { showToast } = useToast();
+
+  const handleViewAll = () => navigate({ name: 'reports' });
+
+  const handleExport = (fmt: 'PDF' | 'CSV' | 'JSON') => {
+    if (fmt === 'PDF') {
+      showToast('Dashboard PDF export coming soon.', 'info');
+      return;
+    }
+    if (fmt === 'CSV') {
+      const header = 'id,title,date,status,score,risk\n';
+      const rows = mockReports.map(r => `${r.id},${JSON.stringify(r.title)},${r.date},${r.status},${r.score},${r.risk}`).join('\n');
+      downloadBlob(header + rows, 'reports.csv', 'text/csv;charset=utf-8');
+      showToast('CSV downloaded.', 'success');
+    }
+    if (fmt === 'JSON') {
+      downloadBlob(JSON.stringify(mockReports, null, 2), 'reports.json', 'application/json');
+      showToast('JSON downloaded.', 'success');
+    }
+  };
+
   return (
     <div
       style={{
@@ -133,9 +185,16 @@ export function RecentReports() {
             {mockReports.length} reports generated
           </div>
         </div>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--violet-text)', cursor: 'pointer' }}>
+        <button
+          type="button"
+          onClick={handleViewAll}
+          style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--violet-text)',
+            cursor: 'pointer', background: 'transparent', border: 'none', padding: 0, fontFamily: 'inherit',
+          }}
+        >
           View all →
-        </span>
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) 260px', gap: 14 }}>
@@ -171,6 +230,7 @@ export function RecentReports() {
               <button
                 key={fmt}
                 type="button"
+                onClick={() => handleExport(fmt)}
                 style={{
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',

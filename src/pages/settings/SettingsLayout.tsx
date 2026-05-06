@@ -9,13 +9,15 @@ interface Tab {
   route: Route;
   routeName: RouteName;
   ownerOnly?: boolean;
+  /** Visible for owner + admin (excludes member/billing/guest) */
+  ownerAdminOnly?: boolean;
 }
 
 const TABS: Tab[] = [
-  { id: 'profile',     label: 'Profile',          route: { name: 'settings/profile' },     routeName: 'settings/profile' },
-  { id: 'org',         label: 'Organization',     route: { name: 'settings/org' },         routeName: 'settings/org' },
-  { id: 'preferences', label: 'Preferences',      route: { name: 'settings/preferences' }, routeName: 'settings/preferences' },
-  { id: 'billing',     label: 'Billing',          route: { name: 'settings/billing' },     routeName: 'settings/billing', ownerOnly: true },
+  { id: 'profile',     label: 'Profile',     route: { name: 'settings/profile' },     routeName: 'settings/profile' },
+  { id: 'org',         label: 'Organization', route: { name: 'settings/org' },        routeName: 'settings/org', ownerAdminOnly: true },
+  { id: 'preferences', label: 'Preferences', route: { name: 'settings/preferences' }, routeName: 'settings/preferences' },
+  { id: 'billing',     label: 'Billing',     route: { name: 'settings/billing' },     routeName: 'settings/billing', ownerOnly: true },
 ];
 
 interface Props {
@@ -30,8 +32,14 @@ interface Props {
 export function SettingsLayout({ title, children }: Props) {
   const { route, navigate } = useRoute();
   const { session } = useAuth();
-  const isOwner = session?.role === 'owner';
-  const visibleTabs = TABS.filter(t => !t.ownerOnly || isOwner);
+  const role = session?.role ?? 'member';
+  const isOwner       = role === 'owner';
+  const isOwnerOrAdm  = role === 'owner' || role === 'admin';
+  const visibleTabs = TABS.filter(t => {
+    if (t.ownerOnly      && !isOwner)      return false;
+    if (t.ownerAdminOnly && !isOwnerOrAdm) return false;
+    return true;
+  });
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 880 }}>

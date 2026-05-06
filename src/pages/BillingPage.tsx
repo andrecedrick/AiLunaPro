@@ -20,7 +20,7 @@ import { PLAN_CONFIGS, type PlanTier } from '../types/billing';
 import { createCheckoutSession, createPortalSession, CheckoutError, PortalError, WORKER_BASE, fetchInvoices, type StripeInvoice } from '../lib/billing/stripeClient';
 import { CURRENCY_SYMBOLS, type Currency, type CurrencySettings, DEFAULT_CURRENCY_SETTINGS } from '../lib/billing/currencyConstants';
 import { formatMoney } from '../lib/billing/currencyFormat';
-import { resolveBillingCurrency, storeCurrency } from '../lib/billing/currencyDetect';
+import { resolveBillingCurrency } from '../lib/billing/currencyDetect';
 import { db } from '../lib/firestore';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { resolveLayer } from '../lib/featureFlags';
@@ -410,6 +410,14 @@ function InvoicesView({
 /* ── Locked view ──────────────────────────────────────────── */
 
 function LockedView() {
+  // navigate via window hash to avoid extra hook here
+  const goDashboard = () => { window.location.hash = '#/'; window.location.reload(); };
+  const contactOwner = () => {
+    // Best-effort: try mailto with placeholder; otherwise hint
+    const mailto = 'mailto:?subject=Request%20billing%20access&body=Hi%2C%20I%20need%20billing%20access%20for%20our%20workspace.';
+    try { window.open(mailto, '_self'); }
+    catch { alert('Ask your workspace owner for billing access.'); }
+  };
   return (
     <div style={{ padding: 40, textAlign: 'center' }}>
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}>
@@ -419,8 +427,22 @@ function LockedView() {
       <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
         Billing access restricted
       </div>
-      <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+      <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 20 }}>
         Contact your workspace owner to view or manage billing.
+      </div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button type="button" onClick={goDashboard} style={{
+          padding: '10px 18px', borderRadius: 10, border: 'none',
+          background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+        }}>
+          Back to dashboard
+        </button>
+        <button type="button" onClick={contactOwner} style={{
+          padding: '10px 18px', borderRadius: 10, border: '1px solid var(--violet)',
+          background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+        }}>
+          Contact workspace owner
+        </button>
       </div>
     </div>
   );
@@ -511,11 +533,11 @@ export function BillingPage() {
   const [checkoutError,   setCheckoutError]   = useState<string | null>(null);
   const [stripeInvoices,  setStripeInvoices]  = useState<StripeInvoice[] | null>(null);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
-  const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
+  const [, setCurrencySettings] = useState<CurrencySettings>(DEFAULT_CURRENCY_SETTINGS);
   const [displayPricesByCurrency, setDisplayPricesByCurrency] = useState<Record<string, Record<string, { amount: number; currency: string; interval: string }>>>({});
   const [selectedCurrency, setSelectedCurrency]   = useState<Currency>('usd');
   const [currencySource,   setCurrencySource]     = useState<'stored' | 'detected' | 'default' | 'fallback'>('default');
-  const [detectedDisabled, setDetectedDisabled]   = useState(false);
+  const [, setDetectedDisabled]                   = useState(false);
   const [detectedCurrency, setDetectedCurrency]   = useState<Currency | null>(null);
 
   const role              = session?.role ?? 'member';
@@ -598,7 +620,9 @@ export function BillingPage() {
       const { auth } = await import('../lib/firebase-auth');
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) throw new Error('Not authenticated');
-      const url = await createCheckoutSession(session.orgId, planKey, idToken, undefined, selectedCurrency);
+      // J1.3C: do NOT pass currency from client. Worker detects from request
+      // headers (cf.country / Accept-Language) and applies admin defaults.
+      const url = await createCheckoutSession(session.orgId, planKey, idToken);
       window.location.href = url;
     } catch (err) {
       console.error('[BillingPage] checkout failed:', err);
@@ -783,42 +807,25 @@ export function BillingPage() {
       {/* Pricing grid — firebase: custom 4-col with direct Subscribe buttons */}
       {showPricingGrid && (
         <section style={{ marginBottom: 40 }}>
-          {/* Currency selector */}
-          {currencySettings.enabledCurrencies.length > 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 20 }}>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 600 }}>
-                Billing currency
-              </span>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {currencySettings.enabledCurrencies.map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCurrency(c);
-                      setCurrencySource('stored');
-                      storeCurrency(c);
-                    }}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: 999,
-                      border: c === selectedCurrency ? '2px solid var(--violet)' : '1px solid var(--border)',
-                      background: c === selectedCurrency ? 'rgba(124, 58, 237, 0.08)' : 'var(--surface)',
-                      color: c === selectedCurrency ? 'var(--violet-text)' : 'var(--text-muted)',
-                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >
-                    {c.toUpperCase()} {CURRENCY_SYMBOLS[c]}
-                  </button>
-                ))}
-              </div>
-              {detectedDisabled && currencySource !== 'stored' && detectedCurrency && (
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>
-                  Your region currency ({detectedCurrency.toUpperCase()}) is not enabled. Showing {currencySettings.defaultCurrency.toUpperCase()}.
-                </span>
-              )}
-            </div>
-          )}
+          {/* J1.3C — Read-only currency badge. Worker detects from request. */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginBottom: 20 }}>
+            <span style={{
+              display:        'inline-flex',
+              alignItems:     'center',
+              gap:            8,
+              padding:        '6px 14px',
+              borderRadius:   999,
+              background:     'rgba(124, 58, 237, 0.08)',
+              color:          'var(--violet-text)',
+              fontSize:       12,
+              fontWeight:     600,
+            }}>
+              {currencySource === 'detected' && detectedCurrency
+                ? `Billing currency detected from your region: ${detectedCurrency.toUpperCase()} ${CURRENCY_SYMBOLS[detectedCurrency]}`
+                : `Billing currency: ${selectedCurrency.toUpperCase()} ${CURRENCY_SYMBOLS[selectedCurrency]}`
+              }
+            </span>
+          </div>
           {/* Hero */}
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
             <div style={{

@@ -34,6 +34,8 @@ import billingAdminProducts  from './routes/billing-admin-products';
 import billingAdminPromos    from './routes/billing-admin-promos';
 import billingAdminSettings  from './routes/billing-admin-settings';
 import billingAdminPortal    from './routes/billing-admin-portal';
+import teamInvitesRoutes     from './routes/team-invites';
+import teamMembersRoutes     from './routes/team-members';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -49,6 +51,7 @@ export type AppEnv = {
   Variables: {
     uid:    string;
     orgId?: string;
+    role?:  'owner' | 'admin' | 'member' | 'billing' | 'client';
   };
 };
 
@@ -78,6 +81,8 @@ app.route('/', billingAdminProducts);
 app.route('/', billingAdminPromos);
 app.route('/', billingAdminSettings);
 app.route('/', billingAdminPortal);
+app.route('/', teamInvitesRoutes);
+app.route('/', teamMembersRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

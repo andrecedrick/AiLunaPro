@@ -119,7 +119,27 @@ async function buildSession(
   firebaseUser: FirebaseUser,
 ): Promise<{ session: AuthSession; members: OrgMember[]; orgs: Organization[] } | null> {
   const fsUser = await readUser(firebaseUser.uid);
-  if (!fsUser || fsUser.orgIds.length === 0) return null;
+  if (!fsUser) return null;
+
+  // J1.3C: user has no orgs yet → partial session, will route to org/create.
+  if (fsUser.orgIds.length === 0) {
+    const user: User = {
+      id:          firebaseUser.uid,
+      displayName: fsUser.displayName,
+      email:       fsUser.email,
+      initials:    fsUser.initials,
+    };
+    const session: AuthSession = {
+      userId: firebaseUser.uid,
+      orgId:  '',          // empty → AppShell forces org/create
+      role:   'member',    // placeholder; no real role yet
+      user,
+      org: {
+        id: '', name: '', plan: 'Free', initials: '', createdAt: new Date().toISOString(),
+      },
+    };
+    return { session, members: [], orgs: [] };
+  }
 
   // Determine active org: preference → first available
   const pref    = getOrgPref();
@@ -226,61 +246,84 @@ export async function firebaseLogin(
   }
 }
 
-/** Create a new Firebase Auth user + write user / org / member docs to Firestore. */
+/**
+ * Create a new Firebase Auth user + user profile doc.
+ *
+ * J1.3C: signup NO LONGER auto-creates a workspace. New users land on the
+ * org-create / accept-invite onboarding flow. They become owner only of
+ * workspaces they explicitly create, or get the role specified in their
+ * invitation when accepting one.
+ *
+ * The `orgName` parameter is kept as an OPTIONAL "create-workspace-on-signup"
+ * shortcut for legacy flows; when provided, user is set as owner of that
+ * workspace. When omitted (default), only the user account is created.
+ */
 export async function firebaseSignup(
   name: string,
   email: string,
   password: string,
-  orgName: string,
+  orgName?: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const cred    = await createUserWithEmailAndPassword(auth, email, password);
     const uid     = cred.user.uid;
     const now     = new Date().toISOString();
     const initials = makeInitials(name);
-    const orgId   = `org_${uid.slice(0, 8)}`;
-    const orgInit = makeInitials(orgName);
 
-    // Write org first — member bootstrap rule cross-checks org.ownerId,
-    // so org must be committed before member doc is written.
-    await setDoc(doc(db, 'organizations', orgId), {
-      id:        orgId,
-      name:      orgName.trim(),
-      plan:      'Free',
-      initials:  orgInit,
-      ownerId:   uid,
-      createdAt: now,
-      updatedAt: now,
-    } satisfies FsOrg);
+    if (orgName && orgName.trim()) {
+      // Legacy/optional path: user explicitly chose to create a workspace.
+      const orgId   = `org_${uid.slice(0, 8)}`;
+      const orgInit = makeInitials(orgName);
 
-    // User and member docs can now be written in parallel.
-    await Promise.all([
-      setDoc(doc(db, 'users', uid), {
+      await setDoc(doc(db, 'organizations', orgId), {
+        id:        orgId,
+        name:      orgName.trim(),
+        plan:      'Free',
+        initials:  orgInit,
+        ownerId:   uid,
+        createdAt: now,
+        updatedAt: now,
+      } satisfies FsOrg);
+
+      await Promise.all([
+        setDoc(doc(db, 'users', uid), {
+          id: uid,
+          displayName: name.trim(),
+          email: email.toLowerCase().trim(),
+          initials,
+          orgIds: [orgId],
+          createdAt: now,
+          updatedAt: now,
+        } satisfies FsUser),
+        setDoc(doc(db, 'organizations', orgId, 'members', uid), {
+          userId:      uid,
+          orgId,
+          role:        'owner',
+          status:      'active',
+          displayName: name.trim(),
+          email:       email.toLowerCase().trim(),
+          initials,
+          joinedAt: now,
+        } satisfies FsMember),
+      ]);
+
+      setOrgPref(orgId);
+    } else {
+      // Default path: user account only — no workspace, no role.
+      // User will land on OrgCreatePage / accept-invite flow.
+      await setDoc(doc(db, 'users', uid), {
         id: uid,
         displayName: name.trim(),
         email: email.toLowerCase().trim(),
         initials,
-        orgIds: [orgId],
+        orgIds: [],
         createdAt: now,
         updatedAt: now,
-      } satisfies FsUser),
-      setDoc(doc(db, 'organizations', orgId, 'members', uid), {
-        userId:      uid,
-        orgId,
-        role:        'owner',
-        status:      'active',
-        displayName: name.trim(),
-        email:       email.toLowerCase().trim(),
-        initials,
-        joinedAt: now,
-      } satisfies FsMember),
-    ]);
-
-    setOrgPref(orgId);
+      } satisfies FsUser);
+    }
 
     // Firestore docs are now committed. Sign out and back in so that
-    // onAuthStateChanged fires again with all docs in place, allowing
-    // buildSession to succeed and establish a full session.
+    // onAuthStateChanged fires again with all docs in place.
     await signOut(auth);
     await signInWithEmailAndPassword(auth, email, password);
 
