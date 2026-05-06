@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
@@ -30,6 +30,7 @@ const ProfilePage          = lazy(() => import('./pages/settings/ProfilePage').t
 const OrgPage              = lazy(() => import('./pages/settings/OrgPage').then(m => ({ default: m.OrgPage })));
 const PreferencesPage      = lazy(() => import('./pages/settings/PreferencesPage').then(m => ({ default: m.PreferencesPage })));
 const BillingPage          = lazy(() => import('./pages/BillingPage').then(m => ({ default: m.BillingPage })));
+const BillingSuccessPage   = lazy(() => import('./pages/BillingSuccessPage').then(m => ({ default: m.BillingSuccessPage })));
 const BillingSettingsPage  = lazy(() => import('./pages/settings/BillingSettingsPage').then(m => ({ default: m.BillingSettingsPage })));
 
 const PageFallback = () => (
@@ -65,6 +66,8 @@ function PageOutlet() {
         return <PreferencesPage />;
       case 'billing':
         return <BillingPage />;
+      case 'billing/success':
+        return <BillingSuccessPage />;
       case 'settings/billing':
         return <BillingSettingsPage />;
       case 'dashboard':
@@ -81,8 +84,42 @@ function PageOutlet() {
 }
 
 function AppShell() {
-  const { route } = useRoute();
+  const { route, navigate } = useRoute();
   const { isAuthenticated, isLoading } = useAuth();
+
+  /* ── Stripe redirect detection (J1.2) ───────────────────── */
+  /* Stripe Checkout returns to:
+     - /#/billing/success?session_id=cs_test_... (preferred — hash routing)
+     - /?billing_status=success&session_id=...   (legacy)
+     - /#/billing?status=cancel
+     URL is NOT stripped here — BillingSuccessPage needs session_id intact.
+     sessionId is also persisted to sessionStorage so a manual refresh on
+     the success page still recovers it. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hash       = window.location.hash;
+    const search     = window.location.search;
+    const queryStr   = hash.includes('?') ? hash.slice(hash.indexOf('?')) : search;
+    const params     = new URLSearchParams(queryStr);
+    const status     = params.get('billing_status') ?? params.get('status');
+    const sessionId  = params.get('session_id');
+    const inSuccess  = hash.startsWith('#/billing/success') || status === 'success' || (sessionId && !hash.includes('cancel'));
+    const inCancel   = status === 'cancel' || hash.startsWith('#/billing?status=cancel');
+
+    if (sessionId) {
+      try { window.sessionStorage.setItem('stripe.lastSessionId', sessionId); } catch { /* ignore */ }
+    }
+
+    if (inSuccess) {
+      navigate({ name: 'billing/success' });
+      // Do NOT replaceState — BillingSuccessPage still needs to read session_id.
+    } else if (inCancel) {
+      navigate({ name: 'billing' });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ── Firebase: wait for onAuthStateChanged before rendering ── */
   if (isLoading) return null;

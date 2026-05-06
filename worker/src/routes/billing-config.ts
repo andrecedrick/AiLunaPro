@@ -55,6 +55,11 @@ export function recordWebhookEvent(eventId: string, verified: boolean, error?: s
   webhookHealth.lastError          = error ?? null;
 }
 
+/** Read-only snapshot of webhook health (used by admin diagnostics). */
+export function getWebhookHealth(): WebhookHealth {
+  return { ...webhookHealth };
+}
+
 const billingConfig = new Hono<AppEnv>();
 
 billingConfig.get('/api/billing/config-status', requireAuth(), c => {

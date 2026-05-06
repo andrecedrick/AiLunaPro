@@ -46,8 +46,8 @@ export async function readBillingMetadata(orgId: string): Promise<BillingMetadat
       updatedAt:
         typeof data.updatedAt === 'string'
           ? data.updatedAt
-          : data.updatedAt && 'toDate' in data.updatedAt
-            ? data.updatedAt.toDate().toISOString()
+          : (data.updatedAt && typeof (data.updatedAt as Timestamp).toDate === 'function')
+            ? (data.updatedAt as Timestamp).toDate().toISOString()
             : undefined,
       updatedBy: data.updatedBy,
     };

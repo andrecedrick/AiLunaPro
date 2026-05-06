@@ -223,7 +223,7 @@ export function BillingSettingsPage() {
         </>
       )}
 
-      {/* I.6 — Editable non-secret metadata */}
+      {/* I.6 — Editable non-secret metadata (kept for compat) */}
       {session?.orgId && session?.userId && (
         <div style={{ marginTop: 36, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 8px' }}>
@@ -234,6 +234,7 @@ export function BillingSettingsPage() {
           </div>
         </div>
       )}
+
     </SettingsLayout>
   );
 }

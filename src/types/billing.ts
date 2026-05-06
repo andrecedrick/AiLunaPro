@@ -58,6 +58,7 @@ export interface UISubscription {
   currentPeriodStart: string;
   currentPeriodEnd: string;
   cancelAtPeriodEnd: boolean;
+  currency?: string; // Stripe normalized lowercase (J1.3)
 }
 
 export interface UIInvoice {

@@ -20,13 +20,14 @@
  */
 
 export type DataLayer = 'mock' | 'firebase';
-export type LayerDomain = 'auth' | 'registry' | 'audit' | 'reports';
+export type LayerDomain = 'auth' | 'registry' | 'audit' | 'reports' | 'billing';
 
 const DOMAIN_ENV: Record<LayerDomain, string> = {
   auth:     'VITE_AUTH_LAYER',
   registry: 'VITE_REGISTRY_LAYER',
   audit:    'VITE_AUDIT_LAYER',
   reports:  'VITE_REPORTS_LAYER',
+  billing:  'VITE_BILLING_LAYER',
 };
 
 /**

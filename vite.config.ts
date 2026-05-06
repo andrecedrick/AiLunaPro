@@ -18,12 +18,17 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
+        // Vendor splits only — let Vite auto-split app code via lazy().
+        // Each lazy(import('./PageX')) gets its own chunk. Admin panels are
+        // already lazy() inside BillingSettingsPage, so they natively split.
         manualChunks(id) {
-          if (id.includes('node_modules/react-dom/')) return 'react-vendor'
-          if (id.includes('node_modules/react/'))     return 'react-vendor'
-          if (id.includes('firebase/firestore'))      return 'firebase-store'
-          if (id.includes('firebase/auth'))           return 'firebase-auth'
-          if (id.includes('firebase/app'))            return 'firebase-auth'
+          const p = id.replace(/\\/g, '/')
+          if (!p.includes('node_modules/')) return  // app code → auto-split
+          if (p.includes('@firebase/firestore'))                       return 'firebase-store'
+          if (p.includes('@firebase/auth') || p.includes('@firebase/app')) return 'firebase-auth'
+          if (p.includes('@firebase'))                                  return 'firebase-vendor'
+          if (p.includes('node_modules/react-dom') || p.includes('node_modules/scheduler')) return 'react-vendor'
+          if (p.includes('node_modules/react/'))                       return 'react-vendor'
         },
       },
     },
@@ -45,6 +50,13 @@ export default defineConfig({
         './src/pages/DashboardPage.tsx',
         './src/pages/LoginPage.tsx',
       ],
+    },
+    // Dev proxy → Cloudflare Worker.
+    // Allows frontend to call relative paths (/api/..., /healthz)
+    // and avoid CORS preflight + IPv6/IPv4 host mismatch.
+    proxy: {
+      '/api':     { target: 'http://127.0.0.1:8787', changeOrigin: true, secure: false },
+      '/healthz': { target: 'http://127.0.0.1:8787', changeOrigin: true, secure: false },
     },
   },
 })

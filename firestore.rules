@@ -334,6 +334,24 @@ service cloud.firestore {
 
 
       // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/subscriptions/{docId}
+      //
+      // Live subscription state synced from Stripe by Cloudflare Worker
+      // via the /api/stripe/webhook + /api/billing/sync-session endpoints.
+      // Phase J1.
+      //
+      // Client-side: READ-ONLY for owner, admin, billing roles.
+      // Writes are server-side only (worker uses Firebase Admin REST with
+      // a service account, which bypasses these rules).
+      // ───────────────────────────────────────────────────────────────────
+
+      match /subscriptions/{docId} {
+        allow read:  if canManageBilling(orgId);
+        allow write: if false;
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
       // /organizations/{orgId}/activity_logs/{logId}
       //
       // Immutable audit trail. Written by Cloud Functions only.
