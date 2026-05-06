@@ -1,20 +1,17 @@
 /**
- * AiLunaPro — Cloudflare Worker (Phase J1).
+ * AiLunaPro — Cloudflare Worker (Phase G skeleton).
  *
  * Stack:  Hono v4 + jose (JWT) + Cloudflare Workers runtime
  * Auth:   Firebase ID token verification (uid-only, no firebase-admin)
+ * Scope:  Routing + CORS + auth middleware + error handler + placeholder routes
  *
- * Routes (J1):
- *   GET  /healthz
- *   GET  /api/me
- *   POST /api/audits/:id/submit
- *   POST /api/reports/:id/export
- *   POST /api/team/invite
- *   POST /api/billing/checkout
- *   POST /api/billing/portal
- *   POST /api/billing/sync-session
- *   GET  /api/billing/invoices
- *   POST /api/stripe/webhook
+ * Routes:
+ *   GET  /healthz                   — no auth, uptime probe
+ *   GET  /api/me                    — auth required, returns verified uid
+ *   POST /api/audits/:id/submit     — auth required, skeleton
+ *   POST /api/reports/:id/export    — auth required, skeleton
+ *   POST /api/team/invite           — auth required, skeleton
+ *   POST /api/stripe/webhook        — no auth (Stripe-Signature), skeleton
  */
 
 import { Hono } from 'hono';
@@ -31,6 +28,12 @@ import billingCheckoutRoutes from './routes/billing-checkout';
 import billingPortalRoutes   from './routes/billing-portal';
 import billingSyncRoutes     from './routes/billing-sync';
 import billingInvoicesRoutes from './routes/billing-invoices';
+import billingAdminStatus    from './routes/billing-admin-status';
+import billingAdminCurrency  from './routes/billing-admin-currency';
+import billingAdminProducts  from './routes/billing-admin-products';
+import billingAdminPromos    from './routes/billing-admin-promos';
+import billingAdminSettings  from './routes/billing-admin-settings';
+import billingAdminPortal    from './routes/billing-admin-portal';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -69,6 +72,12 @@ app.route('/', billingCheckoutRoutes);
 app.route('/', billingPortalRoutes);
 app.route('/', billingSyncRoutes);
 app.route('/', billingInvoicesRoutes);
+app.route('/', billingAdminStatus);
+app.route('/', billingAdminCurrency);
+app.route('/', billingAdminProducts);
+app.route('/', billingAdminPromos);
+app.route('/', billingAdminSettings);
+app.route('/', billingAdminPortal);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

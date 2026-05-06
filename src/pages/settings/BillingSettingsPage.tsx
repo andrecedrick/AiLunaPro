@@ -9,12 +9,23 @@
  * restart. KV persistence deferred to J1.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { fetchBillingConfigStatus } from '../../lib/billing/configService';
 import type { BillingConfigStatus, KeyStatus, StripeMode } from '../../types/billingConfig';
 import { SettingsLayout } from './SettingsLayout';
 import { MetadataEditor } from '../../components/billing/MetadataEditor';
+// Admin panels lazy-loaded — only owner sees them, splitting reduces initial bundle.
+const StatusPanel         = lazy(() => import('../../components/billing/admin/StatusPanel').then(m => ({ default: m.StatusPanel })));
+const CurrencyPanel       = lazy(() => import('../../components/billing/admin/CurrencyPanel').then(m => ({ default: m.CurrencyPanel })));
+const ProductsPanel       = lazy(() => import('../../components/billing/admin/ProductsPanel').then(m => ({ default: m.ProductsPanel })));
+const PromoCodesPanel     = lazy(() => import('../../components/billing/admin/PromoCodesPanel').then(m => ({ default: m.PromoCodesPanel })));
+const PaymentMethodsPanel = lazy(() => import('../../components/billing/admin/PaymentMethodsPanel').then(m => ({ default: m.PaymentMethodsPanel })));
+const PortalPanel         = lazy(() => import('../../components/billing/admin/PortalPanel').then(m => ({ default: m.PortalPanel })));
+import type { CurrencySettings, Currency } from '../../types/billingAdmin';
+import { DEFAULT_CURRENCY_SETTINGS } from '../../types/billingAdmin';
+import { db } from '../../lib/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -235,7 +246,84 @@ export function BillingSettingsPage() {
         </div>
       )}
 
+      {/* J1.3 — Admin panels */}
+      {session?.orgId && (
+        <div style={{ marginTop: 36, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 18px' }}>
+            Stripe Admin
+          </h3>
+          <BillingAdminPanels orgId={session.orgId} />
+        </div>
+      )}
     </SettingsLayout>
+  );
+}
+
+/* ── J1.3 admin panels container — Phase J1.3A ──────────── */
+function BillingAdminPanels({ orgId }: { orgId: string }) {
+  const [currencySettings, setCurrencySettings] = useState<CurrencySettings | null>(null);
+
+  // Live listen to billing_config currencySettings
+  useEffect(() => {
+    const ref = doc(db, 'organizations', orgId, 'billing_config', 'current');
+    // initial fetch
+    getDoc(ref).then(snap => {
+      if (snap.exists()) {
+        const data = snap.data() as { currencySettings?: CurrencySettings };
+        if (data.currencySettings) setCurrencySettings(data.currencySettings);
+      }
+    }).catch(err => console.warn('[BillingAdmin] initial fetch failed:', err));
+    const unsub = onSnapshot(ref, snap => {
+      if (snap.exists()) {
+        const data = snap.data() as { currencySettings?: CurrencySettings };
+        if (data.currencySettings) setCurrencySettings(data.currencySettings);
+      }
+    });
+    return unsub;
+  }, [orgId]);
+
+  const enabledCurrencies = (currencySettings?.enabledCurrencies ?? DEFAULT_CURRENCY_SETTINGS.enabledCurrencies) as Currency[];
+
+  const panelFallback = (label: string) => (
+    <div style={{
+      background:    'var(--surface)',
+      border:        '1px solid var(--border)',
+      borderRadius:  14,
+      padding:       16,
+      marginBottom:  24,
+      fontSize:      13,
+      color:         'var(--text-muted)',
+    }}>
+      Loading {label}…
+    </div>
+  );
+
+  // Per-panel Suspense — one slow panel doesn't block others.
+  return (
+    <>
+      <Suspense fallback={panelFallback('Stripe status')}>
+        <StatusPanel orgId={orgId} />
+      </Suspense>
+      <Suspense fallback={panelFallback('currency settings')}>
+        <CurrencyPanel
+          orgId={orgId}
+          currentSettings={currencySettings}
+          onSaved={cs => setCurrencySettings(cs)}
+        />
+      </Suspense>
+      <Suspense fallback={panelFallback('products & prices')}>
+        <ProductsPanel orgId={orgId} enabledCurrencies={enabledCurrencies} />
+      </Suspense>
+      <Suspense fallback={panelFallback('promotion codes')}>
+        <PromoCodesPanel orgId={orgId} />
+      </Suspense>
+      <Suspense fallback={panelFallback('payment methods')}>
+        <PaymentMethodsPanel orgId={orgId} />
+      </Suspense>
+      <Suspense fallback={panelFallback('portal diagnostic')}>
+        <PortalPanel orgId={orgId} />
+      </Suspense>
+    </>
   );
 }
 
