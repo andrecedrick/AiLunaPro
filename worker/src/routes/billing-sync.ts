@@ -22,6 +22,7 @@ import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { getStripe } from '../lib/stripe';
 import { firestoreSet } from '../lib/firestoreAdmin';
+import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
 const sync = new Hono<AppEnv>();
@@ -63,9 +64,8 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
   if (!env.STRIPE_SECRET_KEY) {
     return c.json({ error: 'Stripe not configured' }, 503);
   }
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) {
-    return c.json({ error: 'Live Stripe key blocked in dev. Use sk_test_ key only.' }, 403);
-  }
+  const blocked = assertStripeKeyAllowed(env);
+  if (blocked) return c.json(blocked.body, blocked.status);
   if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     return c.json({ error: 'Service account not configured' }, 503);
   }

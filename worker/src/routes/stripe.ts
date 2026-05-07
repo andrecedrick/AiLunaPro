@@ -61,7 +61,10 @@ stripe.post('/api/stripe/webhook', async c => {
   };
 
   if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET) {
-    return c.json({ error: 'Stripe not configured' }, 503);
+    return c.json({
+      error: 'Stripe webhook is not configured',
+      code:  'WEBHOOK_NOT_CONFIGURED',
+    }, 503);
   }
 
   const sig = c.req.header('Stripe-Signature');

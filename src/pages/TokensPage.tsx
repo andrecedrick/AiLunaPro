@@ -20,7 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import { useToast } from '../hooks/useToast';
 import { useTokens } from '../context/TokensContext';
-import { createTopupCheckout, fetchUsage, type UsageEvent, type TokenPack } from '../lib/tokens/tokensClient';
+import { createTopupCheckout, fetchUsage, friendlyTokenError, type UsageEvent, type TokenPack } from '../lib/tokens/tokensClient';
 
 interface PackDef {
   pack:        TokenPack;
@@ -198,7 +198,8 @@ export function TokensPage() {
         if (!cancelled) setUsage(list);
       } catch (err) {
         console.warn('[TokensPage] fetchUsage failed:', err);
-        if (!cancelled) setUsageError(err instanceof Error ? err.message : 'Failed to load usage');
+        const isAdmin = role === 'owner' || role === 'admin';
+        if (!cancelled) setUsageError(friendlyTokenError(err, isAdmin));
       } finally {
         if (!cancelled) setUsageLoading(false);
       }
@@ -227,7 +228,8 @@ export function TokensPage() {
       window.location.href = url;
     } catch (err) {
       console.error('[TokensPage] topup failed:', err);
-      setTopupError(err instanceof Error ? err.message : 'Top-up failed');
+      const isAdmin = role === 'owner' || role === 'admin';
+      setTopupError(friendlyTokenError(err, isAdmin));
       setPendingPack(null);
     }
   };

@@ -54,6 +54,11 @@ export type AppEnv = {
     STRIPE_TOKEN_PRICE_MAX?:       string;
     APP_BASE_URL?:                 string;
     TOKEN_DEBUG?:                  string;
+    // J1.4A-Hardening — environment marker (development | staging | production).
+    // Resolves via resolveAppEnv() in lib/env.ts. Defaults to 'development' if
+    // unset or invalid. Production must set this via Cloudflare secret or
+    // env-specific [env.production] vars — never via global [vars].
+    APP_ENV?:                      string;
   };
   Variables: {
     uid:    string;
@@ -69,6 +74,34 @@ const app = new Hono<AppEnv>();
 // Global middleware — order matters: error wrapper first, then CORS
 app.use('*', errorHandler());
 app.use('*', cors());
+
+// J1.4A-Hardening: one-shot config log per worker isolate. Booleans + last4
+// only — never logs full price IDs, secret keys, webhook secret, or service
+// account JSON. Helps confirm prod env wiring at deploy time.
+let _bootLogged = false;
+app.use('*', async (c, next) => {
+  if (!_bootLogged) {
+    _bootLogged = true;
+    try {
+      const e = c.env as AppEnv['Bindings'];
+      const key = e.STRIPE_SECRET_KEY ?? '';
+      const keyMode = key.startsWith('sk_live_') ? 'live' : key.startsWith('sk_test_') ? 'test' : 'unset';
+      const appEnv = (e.APP_ENV ?? '').toLowerCase() || 'development(default)';
+      const packs = [
+        e.STRIPE_TOKEN_PRICE_STARTER ? 1 : 0,
+        e.STRIPE_TOKEN_PRICE_PRO     ? 1 : 0,
+        e.STRIPE_TOKEN_PRICE_MAX     ? 1 : 0,
+      ].reduce((a, b) => a + b, 0);
+      console.log(
+        `[boot] env=${appEnv} keyMode=${keyMode} packs=${packs}/3 ` +
+        `webhookSecret=${e.STRIPE_WEBHOOK_SECRET ? 'set' : 'unset'} ` +
+        `firestoreSA=${e.FIREBASE_SERVICE_ACCOUNT_JSON ? 'set' : 'unset'} ` +
+        `appBaseUrl=${e.APP_BASE_URL ? 'set' : 'unset(fallback)'}`
+      );
+    } catch { /* ignore log errors */ }
+  }
+  await next();
+});
 
 // Routes
 app.route('/', healthRoutes);

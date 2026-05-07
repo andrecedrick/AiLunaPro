@@ -22,6 +22,7 @@ import {
   stripSecrets,
   type Plan,
 } from '../lib/billing-admin-shared';
+import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
 const promos = new Hono<AppEnv>();
@@ -57,7 +58,7 @@ function appliesToFromCoupon(coupon: Stripe.Coupon | null | undefined): AppliesT
 promos.get('/api/billing/admin/promotion-codes', requireAuth(), requireOwner(), async c => {
   const env = c.env as AppEnv['Bindings'] & { STRIPE_SECRET_KEY?: string };
   if (!env.STRIPE_SECRET_KEY) return c.json({ error: 'Stripe not configured' }, 503);
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) return c.json({ error: 'Live key blocked' }, 403);
+  { const blocked = assertStripeKeyAllowed(env); if (blocked) return c.json(blocked.body, blocked.status); }
 
   const stripe = getStripe(env.STRIPE_SECRET_KEY);
 
@@ -111,7 +112,7 @@ interface CreatePromoBody {
 promos.post('/api/billing/admin/promotion-codes', requireAuth(), requireOwner(), async c => {
   const env = c.env as AppEnv['Bindings'] & { STRIPE_SECRET_KEY?: string };
   if (!env.STRIPE_SECRET_KEY) return c.json({ error: 'Stripe not configured' }, 503);
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) return c.json({ error: 'Live key blocked' }, 403);
+  { const blocked = assertStripeKeyAllowed(env); if (blocked) return c.json(blocked.body, blocked.status); }
 
   let body: CreatePromoBody;
   try { body = stripSecrets(await c.req.json<CreatePromoBody>()); }
@@ -218,7 +219,7 @@ promos.post('/api/billing/admin/promotion-codes', requireAuth(), requireOwner(),
 promos.post('/api/billing/admin/promotion-codes/:id/disable', requireAuth(), requireOwner(), async c => {
   const env = c.env as AppEnv['Bindings'] & { STRIPE_SECRET_KEY?: string };
   if (!env.STRIPE_SECRET_KEY) return c.json({ error: 'Stripe not configured' }, 503);
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) return c.json({ error: 'Live key blocked' }, 403);
+  { const blocked = assertStripeKeyAllowed(env); if (blocked) return c.json(blocked.body, blocked.status); }
 
   const id = c.req.param('id');
   if (!id) return c.json({ error: 'Missing promotion code id' }, 400);

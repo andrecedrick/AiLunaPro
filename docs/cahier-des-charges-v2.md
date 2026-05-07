@@ -664,7 +664,9 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
 
 ### Règles immuables
 
-- ❌ **Jamais** de `sk_live_` en `.dev.vars` (guard 403 actif) ;
+- ❌ **Jamais** de `sk_live_` en `.dev.vars` (guard 403 actif via `assertStripeKeyAllowed` — APP_ENV doit être `production` pour autoriser `sk_live_`) ;
+- ✅ `APP_ENV` en production via Cloudflare secret ou `[env.production.vars]` uniquement, **jamais** dans le `[vars]` global de `wrangler.toml` ;
+- ✅ Firestore rules deploy : `npx firebase deploy --only firestore:rules --project audit-ai-cc9e2` (vérification manuelle dans Firebase Console après chaque deploy) ;
 - ❌ **Jamais** de secrets dans le frontend ;
 - ❌ **Jamais** de secrets dans Firestore (`stripSecrets` defense-in-depth) ;
 - ❌ **Jamais** de `auto-fallback` silencieux sur monnaie/produit ;

@@ -23,6 +23,7 @@ import {
   stripSecrets,
   type Plan,
 } from '../lib/billing-admin-shared';
+import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
 const products = new Hono<AppEnv>();
@@ -37,7 +38,7 @@ products.get('/api/billing/admin/products', requireAuth(), requireOwner(), async
   const orgId = c.get('orgId') as string;
 
   if (!env.STRIPE_SECRET_KEY)            return c.json({ error: 'Stripe not configured' }, 503);
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) return c.json({ error: 'Live key blocked' }, 403);
+  { const blocked = assertStripeKeyAllowed(env); if (blocked) return c.json(blocked.body, blocked.status); }
 
   const stripe = getStripe(env.STRIPE_SECRET_KEY);
 
@@ -133,7 +134,7 @@ products.post('/api/billing/admin/prices', requireAuth(), requireOwner(), async 
   const uid   = c.get('uid')   as string;
 
   if (!env.STRIPE_SECRET_KEY)            return c.json({ error: 'Stripe not configured' }, 503);
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) return c.json({ error: 'Live key blocked' }, 403);
+  { const blocked = assertStripeKeyAllowed(env); if (blocked) return c.json(blocked.body, blocked.status); }
 
   let body: CreatePriceBody;
   try {

@@ -15,7 +15,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { createTopupCheckout, type TokenPack } from '../../lib/tokens/tokensClient';
+import { createTopupCheckout, friendlyTokenError, type TokenPack } from '../../lib/tokens/tokensClient';
 
 interface PackDef {
   pack:        TokenPack;
@@ -63,7 +63,8 @@ export function InsufficientTokensModal({ open, onClose, balance, required, acti
       window.location.href = url;
     } catch (err) {
       console.error('[InsufficientTokensModal] topup failed:', err);
-      setError(err instanceof Error ? err.message : 'Top-up failed');
+      const isAdmin = role === 'owner' || role === 'admin';
+      setError(friendlyTokenError(err, isAdmin));
       setPendingPack(null);
     }
   };

@@ -26,6 +26,7 @@ import { firestoreGet } from '../lib/firestoreAdmin';
 import { isSupportedCurrency, type Currency } from '../lib/currency';
 import { detectCurrencyFromRequest } from '../lib/geo-currency';
 import { PLAN_TO_PRODUCT, isValidPlan, type Plan } from '../lib/billing-admin-shared';
+import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
 const checkout = new Hono<AppEnv>();
@@ -92,9 +93,8 @@ checkout.post('/api/billing/checkout', requireAuth(), async c => {
   };
 
   if (!env.STRIPE_SECRET_KEY) return c.json({ error: 'Stripe not configured' }, 503);
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) {
-    return c.json({ error: 'Live Stripe key blocked in dev. Use sk_test_ key only.' }, 403);
-  }
+  const blocked = assertStripeKeyAllowed(env);
+  if (blocked) return c.json(blocked.body, blocked.status);
 
   let body: CheckoutBody;
   try { body = await c.req.json<CheckoutBody>(); }

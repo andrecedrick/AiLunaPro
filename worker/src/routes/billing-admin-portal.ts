@@ -17,6 +17,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireOwner } from '../middleware/requireOwner';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
+import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
 const portal = new Hono<AppEnv>();
@@ -44,7 +45,7 @@ portal.get('/api/billing/admin/portal-diagnostic', requireAuth(), requireOwner()
   const orgId = c.get('orgId') as string;
 
   if (!env.STRIPE_SECRET_KEY) return c.json({ error: 'Stripe not configured' }, 503);
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) return c.json({ error: 'Live key blocked' }, 403);
+  { const blocked = assertStripeKeyAllowed(env); if (blocked) return c.json(blocked.body, blocked.status); }
 
   const stripe = getStripe(env.STRIPE_SECRET_KEY);
 

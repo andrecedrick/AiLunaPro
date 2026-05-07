@@ -19,6 +19,7 @@ import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import { ensureTokenCycleFresh, consumeTokens } from '../lib/tokens';
 import { TOKEN_PACKS, isValidPack, isValidAction, allocationForPlan } from '../lib/token-costs';
+import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
 const tokens = new Hono<AppEnv>();
@@ -30,7 +31,9 @@ const APP_BASE_URL_FALLBACK = 'http://localhost:5173';
 tokens.get('/api/tokens/balance', requireAuth(), requireRole(['owner', 'admin', 'billing', 'member']), async c => {
   const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string };
   const orgId = c.get('orgId') as string;
-  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Service account not configured' }, 503);
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
+  }
 
   // Bootstrap allocation for orgs with no tokens/current doc yet (existing
   // pre-J1.4A subscribers). Priority:
@@ -65,18 +68,29 @@ tokens.post('/api/tokens/topup', requireAuth(), requireRole(['owner', 'admin', '
     APP_BASE_URL?:                  string;
   };
 
-  if (!env.STRIPE_SECRET_KEY) return c.json({ error: 'Stripe not configured' }, 503);
-  if (env.STRIPE_SECRET_KEY.startsWith('sk_live_')) return c.json({ error: 'Live key blocked' }, 403);
+  if (!env.STRIPE_SECRET_KEY) {
+    return c.json({ error: 'Stripe is not configured', code: 'STRIPE_NOT_CONFIGURED' }, 503);
+  }
+  const blocked = assertStripeKeyAllowed(env);
+  if (blocked) return c.json(blocked.body, blocked.status);
 
   let body: TopupBody;
   try { body = await c.req.json<TopupBody>(); }
-  catch { return c.json({ error: 'Invalid JSON body' }, 400); }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
 
-  if (!isValidPack(body.pack)) return c.json({ error: 'Invalid pack' }, 400);
+  if (!isValidPack(body.pack)) return c.json({ error: 'Invalid pack', code: 'INVALID_PACK', pack: body.pack }, 400);
 
   const def = TOKEN_PACKS[body.pack];
   const priceId = (env as unknown as Record<string, string | undefined>)[def.envVar];
-  if (!priceId) return c.json({ error: `Token price not configured: ${def.envVar}` }, 503);
+  if (!priceId) {
+    // Server log keeps the env var name for ops debugging; client response hides it.
+    console.warn('[tokens] PACK_NOT_CONFIGURED — missing env var:', def.envVar);
+    return c.json({
+      error: 'Token pack is not configured',
+      code:  'PACK_NOT_CONFIGURED',
+      pack:  def.pack,
+    }, 503);
+  }
 
   const orgId    = c.get('orgId') as string;
   const baseUrl  = env.APP_BASE_URL ?? APP_BASE_URL_FALLBACK;
@@ -121,7 +135,9 @@ tokens.get('/api/tokens/usage', requireAuth(), requireRole(['owner', 'admin', 'b
   const viewerUid  = c.get('uid')   as string;
   const limit      = Math.min(parseInt(c.req.query('limit') ?? '50', 10) || 50, 200);
 
-  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Service account not configured' }, 503);
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
+  }
 
   // List via REST listDocuments
   const sa = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON) as { client_email: string; private_key: string; project_id: string };
