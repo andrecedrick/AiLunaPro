@@ -20,7 +20,15 @@ import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import { useToast } from '../hooks/useToast';
 import { useTokens } from '../context/TokensContext';
-import { createTopupCheckout, fetchUsage, friendlyTokenError, type UsageEvent, type TokenPack } from '../lib/tokens/tokensClient';
+import {
+  createTopupCheckout,
+  fetchUsage,
+  friendlyTokenError,
+  repairTokenBalance,
+  safeTokenNumber,
+  type UsageEvent,
+  type TokenPack,
+} from '../lib/tokens/tokensClient';
 
 interface PackDef {
   pack:        TokenPack;
@@ -234,21 +242,56 @@ export function TokensPage() {
     }
   };
 
-  // Defensive numeric coercion — see TokenBadge for the rationale.
-  const num = (v: unknown, fb = 0): number => {
-    if (typeof v === 'number' && Number.isFinite(v)) return v;
-    if (typeof v === 'string') { const n = Number(v); return Number.isFinite(n) ? n : fb; }
-    return fb;
-  };
-  const balanceNum         = balance ? num(balance.balance)           : 0;
-  const allocationNum      = balance ? num(balance.monthlyAllocation) : 0;
-  const consumedNum        = balance ? num(balance.consumed)          : 0;
-  const rolloverNum        = balance ? num(balance.rollover)          : 0;
-  const topupTotalNum      = balance ? num(balance.topupTotal)        : 0;
+  // Defensive: safeTokenNumber returns null if value is non-finite or > 1e10
+  // (impossible legitimate token amount). Caller renders "needs repair"
+  // fallback instead of an absurd string.
+  const safeBal       = balance ? safeTokenNumber(balance.balance)           : null;
+  const safeAlloc     = balance ? safeTokenNumber(balance.monthlyAllocation) : null;
+  const safeConsumed  = balance ? safeTokenNumber(balance.consumed)          : 0;
+  const safeRollover  = balance ? safeTokenNumber(balance.rollover)          : 0;
+  const safeTopupTot  = balance ? safeTokenNumber(balance.topupTotal)        : 0;
+  const balanceCorrupted = !!balance && (safeBal === null || safeAlloc === null || safeConsumed === null || safeRollover === null || safeTopupTot === null);
+
+  const balanceNum    = safeBal      ?? 0;
+  const allocationNum = safeAlloc    ?? 0;
+  const consumedNum   = safeConsumed ?? 0;
+  const rolloverNum   = safeRollover ?? 0;
+  const topupTotalNum = safeTopupTot ?? 0;
   const total = allocationNum + rolloverNum + topupTotalNum;
-  const pct   = balance && total > 0
+  const pct   = balance && total > 0 && !balanceCorrupted
     ? Math.max(0, Math.min(100, (balanceNum / total) * 100))
     : 0;
+
+  // Repair flow (owner + TOKEN_DEBUG-gated server-side)
+  const [repairing,    setRepairing]    = useState(false);
+  const [repairResult, setRepairResult] = useState<string | null>(null);
+  const isOwner = role === 'owner';
+  const handleRepair = async () => {
+    if (!isOwner) return;
+    setRepairing(true);
+    setRepairResult(null);
+    try {
+      const { auth } = await import('../lib/firebase-auth');
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Not authenticated');
+      const result = await repairTokenBalance(idToken);
+      if (!result) {
+        showToast('Repair is disabled in this environment (TOKEN_DEBUG required).', 'warning');
+        return;
+      }
+      const r = result.repaired;
+      setRepairResult(
+        `Repaired — balance ${r.balance.toLocaleString('en-US')}, allocation ${r.monthlyAllocation.toLocaleString('en-US')}, top-ups ${r.topupTotal.toLocaleString('en-US')}, consumed ${r.consumed.toLocaleString('en-US')}.`,
+      );
+      showToast('Token balance repaired.', 'success');
+      void refresh();
+    } catch (err) {
+      console.error('[TokensPage] repair failed:', err);
+      showToast(friendlyTokenError(err, true), 'error');
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
@@ -261,6 +304,54 @@ export function TokensPage() {
           Track usage, monitor your monthly allocation, and buy top-ups when needed.
         </p>
       </div>
+
+      {/* Corruption warning + repair (owner only, server-gated by TOKEN_DEBUG) */}
+      {balanceCorrupted && (
+        <div style={{
+          marginBottom: 16,
+          padding: '14px 16px',
+          borderRadius: 10,
+          background: 'var(--red-soft-bg)',
+          color: 'var(--red-text)',
+          border: '1px solid var(--red-text)',
+          fontSize: 13,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <strong>Your token balance contains invalid data from a previous bug.</strong>{' '}
+            {isOwner
+              ? 'Click Repair to recompute it from your top-ups and usage history.'
+              : 'Ask an owner to repair the balance.'}
+            {repairResult && (
+              <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-primary)' }}>{repairResult}</div>
+            )}
+          </div>
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => void handleRepair()}
+              disabled={repairing}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 8,
+                border: 'none',
+                background: 'var(--red-text)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: repairing ? 'wait' : 'pointer',
+                opacity: repairing ? 0.6 : 1,
+              }}
+            >
+              {repairing ? 'Repairing…' : 'Repair token balance'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Webhook waiting banner */}
       {waitingWebhook && topupNotice && (
@@ -310,11 +401,11 @@ export function TokensPage() {
         {balance && (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginBottom: 18 }}>
-              <Stat label="Balance"            value={balanceNum}     accent="violet" />
-              <Stat label="Monthly allocation" value={allocationNum} />
-              <Stat label="Consumed"           value={consumedNum}    accent="red" />
-              <Stat label="Rollover"           value={rolloverNum}    accent="green" />
-              <Stat label="Top-ups"            value={topupTotalNum}  accent="green" />
+              <Stat label="Balance"            value={safeBal      === null ? '—' : balanceNum}    accent="violet" />
+              <Stat label="Monthly allocation" value={safeAlloc    === null ? '—' : allocationNum} />
+              <Stat label="Consumed"           value={safeConsumed === null ? '—' : consumedNum}   accent="red" />
+              <Stat label="Rollover"           value={safeRollover === null ? '—' : rolloverNum}   accent="green" />
+              <Stat label="Top-ups"            value={safeTopupTot === null ? '—' : topupTotalNum} accent="green" />
             </div>
             {/* Bar */}
             <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 4, overflow: 'hidden' }}>

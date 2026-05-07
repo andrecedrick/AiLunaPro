@@ -223,6 +223,113 @@ tokens.post('/api/tokens/_debug/consume', requireAuth(), requireRole(['owner']),
   return c.json(result);
 });
 
+/* ── Diagnostics (owner-only, env-gated) ────────────────────
+   Inspect tokens/current + subcollection sums without exposing secrets.
+   Used by the frontend Repair UI to decide whether to surface the
+   "Repair token balance" button. Never returns full secret values. */
+
+const SANE_NUMERIC_CAP = 1e10; // tokens never legitimately exceed 10B
+
+tokens.get('/api/tokens/_debug/diagnostics', requireAuth(), requireRole(['owner']), async c => {
+  const env = c.env as AppEnv['Bindings'] & {
+    FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+    TOKEN_DEBUG?:                   string;
+  };
+  if (env.TOKEN_DEBUG !== 'true') {
+    return c.json({ error: 'Debug disabled', code: 'DEBUG_DISABLED' }, 404);
+  }
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
+  }
+
+  const orgId = c.get('orgId') as string;
+  const sa = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON) as { client_email: string; private_key: string; project_id: string };
+  const accessToken = await getAccessToken(sa);
+
+  const balanceUrl = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/organizations/${orgId}/tokens/current`;
+  const balRes = await fetch(balanceUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+  type DiagField = { type: 'integer' | 'string' | 'double' | 'absent'; rawLength: number; parsed: number; finite: boolean; saneRange: boolean };
+  const inspect = (v?: { stringValue?: string; integerValue?: string; doubleValue?: number }): DiagField => {
+    if (!v) return { type: 'absent', rawLength: 0, parsed: 0, finite: false, saneRange: false };
+    if (v.integerValue !== undefined) {
+      const n = Number(v.integerValue);
+      return { type: 'integer', rawLength: v.integerValue.length, parsed: n, finite: Number.isFinite(n), saneRange: Number.isFinite(n) && n >= 0 && n <= SANE_NUMERIC_CAP };
+    }
+    if (v.stringValue !== undefined) {
+      const n = Number(v.stringValue);
+      return { type: 'string', rawLength: v.stringValue.length, parsed: n, finite: Number.isFinite(n), saneRange: Number.isFinite(n) && n >= 0 && n <= SANE_NUMERIC_CAP };
+    }
+    if (v.doubleValue !== undefined) {
+      const n = v.doubleValue;
+      return { type: 'double', rawLength: String(n).length, parsed: n, finite: Number.isFinite(n), saneRange: Number.isFinite(n) && n >= 0 && n <= SANE_NUMERIC_CAP };
+    }
+    return { type: 'absent', rawLength: 0, parsed: 0, finite: false, saneRange: false };
+  };
+
+  let balanceDoc: Record<string, DiagField> = {};
+  let docExists = false;
+  if (balRes.ok) {
+    docExists = true;
+    const j = await balRes.json() as { fields?: Record<string, { stringValue?: string; integerValue?: string; doubleValue?: number }> };
+    const f = j.fields ?? {};
+    for (const key of ['balance', 'monthlyAllocation', 'consumed', 'rollover', 'topupTotal']) {
+      balanceDoc[key] = inspect(f[key]);
+    }
+  }
+
+  // Topup sum
+  const topupsUrl = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/organizations/${orgId}/tokens/current/topups?pageSize=200`;
+  const topupsRes = await fetch(topupsUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+  let topupCount = 0;
+  let topupTotalCredited = 0;
+  if (topupsRes.ok) {
+    const data = await topupsRes.json() as { documents?: Array<{ fields?: Record<string, { stringValue?: string; integerValue?: string }> }> };
+    for (const doc of data.documents ?? []) {
+      const ff = doc.fields ?? {};
+      if (ff.status?.stringValue !== 'credited') continue;
+      const raw = ff.tokensAdded?.integerValue ?? ff.tokensAdded?.stringValue ?? '0';
+      const n = Number(raw);
+      if (Number.isFinite(n) && n > 0) {
+        topupCount += 1;
+        topupTotalCredited += n;
+      }
+    }
+  }
+
+  // Usage sum
+  const usageUrl = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/organizations/${orgId}/tokens/current/usage?pageSize=500`;
+  const usageRes = await fetch(usageUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+  let usageCount = 0;
+  let usageTotal = 0;
+  if (usageRes.ok) {
+    const data = await usageRes.json() as { documents?: Array<{ fields?: Record<string, { stringValue?: string; integerValue?: string }> }> };
+    for (const doc of data.documents ?? []) {
+      const ff = doc.fields ?? {};
+      if (ff.status?.stringValue === 'failed') continue;
+      const raw = ff.tokens?.integerValue ?? ff.tokens?.stringValue ?? '0';
+      const n = Number(raw);
+      if (Number.isFinite(n) && n > 0) {
+        usageCount += 1;
+        usageTotal += n;
+      }
+    }
+  }
+
+  const looksCorrupted = !docExists || Object.values(balanceDoc).some(f => !f.saneRange);
+
+  return c.json({
+    docExists,
+    balanceDoc,
+    subcollections: {
+      topups: { count: topupCount, totalCredited: topupTotalCredited },
+      usage:  { count: usageCount, total: usageTotal },
+    },
+    looksCorrupted,
+    saneCap: SANE_NUMERIC_CAP,
+  });
+});
+
 /* ── Repair (owner-only, env-gated) ─────────────────────────
    Recompute tokens/current from monthlyAllocation + sum(topups.tokensAdded)
    - sum(usage.tokens). Used to recover from the integerValue-string-concat

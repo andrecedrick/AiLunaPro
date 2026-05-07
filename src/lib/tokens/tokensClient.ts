@@ -120,3 +120,57 @@ export async function createTopupCheckout(orgId: string, pack: TokenPack, idToke
   const data = await jsonOrThrow<{ url: string }>(res);
   return data.url;
 }
+
+/* ── Diagnostics + Repair (owner-only, TOKEN_DEBUG-gated server-side) ── */
+
+export interface TokensDiagnostics {
+  docExists:       boolean;
+  balanceDoc:      Record<string, { type: string; rawLength: number; parsed: number; finite: boolean; saneRange: boolean }>;
+  subcollections: {
+    topups: { count: number; totalCredited: number };
+    usage:  { count: number; total: number };
+  };
+  looksCorrupted:  boolean;
+  saneCap:         number;
+}
+
+export async function fetchTokensDiagnostics(idToken: string): Promise<TokensDiagnostics | null> {
+  const res = await authedFetch('/api/tokens/_debug/diagnostics', { method: 'GET' }, idToken);
+  if (res.status === 404) return null; // debug disabled in this environment
+  return jsonOrThrow<TokensDiagnostics>(res);
+}
+
+export interface RepairResult {
+  ok: true;
+  repaired: {
+    balance:           number;
+    monthlyAllocation: number;
+    consumed:          number;
+    rollover:          number;
+    topupTotal:        number;
+    counts: { topupCount: number; usageCount: number };
+  };
+}
+
+export async function repairTokenBalance(idToken: string): Promise<RepairResult | null> {
+  const res = await authedFetch('/api/tokens/_debug/repair', { method: 'POST' }, idToken);
+  if (res.status === 404) return null; // debug disabled
+  return jsonOrThrow<RepairResult>(res);
+}
+
+/**
+ * Single source of truth for safe numeric coercion in the frontend.
+ *  - Returns null when value is not finite or exceeds SANE_TOKEN_CAP.
+ *  - Caller decides how to render: a number → format, null → "needs repair".
+ */
+export const SANE_TOKEN_CAP = 1e10; // 10B — token amounts never legitimately approach this
+
+export function safeTokenNumber(v: unknown): number | null {
+  let n: number;
+  if (typeof v === 'number') n = v;
+  else if (typeof v === 'string') n = Number(v);
+  else return null;
+  if (!Number.isFinite(n)) return null;
+  if (n < 0 || n > SANE_TOKEN_CAP) return null;
+  return n;
+}
