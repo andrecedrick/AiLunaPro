@@ -40,6 +40,35 @@ const BALANCE_PATH = (orgId: string) => `organizations/${orgId}/tokens/current`;
 const cycleEndFromNow = (): string =>
   new Date(Date.now() + CYCLE_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
+/**
+ * Defensive numeric coercion. Firestore REST returns integerValue as string;
+ * the decoder now converts back to Number, but this guards against any future
+ * regression or Firestore docs that historically stored stringified numbers.
+ */
+function toNum(v: unknown, fallback = 0): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  return fallback;
+}
+
+/** Force every numeric field on a balance object to be a JS Number. */
+function normalizeBalance(raw: unknown): TokenBalance {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    balance:           toNum(r.balance),
+    monthlyAllocation: toNum(r.monthlyAllocation),
+    consumed:          toNum(r.consumed),
+    rollover:          toNum(r.rollover),
+    topupTotal:        toNum(r.topupTotal),
+    lastReset:         typeof r.lastReset === 'string' ? r.lastReset : '',
+    cycleEnd:          typeof r.cycleEnd  === 'string' ? r.cycleEnd  : '',
+    updatedAt:         typeof r.updatedAt === 'string' ? r.updatedAt : '',
+  };
+}
+
 /* ── Bootstrap ──────────────────────────────────────────── */
 
 export async function initBalance(saJson: string, orgId: string, allocation: number): Promise<TokenBalance> {
@@ -65,19 +94,19 @@ export async function ensureTokenCycleFresh(saJson: string, orgId: string, fallb
   if (!meta) {
     return initBalance(saJson, orgId, fallbackAllocation);
   }
-  const data = meta.data as unknown as TokenBalance;
+  const data = normalizeBalance(meta.data);
   const now  = Date.now();
 
   if (Date.parse(data.cycleEnd) < now) {
     // Cycle expired → roll-over (capped at 1× allocation)
-    const allocation = data.monthlyAllocation ?? fallbackAllocation;
-    const rollover   = Math.min(data.balance ?? 0, allocation);
+    const allocation = toNum(data.monthlyAllocation, fallbackAllocation);
+    const rollover   = Math.min(toNum(data.balance), allocation);
     const fresh: TokenBalance = {
       balance:           allocation + rollover,
       monthlyAllocation: allocation,
       consumed:          0,
       rollover,
-      topupTotal:        data.topupTotal ?? 0,
+      topupTotal:        toNum(data.topupTotal),
       lastReset:         new Date(now).toISOString(),
       cycleEnd:          cycleEndFromNow(),
       updatedAt:         new Date(now).toISOString(),
@@ -88,7 +117,7 @@ export async function ensureTokenCycleFresh(saJson: string, orgId: string, fallb
       if (err instanceof Error && err.message === 'PRECONDITION_FAILED') {
         // Concurrent reset; re-read and return whatever's there
         const re = await firestoreGet(saJson, BALANCE_PATH(orgId));
-        return (re ?? fresh) as unknown as TokenBalance;
+        return re ? normalizeBalance(re) : fresh;
       }
       throw err;
     }
@@ -120,28 +149,36 @@ export async function incrementBalance(
   orgId: string,
   amount: number,
 ): Promise<{ balanceAfter: number }> {
+  const add = toNum(amount);
+  if (!Number.isFinite(add) || add <= 0) {
+    throw new Error(`incrementBalance: invalid amount ${String(amount)}`);
+  }
   const MAX_RETRY = 3;
   for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
     const meta = await firestoreGetWithMeta(saJson, BALANCE_PATH(orgId));
     if (!meta) {
       // bootstrap with default; topup adds on top
       const init = await initBalance(saJson, orgId, 100);
+      const initBal   = toNum(init.balance);
+      const newBal    = initBal + add;
+      const newTopup  = add;
       await firestoreSet(saJson, BALANCE_PATH(orgId), {
-        balance:    init.balance + amount,
-        topupTotal: amount,
+        balance:    newBal,
+        topupTotal: newTopup,
         updatedAt:  new Date().toISOString(),
       }, { merge: true });
-      return { balanceAfter: init.balance + amount };
+      return { balanceAfter: newBal };
     }
-    const data = meta.data as unknown as TokenBalance;
-    const next = (data.balance ?? 0) + amount;
+    const data       = normalizeBalance(meta.data);
+    const newBalance = data.balance + add;
+    const newTopup   = data.topupTotal + add;
     try {
       await firestoreSetIfMatch(saJson, BALANCE_PATH(orgId), {
-        balance:    next,
-        topupTotal: (data.topupTotal ?? 0) + amount,
+        balance:    newBalance,
+        topupTotal: newTopup,
         updatedAt:  new Date().toISOString(),
       }, meta.updateTime, { merge: true });
-      return { balanceAfter: next };
+      return { balanceAfter: newBalance };
     } catch (err) {
       if (err instanceof Error && err.message === 'PRECONDITION_FAILED') continue;
       throw err;
@@ -201,9 +238,9 @@ export async function consumeTokens(
     }
     const meta = await firestoreGetWithMeta(saJson, BALANCE_PATH(orgId));
     if (!meta) continue;
-    const data = meta.data as unknown as TokenBalance;
+    const data        = normalizeBalance(meta.data);
     const newBalance  = data.balance - required;
-    const newConsumed = (data.consumed ?? 0) + required;
+    const newConsumed = data.consumed + required;
     try {
       await firestoreSetIfMatch(saJson, BALANCE_PATH(orgId), {
         balance:   newBalance,

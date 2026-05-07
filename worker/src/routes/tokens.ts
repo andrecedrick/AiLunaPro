@@ -18,6 +18,7 @@ import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import { ensureTokenCycleFresh, consumeTokens } from '../lib/tokens';
+import { firestoreSet as firestoreSetWrite } from '../lib/firestoreAdmin';
 import { TOKEN_PACKS, isValidPack, isValidAction, allocationForPlan } from '../lib/token-costs';
 import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
@@ -220,6 +221,114 @@ tokens.post('/api/tokens/_debug/consume', requireAuth(), requireRole(['owner']),
   const result = await consumeTokens(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, body.action, uid, eventId);
   if (!result.ok) return c.json(result, 402);
   return c.json(result);
+});
+
+/* ── Repair (owner-only, env-gated) ─────────────────────────
+   Recompute tokens/current from monthlyAllocation + sum(topups.tokensAdded)
+   - sum(usage.tokens). Used to recover from the integerValue-string-concat
+   bug that produced corrupted balances. Idempotent. */
+
+tokens.post('/api/tokens/_debug/repair', requireAuth(), requireRole(['owner']), async c => {
+  const env = c.env as AppEnv['Bindings'] & {
+    FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+    TOKEN_DEBUG?:                   string;
+  };
+  if (env.TOKEN_DEBUG !== 'true') return c.json({ error: 'Debug disabled', code: 'DEBUG_DISABLED' }, 404);
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
+  }
+
+  const orgId = c.get('orgId') as string;
+  const sa = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON) as { client_email: string; private_key: string; project_id: string };
+  const accessToken = await getAccessToken(sa);
+
+  // Read current balance doc to keep monthlyAllocation
+  const balanceUrl = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/organizations/${orgId}/tokens/current`;
+  const balRes = await fetch(balanceUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!balRes.ok) return c.json({ error: 'tokens/current not found', code: 'NO_BALANCE_DOC' }, 404);
+  const balDoc = await balRes.json() as { fields?: Record<string, { stringValue?: string; integerValue?: string }> };
+  const f = balDoc.fields ?? {};
+
+  const numField = (key: string, fb: number): number => {
+    const v = f[key];
+    if (!v) return fb;
+    if (v.integerValue !== undefined) {
+      const n = Number(v.integerValue);
+      return Number.isFinite(n) ? n : fb;
+    }
+    if (v.stringValue !== undefined) {
+      const n = Number(v.stringValue);
+      return Number.isFinite(n) ? n : fb;
+    }
+    return fb;
+  };
+  const monthlyAllocation = numField('monthlyAllocation', 0);
+
+  // Sum credited topups
+  const topupsUrl = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/organizations/${orgId}/tokens/current/topups?pageSize=200`;
+  const topupsRes = await fetch(topupsUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+  let topupTotal = 0;
+  let topupCount = 0;
+  if (topupsRes.ok) {
+    const data = await topupsRes.json() as { documents?: Array<{ fields?: Record<string, { stringValue?: string; integerValue?: string }> }> };
+    for (const doc of data.documents ?? []) {
+      const ff = doc.fields ?? {};
+      const status = ff.status?.stringValue;
+      if (status !== 'credited') continue;
+      const raw = ff.tokensAdded?.integerValue ?? ff.tokensAdded?.stringValue ?? '0';
+      const n = Number(raw);
+      if (Number.isFinite(n) && n > 0) {
+        topupTotal += n;
+        topupCount += 1;
+      }
+    }
+  }
+
+  // Sum consumed usage
+  const usageUrl = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/organizations/${orgId}/tokens/current/usage?pageSize=500`;
+  const usageRes = await fetch(usageUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+  let consumed = 0;
+  let usageCount = 0;
+  if (usageRes.ok) {
+    const data = await usageRes.json() as { documents?: Array<{ fields?: Record<string, { stringValue?: string; integerValue?: string }> }> };
+    for (const doc of data.documents ?? []) {
+      const ff = doc.fields ?? {};
+      const status = ff.status?.stringValue;
+      if (status === 'failed') continue;
+      const raw = ff.tokens?.integerValue ?? ff.tokens?.stringValue ?? '0';
+      const n = Number(raw);
+      if (Number.isFinite(n) && n > 0) {
+        consumed += n;
+        usageCount += 1;
+      }
+    }
+  }
+
+  const balance = Math.max(0, monthlyAllocation + topupTotal - consumed);
+  const now = new Date().toISOString();
+
+  await firestoreSetWrite(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/tokens/current`, {
+    balance,
+    monthlyAllocation,
+    consumed,
+    rollover:    0,
+    topupTotal,
+    updatedAt:   now,
+  }, { merge: true });
+
+  console.log('[tokens] repair — orgId:', orgId, 'balance:', balance, 'allocation:', monthlyAllocation, 'topups:', topupTotal, 'consumed:', consumed);
+
+  return c.json({
+    ok: true,
+    repaired: {
+      balance,
+      monthlyAllocation,
+      consumed,
+      rollover:   0,
+      topupTotal,
+      counts: { topupCount, usageCount },
+    },
+  });
 });
 
 export default tokens;

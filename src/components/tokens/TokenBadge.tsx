@@ -6,21 +6,37 @@
 import { useTokens } from '../../context/TokensContext';
 import { useRoute } from '../../context/RouteContext';
 
+// Defensive: Firestore REST historically returned integerValue as string.
+// Coerce every numeric field before arithmetic so a stale or malformed doc
+// never produces "100000" + 5000 = "1000005000".
+const num = (v: unknown, fb = 0): number => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fb;
+  }
+  return fb;
+};
+
 export function TokenBadge() {
   const { balance, enabled } = useTokens();
   const { navigate }         = useRoute();
 
   if (!enabled || !balance) return null;
 
-  const total = balance.monthlyAllocation + (balance.rollover ?? 0) + (balance.topupTotal ?? 0);
-  const pct   = total > 0 ? Math.max(0, Math.min(100, (balance.balance / total) * 100)) : 0;
-  const lowBalance = balance.balance < 50;
+  const bal       = num(balance.balance);
+  const allocated = num(balance.monthlyAllocation);
+  const rollover  = num(balance.rollover);
+  const topupTot  = num(balance.topupTotal);
+  const total     = allocated + rollover + topupTot;
+  const pct        = total > 0 ? Math.max(0, Math.min(100, (bal / total) * 100)) : 0;
+  const lowBalance = bal < 50;
 
   return (
     <button
       type="button"
       onClick={() => navigate({ name: 'billing/tokens' })}
-      title={`${balance.balance.toLocaleString()} tokens left · click to manage`}
+      title={`${bal.toLocaleString('en-US')} tokens left · click to manage`}
       style={{
         display:        'flex',
         alignItems:     'center',
@@ -46,9 +62,9 @@ export function TokenBadge() {
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
         }}>
-          {balance.balance.toLocaleString('en-US')}
+          {bal.toLocaleString('en-US')}
           <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
-            {' / '}{balance.monthlyAllocation.toLocaleString('en-US')}
+            {' / '}{allocated.toLocaleString('en-US')}
           </span>
         </span>
         <div style={{ width: 80, height: 3, background: 'var(--surface-2)', borderRadius: 2, overflow: 'hidden' }}>

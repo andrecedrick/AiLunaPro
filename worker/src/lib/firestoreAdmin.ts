@@ -115,7 +115,15 @@ function toFirestoreFields(obj: Record<string, WritableValue>): FirestoreFields 
 function decodeValue(v: FirestoreValue): FsValue {
   if (v.stringValue    !== undefined) return v.stringValue;
   if (v.booleanValue   !== undefined) return v.booleanValue;
-  if (v.integerValue   !== undefined) return v.integerValue;
+  // Firestore REST encodes integers as strings to survive JSON int64. Decode
+  // back to JS Number — token amounts and similar counters fit well within
+  // Number.MAX_SAFE_INTEGER (2^53). Without this, arithmetic like
+  //   data.balance + amount
+  // string-concatenates ("100000" + 5000 = "1000005000"), corrupting balances.
+  if (v.integerValue   !== undefined) {
+    const n = Number(v.integerValue);
+    return Number.isFinite(n) ? n : 0;
+  }
   if (v.doubleValue    !== undefined) return v.doubleValue;
   if (v.timestampValue !== undefined) return v.timestampValue;
   if (v.nullValue      !== undefined) return null;

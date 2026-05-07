@@ -234,11 +234,20 @@ export function TokensPage() {
     }
   };
 
-  const total = balance
-    ? balance.monthlyAllocation + (balance.rollover ?? 0) + (balance.topupTotal ?? 0)
-    : 0;
-  const pct = balance && total > 0
-    ? Math.max(0, Math.min(100, (balance.balance / total) * 100))
+  // Defensive numeric coercion — see TokenBadge for the rationale.
+  const num = (v: unknown, fb = 0): number => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string') { const n = Number(v); return Number.isFinite(n) ? n : fb; }
+    return fb;
+  };
+  const balanceNum         = balance ? num(balance.balance)           : 0;
+  const allocationNum      = balance ? num(balance.monthlyAllocation) : 0;
+  const consumedNum        = balance ? num(balance.consumed)          : 0;
+  const rolloverNum        = balance ? num(balance.rollover)          : 0;
+  const topupTotalNum      = balance ? num(balance.topupTotal)        : 0;
+  const total = allocationNum + rolloverNum + topupTotalNum;
+  const pct   = balance && total > 0
+    ? Math.max(0, Math.min(100, (balanceNum / total) * 100))
     : 0;
 
   return (
@@ -301,11 +310,11 @@ export function TokensPage() {
         {balance && (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginBottom: 18 }}>
-              <Stat label="Balance"            value={balance.balance}           accent="violet" />
-              <Stat label="Monthly allocation" value={balance.monthlyAllocation} />
-              <Stat label="Consumed"           value={balance.consumed}          accent="red" />
-              <Stat label="Rollover"           value={balance.rollover ?? 0}     accent="green" />
-              <Stat label="Top-ups"            value={balance.topupTotal ?? 0}   accent="green" />
+              <Stat label="Balance"            value={balanceNum}     accent="violet" />
+              <Stat label="Monthly allocation" value={allocationNum} />
+              <Stat label="Consumed"           value={consumedNum}    accent="red" />
+              <Stat label="Rollover"           value={rolloverNum}    accent="green" />
+              <Stat label="Top-ups"            value={topupTotalNum}  accent="green" />
             </div>
             {/* Bar */}
             <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 4, overflow: 'hidden' }}>

@@ -22,6 +22,7 @@ import { getStripe } from '../lib/stripe';
 import { firestoreSet, firestoreGet } from '../lib/firestoreAdmin';
 import { firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { incrementBalance, syncBalanceAllocation } from '../lib/tokens';
+import { TOKEN_PACKS, isValidPack } from '../lib/token-costs';
 import { recordWebhookEvent } from './billing-config';
 import type { AppEnv } from '../index';
 import type Stripe from 'stripe';
@@ -119,11 +120,24 @@ async function handleEvent(
 
       // J1.4A: branch on tokens_topup vs subscription
       if (session.metadata?.type === 'tokens_topup') {
-        const orgId = session.client_reference_id ?? session.metadata.orgId;
+        const orgId        = session.client_reference_id ?? session.metadata.orgId;
         const pack         = session.metadata.tokensPack;
-        const tokensAdded  = parseInt(session.metadata.tokensAdded ?? '0', 10);
-        if (!orgId || !pack || !tokensAdded) {
-          console.warn('[webhook] tokens_topup missing required metadata');
+        // Numeric coercion is critical — Stripe metadata is always strings.
+        const rawAdded     = session.metadata.tokensAdded ?? '0';
+        const tokensAdded  = Number.parseInt(rawAdded, 10);
+        if (!orgId || !pack || !Number.isFinite(tokensAdded) || tokensAdded <= 0) {
+          console.warn('[webhook] tokens_topup invalid metadata — orgId/pack/tokensAdded:', orgId, pack, rawAdded);
+          break;
+        }
+        // Validate against server-side TOKEN_PACKS — never trust Stripe metadata
+        // for actual credit amounts. Frontend or attacker could have tampered.
+        if (!isValidPack(pack)) {
+          console.warn('[webhook] tokens_topup unknown pack:', pack);
+          break;
+        }
+        const expected = TOKEN_PACKS[pack].tokensAdded;
+        if (tokensAdded !== expected) {
+          console.warn('[webhook] tokens_topup amount mismatch — pack:', pack, 'expected:', expected, 'got:', tokensAdded);
           break;
         }
         const topupPath = `organizations/${orgId}/tokens/current/topups/${session.id}`;
