@@ -177,6 +177,84 @@ export async function firestoreSet(
   }
 }
 
+/**
+ * Read full document including `_updateTime` (used for optimistic concurrency).
+ */
+export async function firestoreGetWithMeta(
+  saJson: string,
+  path: string,
+): Promise<{ data: FsObject; updateTime: string } | null> {
+  const sa = JSON.parse(saJson) as ServiceAccount;
+  const token = await getAccessToken(sa);
+  const url = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/${path}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Firestore GET failed: ${await res.text()}`);
+  const doc = await res.json() as { fields?: FirestoreFields; updateTime?: string };
+  if (!doc.fields) return null;
+  return {
+    data:       fromFirestoreFields(doc.fields),
+    updateTime: doc.updateTime ?? '',
+  };
+}
+
+/**
+ * PATCH with optimistic concurrency via `currentDocument.updateTime` precondition.
+ * Throws on 412 Precondition Failed (caller retries).
+ */
+export async function firestoreSetIfMatch(
+  saJson: string,
+  path: string,
+  data: Record<string, WritableValue>,
+  expectedUpdateTime: string,
+  options: FirestoreSetOptions = {},
+): Promise<void> {
+  const sa = JSON.parse(saJson) as ServiceAccount;
+  const token = await getAccessToken(sa);
+
+  const params = new URLSearchParams();
+  if (options.merge) {
+    for (const k of Object.keys(data)) params.append('updateMask.fieldPaths', k);
+  }
+  params.append('currentDocument.updateTime', expectedUpdateTime);
+
+  const url = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/${path}?${params.toString()}`;
+
+  const res = await fetch(url, {
+    method:  'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ fields: toFirestoreFields(data) }),
+  });
+
+  if (res.status === 412) throw new Error('PRECONDITION_FAILED');
+  if (!res.ok) throw new Error(`Firestore PATCH (if-match) failed: ${await res.text()}`);
+}
+
+/**
+ * Create document only if it does NOT exist (currentDocument.exists=false).
+ * Used for idempotency: usage events, top-up records.
+ * Throws 'ALREADY_EXISTS' on conflict; caller can ignore.
+ */
+export async function firestoreCreateIfNotExists(
+  saJson: string,
+  path: string,
+  data: Record<string, WritableValue>,
+): Promise<void> {
+  const sa = JSON.parse(saJson) as ServiceAccount;
+  const token = await getAccessToken(sa);
+
+  const url = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/${path}?currentDocument.exists=false`;
+
+  const res = await fetch(url, {
+    method:  'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ fields: toFirestoreFields(data) }),
+  });
+
+  if (res.status === 409 || res.status === 412) throw new Error('ALREADY_EXISTS');
+  if (!res.ok) throw new Error(`Firestore create-if-not-exists failed: ${await res.text()}`);
+}
+
 export async function firestoreGet(
   saJson: string,
   path: string,

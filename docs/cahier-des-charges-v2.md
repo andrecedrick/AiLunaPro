@@ -283,7 +283,7 @@ Unité de consommation IA. 1 token ≈ 1 unit d'API call agent IA. Modèles cons
 
 ### Architecture technique
 
-**Firestore** : `organizations/{orgId}/tokens/balance`
+**Firestore** : `organizations/{orgId}/tokens/current`
 ```ts
 {
   balance:           number,   // tokens disponibles
@@ -295,7 +295,7 @@ Unité de consommation IA. 1 token ≈ 1 unit d'API call agent IA. Modèles cons
 }
 ```
 
-**Sub-collection consommation** : `organizations/{orgId}/tokens/usage/{eventId}`
+**Sub-collection consommation** : `organizations/{orgId}/tokens/current/usage/{eventId}`
 ```ts
 {
   eventId:    string,    // unique
@@ -492,8 +492,9 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
   /trainings/{certId}
   /subscriptions/current        ← Stripe sync (J1)
   /billing_config/current       ← admin metadata (I.6 + J1.3)
-  /tokens/balance               ← NOUVEAU v2
-  /tokens/usage/{eventId}       ← NOUVEAU v2
+  /tokens/current               ← NOUVEAU v2 (J1.4A)
+  /tokens/current/usage/{eventId}       ← NOUVEAU v2 (J1.4A)
+  /tokens/current/topups/{stripeSessionId} ← NOUVEAU v2 (J1.4A)
 /affiliations/{code}            ← NOUVEAU v2
   /conversions/{subId}
   /payouts/{payoutId}

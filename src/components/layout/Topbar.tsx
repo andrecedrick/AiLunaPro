@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../theme/ThemeToggle';
+import { TokenBadge } from '../tokens/TokenBadge';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
@@ -228,6 +229,8 @@ export function Topbar() {
           </div>
         )}
       </div>
+
+      <TokenBadge />
 
       <ThemeToggle />
 

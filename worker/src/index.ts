@@ -36,6 +36,7 @@ import billingAdminSettings  from './routes/billing-admin-settings';
 import billingAdminPortal    from './routes/billing-admin-portal';
 import teamInvitesRoutes     from './routes/team-invites';
 import teamMembersRoutes     from './routes/team-members';
+import tokensRoutes          from './routes/tokens';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -47,6 +48,12 @@ export type AppEnv = {
     STRIPE_SECRET_KEY?:            string;
     STRIPE_WEBHOOK_SECRET?:        string;
     FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+    // J1.4A token packs (Stripe price IDs)
+    STRIPE_TOKEN_PRICE_STARTER?:   string;
+    STRIPE_TOKEN_PRICE_PRO?:       string;
+    STRIPE_TOKEN_PRICE_MAX?:       string;
+    APP_BASE_URL?:                 string;
+    TOKEN_DEBUG?:                  string;
   };
   Variables: {
     uid:    string;
@@ -83,6 +90,7 @@ app.route('/', billingAdminSettings);
 app.route('/', billingAdminPortal);
 app.route('/', teamInvitesRoutes);
 app.route('/', teamMembersRoutes);
+app.route('/', tokensRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

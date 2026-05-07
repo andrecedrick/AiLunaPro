@@ -78,6 +78,7 @@ export type Route =
   | { name: 'settings/billing' }
   | { name: 'billing' }
   | { name: 'billing/success' }
+  | { name: 'billing/tokens' }
   | { name: 'accept-invite' };
 
 export type RouteName = Route['name'];

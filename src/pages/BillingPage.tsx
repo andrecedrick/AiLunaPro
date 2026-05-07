@@ -16,6 +16,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBilling } from '../context/BillingContext';
+import { useRoute } from '../context/RouteContext';
+import { useTokens } from '../context/TokensContext';
 import { PLAN_CONFIGS, type PlanTier } from '../types/billing';
 import { createCheckoutSession, createPortalSession, CheckoutError, PortalError, WORKER_BASE, fetchInvoices, type StripeInvoice } from '../lib/billing/stripeClient';
 import { CURRENCY_SYMBOLS, type Currency, type CurrencySettings, DEFAULT_CURRENCY_SETTINGS } from '../lib/billing/currencyConstants';
@@ -520,6 +522,8 @@ function MockPlanCard({
 
 export function BillingPage() {
   const { session } = useAuth();
+  const { navigate } = useRoute();
+  const tokens = useTokens();
   const {
     subscription, invoices, usage,
     hasActiveSubscription,
@@ -791,6 +795,46 @@ export function BillingPage() {
           )}
         </div>
       </Card>
+
+      {/* Tokens — J1.4A. Hidden for client/unauth via TokensProvider gate. */}
+      {tokens.enabled && (
+        <Card style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 240 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: 'rgba(124,58,237,0.10)', color: 'var(--violet-text)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" /><path d="M8 12h8 M12 8v8" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Tokens
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  {tokens.balance
+                    ? `${tokens.balance.balance.toLocaleString()} / ${tokens.balance.monthlyAllocation.toLocaleString()} this cycle`
+                    : 'Token balance loading…'}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate({ name: 'billing/tokens' })}
+              style={{
+                padding: '9px 18px', borderRadius: 10, border: '1px solid var(--violet)',
+                background: 'transparent', color: 'var(--violet-text)',
+                fontWeight: 600, fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Manage tokens
+            </button>
+          </div>
+        </Card>
+      )}
 
       {/* Usage */}
       <div style={{ marginBottom: 28 }}>

@@ -99,6 +99,20 @@ export function BillingSuccessPage() {
   // One-shot: extract sessionId, kick off sync
   useEffect(() => {
     if (triggeredRef.current) return;
+
+    // J1.4A guard: if we landed here from a token top-up redirect (hash
+    // contains `topup=success` or path is `#/billing/tokens`), bail out
+    // and re-route to the tokens page. sync-session is for subscription
+    // sessions only and would 4xx on a one-time payment session.
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/billing/tokens') || hash.includes('topup=success') || hash.includes('topup=cancel')) {
+        console.log('[BillingSuccess] token top-up redirect detected — routing to tokens page');
+        navigate({ name: 'billing/tokens' });
+        return;
+      }
+    }
+
     const sid = extractSessionId();
     sessionIdRef.current = sid;
     console.log('[BillingSuccess] extracted sessionId=', sid);

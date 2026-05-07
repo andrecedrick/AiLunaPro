@@ -365,6 +365,34 @@ service cloud.firestore {
 
 
       // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/tokens/current  (+ subcollections)
+      //
+      // Phase J1.4A — token balance + usage + topups.
+      // Worker writes via service account (bypasses rules).
+      // Client role NEVER reads tokens.
+      // ───────────────────────────────────────────────────────────────────
+
+      // canViewTokens: owner, admin, billing, member (NOT client)
+      // canManageBilling already covers owner/admin/billing for topups.
+
+      match /tokens/current {
+        allow read:  if isAuth() && getMemberRole(orgId) in ['owner', 'admin', 'billing', 'member'];
+        allow write: if false;
+      }
+
+      match /tokens/current/usage/{eventId} {
+        // Read for owner/admin/billing org-wide; member sees own (server filters).
+        allow read:  if isAuth() && getMemberRole(orgId) in ['owner', 'admin', 'billing', 'member'];
+        allow write: if false;
+      }
+
+      match /tokens/current/topups/{sessionId} {
+        allow read:  if canManageBilling(orgId);
+        allow write: if false;
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
       // /organizations/{orgId}/activity_logs/{logId}
       //
       // Immutable audit trail. Written by Cloud Functions only.

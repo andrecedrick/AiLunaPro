@@ -19,7 +19,9 @@
 
 import { Hono } from 'hono';
 import { getStripe } from '../lib/stripe';
-import { firestoreSet } from '../lib/firestoreAdmin';
+import { firestoreSet, firestoreGet } from '../lib/firestoreAdmin';
+import { firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
+import { incrementBalance, syncBalanceAllocation } from '../lib/tokens';
 import { recordWebhookEvent } from './billing-config';
 import type { AppEnv } from '../index';
 import type Stripe from 'stripe';
@@ -112,6 +114,60 @@ async function handleEvent(
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
 
+      // J1.4A: branch on tokens_topup vs subscription
+      if (session.metadata?.type === 'tokens_topup') {
+        const orgId = session.client_reference_id ?? session.metadata.orgId;
+        const pack         = session.metadata.tokensPack;
+        const tokensAdded  = parseInt(session.metadata.tokensAdded ?? '0', 10);
+        if (!orgId || !pack || !tokensAdded) {
+          console.warn('[webhook] tokens_topup missing required metadata');
+          break;
+        }
+        const topupPath = `organizations/${orgId}/tokens/current/topups/${session.id}`;
+        // Idempotency: pending → retry credit. credited → skip. New → create pending.
+        let shouldCredit = false;
+        try {
+          await firestoreCreateIfNotExists(saJson, topupPath, {
+            stripeSessionId:       session.id,
+            stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? ''),
+            stripeEventId:         event.id,
+            pack,
+            tokensAdded,
+            amount:                session.amount_total ?? 0,
+            currency:              session.currency ?? 'usd',
+            status:                'pending',
+            createdAt:             new Date().toISOString(),
+          });
+          shouldCredit = true;
+        } catch (err) {
+          if (err instanceof Error && err.message === 'ALREADY_EXISTS') {
+            const existing = await firestoreGet(saJson, topupPath);
+            const status   = existing?.status as string | undefined;
+            if (status === 'credited') {
+              console.log('[webhook] tokens_topup already credited — skipping:', session.id);
+              break;
+            }
+            console.log('[webhook] tokens_topup pending — retrying credit:', session.id);
+            shouldCredit = true;
+          } else {
+            throw err;
+          }
+        }
+        if (shouldCredit) {
+          try {
+            const result = await incrementBalance(saJson, orgId, tokensAdded);
+            await firestoreSet(saJson, topupPath, {
+              status:     'credited',
+              creditedAt: new Date().toISOString(),
+            }, { merge: true });
+            console.log('[webhook] tokens_topup credited — orgId:', orgId, 'pack:', pack, 'tokens:', tokensAdded, 'newBalance:', result.balanceAfter);
+          } catch (err) {
+            console.error('[webhook] tokens_topup increment failed:', err);
+          }
+        }
+        break;
+      }
+
       // Pricing Table: client_reference_id. Custom checkout: metadata.orgId.
       const orgId = session.client_reference_id ?? session.metadata?.orgId;
       if (!orgId) {
@@ -182,6 +238,10 @@ async function handleEvent(
         cancelAtPeriodEnd:    sub.cancel_at_period_end,
         updatedAt:            new Date().toISOString(),
       });
+
+      // J1.4A: sync token allocation to plan
+      try { await syncBalanceAllocation(saJson, orgId, plan); }
+      catch (err) { console.warn('[webhook] syncBalanceAllocation failed:', err); }
       break;
     }
 
@@ -202,6 +262,10 @@ async function handleEvent(
         cancelAtPeriodEnd:    false,
         updatedAt:            new Date().toISOString(),
       });
+
+      // J1.4A: drop allocation back to Free
+      try { await syncBalanceAllocation(saJson, orgId, 'Free'); }
+      catch (err) { console.warn('[webhook] syncBalanceAllocation (deleted) failed:', err); }
       break;
     }
 

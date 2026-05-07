@@ -9,6 +9,7 @@ import { AuditProvider } from './context/AuditContext';
 import { ReportsProvider } from './context/ReportsContext';
 import { RegistryProvider } from './context/RegistryContext';
 import { BillingProvider } from './context/BillingContext';
+import { TokensProvider } from './context/TokensContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 
@@ -33,6 +34,7 @@ const BillingPage          = lazy(() => import('./pages/BillingPage').then(m => 
 const BillingSuccessPage   = lazy(() => import('./pages/BillingSuccessPage').then(m => ({ default: m.BillingSuccessPage })));
 const AcceptInvitePage     = lazy(() => import('./pages/AcceptInvitePage').then(m => ({ default: m.AcceptInvitePage })));
 const BillingSettingsPage  = lazy(() => import('./pages/settings/BillingSettingsPage').then(m => ({ default: m.BillingSettingsPage })));
+const TokensPage           = lazy(() => import('./pages/TokensPage').then(m => ({ default: m.TokensPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -71,6 +73,8 @@ function PageOutlet() {
         return <BillingSuccessPage />;
       case 'settings/billing':
         return <BillingSettingsPage />;
+      case 'billing/tokens':
+        return <TokensPage />;
       case 'dashboard':
       default:
         return <DashboardPage />;
@@ -98,34 +102,49 @@ function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── Stripe redirect detection (J1.2) ───────────────────── */
-  /* Stripe Checkout returns to:
-     - /#/billing/success?session_id=cs_test_... (preferred — hash routing)
-     - /?billing_status=success&session_id=...   (legacy)
-     - /#/billing?status=cancel
-     URL is NOT stripped here — BillingSuccessPage needs session_id intact.
-     sessionId is also persisted to sessionStorage so a manual refresh on
-     the success page still recovers it. */
+  /* ── Stripe redirect detection (J1.2 + J1.4A) ─────────────
+     Subscription Checkout returns to:
+       - /#/billing/success?session_id=cs_test_... → BillingSuccessPage (sync)
+       - /?billing_status=success&session_id=...   → legacy, root query string
+       - /#/billing?status=cancel
+     Token top-up Checkout (J1.4A) returns to:
+       - /#/billing/tokens?topup=success&session_id=...
+       - /#/billing/tokens?topup=cancel
+     Token top-ups MUST NOT route to BillingSuccessPage — that page calls
+     /api/billing/sync-session and produces a "Sync failed" UX for one-time
+     payments. TokensPage handles topup query params itself.
+     URL is NOT stripped here — child pages still need the params intact. */
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const hash       = window.location.hash;
-    const search     = window.location.search;
-    const queryStr   = hash.includes('?') ? hash.slice(hash.indexOf('?')) : search;
-    const params     = new URLSearchParams(queryStr);
-    const status     = params.get('billing_status') ?? params.get('status');
-    const sessionId  = params.get('session_id');
-    const inSuccess  = hash.startsWith('#/billing/success') || status === 'success' || (sessionId && !hash.includes('cancel'));
-    const inCancel   = status === 'cancel' || hash.startsWith('#/billing?status=cancel');
+    const hash      = window.location.hash;
+    const search    = window.location.search;
+    const queryStr  = hash.includes('?') ? hash.slice(hash.indexOf('?')) : search;
+    const params    = new URLSearchParams(queryStr);
+    const status    = params.get('billing_status') ?? params.get('status');
+    const sessionId = params.get('session_id');
 
-    if (sessionId) {
+    // Tokens top-up — let TokensPage handle the query params.
+    if (hash.startsWith('#/billing/tokens')) {
+      navigate({ name: 'billing/tokens' });
+      return;
+    }
+
+    // Subscription success — strict path match. Do NOT trigger on bare
+    // `session_id` presence; that misroutes token top-ups.
+    const inSubSuccess =
+      hash.startsWith('#/billing/success') ||
+      (status === 'success' && !hash.startsWith('#/billing/tokens'));
+    const inSubCancel =
+      status === 'cancel' || hash.startsWith('#/billing?status=cancel');
+
+    if (sessionId && inSubSuccess) {
       try { window.sessionStorage.setItem('stripe.lastSessionId', sessionId); } catch { /* ignore */ }
     }
 
-    if (inSuccess) {
+    if (inSubSuccess) {
       navigate({ name: 'billing/success' });
-      // Do NOT replaceState — BillingSuccessPage still needs to read session_id.
-    } else if (inCancel) {
+    } else if (inSubCancel) {
       navigate({ name: 'billing' });
       window.history.replaceState({}, '', window.location.pathname);
     }
@@ -199,7 +218,9 @@ function App() {
                 <ReportsProvider>
                   <RegistryProvider>
                     <BillingProvider>
-                      <AppShell />
+                      <TokensProvider>
+                        <AppShell />
+                      </TokensProvider>
                     </BillingProvider>
                   </RegistryProvider>
                 </ReportsProvider>
