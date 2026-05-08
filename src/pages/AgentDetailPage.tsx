@@ -56,7 +56,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function AgentDetailPage() {
   const { route, navigate } = useRoute();
   const { session } = useAuth();
-  const role = session?.role;
+  const role  = session?.role;
+  const orgId = session?.orgId ?? null;
   const agentId = route.name === 'agents/detail' ? route.agentId : null;
 
   const [agent,   setAgent]   = useState<AgentCatalogEntry | null>(null);
@@ -70,6 +71,11 @@ export function AgentDetailPage() {
       setLoading(false);
       return;
     }
+    if (!orgId) {
+      setError('Missing org context');
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -78,7 +84,7 @@ export function AgentDetailPage() {
         const { auth } = await import('../lib/firebase-auth');
         const idToken = await auth.currentUser?.getIdToken();
         if (!idToken) throw new Error('Not authenticated');
-        const a = await fetchAgent(agentId, idToken);
+        const a = await fetchAgent(orgId, agentId, idToken);
         if (!cancelled) setAgent(a);
       } catch (err) {
         console.warn('[AgentDetailPage] fetchAgent failed:', err);
@@ -88,7 +94,7 @@ export function AgentDetailPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [agentId, role]);
+  }, [agentId, role, orgId]);
 
   if (role === 'client') {
     return (

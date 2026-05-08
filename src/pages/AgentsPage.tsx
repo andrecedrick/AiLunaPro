@@ -35,7 +35,8 @@ function LockedView() {
 export function AgentsPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
-  const role = session?.role;
+  const role  = session?.role;
+  const orgId = session?.orgId ?? null;
 
   const [agents,    setAgents]    = useState<AgentCatalogEntry[] | null>(null);
   const [loading,   setLoading]   = useState(false);
@@ -44,7 +45,7 @@ export function AgentsPage() {
   const [integration, setIntegration] = useState<string>('');
 
   useEffect(() => {
-    if (role === 'client' || !session) return;
+    if (role === 'client' || !session || !orgId) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -53,7 +54,7 @@ export function AgentsPage() {
         const { auth } = await import('../lib/firebase-auth');
         const idToken = await auth.currentUser?.getIdToken();
         if (!idToken) throw new Error('Not authenticated');
-        const list = await fetchAgents(idToken);
+        const list = await fetchAgents(orgId, idToken);
         if (!cancelled) setAgents(list);
       } catch (err) {
         console.warn('[AgentsPage] fetchAgents failed:', err);
@@ -63,7 +64,7 @@ export function AgentsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [role, session]);
+  }, [role, session, orgId]);
 
   // Build filter dropdown values from loaded data
   const industries = useMemo(() => {

@@ -27,21 +27,30 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function fetchAgents(idToken: string, filters: AgentFilters = {}): Promise<AgentCatalogEntry[]> {
+/**
+ * orgId is required on every agent-catalog request because the worker's
+ * requireRole middleware reads role from /organizations/{orgId}/members/{uid}.
+ * Without it the worker returns 400 "Missing orgId". Caller must pass the
+ * current session.orgId.
+ */
+export async function fetchAgents(orgId: string, idToken: string, filters: AgentFilters = {}): Promise<AgentCatalogEntry[]> {
   const params = new URLSearchParams();
+  params.set('orgId', orgId);
   if (filters.industry)    params.set('industry',    filters.industry);
   if (filters.integration) params.set('integration', filters.integration);
   if (filters.minPlan)     params.set('minPlan',     filters.minPlan);
   if (filters.source)      params.set('source',      filters.source);
-  const qs = params.toString();
-  const res = await authedFetch(`/api/agents${qs ? `?${qs}` : ''}`, { method: 'GET' }, idToken);
+  const res = await authedFetch(`/api/agents?${params.toString()}`, { method: 'GET' }, idToken);
   const data = await jsonOrThrow<{ agents: AgentCatalogEntry[]; total: number }>(res);
   return data.agents;
 }
 
-export async function fetchAgent(agentId: string, idToken: string): Promise<AgentCatalogEntry> {
+export async function fetchAgent(orgId: string, agentId: string, idToken: string): Promise<AgentCatalogEntry> {
   // Worker route uses query-string instead of path param to keep TS
-  // inference shallow (TS2589). Functionally identical.
-  const res = await authedFetch(`/api/agents/lookup?id=${encodeURIComponent(agentId)}`, { method: 'GET' }, idToken);
+  // inference shallow (TS2589). orgId required for requireRole middleware.
+  const params = new URLSearchParams();
+  params.set('orgId', orgId);
+  params.set('id', agentId);
+  const res = await authedFetch(`/api/agents/lookup?${params.toString()}`, { method: 'GET' }, idToken);
   return jsonOrThrow<AgentCatalogEntry>(res);
 }
