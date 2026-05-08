@@ -558,25 +558,76 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
 | I | `2daee3f` | Billing UI mock |
 | I.5 | `918b96f` | Diagnostic Stripe read-only |
 | I.6 | `7814ff0` | Metadata editor |
-
-### Phases non commitées (en review)
-
-- **J1** : Stripe checkout réel + portal + webhook + custom 4-col grid
-- **J1.1** : Stripe Pricing Table embed (gardé fallback)
-- **J1.2** : Sync-session + invoices + Vite proxy + hash routing
-- **J1.3A** : Admin status + currency multi (USD/EUR/GBP/CAD/AUD) + products/prices + auto-detect locale + persist localStorage
+| J1 | `489bfe7` | Real Stripe checkout + portal + webhook + invoices + sync |
+| J1.3 | `63072f2` | Admin Stripe billing complete |
+| J1.3C-G | `93ca242` | RBAC + invites + UI action wiring |
+| J1.4A | `de4c9ee` | Tokens IA MVP |
+| J1.4A-Hardening | `02fdeef` | env-aware Stripe guard + structured errors |
+| J1.4A-NumericFix | `e8cab29` `9a775b2` `6177eaf` | integerValue Number coercion + repair UI + banner cleanup |
+| K0 | `7a8310c` `767e6a2` | Agent Catalog data model + seed + read-only catalog (orgId fix) |
 
 ### Phases manquantes
 
-- **J1.3B** : promo codes + payment settings + portal diagnostic
-- **K1-K3** : Diagnostic Express + ROI Calc + Recommendation Engine
+- **K1** : Diagnostic Express public *(non commencé)*
+- **K2** : ROI Calculator public *(non commencé)*
+- **K3** : Recommendation Engine *(non commencé)*
 - **K4** : EU AI Act classifier + Registre enrichi
 - **L1-L2** : Installation + Maintenance + Insurance + Devis PDF
 - **M1-M3** : Shadow AI Survey + FRIA + Article 4 Training
 - **N1** : COMEX Report
-- **O** : Tokens IA module *(NOUVEAU v2)*
 - **P** : Affiliation module *(NOUVEAU v2)*
 - **J2** : Production deploy + monitoring + i18n
+
+### K0 Agent Catalog — détail (commit `7a8310c` + `767e6a2`)
+
+**Collection Firestore** : `/agents/{agentId}` (top-level, single global catalog)
+
+**Slugs canoniques (10 agents seed)** :
+1. `support-agent`
+2. `sales-agent`
+3. `finance-agent`
+4. `hr-agent`
+5. `compliance-agent`
+6. `marketing-agent`
+7. `reporting-agent`
+8. `audit-agent`
+9. `document-agent`
+10. `admin-agent`
+
+**Règles Firestore** :
+```
+match /agents/{agentId} {
+  allow read:  if false;
+  allow write: if false;
+}
+```
+Worker est la seule surface de lecture (RBAC `requireRole(['owner','admin','billing','member'])`). Client n'a pas accès au catalogue.
+
+**Routes Worker** :
+- `GET  /api/agents?orgId=...`
+- `GET  /api/agents/lookup?orgId=...&id=...`
+- `POST /api/agents/admin/seed?orgId=...` (owner + `TOKEN_DEBUG=true`)
+- `POST /api/agents/admin/upsert` (owner)
+- `POST /api/agents/admin/archive` (owner)
+
+**Procédure de seed (production-safe)** :
+1. `wrangler secret put TOKEN_DEBUG` → `true` (ou `wrangler.toml [env.production.vars] TOKEN_DEBUG = "true"` temporaire)
+2. Restart worker
+3. `curl -X POST "https://<worker-domain>/api/agents/admin/seed?orgId=<ORG_ID>" -H "Authorization: Bearer <ID_TOKEN>"`
+4. Vérifier réponse : `{ ok: true, created: [10 slugs], updated: [], skipped: [], errors: [] }`
+5. **Immédiatement** revert `TOKEN_DEBUG=false` + restart worker
+6. Route est idempotente (`firestoreCreateIfNotExists`) — re-run safe.
+
+**Hors scope K0** :
+- ❌ K1 Diagnostic Express
+- ❌ K2 ROI Calculator
+- ❌ K3 Recommendation engine
+- ❌ Catalogue public/unauth
+- ❌ Stripe products par agent
+- ❌ Token consumption (`agent.call`) câblage
+- ❌ Workflow installation
+- ❌ Reviews/ratings
+- ❌ Per-org overrides
 
 ---
 

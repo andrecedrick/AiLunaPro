@@ -15,6 +15,9 @@ dist-ssr
 # Claude Code per-machine local settings
 .claude/settings.local.json
 
+# Claude Code local tooling artifact (per-session worktrees)
+.claude/worktrees/
+
 # Test coverage output
 coverage
 
