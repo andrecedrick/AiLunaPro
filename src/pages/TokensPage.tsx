@@ -147,6 +147,12 @@ export function TokensPage() {
   const [waitingWebhook, setWaitingWebhook] = useState(false);
 
   // J1.4A: handle Stripe redirect query params (topup=success | topup=cancel)
+  // Banner shows ONLY when the webhook has not yet credited the balance:
+  //   - if balance.updatedAt is older than 60s at landing time, webhook hasn't
+  //     fired → show banner, watch for topupTotal growth.
+  //   - if balance.updatedAt is within 60s, webhook already credited (race
+  //     between Stripe redirect and onSnapshot) → no banner.
+  // Hard timeout: banner self-clears after 60s regardless to prevent stale UI.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const hash = window.location.hash;
@@ -157,12 +163,22 @@ export function TokensPage() {
     if (topup === 'success') {
       const sid = params.get('session_id');
       showToast('Token purchase completed. Your balance will update shortly.', 'success');
-      setTopupNotice('Payment received. Waiting for Stripe webhook to update your token balance.');
-      setWaitingWebhook(true);
+
+      // Detect whether webhook has already updated the balance.
+      const updatedAtMs = balance?.updatedAt ? Date.parse(balance.updatedAt) : 0;
+      const recentlyCredited = updatedAtMs > 0 && (Date.now() - updatedAtMs) < 60_000;
+
+      if (!recentlyCredited) {
+        setTopupNotice('Payment received. Waiting for Stripe webhook to update your token balance.');
+        setWaitingWebhook(true);
+        // Snapshot the current topupTotal so the watch effect detects growth.
+        lastSeenTopupRef.current = balance?.topupTotal ?? 0;
+      }
+
       void refresh();
       // Strip query so reload does not re-fire
       window.history.replaceState({}, '', '#/billing/tokens');
-      console.log('[TokensPage] topup success — sessionId:', sid);
+      console.log('[TokensPage] topup success — sessionId:', sid, 'recentlyCredited:', recentlyCredited);
     }
     if (topup === 'cancel') {
       showToast('Token purchase cancelled.', 'info');
@@ -171,25 +187,41 @@ export function TokensPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-clear webhook waiting banner once topupTotal grows.
-  // onSnapshot in TokensProvider drives the live update.
-  const topupTotal = balance?.topupTotal ?? 0;
+  // Auto-clear webhook waiting banner once topupTotal grows OR balance.updatedAt
+  // crosses the snapshot threshold. onSnapshot in TokensProvider drives the
+  // live update; this effect just observes derived state.
+  const topupTotal     = balance?.topupTotal ?? 0;
+  const balanceUpdated = balance?.updatedAt   ?? '';
   const lastSeenTopupRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!waitingWebhook) {
+    if (!waitingWebhook) return;
+    if (lastSeenTopupRef.current !== null && topupTotal > lastSeenTopupRef.current) {
+      setWaitingWebhook(false);
+      setTopupNotice(null);
       lastSeenTopupRef.current = null;
       return;
     }
-    if (lastSeenTopupRef.current === null) {
-      lastSeenTopupRef.current = topupTotal;
-      return;
-    }
-    if (topupTotal > lastSeenTopupRef.current) {
+    // Defense-in-depth: if balance.updatedAt becomes recent while we are
+    // waiting, webhook fired — clear banner even if topupTotal observation
+    // raced through ref initialization.
+    const updatedAtMs = balanceUpdated ? Date.parse(balanceUpdated) : 0;
+    if (updatedAtMs > 0 && (Date.now() - updatedAtMs) < 30_000) {
       setWaitingWebhook(false);
       setTopupNotice(null);
       lastSeenTopupRef.current = null;
     }
-  }, [waitingWebhook, topupTotal]);
+  }, [waitingWebhook, topupTotal, balanceUpdated]);
+
+  // Hard 60s timeout to prevent stale waiting banner.
+  useEffect(() => {
+    if (!waitingWebhook) return;
+    const timer = setTimeout(() => {
+      setWaitingWebhook(false);
+      setTopupNotice(null);
+      lastSeenTopupRef.current = null;
+    }, 60_000);
+    return () => clearTimeout(timer);
+  }, [waitingWebhook]);
 
   // Fetch usage history
   useEffect(() => {
