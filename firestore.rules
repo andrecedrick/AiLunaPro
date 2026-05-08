@@ -97,6 +97,22 @@ service cloud.firestore {
 
 
     // ─────────────────────────────────────────────────────────────────────────
+    // /agents/{agentId}                     ← Phase K0 (Agent Catalog)
+    //
+    // Single global catalog of AI agents. Read access enforced ONLY at the
+    // Worker layer (requireRole excludes 'client'). The collection is
+    // top-level and orgless, so Firestore rules cannot scope read by
+    // org-membership role. Closed entirely to client-side reads to keep
+    // the Worker as the single source of truth.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /agents/{agentId} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
     // /users/{userId}
     //
     // User profiles, created on first sign-in.

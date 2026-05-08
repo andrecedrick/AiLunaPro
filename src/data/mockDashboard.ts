@@ -214,6 +214,7 @@ export const mockNavItems = [
   { id: 'new-audit', label: 'New Audit', icon: 'plus', active: false },
   { id: 'reports', label: 'Reports', icon: 'reports', active: false },
   { id: 'registry', label: 'AI Registry', icon: 'registry', active: false },
+  { id: 'agents', label: 'Agents', icon: 'agents', active: false },
   { id: 'team', label: 'Team', icon: 'team', active: false },
   { id: 'settings', label: 'Settings', icon: 'settings', active: false },
   { id: 'billing', label: 'Billing', icon: 'billing', active: false },

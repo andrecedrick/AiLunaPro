@@ -35,6 +35,8 @@ const BillingSuccessPage   = lazy(() => import('./pages/BillingSuccessPage').the
 const AcceptInvitePage     = lazy(() => import('./pages/AcceptInvitePage').then(m => ({ default: m.AcceptInvitePage })));
 const BillingSettingsPage  = lazy(() => import('./pages/settings/BillingSettingsPage').then(m => ({ default: m.BillingSettingsPage })));
 const TokensPage           = lazy(() => import('./pages/TokensPage').then(m => ({ default: m.TokensPage })));
+const AgentsPage           = lazy(() => import('./pages/AgentsPage').then(m => ({ default: m.AgentsPage })));
+const AgentDetailPage      = lazy(() => import('./pages/AgentDetailPage').then(m => ({ default: m.AgentDetailPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -75,6 +77,10 @@ function PageOutlet() {
         return <BillingSettingsPage />;
       case 'billing/tokens':
         return <TokensPage />;
+      case 'agents':
+        return <AgentsPage />;
+      case 'agents/detail':
+        return <AgentDetailPage />;
       case 'dashboard':
       default:
         return <DashboardPage />;

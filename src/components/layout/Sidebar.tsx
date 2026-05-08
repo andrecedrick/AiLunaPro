@@ -10,6 +10,7 @@ const NAV_ROUTES: Partial<Record<string, Route>> = {
   'new-audit': { name: 'audit/new' },
   reports: { name: 'reports' },
   registry: { name: 'registry' },
+  agents: { name: 'agents' },
   team: { name: 'team' },
   settings: { name: 'settings/profile' },
   billing:  { name: 'billing' },
@@ -25,6 +26,8 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'reports/detail') return 'reports';
   if (name === 'reports/share') return 'reports';
   if (name === 'registry') return 'registry';
+  if (name === 'agents') return 'agents';
+  if (name === 'agents/detail') return 'agents';
   if (name === 'team') return 'team';
   if (name === 'settings/profile')     return 'settings';
   if (name === 'settings/org')         return 'settings';
@@ -87,6 +90,16 @@ function NavIcon({ id }: { id: string }): ReactNode {
         <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
           <line x1="1" y1="10" x2="23" y2="10" />
+        </svg>
+      );
+    case 'agents':
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2" />
+          <circle cx="12" cy="5" r="2" />
+          <path d="M12 7v4" />
+          <line x1="8" y1="16" x2="8" y2="16" />
+          <line x1="16" y1="16" x2="16" y2="16" />
         </svg>
       );
     case 'help':
@@ -383,6 +396,8 @@ export function Sidebar() {
             if (item.id === 'billing' && role !== 'owner' && role !== 'admin' && role !== 'billing') return false;
             // Hide Team management for client
             if (item.id === 'team' && role === 'client') return false;
+            // K0: Hide Agents catalog for client
+            if (item.id === 'agents' && role === 'client') return false;
             return true;
           })
           .map(item => (

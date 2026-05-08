@@ -37,6 +37,7 @@ import billingAdminPortal    from './routes/billing-admin-portal';
 import teamInvitesRoutes     from './routes/team-invites';
 import teamMembersRoutes     from './routes/team-members';
 import tokensRoutes          from './routes/tokens';
+import agentsRoutes          from './routes/agents';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -124,6 +125,7 @@ app.route('/', billingAdminPortal);
 app.route('/', teamInvitesRoutes);
 app.route('/', teamMembersRoutes);
 app.route('/', tokensRoutes);
+app.route('/', agentsRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));
