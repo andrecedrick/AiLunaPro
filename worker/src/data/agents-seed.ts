@@ -15,11 +15,11 @@ export const AILUNAPRO_AGENT_SEED: readonly SeedEntry[] = [
     agentId: 'support-agent',
     source: 'ailunapro',
     name: 'AiLunaPro Support Agent',
-    tagline: 'Automatise les réponses client et réduit le temps de support.',
+    tagline: 'Automates customer replies and shortens support response time.',
     description:
-      'Agent IA conçu pour répondre aux questions fréquentes, qualifier les demandes support, orienter les tickets et assister les équipes service client. Il aide les entreprises à structurer un premier niveau de support disponible en continu, sans remplacer les équipes humaines.',
+      'AI agent designed to answer frequently asked questions, qualify support requests, route tickets, and assist customer service teams. Helps companies structure a continuous first level of support without replacing human teams.',
     problemSolved:
-      'Temps de réponse client élevé, demandes répétitives et surcharge du support.',
+      'Slow customer response times, repetitive requests, and overloaded support teams.',
     fits: {
       industries: ['retail', 'services', 'saas', 'ecommerce', 'education'],
       companySize: ['solo', 'sme', 'enterprise'],
@@ -49,11 +49,11 @@ export const AILUNAPRO_AGENT_SEED: readonly SeedEntry[] = [
     agentId: 'sales-agent',
     source: 'ailunapro',
     name: 'AiLunaPro Sales Agent',
-    tagline: 'Qualifie les prospects et prépare les relances commerciales.',
+    tagline: 'Qualifies leads and prepares sales follow-ups.',
     description:
-      'Agent IA orienté vente pour qualifier les leads, préparer les réponses commerciales, générer des relances et structurer les opportunités. Il aide les équipes commerciales à gagner du temps sur les tâches répétitives et à améliorer le suivi des prospects.',
+      'Sales-focused AI agent that qualifies leads, drafts commercial replies, generates follow-ups, and structures opportunities. Helps sales teams save time on repetitive tasks and improve prospect tracking.',
     problemSolved:
-      'Prospects mal qualifiés, relances oubliées et perte de temps commercial.',
+      'Poorly qualified prospects, missed follow-ups, and wasted sales time.',
     fits: {
       industries: ['services', 'saas', 'real-estate', 'consulting', 'b2b'],
       companySize: ['solo', 'sme', 'enterprise'],
@@ -83,11 +83,11 @@ export const AILUNAPRO_AGENT_SEED: readonly SeedEntry[] = [
     agentId: 'finance-agent',
     source: 'ailunapro',
     name: 'AiLunaPro Finance Agent',
-    tagline: 'Aide au traitement des factures, devis et relances.',
+    tagline: 'Assists with invoices, quotes, and collections.',
     description:
-      'Agent IA conçu pour aider à classer les documents financiers, préparer les devis, suivre les factures, générer des relances et détecter des anomalies simples. Il ne remplace pas un expert-comptable, mais réduit fortement le temps administratif financier.',
+      'AI agent designed to help classify financial documents, prepare quotes, track invoices, generate collection reminders, and flag simple anomalies. Does not replace an accountant, but greatly reduces financial administrative time.',
     problemSolved:
-      'Traitement manuel des factures, relances tardives et erreurs de saisie.',
+      'Manual invoice processing, late collections, and data entry errors.',
     fits: {
       industries: ['services', 'construction', 'retail', 'consulting'],
       companySize: ['solo', 'sme'],
