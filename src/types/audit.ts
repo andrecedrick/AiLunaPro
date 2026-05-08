@@ -81,6 +81,7 @@ export type Route =
   | { name: 'billing/tokens' }
   | { name: 'agents' }
   | { name: 'agents/detail'; agentId: string }
+  | { name: 'diagnostic' }
   | { name: 'accept-invite' };
 
 export type RouteName = Route['name'];

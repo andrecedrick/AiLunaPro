@@ -113,6 +113,21 @@ service cloud.firestore {
 
 
     // ─────────────────────────────────────────────────────────────────────────
+    // /public_diagnostics/{id}              ← Phase K1A (Diagnostic Express)
+    //
+    // Public lead-magnet submissions. Worker is the only writer (service
+    // account bypasses rules) and the only reader (admin-only read routes
+    // not yet exposed). Closed to all client-side access.
+    // 90-day retention via doc.expiresAt; TTL deletion handled separately.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /public_diagnostics/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
     // /users/{userId}
     //
     // User profiles, created on first sign-in.

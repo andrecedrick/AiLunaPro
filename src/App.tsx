@@ -37,6 +37,7 @@ const BillingSettingsPage  = lazy(() => import('./pages/settings/BillingSettings
 const TokensPage           = lazy(() => import('./pages/TokensPage').then(m => ({ default: m.TokensPage })));
 const AgentsPage           = lazy(() => import('./pages/AgentsPage').then(m => ({ default: m.AgentsPage })));
 const AgentDetailPage      = lazy(() => import('./pages/AgentDetailPage').then(m => ({ default: m.AgentDetailPage })));
+const DiagnosticPage       = lazy(() => import('./pages/DiagnosticPage').then(m => ({ default: m.DiagnosticPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -98,12 +99,16 @@ function AppShell() {
   const { route, navigate } = useRoute();
   const { isAuthenticated, isLoading, session } = useAuth();
 
-  /* ── Invite link detection (J1.3D) ───────────────────────
-     URL: #/invite/{orgId}/{inviteId}/{token}                */
+  /* ── Invite link + Diagnostic deep-link detection ──────
+     #/invite/{orgId}/{inviteId}/{token}    → accept-invite
+     #/diagnostic                            → diagnostic (K1A public)         */
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (window.location.hash.startsWith('#/invite/')) {
+    const h = window.location.hash;
+    if (h.startsWith('#/invite/')) {
       navigate({ name: 'accept-invite' });
+    } else if (h.startsWith('#/diagnostic')) {
+      navigate({ name: 'diagnostic' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -165,6 +170,15 @@ function AppShell() {
     return (
       <Suspense fallback={<PageFallback />}>
         <AcceptInvitePage />
+      </Suspense>
+    );
+  }
+
+  /* ── Diagnostic Express (K1A): public, chromeless, pre-auth ──── */
+  if (route.name === 'diagnostic') {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <DiagnosticPage />
       </Suspense>
     );
   }

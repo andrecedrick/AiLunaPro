@@ -38,6 +38,7 @@ import teamInvitesRoutes     from './routes/team-invites';
 import teamMembersRoutes     from './routes/team-members';
 import tokensRoutes          from './routes/tokens';
 import agentsRoutes          from './routes/agents';
+import diagnosticRoutes      from './routes/diagnostic';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -60,6 +61,8 @@ export type AppEnv = {
     // unset or invalid. Production must set this via Cloudflare secret or
     // env-specific [env.production] vars — never via global [vars].
     APP_ENV?:                      string;
+    // K1A — Cloudflare Turnstile secret for /api/public/diagnostic
+    TURNSTILE_SECRET_KEY?:         string;
   };
   Variables: {
     uid:    string;
@@ -126,6 +129,7 @@ app.route('/', teamInvitesRoutes);
 app.route('/', teamMembersRoutes);
 app.route('/', tokensRoutes);
 app.route('/', agentsRoutes);
+app.route('/', diagnosticRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

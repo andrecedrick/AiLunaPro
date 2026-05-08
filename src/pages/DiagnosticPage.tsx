@@ -1,0 +1,451 @@
+/**
+ * DiagnosticPage — Phase K1A.
+ * Public unauth route: #/diagnostic
+ *
+ * Single-page form: 8 questions (last is routing-only, no score), email +
+ * optional company name + GDPR consent + Turnstile. On submit: posts to
+ * /api/public/diagnostic, renders a result block with normalized score,
+ * bucket label, 3 recommended agent cards (each linking to the affiliate
+ * URL), and a sign-up CTA.
+ *
+ * Chromeless (no Sidebar). Renders before the auth gate in App.tsx.
+ */
+
+import { useMemo, useState } from 'react';
+import { useRoute } from '../context/RouteContext';
+import { DIAGNOSTIC_QUESTIONS } from '../data/diagnostic-questions';
+import { submitDiagnostic, friendlyDiagnosticError } from '../lib/diagnostic/diagnosticClient';
+import type { DiagnosticResult, Bucket } from '../types/diagnostic';
+import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
+
+const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
+
+const BUCKET_COPY: Record<Bucket, { title: string; message: string }> = {
+  low: {
+    title:   'Your AI maturity is emerging',
+    message: 'Your organization is at an early stage. Start with simple automation, an AI usage inventory, and practical support agents.',
+  },
+  medium: {
+    title:   'Your AI maturity is developing',
+    message: 'You already have some AI foundations. The next step is to structure usage, measure ROI, and improve document and reporting workflows.',
+  },
+  high: {
+    title:   'Your AI maturity is advanced',
+    message: 'You are ready to scale AI with stronger governance, compliance, reporting, and specialized automation.',
+  },
+};
+
+interface FormErrors {
+  general?: string;
+  email?:   string;
+  consent?: string;
+  answers?: string;
+}
+
+export function DiagnosticPage() {
+  const { navigate } = useRoute();
+
+  // Answers state — keyed by question.id
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [email, setEmail]           = useState('');
+  const [companyName, setCompany]   = useState('');
+  const [consent, setConsent]       = useState(false);
+  const [turnstileToken, setTsToken] = useState<string | null>(null);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [errors,     setErrors]     = useState<FormErrors>({});
+  const [result,     setResult]     = useState<DiagnosticResult | null>(null);
+
+  const allAnswered = useMemo(
+    () => DIAGNOSTIC_QUESTIONS.every(q => typeof answers[q.id] === 'string' && answers[q.id].length > 0),
+    [answers],
+  );
+
+  const onChangeAnswer = (qid: string, value: string) => {
+    setAnswers(prev => ({ ...prev, [qid]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const err: FormErrors = {};
+    if (!allAnswered)                                        err.answers = 'Please answer every question.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))           err.email   = 'Please enter a valid email address.';
+    if (!consent)                                            err.consent = 'You must accept to receive your result.';
+    if (turnstileToken === null)                             err.general = 'Captcha is loading — please wait.';
+    setErrors(err);
+    if (Object.keys(err).length > 0) return;
+
+    setSubmitting(true);
+    setErrors({});
+    try {
+      const r = await submitDiagnostic({
+        answers,
+        lead: {
+          email,
+          companyName: companyName.trim() || undefined,
+          consent: true,
+        },
+        turnstileToken: turnstileToken ?? undefined,
+      });
+      setResult(r);
+      // Scroll result into view
+      requestAnimationFrame(() => {
+        const el = document.getElementById('diagnostic-result');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } catch (sErr) {
+      console.error('[DiagnosticPage] submit failed:', sErr);
+      setErrors({ general: friendlyDiagnosticError(sErr) });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--surface-2)',
+      padding: '40px 20px',
+      fontFamily: 'inherit',
+    }}>
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <h1 style={{
+            fontSize: 32, fontWeight: 800, color: 'var(--text-primary)',
+            margin: '0 0 10px',
+          }}>
+            AI Maturity Diagnostic
+          </h1>
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
+            Answer 8 short questions. Get your AI maturity score and see which AiLunaPro agents fit your stage.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0' }}>
+            Free · No account required · Takes about 2 minutes
+          </p>
+        </div>
+
+        {result ? (
+          <ResultView result={result} onReset={() => { setResult(null); setAnswers({}); }} />
+        ) : (
+          <form onSubmit={handleSubmit} noValidate>
+            {/* Questions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {DIAGNOSTIC_QUESTIONS.map((q, i) => (
+                <fieldset
+                  key={q.id}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    padding: '18px 20px',
+                    background: 'var(--surface)',
+                    margin: 0,
+                  }}
+                >
+                  <legend style={{
+                    padding: '0 8px', fontSize: 13, fontWeight: 700,
+                    color: 'var(--violet-text)', textTransform: 'uppercase', letterSpacing: 0.5,
+                  }}>
+                    Question {i + 1} / {DIAGNOSTIC_QUESTIONS.length}
+                  </legend>
+                  <div style={{
+                    fontSize: 15, fontWeight: 600, color: 'var(--text-primary)',
+                    marginBottom: 12, lineHeight: 1.4,
+                  }}>
+                    {q.label}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {q.options.map(opt => {
+                      const checked = answers[q.id] === opt.value;
+                      return (
+                        <label
+                          key={opt.value}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '10px 14px', borderRadius: 8,
+                            border: checked ? '2px solid var(--violet)' : '1px solid var(--border)',
+                            background: checked ? 'rgba(124,58,237,0.06)' : 'transparent',
+                            cursor: 'pointer', fontSize: 14, color: 'var(--text-primary)',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name={q.id}
+                            value={opt.value}
+                            checked={checked}
+                            onChange={() => onChangeAnswer(q.id, opt.value)}
+                            style={{ accentColor: 'var(--violet)', cursor: 'pointer' }}
+                          />
+                          <span>{opt.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+
+            {errors.answers && (
+              <div style={{ marginTop: 16, padding: 12, borderRadius: 8, background: 'var(--red-soft-bg)', color: 'var(--red-text)', fontSize: 13 }}>
+                {errors.answers}
+              </div>
+            )}
+
+            {/* Lead capture */}
+            <div style={{
+              marginTop: 24, padding: 22, borderRadius: 14,
+              border: '1px solid var(--border)', background: 'var(--surface)',
+            }}>
+              <h2 style={{
+                fontSize: 16, fontWeight: 700, color: 'var(--text-primary)',
+                margin: '0 0 14px',
+              }}>
+                Where should we send your result?
+              </h2>
+
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                Email <span style={{ color: 'var(--red-text)' }}>*</span>
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                style={{
+                  width: '100%', padding: '10px 12px', fontSize: 14,
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  background: 'var(--surface-2)', color: 'var(--text-primary)',
+                  marginBottom: errors.email ? 4 : 14,
+                  boxSizing: 'border-box',
+                }}
+              />
+              {errors.email && (
+                <div style={{ color: 'var(--red-text)', fontSize: 12, marginBottom: 14 }}>{errors.email}</div>
+              )}
+
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                Company name <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={e => setCompany(e.target.value)}
+                placeholder="Acme Corp"
+                maxLength={120}
+                style={{
+                  width: '100%', padding: '10px 12px', fontSize: 14,
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  background: 'var(--surface-2)', color: 'var(--text-primary)',
+                  marginBottom: 16,
+                  boxSizing: 'border-box',
+                }}
+              />
+
+              {/* Helper text above consent */}
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
+                We only use this information to generate your diagnostic and follow up about relevant AI services. No account is required.
+              </p>
+
+              {/* Consent */}
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={e => setConsent(e.target.checked)}
+                  style={{ marginTop: 3, accentColor: 'var(--violet)' }}
+                />
+                <span>
+                  I agree to receive my AI diagnostic result and relevant follow-up information from AiLunaPro. I understand that my answers and email will be processed to generate and store this diagnostic result, and that I can request deletion of my data at any time.
+                </span>
+              </label>
+              {errors.consent && (
+                <div style={{ color: 'var(--red-text)', fontSize: 12, marginTop: 6 }}>{errors.consent}</div>
+              )}
+
+              {/* Turnstile */}
+              <div style={{ marginTop: 16 }}>
+                <TurnstileWidget onToken={t => setTsToken(t)} />
+              </div>
+            </div>
+
+            {errors.general && (
+              <div style={{ marginTop: 16, padding: 12, borderRadius: 8, background: 'var(--red-soft-bg)', color: 'var(--red-text)', fontSize: 13 }}>
+                {errors.general}
+              </div>
+            )}
+
+            {/* Submit */}
+            <div style={{ marginTop: 22, display: 'flex', justifyContent: 'center' }}>
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  padding: '13px 32px', borderRadius: 12, border: 'none',
+                  background: submitting ? 'var(--surface-2)' : 'var(--violet)',
+                  color: submitting ? 'var(--text-muted)' : '#fff',
+                  fontSize: 15, fontWeight: 700,
+                  cursor: submitting ? 'wait' : 'pointer',
+                  boxShadow: submitting ? 'none' : '0 8px 22px rgba(124,58,237,0.25)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {submitting ? 'Computing your result…' : 'Get my AI maturity score'}
+              </button>
+            </div>
+
+            <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={() => navigate({ name: 'login' })}
+                style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+              >
+                Sign in
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Result view ────────────────────────────────────────── */
+
+function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: () => void }) {
+  const copy = BUCKET_COPY[result.bucket];
+  const pct  = Math.max(0, Math.min(100, result.score));
+  const ringColor =
+    result.bucket === 'high'   ? 'var(--green-text)'  :
+    result.bucket === 'medium' ? 'var(--violet-text)' :
+                                  'var(--yellow-text)';
+
+  return (
+    <div id="diagnostic-result">
+      {/* Score card */}
+      <div style={{
+        padding: 32, borderRadius: 18,
+        border: '1px solid var(--border)', background: 'var(--surface)',
+        boxShadow: '0 18px 40px rgba(0,0,0,0.06)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        textAlign: 'center', gap: 10,
+        marginBottom: 28,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+          Your AI maturity score
+        </div>
+        <div style={{
+          fontSize: 56, fontWeight: 800, color: ringColor,
+          fontVariantNumeric: 'tabular-nums', lineHeight: 1.05,
+        }}>
+          {pct}<span style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 600 }}>/100</span>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
+          {copy.title}
+        </div>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 480, lineHeight: 1.55 }}>
+          {copy.message}
+        </p>
+
+        {/* Progress bar */}
+        <div style={{ width: '100%', maxWidth: 420, marginTop: 12, height: 8, background: 'var(--surface-2)', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{
+            width: `${pct}%`, height: '100%', background: ringColor,
+            transition: 'width 0.5s ease',
+          }} />
+        </div>
+      </div>
+
+      {/* Recommended agents */}
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{
+          fontSize: 14, fontWeight: 700, color: 'var(--text-primary)',
+          margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 0.5,
+        }}>
+          Recommended AiLunaPro agents
+        </h2>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: 12,
+        }}>
+          {result.recommendedAgentIds.map(slug => (
+            <a
+              key={slug}
+              href={AFFILIATE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block',
+                padding: 16, borderRadius: 12,
+                border: '2px solid var(--violet)', background: 'rgba(124,58,237,0.04)',
+                textDecoration: 'none', color: 'var(--text-primary)',
+                transition: 'transform 0.15s ease',
+              }}
+            >
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: 'var(--violet-text)', textTransform: 'uppercase', marginBottom: 6 }}>
+                AiLunaPro
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {humanizeSlug(slug)}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--violet-text)', fontWeight: 600 }}>
+                Get this agent
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* Sign-up CTA */}
+      <div style={{
+        padding: 24, borderRadius: 14,
+        background: 'var(--text-primary)', color: '#fff',
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
+          Want a deeper audit and your full action plan?
+        </div>
+        <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>
+          Create a free AiLunaPro workspace to access the full audit, registry, and agent catalog.
+        </div>
+        <a
+          href={AFFILIATE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            padding: '11px 28px', borderRadius: 10,
+            background: 'var(--violet)', color: '#fff',
+            fontWeight: 700, fontSize: 14, textDecoration: 'none',
+          }}
+        >
+          Create your free account
+        </a>
+      </div>
+
+      <div style={{ marginTop: 18, textAlign: 'center' }}>
+        <button
+          type="button"
+          onClick={onReset}
+          style={{
+            background: 'none', border: 'none',
+            color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12,
+            textDecoration: 'underline',
+          }}
+        >
+          Take the diagnostic again
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function humanizeSlug(slug: string): string {
+  return slug
+    .split('-')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
