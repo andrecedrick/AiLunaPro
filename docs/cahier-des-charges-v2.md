@@ -565,10 +565,11 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
 | J1.4A-Hardening | `02fdeef` | env-aware Stripe guard + structured errors |
 | J1.4A-NumericFix | `e8cab29` `9a775b2` `6177eaf` | integerValue Number coercion + repair UI + banner cleanup |
 | K0 | `7a8310c` `767e6a2` | Agent Catalog data model + seed + read-only catalog (orgId fix) |
+| K1A | `34c1fba` | Diagnostic Express public MVP — 8-question form + server-side scoring + Turnstile + static recommendations |
 
 ### Phases manquantes
 
-- **K1** : Diagnostic Express public *(non commencé)*
+- **K1B** : Diagnostic Express anti-abuse hardening (KV rate-limit, email-domain blocklist) *(différé — activer si abus mesuré)*
 - **K2** : ROI Calculator public *(non commencé)*
 - **K3** : Recommendation Engine *(non commencé)*
 - **K4** : EU AI Act classifier + Registre enrichi
@@ -619,7 +620,6 @@ Worker est la seule surface de lecture (RBAC `requireRole(['owner','admin','bill
 6. Route est idempotente (`firestoreCreateIfNotExists`) — re-run safe.
 
 **Hors scope K0** :
-- ❌ K1 Diagnostic Express
 - ❌ K2 ROI Calculator
 - ❌ K3 Recommendation engine
 - ❌ Catalogue public/unauth
@@ -627,6 +627,89 @@ Worker est la seule surface de lecture (RBAC `requireRole(['owner','admin','bill
 - ❌ Token consumption (`agent.call`) câblage
 - ❌ Workflow installation
 - ❌ Reviews/ratings
+- ❌ Per-org overrides
+
+### K1A Diagnostic Express — détail (commit `34c1fba`)
+
+**Route publique** : `#/diagnostic` — chromeless, **no auth required**.
+
+**Worker route** : `POST /api/public/diagnostic` (no `requireAuth`).
+
+**Lead capture** :
+- `email` required
+- `companyName` optional (max 120 chars)
+- `consent` required (GDPR-aligned wording, exact text in DiagnosticPage.tsx)
+
+**8 canonical question IDs** (`worker/src/data/diagnostic-questions.ts`, mirrored in `src/data/`) :
+1. `ai_usage` (weight 1)
+2. `process_automation` (weight 1)
+3. `data_readiness` (weight 1)
+4. `compliance_awareness` (weight 1)
+5. `shadow_ai` (weight 1)
+6. `business_impact` (weight 1)
+7. `team_skills` (weight 1)
+8. `implementation_priority` (weight 0 — never affects score, used only for recommendation override)
+
+**Score formula** :
+```
+score = Math.round(weightedScore / maxScore * 100)
+maxScore = 7 × 3 = 21    // 7 weighted questions × max option score 3
+```
+
+**Buckets** :
+- `low`    = 0–39
+- `medium` = 40–69
+- `high`   = 70–100
+
+**Bucket → recommended agents (max 3)** :
+- `low`    → `admin-agent`, `audit-agent`, `support-agent`
+- `medium` → `audit-agent`, `document-agent`, `reporting-agent`
+- `high`   → `compliance-agent`, `reporting-agent`, `finance-agent`
+
+**Priority override mapping** (`implementation_priority` value → agent slug, prepend if absent, dedupe, trim 3) :
+- `improve_sales`     → `sales-agent`
+- `support_customers` → `support-agent`
+- `compliance`        → `compliance-agent`
+- `documents`         → `document-agent`
+- `save_time`         → `admin-agent`
+
+**Persistence** :
+- Collection : `/public_diagnostics/{id}`
+- Règles Firestore :
+  ```
+  match /public_diagnostics/{id} {
+    allow read:  if false;
+    allow write: if false;
+  }
+  ```
+  Worker (service account) est le seul writer, et le seul reader prévu (admin
+  read routes pas encore exposées).
+
+**Rétention** :
+- `expiresAt = createdAt + 90 days` (champ ISO stocké)
+- TTL effectif activé via **Firebase Console → Firestore → TTL → field `expiresAt`** sur `public_diagnostics`. Suppression automatique sous 24h après expiration. Pas de cron Worker en K1A.
+
+**Anti-abus** :
+- Cloudflare Turnstile (widget frontend + verify côté Worker)
+- Production : `TURNSTILE_SECRET_KEY` requis. Token absent ou invalide → 4xx.
+- Dev/staging : bypass quand secret unset OU token absent. Jamais en production.
+- Pas de rate-limit KV en K1A (différé K1B).
+
+**Production env requis** :
+- Worker secret : `TURNSTILE_SECRET_KEY`
+- Frontend env : `VITE_TURNSTILE_SITE_KEY`
+- Worker `APP_ENV=production`
+
+**Hors scope K1A** :
+- ❌ K1B (rate-limit KV / IP-based)
+- ❌ K2 ROI Calculator
+- ❌ K3 Recommendation Engine (recommandations statiques en K1A)
+- ❌ PDF email report
+- ❌ Admin diagnostic dashboard
+- ❌ i18n (English only en K1A)
+- ❌ Stripe attribution
+- ❌ Token consumption
+- ❌ Création de compte automatique depuis diagnostic
 - ❌ Per-org overrides
 
 ---
