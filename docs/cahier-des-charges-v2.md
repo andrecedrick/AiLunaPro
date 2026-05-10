@@ -569,13 +569,14 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
 | Inspection script | `988cfa6` | read-only project audit script (10 categories, no auto-fix) |
 | Sidebar prefs | `d43f79e` | sidebar Language/Currency selectors with PreferencesContext |
 | K2A | `dd15460` | ROI Calculator public MVP — 4-input form + server-authoritative formula + Turnstile + static workflow→agent recommendation |
+| H0 | `fa9a7b6` | Help Center MVP — auth-only #/help with 10 user-facing English sections, sticky TOC, ?section= query routing |
 
 ### Phases manquantes
 
 - **K1B** : Diagnostic Express anti-abuse hardening (KV rate-limit, email-domain blocklist) *(différé — activer si abus mesuré)*
 - **K2B** : ROI Calculator multi-workflow + real agent pricing *(différé — backfiller `pricing.monthlyPrice` quand Stripe products agents arrivent)*
 - **K3** : Recommendation Engine *(non commencé)*
-- **H0** : Help Center *(non commencé)*
+- **H1** : Help Center search + feedback *(différé — client-side / KV-indexed search, helpfulness ratings)*
 - **K4** : EU AI Act classifier + Registre enrichi
 - **L1-L2** : Installation + Maintenance + Insurance + Devis PDF
 - **M1-M3** : Shadow AI Survey + FRIA + Article 4 Training
@@ -859,6 +860,83 @@ optionnels :
   mensuelle qui est rollover-cappée à 1× allocation au cycle reset).
 - Les packs top-up sont billed en USD only jusqu'à J2 multi-currency
   packs.
+
+### H0 Help Center — détail (commit `fa9a7b6`)
+
+**Route** : `#/help` — **auth-only**, dashboard shell (non-chromeless).
+
+**Visibilité** : tous les rôles authentifiés (`owner`, `admin`,
+`billing`, `member`, `client`). Caché sur les routes chromeless /
+public / auth (`login`, `signup`, `accept-invite`, `diagnostic`,
+`roi-calculator`).
+
+**Contenu** : statique anglais hardcodé dans
+`src/data/help/sections.tsx`. 10 sections :
+
+| Section id | Titre |
+|-----------|-------|
+| `getting-started` | Getting Started |
+| `agents` | AI Agents |
+| `tokens` | Tokens |
+| `billing` | Billing |
+| `diagnostic` | Diagnostic Express |
+| `roi-calculator` | ROI Calculator |
+| `team` | Team and Roles |
+| `settings` | Settings |
+| `troubleshooting` | Troubleshooting |
+| `faq` | FAQ |
+
+**Layout** :
+- Desktop (≥ 900 px) : TOC sticky 240 px à gauche + main content
+  scrollable.
+- Mobile (< 900 px) : TOC dans `<details>` repliable au top, main
+  prend toute la largeur.
+
+**Routing** :
+- `#/help` → défaut sur `getting-started`.
+- `#/help?section=<id>` → scroll vers section au mount.
+- Click TOC → `history.replaceState` met à jour l'URL + smooth-scroll.
+- Section id invalide → fallback `getting-started`.
+- IntersectionObserver suit la section active pendant le scroll
+  (suspendu 600 ms après scroll programmatique).
+
+**Règles de contenu user-facing** (audit du contenu commit) :
+- Pas de noms d'env vars (`TOKEN_DEBUG`, etc.).
+- Pas de commandes `curl` / Stripe CLI / wrangler.
+- Pas de wording dev-internal type "worker not running".
+- Pas de mentions du script d'inspection.
+- Wording sécurité concrète : "authenticated access, role-based
+  permissions, Firestore security rules, server-side writes for
+  sensitive operations".
+- Tokens business model expliqué :
+  abonnement = allocation mensuelle ;
+  top-ups optionnels et additifs ;
+  top-up tokens never expire ;
+  packs USD only.
+- Billing clarity : "Billing and token packs are currently in USD.
+  The sidebar currency selector is a display preference only. It
+  does not change Stripe checkout currency or token pack pricing yet."
+- Settings : sélecteurs language/currency = préférences uniquement
+  jusqu'à i18n / multi-currency billing complets.
+- Section ROI : documente `#/roi-calculator` comme disponible avec
+  disclaimer estimate + note placeholder $99/month agent cost.
+- Email `service@ailunapro.com` autorisé en commentaire de code
+  uniquement (placeholder), **jamais** user-visible. Footer Help
+  affiche : "Need more help? Contact your workspace owner or
+  AiLunaPro support."
+
+**Hors scope H0** :
+- ❌ Chatbot
+- ❌ Search (différé H1)
+- ❌ External CMS
+- ❌ Markdown loader
+- ❌ i18n
+- ❌ User feedback / view tracking / analytics
+- ❌ Inline images / videos
+- ❌ Public unauth Help
+- ❌ Per-org overrides
+- ❌ Modifications product logic (billing / token / agents /
+  diagnostic / team / ROI)
 
 ---
 
