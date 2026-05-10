@@ -571,6 +571,7 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
 | K2A | `dd15460` | ROI Calculator public MVP — 4-input form + server-authoritative formula + Turnstile + static workflow→agent recommendation |
 | H0 | `fa9a7b6` | Help Center MVP — auth-only #/help with 10 user-facing English sections, sticky TOC, ?section= query routing |
 | K3A | `543f960` | Server-side recommendation engine — POST /api/recommend (auth + role-gated), rule-based weighted scoring, top-3 + reasons, RecommendPanel on /agents |
+| J1-Hardening | `a0cc8c8` | Stripe subscription sync hardening: shared product→plan mapping, APP_BASE_URL redirect URLs, subscription allocation sync in webhook + sync-session fallback, inspection checks |
 
 ### Phases manquantes
 
@@ -584,7 +585,7 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
 - **M1-M3** : Shadow AI Survey + FRIA + Article 4 Training
 - **N1** : COMEX Report
 - **P** : Affiliation module *(NOUVEAU v2)*
-- **J2** : Production deploy + monitoring + i18n
+- **J2** : Production deploy + Worker secret provisioning (FIREBASE_SERVICE_ACCOUNT_JSON, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, TURNSTILE_SECRET_KEY) + monitoring + i18n
 
 ### K0 Agent Catalog — détail (commit `7a8310c` + `767e6a2`)
 
@@ -1086,6 +1087,153 @@ K3A introduit l'endpoint `/api/recommend` indépendamment, sans
 toucher aux flows publics K1A/K2A. Quand K3B/K3C arriveront, ils
 remplaceront les recommandations statiques par un appel au moteur
 K3, en gardant les mêmes contrats UI.
+
+---
+
+### J1 — Stripe Subscription Sync Hardening (commit `a0cc8c8`)
+
+> **Important**: J1 hardens local-dev Stripe test-mode behavior.
+> Production secret provisioning and deployment are deferred to J2.
+
+**Goal**
+
+- Harden local-dev Stripe test-mode subscription sync.
+- Ensure subscription plan changes update `organizations/{orgId}/subscriptions/current`.
+- Ensure monthly token allocation syncs safely on plan changes.
+- Ensure Stripe redirect URLs use `APP_BASE_URL` (not hardcoded localhost).
+- Keep token top-ups, product pricing, and frontend untouched.
+
+**Files touched (6)**
+
+- `worker/src/lib/billing-admin-shared.ts`
+- `worker/src/routes/stripe.ts`
+- `worker/src/routes/billing-sync.ts`
+- `worker/src/routes/billing-checkout.ts`
+- `worker/src/routes/billing-portal.ts`
+- `scripts/inspect-project.mjs`
+
+**Key changes**
+
+1. **Shared plan mapping helpers** (single source of truth in `billing-admin-shared.ts`):
+   - `PlanLabel` type (`Free | Starter | Professional | Enterprise`)
+   - `PRODUCT_TO_PLAN_LABEL` map
+   - `planLabelFromProductId(productId)` — capitalized plan label, defaults to `Starter` for unknown paid products
+   - `extractProductIdFromSubscription(sub)` — handles string ref + expanded Product object
+
+2. **Removed local duplicated `PRODUCT_TO_PLAN` / `planFromProduct` / `extractProductId`** from:
+   - `worker/src/routes/stripe.ts`
+   - `worker/src/routes/billing-sync.ts`
+
+   Both routes now import shared helpers. Eliminates drift risk across capitalization and product-ID maintenance.
+
+3. **`APP_BASE_URL`-driven redirect URLs** replace hardcoded `http://localhost:5173`:
+   - `billing-checkout.ts`: `success_url` + `cancel_url` use `env.APP_BASE_URL ?? 'http://localhost:5173'`
+   - `billing-portal.ts`: `return_url` uses same fallback pattern
+
+4. **`syncBalanceAllocation` added defensively**:
+   - In `stripe.ts` `checkout.session.completed` subscription branch (after Firestore write + metadata update). Guards against missed or out-of-order `customer.subscription.created` events.
+   - In `billing-sync.ts` after Firestore write. Ensures the frontend fallback path (`/api/billing/sync-session`) leaves `tokens/current` in the same state as the webhook path.
+   - Both calls wrapped in non-fatal try/catch — sync flow never aborts on token-side failure.
+
+5. **Inspection script** (`scripts/inspect-project.mjs`) — 9 new J1 checks under category `billing/J1`:
+   - shared helpers exported from `billing-admin-shared.ts`
+   - no hardcoded localhost redirect URLs in `billing-checkout.ts` / `billing-portal.ts` (fallback pattern `?? 'http://localhost:5173'` is allowed)
+   - `stripe.ts` imports shared helpers
+   - `stripe.ts` has no local `PRODUCT_TO_PLAN` duplicate
+   - `billing-sync.ts` imports shared helpers
+   - `billing-sync.ts` has no local `PRODUCT_TO_PLAN` duplicate
+   - `stripe.ts` checkout.completed subscription branch calls `syncBalanceAllocation`
+   - `billing-sync.ts` calls `syncBalanceAllocation`
+
+**Subscription sync behavior matrix**
+
+| Scenario | Stripe event | Result |
+|---|---|---|
+| New subscription checkout | `checkout.session.completed` + `customer.subscription.created` | `subscriptions/current` written; plan label resolved from product; `tokens/current.monthlyAllocation` synced to plan |
+| Upgrade (e.g. Starter → Professional) | `customer.subscription.updated` | Plan + `monthlyAllocation` updated; balance preserved (no wipe) |
+| Downgrade (e.g. Professional → Starter) | `customer.subscription.updated` | Plan + `monthlyAllocation` decreased; balance preserved until next cycle reset |
+| Cancel at period end | `customer.subscription.updated` (cancel_at_period_end=true) | `cancelAtPeriodEnd=true`; plan unchanged |
+| Immediate cancellation | `customer.subscription.deleted` | `plan='Free'`, `status='canceled'`, allocation→100; balance preserved (merge) |
+| `invoice.payment_failed` | `invoice.payment_failed` | Logged only (no Firestore write — deferred) |
+| Webhook replay (subscription event) | duplicate `customer.subscription.*` | Idempotent rewrite of `subscriptions/current`; allocation re-synced same value |
+| Webhook replay (top-up) | duplicate `checkout.session.completed` (tokens_topup) | No double credit (`firestoreCreateIfNotExists` guard keyed on `session.id`) |
+| Sync-session fallback | frontend POST after Stripe redirect | Same Firestore writes + allocation sync as webhook path |
+
+**Token allocation rules**
+
+- Subscription plan controls `monthlyAllocation`.
+- Plan changes update `monthlyAllocation` only — no rewrite of `balance`, `consumed`, `rollover`, or `topupTotal`.
+- Balance is preserved across plan changes (intentional — user keeps current credits until next cycle reset).
+- Top-ups are additive and never wiped by subscription sync (`firestoreSet` merge, only `monthlyAllocation` + `updatedAt` touched).
+- `topupTotal`, `consumed`, and `rollover` are not reset by plan sync.
+- Cycle reset / rollover remains handled by `ensureTokenCycleFresh` (existing token cycle logic, unchanged).
+- Token top-up checkout path (`POST /api/tokens/topup`) remains idempotent and unchanged.
+
+**Out of scope / deferred**
+
+- `invoice.payment_failed` Firestore write (still log-only)
+- `invoice.paid` handler (not added — subscription status=active already covers state)
+- Persistent webhook event log (still in-memory ring in `billing-config.ts`)
+- `event.created` ordering guard (last-write-wins acceptable for J1)
+- Production secret provisioning (J2)
+- Production deploy (J2)
+- New Stripe products / prices
+- Multi-currency billing changes
+- i18n
+- Token consumption wiring into modules
+- Auto-recharge
+- Metered billing
+- Pricing changes
+- K3B (Diagnostic recommendation migration)
+- K3C (ROI recommendation migration)
+- Plan capitalization migration (mixed casing tolerated via `allocationForPlan` lowercase normalization)
+- Frontend changes
+- Firestore rules
+
+**Local-dev environment (`worker/.dev.vars` + `wrangler.toml`)**
+
+| Var | Purpose |
+|---|---|
+| `STRIPE_SECRET_KEY` | Stripe test-mode key (sk_test_...) |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_...` printed by `stripe listen` |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | full JSON for `audit-ai-cc9e2` |
+| `FIREBASE_PROJECT_ID` | `audit-ai-cc9e2` (wrangler.toml `[vars]`) |
+| `APP_BASE_URL` | `http://localhost:5173` |
+| `APP_ENV` | `development` |
+| `STRIPE_TOKEN_PRICE_STARTER` | price_... (5,000-token pack) |
+| `STRIPE_TOKEN_PRICE_PRO` | price_... (25,000-token pack) |
+| `STRIPE_TOKEN_PRICE_MAX` | price_... (100,000-token pack) |
+
+**Production readiness blocker**
+
+J2 must provision Worker secrets via `wrangler secret put ... --env production`:
+
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `STRIPE_SECRET_KEY` (live or production-test, decided at J2)
+- `STRIPE_WEBHOOK_SECRET` (production endpoint)
+- `TURNSTILE_SECRET_KEY` (if public forms deployed)
+
+Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJECT_ID`, `ALLOWED_ORIGINS`, `APP_BASE_URL`, `APP_ENV=production`. **Production deploy is not part of J1.**
+
+**Validation matrix recap (17 runtime checks, all PASS)**
+
+1. Subscription checkout Starter → `plan='Starter'`, allocation=1000
+2. Subscription checkout Professional → `plan='Professional'`, allocation=10000
+3. Subscription checkout Enterprise → `plan='Enterprise'`, allocation=100000
+4. Customer Portal return URL honors `APP_BASE_URL`
+5. Upgrade Starter → Professional → allocation→10000, balance preserved
+6. Downgrade Professional → Starter → allocation→1000, balance preserved
+7. Cancel at period end → `cancelAtPeriodEnd=true`, plan unchanged
+8. Immediate cancel → `plan='Free'`, allocation=100, balance preserved
+9. Sync-session fallback → same outcome as webhook
+10. Token top-up `starter` pack → +5,000 exactly, `topupTotal+=5000`
+11. Token top-up webhook replay → no double credit (idempotency holds)
+12. Subscription webhook replay → idempotent rewrite, allocation re-synced
+13. `invoice.payment_failed` simulation → logged only (no Firestore write)
+14. TokenBadge UI → reflects new balance, no NaN
+15. BillingPage UI → reflects plan + status correctly
+16. `/agents` `/diagnostic` `/roi-calculator` `/help` → unchanged behavior
+17. `node scripts/inspect-project.mjs --smoke-api` → 0 FAIL
 
 ---
 
