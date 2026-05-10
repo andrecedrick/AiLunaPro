@@ -23,36 +23,12 @@ import { firestoreSet, firestoreGet } from '../lib/firestoreAdmin';
 import { firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { incrementBalance, syncBalanceAllocation } from '../lib/tokens';
 import { TOKEN_PACKS, isValidPack } from '../lib/token-costs';
+import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
 import { recordWebhookEvent } from './billing-config';
 import type { AppEnv } from '../index';
 import type Stripe from 'stripe';
 
 const stripe = new Hono<AppEnv>();
-
-// ── Product → app plan map (J1.1) ────────────────────────────
-// Real Stripe test-mode product IDs. Update for J2 production.
-const PRODUCT_TO_PLAN: Record<string, 'Starter' | 'Professional' | 'Enterprise'> = {
-  prod_USl0378mg0WpXH: 'Starter',
-  prod_USl1qstrufNmjk: 'Professional',
-  prod_USl2FAygpK0wW2: 'Enterprise',
-};
-
-function planFromProduct(productId: string | null | undefined): 'Starter' | 'Professional' | 'Enterprise' {
-  if (productId && PRODUCT_TO_PLAN[productId]) return PRODUCT_TO_PLAN[productId];
-  return 'Starter';
-}
-
-function extractProductId(sub: Stripe.Subscription): string | null {
-  const item = sub.items?.data?.[0];
-  if (!item) return null;
-  const price = item.price;
-  // price.product is either a string id or an expanded Product
-  if (typeof price.product === 'string') return price.product;
-  if (price.product && typeof price.product === 'object' && 'id' in price.product) {
-    return (price.product as Stripe.Product).id;
-  }
-  return null;
-}
 
 stripe.post('/api/stripe/webhook', async c => {
   const env = c.env as AppEnv['Bindings'] & {
@@ -203,8 +179,8 @@ async function handleEvent(
         expand: ['items.data.price'],
       });
 
-      const productId = extractProductId(sub);
-      const plan      = planFromProduct(productId);
+      const productId = extractProductIdFromSubscription(sub);
+      const plan      = planLabelFromProductId(productId);
       const item      = sub.items?.data?.[0];
 
       await firestoreSet(saJson, `organizations/${orgId}/subscriptions/current`, {
@@ -226,6 +202,12 @@ async function handleEvent(
         metadata: { orgId, plan },
       });
 
+      // J1: sync token allocation defensively here. Mirrors
+      // customer.subscription.created/updated path — guards against missed
+      // or out-of-order subscription events.
+      try { await syncBalanceAllocation(saJson, orgId, plan); }
+      catch (err) { console.warn('[webhook] syncBalanceAllocation (checkout.completed) failed:', err); }
+
       console.log('[webhook] checkout synced — orgId:', orgId, 'plan:', plan, 'product:', productId);
       break;
     }
@@ -239,8 +221,8 @@ async function handleEvent(
         break;
       }
 
-      const productId = extractProductId(sub);
-      const plan      = planFromProduct(productId);
+      const productId = extractProductIdFromSubscription(sub);
+      const plan      = planLabelFromProductId(productId);
       const item      = sub.items?.data?.[0];
 
       await firestoreSet(saJson, `organizations/${orgId}/subscriptions/current`, {

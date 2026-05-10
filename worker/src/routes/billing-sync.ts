@@ -22,32 +22,12 @@ import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { getStripe } from '../lib/stripe';
 import { firestoreSet } from '../lib/firestoreAdmin';
+import { syncBalanceAllocation } from '../lib/tokens';
+import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
 import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
 const sync = new Hono<AppEnv>();
-
-const PRODUCT_TO_PLAN: Record<string, 'Starter' | 'Professional' | 'Enterprise'> = {
-  prod_USl0378mg0WpXH: 'Starter',
-  prod_USl1qstrufNmjk: 'Professional',
-  prod_USl2FAygpK0wW2: 'Enterprise',
-};
-
-function planFromProduct(productId: string | null | undefined): 'Starter' | 'Professional' | 'Enterprise' {
-  if (productId && PRODUCT_TO_PLAN[productId]) return PRODUCT_TO_PLAN[productId];
-  return 'Starter';
-}
-
-function extractProductId(sub: Stripe.Subscription): string | null {
-  const item = sub.items?.data?.[0];
-  if (!item) return null;
-  const price = item.price;
-  if (typeof price.product === 'string') return price.product;
-  if (price.product && typeof price.product === 'object' && 'id' in price.product) {
-    return (price.product as Stripe.Product).id;
-  }
-  return null;
-}
 
 interface SyncBody {
   sessionId: string;
@@ -138,10 +118,10 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
 
   // Resolve plan: metadata.plan first, fallback product map
   const metadataPlan = session.metadata?.plan ?? sub.metadata?.plan;
-  const productId    = extractProductId(sub);
+  const productId    = extractProductIdFromSubscription(sub);
   const plan = (metadataPlan && ['Starter', 'Professional', 'Enterprise'].includes(metadataPlan as string))
     ? (metadataPlan as 'Starter' | 'Professional' | 'Enterprise')
-    : planFromProduct(productId);
+    : planLabelFromProductId(productId);
 
   console.log('[sync-session] subscriptionId=', sub.id, 'plan=', plan, 'productId=', productId);
 
@@ -178,6 +158,15 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
     const msg = err instanceof Error ? err.message : 'Firestore write failed';
     console.error('[sync-session] write failed:', msg);
     return c.json({ error: `Firestore write failed: ${msg}` }, 500);
+  }
+
+  // J1: sync token allocation to plan. Must match webhook behavior so the
+  // frontend fallback path leaves tokens/current in the same state as the
+  // webhook would. Non-fatal — failure here does not abort the sync flow.
+  try {
+    await syncBalanceAllocation(env.FIREBASE_SERVICE_ACCOUNT_JSON, orgId, plan);
+  } catch (err) {
+    console.warn('[sync-session] syncBalanceAllocation failed (non-fatal):', err);
   }
 
   // Persist orgId+plan onto sub metadata for future webhook events

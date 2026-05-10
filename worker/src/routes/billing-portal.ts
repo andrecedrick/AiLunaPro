@@ -22,6 +22,7 @@ portal.post('/api/billing/portal', requireAuth(), async c => {
   const env = c.env as AppEnv['Bindings'] & {
     STRIPE_SECRET_KEY?: string;
     FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+    APP_BASE_URL?: string;
   };
 
   if (!env.STRIPE_SECRET_KEY) {
@@ -54,7 +55,9 @@ portal.post('/api/billing/portal', requireAuth(), async c => {
   }
   console.log('[portal] customerId=', customerId);
 
-  const returnUrl = 'http://localhost:5173/#/billing';
+  // J1: APP_BASE_URL-driven return URL. localhost is dev-only fallback.
+  const baseUrl   = env.APP_BASE_URL ?? 'http://localhost:5173';
+  const returnUrl = `${baseUrl}/#/billing`;
   const stripe    = getStripe(env.STRIPE_SECRET_KEY);
 
   let session;

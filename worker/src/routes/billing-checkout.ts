@@ -31,9 +31,6 @@ import type { AppEnv } from '../index';
 
 const checkout = new Hono<AppEnv>();
 
-const SUCCESS_URL = 'http://localhost:5173/#/billing/success';
-const CANCEL_URL  = 'http://localhost:5173/#/billing?status=cancel';
-
 interface CheckoutBody {
   orgId:      string;
   plan?:      Plan;
@@ -90,11 +87,18 @@ checkout.post('/api/billing/checkout', requireAuth(), async c => {
   const env = c.env as AppEnv['Bindings'] & {
     STRIPE_SECRET_KEY?: string;
     FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+    APP_BASE_URL?: string;
   };
 
   if (!env.STRIPE_SECRET_KEY) return c.json({ error: 'Stripe not configured' }, 503);
   const blocked = assertStripeKeyAllowed(env);
   if (blocked) return c.json(blocked.body, blocked.status);
+
+  // J1: base URL for Stripe redirects. Falls back to localhost only when
+  // APP_BASE_URL is not configured (dev convenience). Production must set it.
+  const baseUrl    = env.APP_BASE_URL ?? 'http://localhost:5173';
+  const successUrl = `${baseUrl}/#/billing/success?session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl  = `${baseUrl}/#/billing?status=cancel`;
 
   let body: CheckoutBody;
   try { body = await c.req.json<CheckoutBody>(); }
@@ -193,13 +197,11 @@ checkout.post('/api/billing/checkout', requireAuth(), async c => {
               'fallback=', currencyFallbackUsed);
 
   // ── Create session ──────────────────────────────────
-  const successUrl = `${SUCCESS_URL}?session_id={CHECKOUT_SESSION_ID}`;
-
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode:                 'subscription',
     line_items:           [{ price: priceId, quantity: 1 }],
     success_url:          successUrl,
-    cancel_url:           CANCEL_URL,
+    cancel_url:           cancelUrl,
     client_reference_id:  orgId,
     metadata: {
       orgId,

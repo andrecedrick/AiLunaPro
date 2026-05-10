@@ -710,6 +710,89 @@ function checkModules() {
     if (hasAuth && hasRole) pass(cat, 'POST /api/recommend has auth + role gates');
     else                     fail(cat, 'POST /api/recommend missing auth or role gate');
   }
+
+  // ── J1: Stripe subscription sync hardening checks ──────────
+  const j1cat = 'billing/J1';
+  const billingShared = read('worker/src/lib/billing-admin-shared.ts') ?? '';
+  const stripeRoute   = read('worker/src/routes/stripe.ts') ?? '';
+  const syncRoute     = read('worker/src/routes/billing-sync.ts') ?? '';
+  const coRoute       = read('worker/src/routes/billing-checkout.ts') ?? '';
+  const portalRoute   = read('worker/src/routes/billing-portal.ts') ?? '';
+
+  // J1.0 — shared helpers exported from billing-admin-shared.ts
+  if (/export\s+function\s+planLabelFromProductId\b/.test(billingShared)
+      && /export\s+function\s+extractProductIdFromSubscription\b/.test(billingShared)
+      && /export\s+const\s+PRODUCT_TO_PLAN_LABEL\b/.test(billingShared)) {
+    pass(j1cat, 'billing-admin-shared exports planLabelFromProductId + extractProductIdFromSubscription');
+  } else {
+    fail(j1cat, 'billing-admin-shared missing J1 shared plan helpers');
+  }
+
+  // J1.1 — no hardcoded localhost in Stripe redirect URLs (fallback pattern is OK)
+  // Match string literal 'http://localhost:5173' or "http://localhost:5173"
+  // EXCEPT when preceded by `?? ` (nullish-coalescing fallback).
+  const hardcodedLocalhostRe = /(?<!\?\?\s)['"]http:\/\/localhost:5173/;
+  for (const [label, body] of [['billing-checkout.ts', coRoute], ['billing-portal.ts', portalRoute]]) {
+    // strip all `?? 'http://localhost:5173'` fallback occurrences before scanning
+    const stripped = body.replace(/\?\?\s*['"]http:\/\/localhost:5173[^'"]*['"]/g, '');
+    if (/['"]http:\/\/localhost:5173/.test(stripped)) {
+      fail(j1cat, `${label}: hardcoded localhost redirect URL detected (must use APP_BASE_URL fallback pattern)`);
+    } else {
+      pass(j1cat, `${label}: no hardcoded localhost redirect URL`);
+    }
+  }
+
+  // J1.2 — stripe.ts uses shared plan mapping
+  if (/from\s+['"]\.\.\/lib\/billing-admin-shared['"]/.test(stripeRoute)
+      && /planLabelFromProductId\s*\(/.test(stripeRoute)
+      && /extractProductIdFromSubscription\s*\(/.test(stripeRoute)) {
+    pass(j1cat, 'stripe.ts imports shared plan helpers');
+  } else {
+    fail(j1cat, 'stripe.ts missing shared plan helper imports');
+  }
+  if (/const\s+PRODUCT_TO_PLAN\s*:\s*Record/.test(stripeRoute)) {
+    fail(j1cat, 'stripe.ts still declares local PRODUCT_TO_PLAN');
+  } else {
+    pass(j1cat, 'stripe.ts has no local PRODUCT_TO_PLAN duplicate');
+  }
+
+  // J1.3 — billing-sync.ts uses shared plan mapping
+  if (/from\s+['"]\.\.\/lib\/billing-admin-shared['"]/.test(syncRoute)
+      && /planLabelFromProductId\s*\(/.test(syncRoute)
+      && /extractProductIdFromSubscription\s*\(/.test(syncRoute)) {
+    pass(j1cat, 'billing-sync.ts imports shared plan helpers');
+  } else {
+    fail(j1cat, 'billing-sync.ts missing shared plan helper imports');
+  }
+  if (/const\s+PRODUCT_TO_PLAN\s*:\s*Record/.test(syncRoute)) {
+    fail(j1cat, 'billing-sync.ts still declares local PRODUCT_TO_PLAN');
+  } else {
+    pass(j1cat, 'billing-sync.ts has no local PRODUCT_TO_PLAN duplicate');
+  }
+
+  // J1.4 — stripe.ts checkout.session.completed subscription branch calls syncBalanceAllocation
+  // Locate the subscription branch (after the tokens_topup `break;`) and search
+  // for a syncBalanceAllocation call up to the next case label.
+  const ccsMatch = stripeRoute.match(/case\s+'checkout\.session\.completed'\s*:[\s\S]*?case\s+'customer\.subscription\.(?:updated|created)'/);
+  if (ccsMatch) {
+    const ccsBlock = ccsMatch[0];
+    // Drop the tokens_topup early-return sub-block so we only inspect the subscription branch
+    const subBranch = ccsBlock.replace(/if\s*\(\s*session\.metadata\?\.type\s*===\s*'tokens_topup'\s*\)\s*\{[\s\S]*?\n\s{6}\}/, '');
+    if (/syncBalanceAllocation\s*\(/.test(subBranch)) {
+      pass(j1cat, 'stripe.ts checkout.completed subscription branch calls syncBalanceAllocation');
+    } else {
+      fail(j1cat, 'stripe.ts checkout.completed subscription branch missing syncBalanceAllocation');
+    }
+  } else {
+    fail(j1cat, 'stripe.ts checkout.session.completed branch not found for J1 check');
+  }
+
+  // J1.5 — billing-sync.ts calls syncBalanceAllocation
+  if (/syncBalanceAllocation\s*\(/.test(syncRoute)) {
+    pass(j1cat, 'billing-sync.ts calls syncBalanceAllocation');
+  } else {
+    fail(j1cat, 'billing-sync.ts missing syncBalanceAllocation call');
+  }
 }
 
 // ============================================================
