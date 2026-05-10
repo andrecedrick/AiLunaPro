@@ -357,7 +357,7 @@ function checkRoutes() {
   }
 
   const audit = read('src/types/audit.ts') ?? '';
-  const expectedRoutes = ['billing/tokens', 'agents', 'agents/detail', 'diagnostic', 'roi-calculator'];
+  const expectedRoutes = ['billing/tokens', 'agents', 'agents/detail', 'diagnostic', 'roi-calculator', 'help'];
   for (const r of expectedRoutes) {
     if (audit.includes(`'${r}'`)) pass(cat, `Route union includes '${r}'`);
     else                          fail(cat, `Route union missing '${r}'`);
@@ -368,6 +368,8 @@ function checkRoutes() {
   else                                              fail(cat, 'App.tsx missing diagnostic chromeless branch');
   if (/route\.name\s*===\s*'roi-calculator'/.test(app)) pass(cat, 'App.tsx handles roi-calculator public/chromeless');
   else                                                  fail(cat, 'App.tsx missing roi-calculator chromeless branch');
+  if (/case\s+'help'\s*:/.test(app))                    pass(cat, 'App.tsx handles help route');
+  else                                                   fail(cat, 'App.tsx missing help case');
   if (/case\s+'agents'\s*:/.test(app))               pass(cat, 'App.tsx handles agents route');
   else                                                fail(cat, 'App.tsx missing agents case');
   if (/case\s+'agents\/detail'/.test(app))           pass(cat, 'App.tsx handles agents/detail route');

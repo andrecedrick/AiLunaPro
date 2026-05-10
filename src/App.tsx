@@ -40,6 +40,7 @@ const AgentsPage           = lazy(() => import('./pages/AgentsPage').then(m => (
 const AgentDetailPage      = lazy(() => import('./pages/AgentDetailPage').then(m => ({ default: m.AgentDetailPage })));
 const DiagnosticPage       = lazy(() => import('./pages/DiagnosticPage').then(m => ({ default: m.DiagnosticPage })));
 const RoiCalculatorPage    = lazy(() => import('./pages/RoiCalculatorPage').then(m => ({ default: m.RoiCalculatorPage })));
+const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -84,6 +85,8 @@ function PageOutlet() {
         return <AgentsPage />;
       case 'agents/detail':
         return <AgentDetailPage />;
+      case 'help':
+        return <HelpPage />;
       case 'dashboard':
       default:
         return <DashboardPage />;
@@ -113,6 +116,8 @@ function AppShell() {
       navigate({ name: 'diagnostic' });
     } else if (h.startsWith('#/roi-calculator')) {
       navigate({ name: 'roi-calculator' });
+    } else if (h.startsWith('#/help')) {
+      navigate({ name: 'help' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

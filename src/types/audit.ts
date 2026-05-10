@@ -83,6 +83,7 @@ export type Route =
   | { name: 'agents/detail'; agentId: string }
   | { name: 'diagnostic' }
   | { name: 'roi-calculator' }
+  | { name: 'help' }
   | { name: 'accept-invite' };
 
 export type RouteName = Route['name'];

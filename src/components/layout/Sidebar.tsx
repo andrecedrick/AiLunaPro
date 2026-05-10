@@ -13,6 +13,7 @@ const NAV_ROUTES: Partial<Record<string, Route>> = {
   registry: { name: 'registry' },
   agents: { name: 'agents' },
   team: { name: 'team' },
+  help: { name: 'help' },
   settings: { name: 'settings/profile' },
   billing:  { name: 'billing' },
 };
@@ -30,6 +31,7 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'agents') return 'agents';
   if (name === 'agents/detail') return 'agents';
   if (name === 'team') return 'team';
+  if (name === 'help') return 'help';
   if (name === 'settings/profile')     return 'settings';
   if (name === 'settings/org')         return 'settings';
   if (name === 'settings/preferences') return 'settings';
