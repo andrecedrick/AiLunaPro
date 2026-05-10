@@ -570,12 +570,14 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
 | Sidebar prefs | `d43f79e` | sidebar Language/Currency selectors with PreferencesContext |
 | K2A | `dd15460` | ROI Calculator public MVP — 4-input form + server-authoritative formula + Turnstile + static workflow→agent recommendation |
 | H0 | `fa9a7b6` | Help Center MVP — auth-only #/help with 10 user-facing English sections, sticky TOC, ?section= query routing |
+| K3A | `543f960` | Server-side recommendation engine — POST /api/recommend (auth + role-gated), rule-based weighted scoring, top-3 + reasons, RecommendPanel on /agents |
 
 ### Phases manquantes
 
 - **K1B** : Diagnostic Express anti-abuse hardening (KV rate-limit, email-domain blocklist) *(différé — activer si abus mesuré)*
 - **K2B** : ROI Calculator multi-workflow + real agent pricing *(différé — backfiller `pricing.monthlyPrice` quand Stripe products agents arrivent)*
-- **K3** : Recommendation Engine *(non commencé)*
+- **K3B** : migrate K1A Diagnostic to K3 backend *(différé — remplacer recommandations statiques par appel /api/recommend)*
+- **K3C** : migrate K2A ROI Calculator to K3 backend *(différé — remplacer recommandations statiques par appel /api/recommend)*
 - **H1** : Help Center search + feedback *(différé — client-side / KV-indexed search, helpfulness ratings)*
 - **K4** : EU AI Act classifier + Registre enrichi
 - **L1-L2** : Installation + Maintenance + Insurance + Devis PDF
@@ -937,6 +939,153 @@ public / auth (`login`, `signup`, `accept-invite`, `diagnostic`,
 - ❌ Per-org overrides
 - ❌ Modifications product logic (billing / token / agents /
   diagnostic / team / ROI)
+
+### K3A Recommendation Engine — détail (commit `543f960`)
+
+**Worker route** : `POST /api/recommend`
+
+**Auth** :
+- `requireAuth() + requireRole(['owner','admin','billing','member'])`
+- Client → 403, unauth → 401
+
+**Pure compute** :
+- pas de Firestore writes
+- pas de persistence
+- pas d'API tierce
+- pas de LLM
+- pas de vector similarity
+
+Lecture des agents actifs depuis `/agents` via service account
+(read-only).
+
+**Profile schema (tous les champs optionnels)** :
+- `industry?` — string max 40, lowercase + trim
+- `companySize?` — `solo | sme | enterprise`
+- `targetWorkflow?` — 9 valeurs K2A (`support`, `sales`, `finance`,
+  `documents`, `reporting`, `admin`, `compliance`, `marketing`,
+  `hr`)
+- `subscriptionPlan?` — `free | starter | professional | enterprise`
+- `currentMaturity?` — `low | medium | high`
+- `integrations?` — `string[]` normalized lowercase + trim + dedupe,
+  max 10 entries, max 40 chars each
+
+Profile complètement vide → `400 INVALID_PROFILE` avec message
+"Add at least one preference to personalize recommendations."
+
+**Erreurs par champ** :
+- `INVALID_INDUSTRY`
+- `INVALID_COMPANY_SIZE`
+- `INVALID_WORKFLOW`
+- `INVALID_PLAN`
+- `INVALID_MATURITY`
+- `INVALID_INTEGRATIONS`
+
+**Scoring rules** (additif, n'applique chaque règle que si le champ
+profile correspondant est présent — sauf source qui s'applique
+toujours) :
+
+| Règle | Poids |
+|------|------|
+| `industry` match (`agent.fits.industries.includes(industry)`) | +30 |
+| `industry` fallback `'all'` (`agent.fits.industries.includes('all')`) | +30 |
+| `companySize` match | +20 |
+| Integration per hit | +5, capped at 4 hits (+20 max) |
+| Plan fit (`agent.minPlan ≤ subscriptionPlan`) | +10 |
+| Plan exceed (`agent.minPlan > subscriptionPlan`) | -20 (pas de reason text) |
+| Workflow match (agent === `WORKFLOW_TO_PRIMARY_AGENT[targetWorkflow]`) | +25 |
+| Maturity match (agent ∈ `MATURITY_TO_AGENTS[currentMaturity]`) | +15 |
+| Source `'ailunapro'` | +10 |
+
+Filter : `status === 'active'` (filter, pas score). `score = clamp(rawScore, 0, 100)`.
+
+**Sort order** :
+1. score desc
+2. source `'ailunapro'` first (tie-breaker)
+3. name asc (tie-breaker final)
+
+**Output** : top 3 recommendations
+```json
+{
+  "rankings": [
+    { "agentId": "support-agent", "score": 80, "reasons": [...] },
+    ...
+  ]
+}
+```
+
+**Reasons catalog (anglais, server-generated, no exaggerated claims)** :
+- "Fits your industry"
+- "Suitable across industries"
+- "Recommended for solo teams"
+- "Recommended for SME teams"
+- "Recommended for enterprise teams"
+- "Compatible with selected integrations"
+- "Available within your plan"
+- "Matches your selected workflow"
+- "Fits your current AI maturity stage"
+- "AiLunaPro first-party agent"
+
+Pas de "perfect fit", "guaranteed ROI", "best possible".
+
+**Config locale (zero cross-coupling)** :
+- `WORKFLOW_TO_PRIMARY_AGENT` copié localement dans
+  `worker/src/data/recommendation-config.ts` (pas d'import K2A
+  `roi-config`)
+- `MATURITY_TO_AGENTS` copié localement (pas d'import K1A
+  `diagnostic-shared`)
+- `PLAN_ORDER` copié localement (`free=0 < starter=1 <
+  professional=2 < enterprise=3`)
+
+**Frontend integration** :
+- `RecommendPanel` collapsible card en haut de `/agents`
+- 6 inputs : industry / companySize / targetWorkflow /
+  subscriptionPlan / currentMaturity / integrations (comma-separated)
+- Bouton **Recommend agents** désactivé tant qu'aucun champ rempli
+- Texte d'aide : "Add at least one preference to personalize
+  recommendations."
+- Bouton **Clear recommendations** visible uniquement quand des
+  résultats existent
+- Mode recommendation :
+  - section "Top recommendations" → top-3 cards avec rank pill
+    `#1` / `#2` / `#3` violet, score chip, "Why?" disclosure
+    listant les reasons
+  - section "Other agents" → reste du catalogue
+  - filtres industry / integration désactivés avec hint :
+    "Clear recommendations to use filters."
+- Mode default `/agents` (sans recommendation) inchangé
+
+**Pas de nouveau env var.** Pas de nouvelle entrée Route union.
+Pas de page dédiée `#/recommend`.
+
+**Hors scope K3A** :
+- ❌ K3B (migrate K1A Diagnostic to K3 backend)
+- ❌ K3C (migrate K2A ROI Calculator to K3 backend)
+- ❌ Recommendation publique / unauth
+- ❌ LLM-based scoring
+- ❌ Vector embedding similarity
+- ❌ Persistence Firestore
+- ❌ Analytics dashboard
+- ❌ Page dédiée `#/recommend`
+- ❌ A/B testing / per-org weight tuning
+- ❌ i18n
+- ❌ Multi-currency UX
+- ❌ Modifications billing / token / team / diagnostic / ROI / Help
+  / sidebar prefs / agents catalog data
+
+### K1A / K2A — note de migration
+
+K1A Diagnostic Express continue d'utiliser **`recommendationsForBucket()`
++ priority override** statiques (ne change pas avec K3A). Migration
+vers `/api/recommend` = phase **K3B**, différée.
+
+K2A ROI Calculator continue d'utiliser **`WORKFLOW_TO_AGENTS`** map
+statique (ne change pas avec K3A). Migration vers `/api/recommend`
+= phase **K3C**, différée.
+
+K3A introduit l'endpoint `/api/recommend` indépendamment, sans
+toucher aux flows publics K1A/K2A. Quand K3B/K3C arriveront, ils
+remplaceront les recommandations statiques par un appel au moteur
+K3, en gardant les mêmes contrats UI.
 
 ---
 
