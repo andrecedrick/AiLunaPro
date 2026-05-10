@@ -39,6 +39,7 @@ import teamMembersRoutes     from './routes/team-members';
 import tokensRoutes          from './routes/tokens';
 import agentsRoutes          from './routes/agents';
 import diagnosticRoutes      from './routes/diagnostic';
+import roiRoutes             from './routes/roi';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ app.route('/', teamMembersRoutes);
 app.route('/', tokensRoutes);
 app.route('/', agentsRoutes);
 app.route('/', diagnosticRoutes);
+app.route('/', roiRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

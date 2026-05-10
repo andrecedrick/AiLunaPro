@@ -39,6 +39,7 @@ const TokensPage           = lazy(() => import('./pages/TokensPage').then(m => (
 const AgentsPage           = lazy(() => import('./pages/AgentsPage').then(m => ({ default: m.AgentsPage })));
 const AgentDetailPage      = lazy(() => import('./pages/AgentDetailPage').then(m => ({ default: m.AgentDetailPage })));
 const DiagnosticPage       = lazy(() => import('./pages/DiagnosticPage').then(m => ({ default: m.DiagnosticPage })));
+const RoiCalculatorPage    = lazy(() => import('./pages/RoiCalculatorPage').then(m => ({ default: m.RoiCalculatorPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -110,6 +111,8 @@ function AppShell() {
       navigate({ name: 'accept-invite' });
     } else if (h.startsWith('#/diagnostic')) {
       navigate({ name: 'diagnostic' });
+    } else if (h.startsWith('#/roi-calculator')) {
+      navigate({ name: 'roi-calculator' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -180,6 +183,15 @@ function AppShell() {
     return (
       <Suspense fallback={<PageFallback />}>
         <DiagnosticPage />
+      </Suspense>
+    );
+  }
+
+  /* ── ROI Calculator (K2A): public, chromeless, pre-auth ──────── */
+  if (route.name === 'roi-calculator') {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <RoiCalculatorPage />
       </Suspense>
     );
   }

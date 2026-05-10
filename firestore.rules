@@ -128,6 +128,20 @@ service cloud.firestore {
 
 
     // ─────────────────────────────────────────────────────────────────────────
+    // /public_roi_calculations/{id}        ← Phase K2A (ROI Calculator)
+    //
+    // Public lead-magnet ROI submissions. Worker is the only writer (service
+    // account bypasses rules). Closed to all client-side access.
+    // 90-day retention via doc.expiresAt; TTL deletion handled separately.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /public_roi_calculations/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
     // /users/{userId}
     //
     // User profiles, created on first sign-in.

@@ -327,6 +327,8 @@ function checkFirestoreRules() {
     { name: '/agents write=false', re: /match\s+\/agents\/\{agentId\}\s*\{[\s\S]*?allow\s+write:\s*if\s+false/ },
     { name: '/public_diagnostics read=false', re: /match\s+\/public_diagnostics\/\{id\}\s*\{[\s\S]*?allow\s+read:\s*if\s+false/ },
     { name: '/public_diagnostics write=false', re: /match\s+\/public_diagnostics\/\{id\}\s*\{[\s\S]*?allow\s+write:\s*if\s+false/ },
+    { name: '/public_roi_calculations read=false', re: /match\s+\/public_roi_calculations\/\{id\}\s*\{[\s\S]*?allow\s+read:\s*if\s+false/ },
+    { name: '/public_roi_calculations write=false', re: /match\s+\/public_roi_calculations\/\{id\}\s*\{[\s\S]*?allow\s+write:\s*if\s+false/ },
     { name: 'tokens/current write=false', re: /match\s+\/tokens\/current\s*\{[\s\S]*?allow\s+write:\s*if\s+false/ },
     { name: 'tokens/current/usage write=false', re: /match\s+\/tokens\/current\/usage\/\{eventId\}\s*\{[\s\S]*?allow\s+write:\s*if\s+false/ },
     { name: 'tokens/current/topups write=false', re: /match\s+\/tokens\/current\/topups\/\{sessionId\}\s*\{[\s\S]*?allow\s+write:\s*if\s+false/ },
@@ -344,7 +346,7 @@ function checkRoutes() {
   const cat = 'routes';
   const idx = read('worker/src/index.ts') ?? '';
   const expectedMounts = [
-    'tokensRoutes', 'agentsRoutes', 'diagnosticRoutes',
+    'tokensRoutes', 'agentsRoutes', 'diagnosticRoutes', 'roiRoutes',
     'teamInvitesRoutes', 'teamMembersRoutes',
     'billingCheckoutRoutes', 'billingPortalRoutes', 'billingSyncRoutes',
     'stripeRoutes',
@@ -355,7 +357,7 @@ function checkRoutes() {
   }
 
   const audit = read('src/types/audit.ts') ?? '';
-  const expectedRoutes = ['billing/tokens', 'agents', 'agents/detail', 'diagnostic'];
+  const expectedRoutes = ['billing/tokens', 'agents', 'agents/detail', 'diagnostic', 'roi-calculator'];
   for (const r of expectedRoutes) {
     if (audit.includes(`'${r}'`)) pass(cat, `Route union includes '${r}'`);
     else                          fail(cat, `Route union missing '${r}'`);
@@ -364,6 +366,8 @@ function checkRoutes() {
   const app = read('src/App.tsx') ?? '';
   if (/route\.name\s*===\s*'diagnostic'/.test(app)) pass(cat, 'App.tsx handles diagnostic public/chromeless');
   else                                              fail(cat, 'App.tsx missing diagnostic chromeless branch');
+  if (/route\.name\s*===\s*'roi-calculator'/.test(app)) pass(cat, 'App.tsx handles roi-calculator public/chromeless');
+  else                                                  fail(cat, 'App.tsx missing roi-calculator chromeless branch');
   if (/case\s+'agents'\s*:/.test(app))               pass(cat, 'App.tsx handles agents route');
   else                                                fail(cat, 'App.tsx missing agents case');
   if (/case\s+'agents\/detail'/.test(app))           pass(cat, 'App.tsx handles agents/detail route');
@@ -413,6 +417,12 @@ async function checkApiSmoke() {
   if (!dg.ok)               fail(cat, '/api/public/diagnostic request failed', dg.error);
   else if (dg.status === 404 || dg.status === 405) pass(cat, `/api/public/diagnostic GET → ${dg.status}`);
   else                        warn(cat, `/api/public/diagnostic GET unexpected status ${dg.status}`);
+
+  // Public ROI GET should be 404/405 (POST only)
+  const rc = await httpRequest({ port: 8787, path: '/api/public/roi-calculation', method: 'GET' });
+  if (!rc.ok)               fail(cat, '/api/public/roi-calculation request failed', rc.error);
+  else if (rc.status === 404 || rc.status === 405) pass(cat, `/api/public/roi-calculation GET → ${rc.status}`);
+  else                        warn(cat, `/api/public/roi-calculation GET unexpected status ${rc.status}`);
 }
 
 // ============================================================
@@ -635,9 +645,22 @@ function checkModules() {
   // Diagnostic — detect actual middleware invocation in the route
   // registration chain, not bare word in comments.
   const dRoute = read('worker/src/routes/diagnostic.ts') ?? '';
-  const requireAuthCallInRoute = /\.(?:post|get|put|delete)\s*\([^)]*requireAuth\s*\(/m.test(dRoute);
-  if (requireAuthCallInRoute) fail(cat, 'POST /api/public/diagnostic should NOT have requireAuth');
-  else                         pass(cat, 'POST /api/public/diagnostic has no requireAuth call');
+  const requireAuthCallInDiag = /\.(?:post|get|put|delete)\s*\([^)]*requireAuth\s*\(/m.test(dRoute);
+  if (requireAuthCallInDiag) fail(cat, 'POST /api/public/diagnostic should NOT have requireAuth');
+  else                        pass(cat, 'POST /api/public/diagnostic has no requireAuth call');
+
+  // ROI — same public-route check
+  const roiRoute = read('worker/src/routes/roi.ts') ?? '';
+  if (!roiRoute) {
+    fail(cat, 'worker/src/routes/roi.ts not found');
+  } else if (!/\.post\s*\(\s*['"]\/api\/public\/roi-calculation['"]/.test(roiRoute)) {
+    fail(cat, 'POST /api/public/roi-calculation route registration not found');
+  } else {
+    pass(cat, 'POST /api/public/roi-calculation registered');
+    const requireAuthCallInRoi = /\.(?:post|get|put|delete)\s*\([^)]*requireAuth\s*\(/m.test(roiRoute);
+    if (requireAuthCallInRoi) fail(cat, 'POST /api/public/roi-calculation should NOT have requireAuth');
+    else                       pass(cat, 'POST /api/public/roi-calculation has no requireAuth call');
+  }
 
   const turnstile = read('worker/src/lib/turnstile.ts') ?? '';
   if (turnstile.includes('isProduction(env)') && turnstile.includes('TURNSTILE_NOT_CONFIGURED')) {
