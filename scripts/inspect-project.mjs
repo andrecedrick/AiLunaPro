@@ -346,7 +346,7 @@ function checkRoutes() {
   const cat = 'routes';
   const idx = read('worker/src/index.ts') ?? '';
   const expectedMounts = [
-    'tokensRoutes', 'agentsRoutes', 'diagnosticRoutes', 'roiRoutes',
+    'tokensRoutes', 'agentsRoutes', 'diagnosticRoutes', 'roiRoutes', 'recommendRoutes',
     'teamInvitesRoutes', 'teamMembersRoutes',
     'billingCheckoutRoutes', 'billingPortalRoutes', 'billingSyncRoutes',
     'stripeRoutes',
@@ -425,6 +425,16 @@ async function checkApiSmoke() {
   if (!rc.ok)               fail(cat, '/api/public/roi-calculation request failed', rc.error);
   else if (rc.status === 404 || rc.status === 405) pass(cat, `/api/public/roi-calculation GET → ${rc.status}`);
   else                        warn(cat, `/api/public/roi-calculation GET unexpected status ${rc.status}`);
+
+  // K3A: /api/recommend POST without auth must reject (401/403), not crash
+  const rec = await httpRequest({
+    port: 8787, path: '/api/recommend', method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: '{}',
+  });
+  if (!rec.ok)               fail(cat, '/api/recommend request failed', rec.error);
+  else if (rec.status === 401 || rec.status === 403) pass(cat, `/api/recommend unauth → ${rec.status}`);
+  else if (rec.status === 502) fail(cat, '/api/recommend 502 — handler crash');
+  else                          warn(cat, `/api/recommend POST unexpected status ${rec.status}`);
 }
 
 // ============================================================
@@ -686,6 +696,20 @@ function checkModules() {
   // Stripe webhook
   if (idx.includes('stripeRoutes')) pass(cat, 'stripeRoutes mounted');
   else                                fail(cat, 'stripeRoutes not mounted');
+
+  // K3A: Recommend route
+  const recRoute = read('worker/src/routes/recommend.ts') ?? '';
+  if (!recRoute) {
+    fail(cat, 'worker/src/routes/recommend.ts not found');
+  } else {
+    if (/\.post\s*\(\s*['"]\/api\/recommend['"]/.test(recRoute)) pass(cat, 'POST /api/recommend registered');
+    else                                                          fail(cat, 'POST /api/recommend route registration not found');
+
+    const hasAuth = /\.post\s*\([^)]*requireAuth\s*\(/m.test(recRoute);
+    const hasRole = /requireRole\s*\(/m.test(recRoute);
+    if (hasAuth && hasRole) pass(cat, 'POST /api/recommend has auth + role gates');
+    else                     fail(cat, 'POST /api/recommend missing auth or role gate');
+  }
 }
 
 // ============================================================
