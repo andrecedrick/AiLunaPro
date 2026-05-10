@@ -1,21 +1,19 @@
 import { useState } from 'react';
 import { SettingsLayout } from './SettingsLayout';
 import { useTheme } from '../../context/ThemeContext';
+import { usePreferences } from '../../context/PreferencesContext';
 import { useToast } from '../../hooks/useToast';
-import { Button } from '../../components/ui/Button';
 import {
-  loadLanguage,
-  saveLanguage,
+  CURRENCY_LABELS,
+  CURRENCY_VALUES,
+  LANGUAGE_LABELS,
+  LANGUAGE_VALUES,
   loadNotifPrefs,
   saveNotifPrefs,
+  type DisplayCurrency,
   type Language,
   type NotificationPrefs,
 } from '../../lib/preferences';
-
-const LANGS: { value: Language; label: string }[] = [
-  { value: 'fr', label: 'Français' },
-  { value: 'en', label: 'English' },
-];
 
 /**
  * Settings — Preferences.
@@ -24,9 +22,9 @@ const LANGS: { value: Language; label: string }[] = [
  */
 export function PreferencesPage() {
   const { theme, setTheme } = useTheme();
+  const { language, setLanguage, displayCurrency, setDisplayCurrency } = usePreferences();
   const { showToast } = useToast();
 
-  const [lang, setLang]   = useState<Language>(() => loadLanguage());
   const [notif, setNotif] = useState<NotificationPrefs>(() => loadNotifPrefs());
 
   const onSelectTheme = (t: 'light' | 'dark') => {
@@ -34,12 +32,13 @@ export function PreferencesPage() {
   };
 
   const onSelectLang = (next: Language) => {
-    setLang(next);
-    saveLanguage(next);
-    showToast(
-      next === 'fr' ? 'Langue : Français.' : 'Language: English.',
-      'success',
-    );
+    setLanguage(next);
+    showToast(`Language: ${LANGUAGE_LABELS[next]}`, 'success');
+  };
+
+  const onSelectCurrency = (next: DisplayCurrency) => {
+    setDisplayCurrency(next);
+    showToast(`Currency: ${CURRENCY_LABELS[next]}`, 'success');
   };
 
   const onToggleNotif = (key: keyof NotificationPrefs) => {
@@ -67,19 +66,31 @@ export function PreferencesPage() {
       </Card>
 
       {/* Language */}
-      <Card title="Language" hint="Used for UI labels and emails. Some labels are not translated yet.">
-        <div style={{ display: 'flex', gap: 10 }}>
-          {LANGS.map((l) => (
-            <Button
-              key={l.value}
-              variant={l.value === lang ? 'secondary' : 'ghost'}
-              size="md"
-              onClick={() => onSelectLang(l.value)}
-            >
-              {l.label}
-            </Button>
+      <Card title="Language" hint="Used for UI labels and emails. Most labels are still in English while full i18n is in progress.">
+        <select
+          value={language}
+          onChange={e => onSelectLang(e.target.value as Language)}
+          aria-label="Language"
+          style={selectStyle()}
+        >
+          {LANGUAGE_VALUES.map(v => (
+            <option key={v} value={v}>{LANGUAGE_LABELS[v]}</option>
           ))}
-        </div>
+        </select>
+      </Card>
+
+      {/* Display currency */}
+      <Card title="Default currency" hint="Display preference only. Billing and token packs remain in USD.">
+        <select
+          value={displayCurrency}
+          onChange={e => onSelectCurrency(e.target.value as DisplayCurrency)}
+          aria-label="Default currency"
+          style={selectStyle()}
+        >
+          {CURRENCY_VALUES.map(v => (
+            <option key={v} value={v}>{CURRENCY_LABELS[v]}</option>
+          ))}
+        </select>
       </Card>
 
       {/* Notifications */}
@@ -108,6 +119,23 @@ export function PreferencesPage() {
 }
 
 /* ── Local presentational helpers ───────────────────────────── */
+
+function selectStyle(): React.CSSProperties {
+  return {
+    width: '100%',
+    maxWidth: 320,
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: '1px solid var(--border-strong)',
+    background: 'var(--surface)',
+    color: 'var(--text-primary)',
+    fontSize: 14,
+    fontWeight: 600,
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+    outline: 'none',
+  };
+}
 
 function Card({
   title,

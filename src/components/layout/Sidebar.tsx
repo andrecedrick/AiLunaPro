@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { mockNavItems } from '../../data/mockDashboard';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
+import { SidebarPreferences } from './SidebarPreferences';
 import type { Route, RouteName } from '../../types/audit';
 
 /* Map Sidebar nav item ids to routes (only the ones wired so far). */
@@ -412,6 +413,9 @@ export function Sidebar() {
             />
           ))}
       </nav>
+
+      {/* Language + Currency preferences (visible to all auth roles) */}
+      <SidebarPreferences />
 
       {/* User footer */}
       <div

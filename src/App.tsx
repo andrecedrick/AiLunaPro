@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
+import { PreferencesProvider } from './context/PreferencesContext';
 import { ToastProvider } from './context/ToastContext';
 import { RouteProvider, useRoute } from './context/RouteContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -231,6 +232,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
+        <PreferencesProvider>
         <ToastProvider>
           <RouteProvider>
             <AuthProvider>
@@ -248,6 +250,7 @@ function App() {
             </AuthProvider>
           </RouteProvider>
         </ToastProvider>
+        </PreferencesProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

@@ -6,7 +6,59 @@
  * in a later phase.
  */
 
-export type Language = 'fr' | 'en';
+/**
+ * UI language preference. App is currently rendered in English only;
+ * setting another value persists the user's preference for when full
+ * i18n lands. Picker labels in Sidebar + Settings show in their native
+ * spelling (Français, Español, etc.) regardless of selection.
+ */
+export type Language = 'en' | 'fr' | 'es' | 'de' | 'it' | 'pt';
+
+export const LANGUAGE_VALUES: readonly Language[] = ['en', 'fr', 'es', 'de', 'it', 'pt'];
+
+export const LANGUAGE_LABELS: Record<Language, string> = {
+  en: 'English',
+  fr: 'Français',
+  es: 'Español',
+  de: 'Deutsch',
+  it: 'Italiano',
+  pt: 'Português',
+};
+
+/** Short ISO-style labels — used in the compact sidebar widget. */
+export const LANGUAGE_SHORT_LABELS: Record<Language, string> = {
+  en: 'EN',
+  fr: 'FR',
+  es: 'ES',
+  de: 'DE',
+  it: 'IT',
+  pt: 'PT',
+};
+
+export function isLanguage(v: unknown): v is Language {
+  return typeof v === 'string' && (LANGUAGE_VALUES as readonly string[]).includes(v);
+}
+
+/**
+ * UI display currency. Persisted in localStorage. Does NOT change Stripe
+ * billing currency (detected server-side per checkout) or token-pack
+ * pricing (always USD until multi-currency packs land in J2).
+ */
+export type DisplayCurrency = 'usd' | 'eur' | 'gbp' | 'cad' | 'aud';
+
+export const CURRENCY_VALUES: readonly DisplayCurrency[] = ['usd', 'eur', 'gbp', 'cad', 'aud'];
+
+export const CURRENCY_LABELS: Record<DisplayCurrency, string> = {
+  usd: 'USD $',
+  eur: 'EUR €',
+  gbp: 'GBP £',
+  cad: 'CAD $',
+  aud: 'AUD $',
+};
+
+export function isDisplayCurrency(v: unknown): v is DisplayCurrency {
+  return typeof v === 'string' && (CURRENCY_VALUES as readonly string[]).includes(v);
+}
 
 export interface NotificationPrefs {
   weeklyDigest: boolean;
@@ -15,8 +67,9 @@ export interface NotificationPrefs {
 }
 
 const KEYS = {
-  lang:  'ailunapro-lang',
-  notif: 'ailunapro-notif-prefs',
+  lang:     'ailunapro-lang',
+  notif:    'ailunapro-notif-prefs',
+  currency: 'ailunapro-display-currency',
 } as const;
 
 const DEFAULT_NOTIF: NotificationPrefs = {
@@ -30,9 +83,9 @@ const DEFAULT_NOTIF: NotificationPrefs = {
 export function loadLanguage(): Language {
   try {
     const v = localStorage.getItem(KEYS.lang);
-    return v === 'en' || v === 'fr' ? v : 'fr';
+    return isLanguage(v) ? v : 'en';
   } catch {
-    return 'fr';
+    return 'en';
   }
 }
 
@@ -55,4 +108,19 @@ export function loadNotifPrefs(): NotificationPrefs {
 
 export function saveNotifPrefs(prefs: NotificationPrefs): void {
   try { localStorage.setItem(KEYS.notif, JSON.stringify(prefs)); } catch { /* noop */ }
+}
+
+/* ── Display currency (UI-level only, not Stripe billing currency) ── */
+
+export function loadDisplayCurrency(): DisplayCurrency {
+  try {
+    const v = localStorage.getItem(KEYS.currency);
+    return isDisplayCurrency(v) ? v : 'usd';
+  } catch {
+    return 'usd';
+  }
+}
+
+export function saveDisplayCurrency(c: DisplayCurrency): void {
+  try { localStorage.setItem(KEYS.currency, c); } catch { /* noop */ }
 }

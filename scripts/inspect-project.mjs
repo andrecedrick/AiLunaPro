@@ -479,9 +479,12 @@ async function checkAuthSmoke() {
 const FRENCH_ACCENT_RE = /[éèàêôçûùîïœëâ]/;
 const FRENCH_WORD_RE = /\b(gérer|relance|conformité|équipe|équipes|réponse|réponses|facture|factures|devis|paramètres|paiement|facturation|conçu|orienté|annulé|envoyé|sélection|retour|annuler|sauvegarder|connexion|déconnexion|veuillez|merci|bonjour|aujourd|aujourd'hui|langue|français|française)\b/i;
 
-// Files where French is intentional (language picker, locale labels).
+// Files where non-English locale labels are intentional (language picker,
+// currency picker, locale constants).
 const LANGUAGE_ALLOWLIST = new Set([
   'src/pages/settings/PreferencesPage.tsx',
+  'src/components/layout/SidebarPreferences.tsx',
+  'src/lib/preferences.ts',
 ]);
 
 // Skip lines that are clearly not user-visible: imports, type/interface
