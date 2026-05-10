@@ -564,14 +564,18 @@ Hosting:     Vercel/Netlify (frontend) + Cloudflare Workers (worker)
 | J1.4A | `de4c9ee` | Tokens IA MVP |
 | J1.4A-Hardening | `02fdeef` | env-aware Stripe guard + structured errors |
 | J1.4A-NumericFix | `e8cab29` `9a775b2` `6177eaf` | integerValue Number coercion + repair UI + banner cleanup |
-| K0 | `7a8310c` `767e6a2` | Agent Catalog data model + seed + read-only catalog (orgId fix) |
+| K0 | `7a8310c` `767e6a2` `2f8fdaa` `49cd314` | Agent Catalog data model + seed + read-only catalog (orgId fix + EN seed cleanup) |
 | K1A | `34c1fba` | Diagnostic Express public MVP — 8-question form + server-side scoring + Turnstile + static recommendations |
+| Inspection script | `988cfa6` | read-only project audit script (10 categories, no auto-fix) |
+| Sidebar prefs | `d43f79e` | sidebar Language/Currency selectors with PreferencesContext |
+| K2A | `dd15460` | ROI Calculator public MVP — 4-input form + server-authoritative formula + Turnstile + static workflow→agent recommendation |
 
 ### Phases manquantes
 
 - **K1B** : Diagnostic Express anti-abuse hardening (KV rate-limit, email-domain blocklist) *(différé — activer si abus mesuré)*
-- **K2** : ROI Calculator public *(non commencé)*
+- **K2B** : ROI Calculator multi-workflow + real agent pricing *(différé — backfiller `pricing.monthlyPrice` quand Stripe products agents arrivent)*
 - **K3** : Recommendation Engine *(non commencé)*
+- **H0** : Help Center *(non commencé)*
 - **K4** : EU AI Act classifier + Registre enrichi
 - **L1-L2** : Installation + Maintenance + Insurance + Devis PDF
 - **M1-M3** : Shadow AI Survey + FRIA + Article 4 Training
@@ -702,7 +706,6 @@ maxScore = 7 × 3 = 21    // 7 weighted questions × max option score 3
 
 **Hors scope K1A** :
 - ❌ K1B (rate-limit KV / IP-based)
-- ❌ K2 ROI Calculator
 - ❌ K3 Recommendation Engine (recommandations statiques en K1A)
 - ❌ PDF email report
 - ❌ Admin diagnostic dashboard
@@ -711,6 +714,151 @@ maxScore = 7 × 3 = 21    // 7 weighted questions × max option score 3
 - ❌ Token consumption
 - ❌ Création de compte automatique depuis diagnostic
 - ❌ Per-org overrides
+
+### K2A ROI Calculator — détail (commit `dd15460`)
+
+**Route publique** : `#/roi-calculator` — chromeless, **no auth required**.
+
+**Worker route** : `POST /api/public/roi-calculation` (no `requireAuth`).
+
+**4 inputs** :
+- `teamSize` : integer 1–10000 — validé et persisté, **NON utilisé** dans la formule K2A (réservé pour segmentation K2B)
+- `monthlyHoursOnRepetitiveWork` : 0–10000
+- `averageHourlyCost` : 1–1000 USD
+- `targetWorkflow` : enum 9 valeurs (`support`, `sales`, `finance`, `documents`, `reporting`, `admin`, `compliance`, `marketing`, `hr`)
+
+**Lead capture** :
+- `email` required
+- `companyName` optional (max 120 chars)
+- `consent` required (texte GDPR identique à K1A avec substitution "ROI estimate")
+
+**Formule (server-authoritative)** :
+```
+estimatedTimeSavedHoursPerMonth = round1(monthlyHoursOnRepetitiveWork × SAVINGS_RATE[targetWorkflow])
+estimatedMonthlyCostSaved       = round0(estimatedTimeSavedHoursPerMonth × averageHourlyCost)
+estimatedYearlyCostSaved        = estimatedMonthlyCostSaved × 12
+estimatedPaybackMonths          = monthlyCost > 0 ? round1(99 / monthlyCost) : null
+```
+
+**Savings rates par workflow** :
+
+| Workflow | Rate |
+|----------|------|
+| support | 0.40 |
+| sales | 0.30 |
+| finance | 0.50 |
+| documents | 0.55 |
+| reporting | 0.45 |
+| admin | 0.50 |
+| compliance | 0.35 |
+| marketing | 0.40 |
+| hr | 0.40 |
+
+**Workflow → recommended agents (max 2 par workflow)** :
+
+| Workflow | Primary | Secondary |
+|----------|---------|-----------|
+| support | support-agent | admin-agent |
+| sales | sales-agent | marketing-agent |
+| finance | finance-agent | reporting-agent |
+| documents | document-agent | admin-agent |
+| reporting | reporting-agent | audit-agent |
+| admin | admin-agent | document-agent |
+| compliance | compliance-agent | audit-agent |
+| marketing | marketing-agent | sales-agent |
+| hr | hr-agent | document-agent |
+
+**Placeholder agent cost** : `AGENT_DEFAULT_MONTHLY_USD = 99` (utilisé pour le calcul de payback jusqu'à ce que `pricing.monthlyPrice` soit backfillé sur chaque agent quand les Stripe products agents arrivent).
+
+**Currency** : USD only en K2A. Multi-currency = J2/i18n.
+
+**Disclaimer affiché côté UI** :
+- "This is an estimate based on the information you provided and conservative automation assumptions. Actual savings may vary."
+- "Payback is estimated using a placeholder agent cost of $99/month until agent pricing is finalized."
+
+**Persistence** :
+- Collection : `/public_roi_calculations/{id}`
+- Règles Firestore :
+  ```
+  match /public_roi_calculations/{id} {
+    allow read:  if false;
+    allow write: if false;
+  }
+  ```
+  Worker (service account) est le seul writer.
+
+**Rétention** :
+- `expiresAt = createdAt + 90 days` (champ ISO stocké)
+- TTL effectif : Firebase Console → Firestore → TTL → field `expiresAt` sur `public_roi_calculations`. Suppression auto sous 24h après expiration. Pas de cron Worker en K2A.
+
+**Anti-abus** :
+- Cloudflare Turnstile uniquement (réutilise helper K1A `verifyTurnstile`)
+- Pas de rate-limit KV en K2A (différé K1B/K2B si abus mesuré)
+
+**Production env** :
+- Aucun nouveau env var. K2A réutilise K1A :
+  - Worker secret `TURNSTILE_SECRET_KEY`
+  - Frontend env `VITE_TURNSTILE_SITE_KEY`
+
+**Code reuse** depuis K1A (zero duplication) :
+- `validateLead` (worker/src/lib/diagnostic-shared.ts)
+- `expiresAtFromNow` (idem)
+- `verifyTurnstile` (worker/src/lib/turnstile.ts)
+- `TurnstileWidget` (src/components/diagnostic/)
+
+**Hors scope K2A** :
+- ❌ K3 Recommendation Engine
+- ❌ K1B (rate-limit KV)
+- ❌ K2B (multi-workflow weighted average + real agent pricing)
+- ❌ PDF email report
+- ❌ Admin dashboard
+- ❌ i18n
+- ❌ Multi-currency billing
+- ❌ Stripe attribution
+- ❌ Token consumption
+- ❌ Création de compte depuis le calculator
+- ❌ Modifications Tokens / Billing / Team / K0 / K1A (uniquement réutilisation imports K1A)
+
+### Sidebar Language + Currency selectors — détail (commit `d43f79e`)
+
+Compact two-row widget dans le bas de la sidebar gauche, visible pour
+tous les rôles authentifiés (owner / admin / billing / member / client).
+Caché sur les routes chromeless (login, signup, accept-invite,
+diagnostic, roi-calculator).
+
+**Source of truth** : `src/context/PreferencesContext.tsx`. Les
+selecteurs Sidebar et Settings consomment le même hook → sync
+instantanée.
+
+**Language** : enum `en | fr | es | de | it | pt`. Sidebar affiche
+labels courts (EN/FR/...). Settings affiche labels natifs
+(English / Français / Español / Deutsch / Italiano / Português).
+**Préférence uniquement** — l'app reste rendue en anglais jusqu'à
+l'arrivée de l'i18n complet (J2).
+
+**Currency** : enum `usd | eur | gbp | cad | aud`. Affiche labels
+natifs (USD $ / EUR € / ...). **Préférence d'affichage uniquement**
+— ne change PAS :
+- la devise Stripe Checkout (détectée serveur-side par checkout)
+- le prix des token packs (USD only jusqu'à J2 multi-currency packs)
+- la devise des subscriptions actives
+
+**Persistence** : localStorage (`ailunapro-lang`, `ailunapro-display-currency`).
+
+### Tokens — précision modèle économique
+
+Les abonnements SaaS (Free / Starter / Professional / Enterprise)
+**incluent une allocation mensuelle de tokens**. Les top-ups sont
+optionnels :
+
+- L'utilisateur achète un pack top-up uniquement quand son balance
+  est trop bas ou que sa consommation dépasse l'allocation mensuelle.
+- Les tokens top-up s'**ajoutent** au balance et ne **remplacent
+  pas** l'abonnement.
+- Les tokens top-up **n'expirent jamais** (contrairement à l'allocation
+  mensuelle qui est rollover-cappée à 1× allocation au cycle reset).
+- Les packs top-up sont billed en USD only jusqu'à J2 multi-currency
+  packs.
 
 ---
 
