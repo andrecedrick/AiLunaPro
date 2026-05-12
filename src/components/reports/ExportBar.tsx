@@ -14,7 +14,7 @@ interface Props {
 
 /* Mock public share URL — would be a real signed URL in the backend phase. */
 function buildShareUrl(reportId: string): string {
-  return `https://app.ailunapro.com/share/${reportId}`;
+  return `https://audit.ailunapro.com/share/${reportId}`;
 }
 
 /* Trigger a real download of the report data as JSON.
