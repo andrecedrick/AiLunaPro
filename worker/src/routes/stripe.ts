@@ -50,6 +50,7 @@ stripe.post('/api/stripe/webhook', async c => {
   }
 
   const rawBody = await c.req.text();
+  console.log('[stripe:webhook] inbound request received, verifying signature…');
   const stripeClient = getStripe(env.STRIPE_SECRET_KEY);
 
   let event: Stripe.Event;
@@ -66,7 +67,9 @@ stripe.post('/api/stripe/webhook', async c => {
   }
 
   recordWebhookEvent(event.id, true);
-  console.log('[webhook]', event.type, event.id);
+  // Explicit observability log — fires for every verified event, even when
+  // handleEvent has no branch for event.type. Searchable tag: [stripe:webhook].
+  console.log('[stripe:webhook] event=', event.type, 'id=', event.id);
 
   if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     return c.json({ received: true, warning: 'No service account — sync skipped' });
