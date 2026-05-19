@@ -330,7 +330,7 @@ pas le recréer.
 1. **Code de parrainage** : chaque user owner peut générer son code via Settings → Affiliation.
    Format : `AILUNA-{ORG_SLUG}-{RANDOM_4}` (ex: `AILUNA-ACME-XK7P`).
 
-2. **Lien d'inscription** : `https://app.ailunapro.com/signup?ref=AILUNA-ACME-XK7P`
+2. **Lien d'inscription** : `https://audit.ailunapro.com/signup?ref=AILUNA-ACME-XK7P`
    - UTM auto-injecté
    - Stocké dans cookie 90 jours
    - Lu au signup → `users/{uid}.referredBy = code`
@@ -376,7 +376,7 @@ affiliations/{code}/payouts/{payoutId}
 
 - **Settings → Affiliation** : code, lien copy-to-clipboard, dashboard earnings,
   liste conversions, historique payouts.
-- **Public landing** : `https://app.ailunapro.com/?ref={code}` capture `?ref=` automatiquement.
+- **Public landing** : `https://audit.ailunapro.com/?ref={code}` capture `?ref=` automatiquement.
 
 ---
 
