@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Frontend production env (Firebase web config + Turnstile site key).
+# Public-ish but kept out of VCS — injected at build time only.
+.env.production
+
 # Claude Code per-machine local settings
 .claude/settings.local.json
 
