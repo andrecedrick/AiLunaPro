@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { mockNavItems } from '../../data/mockDashboard';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
@@ -124,14 +124,32 @@ function NavIcon({ id }: { id: string }): ReactNode {
 
 /* ── Org switcher dropdown ──────────────────────────────────── */
 function OrgSwitcher() {
-  const { session, orgs, members, switchOrg } = useAuth();
+  const { session, orgs, switchOrg } = useAuth();
   const { navigate } = useRoute();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
-  const userOrgs = orgs.filter(o =>
-    members.some(m => m.userId === (session?.userId ?? '') && m.orgId === o.id),
-  );
+  // `orgs` is already scoped to the user (buildSession derives it from
+  // users.orgIds). Do NOT re-filter by `members` — that array only holds the
+  // ACTIVE org's members, so filtering collapsed the list to 1 workspace.
+  const userOrgs = orgs;
+
+  // Sorted: active workspace pinned first, rest by createdAt desc (newest top).
+  const sortedOrgs = useMemo(() => {
+    const activeId = session?.orgId;
+    return [...userOrgs].sort((a, b) => {
+      if (a.id === activeId) return -1;
+      if (b.id === activeId) return 1;
+      return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
+    });
+  }, [userOrgs, session?.orgId]);
+
+  const visibleOrgs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return sortedOrgs;
+    return sortedOrgs.filter(o => o.name.toLowerCase().includes(q));
+  }, [sortedOrgs, query]);
 
   useEffect(() => {
     if (!open) return;
@@ -141,6 +159,9 @@ function OrgSwitcher() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
+
+  // Reset search whenever the dropdown closes.
+  useEffect(() => { if (!open) setQuery(''); }, [open]);
 
   const org  = session?.org;
   const plan = org?.plan ?? '';
@@ -228,9 +249,42 @@ function OrgSwitcher() {
               letterSpacing: 0.8,
             }}
           >
-            Workspaces
+            Workspaces ({userOrgs.length})
           </div>
-          {userOrgs.map(o => {
+
+          {/* Search — only useful past a handful of workspaces. */}
+          {userOrgs.length > 5 && (
+            <div style={{ padding: '2px 10px 6px' }}>
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search workspaces…"
+                autoFocus
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '6px 10px',
+                  fontSize: 12,
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-2)',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Scrollable list — explicit max-height so large lists never hide
+              items without a visible scrollbar. */}
+          <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+          {visibleOrgs.length === 0 && (
+            <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)' }}>
+              No workspace matches “{query}”.
+            </div>
+          )}
+          {visibleOrgs.map(o => {
             const active = o.id === session?.orgId;
             return (
               <div
@@ -289,6 +343,7 @@ function OrgSwitcher() {
               </div>
             );
           })}
+          </div>
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
           <div
             onClick={() => { navigate({ name: 'org/create' }); setOpen(false); }}
