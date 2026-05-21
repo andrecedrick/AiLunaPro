@@ -91,7 +91,10 @@ export async function fsListAudits(orgId: string): Promise<AuditDraft[]> {
   const q = query(auditsCol(orgId), orderBy('startedAt', 'desc'));
   const snap = await getDocs(q);
 
-  const drafts = await Promise.all(
+  // allSettled, NOT Promise.all: a single failed answers sub-read must not
+  // reject the whole batch and make EVERY audit disappear. On a per-audit
+  // answers failure, keep the audit with empty answers and warn.
+  const settled = await Promise.allSettled(
     snap.docs.map(async d => {
       const fsAudit = { id: d.id, ...d.data() } as FsAuditDoc;
       const answersSnap = await getDocs(answersCol(orgId, d.id));
@@ -103,6 +106,17 @@ export async function fsListAudits(orgId: string): Promise<AuditDraft[]> {
       return toAuditDraft(fsAudit, answers);
     }),
   );
+
+  const drafts: AuditDraft[] = [];
+  settled.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      drafts.push(r.value);
+    } else {
+      const d = snap.docs[i];
+      console.warn('[fsListAudits] answers read failed, keeping audit with empty answers:', d.id, r.reason);
+      drafts.push(toAuditDraft({ id: d.id, ...d.data() } as FsAuditDoc, {}));
+    }
+  });
 
   return drafts;
 }

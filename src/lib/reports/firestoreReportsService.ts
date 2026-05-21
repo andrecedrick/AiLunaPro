@@ -87,14 +87,25 @@ export async function fsListAllExports(
   reportIds: string[],
 ): Promise<ExportEvent[]> {
   if (reportIds.length === 0) return [];
-  const results = await Promise.all(
+  // allSettled, NOT Promise.all: one failed per-report export read must not
+  // reject the whole batch and wipe the entire export history. Keep the
+  // successful reports' exports and warn on the rest.
+  const settled = await Promise.allSettled(
     reportIds.map(async reportId => {
       const q = query(exportsCol(orgId, reportId), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
       return snap.docs.map(d => d.data() as FsExportDoc);
     }),
   );
-  return results.flat();
+  const out: ExportEvent[] = [];
+  settled.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      out.push(...r.value);
+    } else {
+      console.warn('[fsListAllExports] export read failed for report, skipped:', reportIds[i], r.reason);
+    }
+  });
+  return out;
 }
 
 /**
