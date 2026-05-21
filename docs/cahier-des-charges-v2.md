@@ -461,6 +461,21 @@ Standalone public.
 - Alertes seuil ;
 - Audit trail enrichi.
 
+#### 9.14 UX requirements — Audit & Reports *(P2 — UX robustness)*
+Exigences UX transverses pour le wizard d'audit et les rapports (non bloquantes
+pour le smoke, mais officielles) :
+
+1. **Auto-scroll en haut au changement de section** — naviguer vers une nouvelle
+   section (Next / Previous) doit réinitialiser la vue en haut du formulaire.
+   Rationale : l'utilisateur doit toujours voir le titre + contexte de la section.
+2. **Raccourci « ↑ Back to top »** — les formulaires d'audit et les rapports peuvent
+   être longs. Ajouter un contrôle flottant qui apparaît après défilement, pour
+   revenir instantanément en haut.
+3. **Auto-save de la progression audit / rapport** — sauvegarde progressive
+   (debounce sur changement) des réponses d'audit et de l'état du rapport.
+   « Save & Continue » explicite reste, mais l'auto-save prévient toute perte de
+   données au refresh, à la navigation, ou à la fermeture d'onglet.
+
 ---
 
 ## 10. Architecture technique
@@ -1465,6 +1480,9 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-04 | Multi-currency = real Stripe Prices | FX live = display only, jamais billing |
 | 2026-05-05 | Pas de fallback silencieux currency | 400 explicite si user choisit currency sans price |
 | 2026-05-06 | Tokens IA + Affiliation = nouveaux piliers v2 | Demande utilisateur, élargit modèle économique |
+| 2026-05-21 | Workspace persistence: allSettled boot loader + atomic arrayUnion + UUID orgId + org-doc-first | Promise.all rejected whole org list on 1 flaky read; selector filtered orgs by active-org members; collision/lost-update on rapid creates |
+| 2026-05-21 | List reads (audits/exports) → allSettled | 1 failed sub-read ne doit pas effacer toute la liste (même classe de bug) |
+| 2026-05-21 | UX hardening Audit/Reports (auto-scroll top, back-to-top, auto-save) | Robustesse UX, prévention perte de données — voir §9.14 |
 
 ---
 
