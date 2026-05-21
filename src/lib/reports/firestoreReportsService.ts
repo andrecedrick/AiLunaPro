@@ -122,7 +122,12 @@ export async function fsCreateReport(
     organizationId: orgId,
     createdBy: uid,
   };
-  await setDoc(reportDoc(orgId, report.id), fsReport);
+  // Firestore setDoc REJECTS undefined field values (throws
+  // "Unsupported field value: undefined"). Report snapshots carry optional
+  // fields (e.g. weakestSection) that can be undefined. Strip undefined deeply
+  // before writing — the report doc is plain JSON-serializable.
+  const clean = JSON.parse(JSON.stringify(fsReport)) as FsReportDoc;
+  await setDoc(reportDoc(orgId, report.id), clean);
 }
 
 /**
