@@ -476,6 +476,10 @@ pour le smoke, mais officielles) :
    « Save & Continue » explicite reste, mais l'auto-save prévient toute perte de
    données au refresh, à la navigation, ou à la fermeture d'onglet.
 
+> **Statut : post-J2 UX polish.** Ces 3 items ne sont PAS des bloquants de smoke
+> test. Ils sont planifiés en tâche dédiée après J2. L'auto-save (3) est de
+> niveau feature (debounce + persistance brouillon + tests), pas simple polish.
+
 ---
 
 ## 10. Architecture technique
@@ -1483,6 +1487,10 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-21 | Workspace persistence: allSettled boot loader + atomic arrayUnion + UUID orgId + org-doc-first | Promise.all rejected whole org list on 1 flaky read; selector filtered orgs by active-org members; collision/lost-update on rapid creates |
 | 2026-05-21 | List reads (audits/exports) → allSettled | 1 failed sub-read ne doit pas effacer toute la liste (même classe de bug) |
 | 2026-05-21 | UX hardening Audit/Reports (auto-scroll top, back-to-top, auto-save) | Robustesse UX, prévention perte de données — voir §9.14 |
+| 2026-05-21 | Pattern boot/list reads = Promise.allSettled (jamais Promise.all) | 1 read échoué ne doit jamais effacer toute une liste (orgs, audits, exports) — pattern officiel |
+| 2026-05-21 | Selector workspace = rend la liste `orgs` complète, sans filtrer par `members` | `members` ne contient que l'org active → filtrage réduisait la liste à 1 |
+| 2026-05-21 | Billing & Tokens validés end-to-end (J2) | Portal, checkout abonnement, top-up tokens, webhook, idempotence, sync solde — confirmés en prod test mode |
+| 2026-05-21 | UX items §9.14 = post-J2, non bloquants smoke | Décision explicite : stabilité d'abord, polish ensuite |
 
 ---
 
