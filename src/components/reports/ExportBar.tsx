@@ -108,7 +108,7 @@ export function ExportBar({ report, result, hideShare = false }: Props) {
         }}
       >
         <ExportButton onClick={handlePdf} disabled={pdfBusy} primary>
-          {pdfBusy ? '⏳ Generating…' : pdfDone ? '✓ Generated' : '⬇ Export PDF'}
+          {pdfBusy ? '⏳ Exporting…' : pdfDone ? '✓ Exported' : '⬇ Export (JSON)'}
         </ExportButton>
 
         <ExportButton onClick={() => setEmailOpen(true)}>

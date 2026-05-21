@@ -480,6 +480,18 @@ pour le smoke, mais officielles) :
 > test. Ils sont planifiés en tâche dédiée après J2. L'auto-save (3) est de
 > niveau feature (debounce + persistance brouillon + tests), pas simple polish.
 
+4. **Export rapport — PDF réel** *(post-J2 feature)*. Le bouton « Export »
+   produit actuellement un JSON (libellé honnête « Export (JSON) »). Le rendu PDF
+   n'est pas implémenté. Tâche post-J2 : ajouter un renderer (jsPDF/react-pdf
+   client, ou worker). Ne PAS simuler un PDF.
+
+5. **Historique des audits soumis** *(post-J2)*. Les audits soumis SONT persistés
+   en Firestore (`organizations/{orgId}/audits/{id}`, `fsSubmitAudit` →
+   status `submitted` + snapshot réponses) — **aucune perte au niveau DB**.
+   Manque uniquement une surface UI : soit une vue « Historique audits », soit
+   une création automatique de report snapshot au Submit. Décision : documenter
+   maintenant, implémenter post-J2 (modifie le flux audit → hors scope J2).
+
 ---
 
 ## 10. Architecture technique
@@ -1491,6 +1503,9 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-21 | Selector workspace = rend la liste `orgs` complète, sans filtrer par `members` | `members` ne contient que l'org active → filtrage réduisait la liste à 1 |
 | 2026-05-21 | Billing & Tokens validés end-to-end (J2) | Portal, checkout abonnement, top-up tokens, webhook, idempotence, sync solde — confirmés en prod test mode |
 | 2026-05-21 | UX items §9.14 = post-J2, non bloquants smoke | Décision explicite : stabilité d'abord, polish ensuite |
+| 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
+| 2026-05-21 | Export rapport relibellé « Export (JSON) » | Le rendu PDF n'existe pas (mock) ; libellé honnête. PDF réel = feature post-J2 |
+| 2026-05-21 | Audits soumis persistés en DB (fsSubmitAudit) | Pas de perte DB ; surface UI historique OU auto-report = post-J2 |
 
 ---
 
