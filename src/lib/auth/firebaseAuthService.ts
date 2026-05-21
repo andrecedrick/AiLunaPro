@@ -32,6 +32,7 @@ import {
   deleteDoc,
   collection,
   serverTimestamp,
+  arrayUnion,
 } from 'firebase/firestore';
 import { auth } from '../firebase-auth';
 import { db } from '../firestore';
@@ -146,21 +147,37 @@ async function buildSession(
   const orgId   = (pref && fsUser.orgIds.includes(pref)) ? pref : fsUser.orgIds[0];
   setOrgPref(orgId);
 
-  // Fetch all orgs and current org's members in parallel
-  const [orgsData, members] = await Promise.all([
-    Promise.all(fsUser.orgIds.map(id => readOrg(id))),
+  // Fetch all orgs and current org's members in parallel.
+  // CRITICAL: use allSettled, NOT Promise.all. With Promise.all a single
+  // transient/denied getDoc among N parallel org reads REJECTS the whole
+  // batch → buildSession throws → user appears to "lose" every workspace
+  // except the fallback. allSettled keeps every org that read successfully
+  // and logs the ones that failed instead of nuking the entire list.
+  const [orgSettled, members] = await Promise.all([
+    Promise.allSettled(fsUser.orgIds.map(id => readOrg(id))),
     readMembers(orgId),
   ]);
 
-  const orgs: Organization[] = orgsData
-    .filter((o): o is FsOrg => o !== null)
-    .map(o => ({
+  const orgs: Organization[] = [];
+  orgSettled.forEach((r, i) => {
+    const id = fsUser.orgIds[i];
+    if (r.status === 'rejected') {
+      console.warn('[buildSession] org read FAILED, dropped from list:', id, r.reason);
+      return;
+    }
+    const o = r.value;
+    if (!o) {
+      console.warn('[buildSession] org doc missing for orgId:', id);
+      return;
+    }
+    orgs.push({
       id:        o.id,
       name:      o.name,
       plan:      o.plan,
       initials:  o.initials,
       createdAt: typeof o.createdAt === 'string' ? o.createdAt : new Date().toISOString(),
-    }));
+    });
+  });
 
   const org = orgs.find(o => o.id === orgId);
   if (!org) return null;
@@ -370,7 +387,12 @@ export async function firebaseCreateOrg(
   plan: Organization['plan'],
 ): Promise<{ org: Organization; member: OrgMember }> {
   const now    = new Date().toISOString();
-  const orgId  = `org_${uid.slice(0, 8)}_${Date.now()}`;
+  // Random suffix prevents orgId collision when two workspaces are created
+  // within the same millisecond (rapid succession / double-fire). Without it,
+  // the second setDoc overwrites the first org doc and arrayUnion dedups the
+  // shared id, silently losing one workspace.
+  const rand   = crypto.randomUUID().slice(0, 8);
+  const orgId  = `org_${uid.slice(0, 8)}_${Date.now()}_${rand}`;
   const orgInit = makeInitials(orgName);
 
   const org: Organization = {
@@ -391,18 +413,21 @@ export async function firebaseCreateOrg(
     joinedAt: now,
   };
 
+  // Org doc MUST commit before the member doc: the members-create security
+  // rule does get(/organizations/{orgId}).data.ownerId == uid(). Running these
+  // concurrently races — the rule can evaluate before the org doc exists,
+  // rejecting the member write with permission-denied.
+  await setDoc(doc(db, 'organizations', orgId), {
+    ...org,
+    ownerId:   uid,
+    updatedAt: now,
+  });
   await Promise.all([
-    setDoc(doc(db, 'organizations', orgId), {
-      ...org,
-      ownerId:   uid,
-      updatedAt: now,
-    }),
-    setDoc(doc(db, 'organizations', orgId, 'members', uid), {
-      ...member,
-    }),
-    // Append orgId to user's orgIds array (use arrayUnion to avoid races)
+    setDoc(doc(db, 'organizations', orgId, 'members', uid), { ...member }),
+    // arrayUnion is atomic server-side; concurrent createOrg calls no longer
+    // clobber each other (the old read-modify-write .concat() lost updates).
     updateDoc(doc(db, 'users', uid), {
-      orgIds: (await readUser(uid))!.orgIds.concat(orgId),
+      orgIds: arrayUnion(orgId),
       updatedAt: now,
     }),
   ]);

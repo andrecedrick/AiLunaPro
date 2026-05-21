@@ -311,7 +311,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setOrgs(prev    => [...prev, org]);
           setMembers(prev => [...prev, member]);
           setSession(prev => prev ? { ...prev, orgId: org.id, role: 'owner', org } : prev);
-        }).catch(console.error);
+        }).catch(err => {
+          // Loud surfacing — previously console.error hid permission-denied /
+          // partial-write failures behind optimistic UI (workspace appears in
+          // selector but vanishes on reload).
+          console.error('[AuthContext.createOrg] FAILED — workspace will not persist on reload:', err);
+        });
         return;
       }
 
