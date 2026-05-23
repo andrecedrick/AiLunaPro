@@ -487,6 +487,54 @@ pour le smoke, mais officielles) :
 > test. Ils sont planifiés en tâche dédiée après J2. L'auto-save (3) est de
 > niveau feature (debounce + persistance brouillon + tests), pas simple polish.
 
+#### 9.15 Product Health Dashboard *(post-J2 — observabilité produit)*
+Panneau interne (owners/admins) de visibilité produit/funnel. Motivé par
+l'incident Turnstile : besoin de détecter tôt les échecs UX/funnel silencieux.
+
+**Objectif**
+- Surveiller la santé des lead magnets (Diagnostic, ROI Calculator).
+- Détecter les funnels cassés tôt (captcha, login redirect, submit échoué).
+- Éviter les pannes prod silencieuses.
+
+**Sources de données**
+- **PostHog** = source primaire analytics produit/UX.
+- Compteurs backend (Firestore / Worker) = confirmation d'état critique.
+- Google Analytics **exclu** du product health (marketing uniquement).
+
+**KPIs minimum (funnel)**
+- Diagnostic vu / soumis / échoué ;
+- ROI calculator vu / soumis ;
+- Login cliqué depuis pages publiques ;
+- Signup complété ;
+- Workspace créé ;
+- Audits démarrés / soumis ;
+- Reports générés ;
+- Agents vus / recommandés.
+
+Caractéristiques : orienté produit & UX, distinct du marketing (GA4), interne.
+
+**Revenue / subscriber health** *(recommandation)*
+
+| KPI | Quand | Où | Note |
+|---|---|---|---|
+| Abonnements actifs par plan | **J2** | In-app admin | Donnée déjà présente (subscriptions/current) |
+| Token usage vs limite plan | **J2** | In-app admin | Déjà calculé (tokens/current) |
+| Paiements échoués (dunning) | **J2** | In-app bannière + admin | `invoice.payment_failed` déjà reçu par webhook |
+| MRR / ARR évolution | post-J2 | **Stripe Dashboard / Sigma** | Ne PAS recoder ; Stripe est la source de vérité |
+| Churn / cohortes | post-J2 | Stripe + PostHog | Nécessite historique ; analytics, pas in-app |
+| Early warning (downgrade, low usage) | post-J2 | PostHog + worker | Pipeline dérivé, après baseline analytics |
+
+**Principe de séparation**
+- *In-app (owners/admins)* : état courant — plan, usage tokens, statut paiement,
+  bannière dunning. Sûr, donnée déjà disponible.
+- *Stripe / admin tooling* : analytics revenu (MRR/ARR, churn, cohortes). Utiliser
+  Stripe Dashboard/Sigma — ne pas reconstruire. Éviter d'exposer le revenu agrégé
+  in-app.
+
+> **Statut : post-J2.** Le dashboard complet est post-J2. Les 3 KPIs revenue
+> marqués « J2 » s'appuient sur des données déjà persistées — surfaçables sans
+> nouvelle infra si souhaité, mais hors scope du smoke J2 actuel.
+
 4. **Export rapport — PDF réel** *(post-J2 feature)*. Le bouton « Export »
    produit actuellement un JSON (libellé honnête « Export (JSON) »). Le rendu PDF
    n'est pas implémenté. Tâche post-J2 : ajouter un renderer (jsPDF/react-pdf
@@ -1512,6 +1560,7 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-21 | UX items §9.14 = post-J2, non bloquants smoke | Décision explicite : stabilité d'abord, polish ensuite |
 | 2026-05-24 | Turnstile prod : site key corrigé (était la secret key dans .env.production) | Widget émettait token vide → submit échouait ; site key `0x4AAAAAADRzlGMiVrub0924`. ⚠️ secret exposé dans bundle public → rotation requise |
 | 2026-05-24 | Login redirect depuis pages publiques = post-J2 | Ne préserve pas la page d'origine après login ; documenté §9.1/9.2, non bloquant J2 |
+| 2026-05-24 | Product Health Dashboard = post-J2 (PostHog primaire) | Détecter funnels cassés tôt ; revenue analytics restent dans Stripe/Sigma, pas recodés in-app — voir §9.15 |
 | 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
 | 2026-05-21 | Export rapport relibellé « Export (JSON) » | Le rendu PDF n'existe pas (mock) ; libellé honnête. PDF réel = feature post-J2 |
 | 2026-05-21 | Audits soumis persistés en DB (fsSubmitAudit) | Pas de perte DB ; surface UI historique OU auto-report = post-J2 |
