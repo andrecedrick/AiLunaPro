@@ -265,7 +265,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       setMembers(prev => [...prev, pending]);
       if (LAYER === 'firebase') {
-        firebaseInviteMember(session.orgId, pending).catch(console.error);
+        firebaseInviteMember(session.orgId, pending).catch(err =>
+          console.error('[AuthContext.inviteMember] FAILED — invite not persisted, UI optimistic only:', err),
+        );
       }
     },
     [session],
@@ -276,7 +278,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setMembers(prev => prev.map(m => (m.userId === userId ? { ...m, role } : m)));
       setSession(prev => (prev?.userId === userId ? { ...prev, role } : prev));
       if (LAYER === 'firebase' && session) {
-        firebaseUpdateMemberRole(session.orgId, userId, role).catch(console.error);
+        firebaseUpdateMemberRole(session.orgId, userId, role).catch(err =>
+          console.error('[AuthContext.updateMemberRole] FAILED — role change not persisted, UI optimistic only:', err),
+        );
       }
     },
     [session],
@@ -286,7 +290,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (userId: string) => {
       setMembers(prev => prev.filter(m => m.userId !== userId));
       if (LAYER === 'firebase' && session) {
-        firebaseRemoveMember(session.orgId, userId).catch(console.error);
+        firebaseRemoveMember(session.orgId, userId).catch(err =>
+          console.error('[AuthContext.removeMember] FAILED — removal not persisted, UI optimistic only:', err),
+        );
       }
     },
     [session],
