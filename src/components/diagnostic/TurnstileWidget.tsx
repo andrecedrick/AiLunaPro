@@ -18,7 +18,7 @@ declare global {
       render: (el: HTMLElement, opts: {
         sitekey:    string;
         callback?:  (token: string) => void;
-        'error-callback'?: () => void;
+        'error-callback'?: (code?: string) => void;
         'expired-callback'?: () => void;
       }) => string | undefined;
       reset:  (widgetId?: string) => void;
@@ -70,7 +70,7 @@ export function TurnstileWidget({ onToken }: Props) {
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey,
         callback:        (t: string) => onToken(t),
-        'error-callback':   () => onToken(''),
+        'error-callback':   (code?: string) => { console.error('[turnstile] widget error code=', code); onToken(''); },
         'expired-callback': () => onToken(''),
       });
     });

@@ -395,10 +395,17 @@ Questionnaire 10 min, public (sans login).
 - AiLunaPro priority badge ;
 - Email capture → signup pré-rempli.
 
+> **Note UX (post-J2)** — Si l'utilisateur clique « Sign in » depuis une page
+> publique, l'app redirige actuellement vers la landing authentifiée par défaut.
+> Préserver la page publique d'origine après login = amélioration UX post-J2.
+
 #### 9.2 AI ROI & Automation Calculator *(P1 — viral)*
 Standalone public.
 - Inputs : tâche, fréquence, durée actuelle, taux horaire ;
 - Outputs : temps gagné/mois, coût économisé, ROI, agent IA recommandé.
+
+> **Note UX (post-J2)** — Idem §9.1 : « Sign in » depuis la page publique ne
+> préserve pas la destination d'origine. Amélioration UX post-J2.
 
 #### 9.3 AI Agent Recommendation Engine *(P1)*
 - Inputs : CA annuel, secteur, taille équipe, tâches chronophages, outils existants, budget ;
@@ -1503,6 +1510,8 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-21 | Selector workspace = rend la liste `orgs` complète, sans filtrer par `members` | `members` ne contient que l'org active → filtrage réduisait la liste à 1 |
 | 2026-05-21 | Billing & Tokens validés end-to-end (J2) | Portal, checkout abonnement, top-up tokens, webhook, idempotence, sync solde — confirmés en prod test mode |
 | 2026-05-21 | UX items §9.14 = post-J2, non bloquants smoke | Décision explicite : stabilité d'abord, polish ensuite |
+| 2026-05-24 | Turnstile prod : site key corrigé (était la secret key dans .env.production) | Widget émettait token vide → submit échouait ; site key `0x4AAAAAADRzlGMiVrub0924`. ⚠️ secret exposé dans bundle public → rotation requise |
+| 2026-05-24 | Login redirect depuis pages publiques = post-J2 | Ne préserve pas la page d'origine après login ; documenté §9.1/9.2, non bloquant J2 |
 | 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
 | 2026-05-21 | Export rapport relibellé « Export (JSON) » | Le rendu PDF n'existe pas (mock) ; libellé honnête. PDF réel = feature post-J2 |
 | 2026-05-21 | Audits soumis persistés en DB (fsSubmitAudit) | Pas de perte DB ; surface UI historique OU auto-report = post-J2 |

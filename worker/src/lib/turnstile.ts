@@ -34,6 +34,7 @@ export async function verifyTurnstile(env: TurnstileEnv, token: string | undefin
       return { ok: false, code: 'TURNSTILE_NOT_CONFIGURED' };
     }
     if (!token || typeof token !== 'string' || token.length === 0) {
+      console.warn('[turnstile] token missing/empty in production — widget did not produce a token');
       return { ok: false, code: 'TURNSTILE_TOKEN_MISSING' };
     }
   } else {
@@ -70,6 +71,10 @@ export async function verifyTurnstile(env: TurnstileEnv, token: string | undefin
   const data = await res.json().catch(() => null) as { success?: boolean; 'error-codes'?: string[] } | null;
   if (!data) return { ok: false, code: 'TURNSTILE_VERIFY_INVALID_JSON' };
   if (!data.success) {
+    // Diagnostic logging: siteverify error-codes pinpoint the cause
+    // (invalid-input-secret, invalid-input-response, timeout-or-duplicate,
+    // hostname mismatch, etc). Searchable tag: [turnstile].
+    console.warn('[turnstile] siteverify failed — error-codes:', JSON.stringify(data['error-codes'] ?? []));
     return { ok: false, code: 'TURNSTILE_FAILED', errors: data['error-codes'] };
   }
   return { ok: true };
