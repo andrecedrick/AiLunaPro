@@ -211,9 +211,13 @@ export function PriorityActions({ result }: { result: AuditResult }) {
 
               {isFirst && (
                 <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
-                  <Button variant="primary" size="sm">
-                    Start with this →
-                  </Button>
+                  {/* Behavior not yet implemented — disabled to avoid a dead
+                      control misleading users. Wiring planned post-J2. */}
+                  <span title="Coming post-J2" style={{ display: 'inline-flex' }}>
+                    <Button variant="primary" size="sm" disabled>
+                      Start with this →
+                    </Button>
+                  </span>
                   <span
                     style={{
                       fontSize: 11,
