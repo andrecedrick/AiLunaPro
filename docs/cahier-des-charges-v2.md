@@ -626,6 +626,28 @@ Bonnes pratiques de saisie. Callout :
   prochaines étapes.
 - Appartient à la phase post-J2 « Agents / Remediation » (après launch).
 
+**Design & lisibilité (Help)** — confort de lecture sur sessions longues, sans
+fatigue. Référence de style : la page « Getting Started » actuelle (sections
+claires, étapes numérotées, espacement généreux).
+
+- *Typographie / layout* :
+  - Largeur de ligne confortable : contenu en colonne **max ~680–720px**
+    (≈ 65–75 caractères/ligne) ; jamais pleine largeur écran.
+  - Hiérarchie de titres claire **H1 / H2 / H3**, espacement vertical cohérent.
+  - Taille de police lisible (**corps ≈ 15–16px**), **line-height ≈ 1.6**.
+  - Espacement vertical ample entre sections (≥ 24–32px).
+- *Clarté visuelle* :
+  - **Callout boxes** typées : `info` (neutre), `note` (rappel), `warning`
+    (erreur fréquente) — réutiliser les tokens couleur existants
+    (`--green-soft-bg`, `--yellow-soft-bg`, `--brand-tint-bg`).
+  - Paragraphes courts + listes à puces ; pas de murs de texte.
+- *Responsive / accessible* :
+  - Lisible sur petits écrans ; la colonne s'adapte (pas de colonnes serrées).
+  - Contraste élevé, couleurs calmes (pas de fatigue visuelle) ; respecter le
+    thème clair/sombre existant.
+- *Aides visuelles* : Mermaid pour les flux ; screenshots annotés uniquement UI
+  stable ; les visuels soutiennent la compréhension sans surcharger.
+
 ---
 
 ## 10. Architecture technique
