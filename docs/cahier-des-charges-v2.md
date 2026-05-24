@@ -1789,9 +1789,26 @@ sync-session membership guard, cache token OAuth. Defer list documentée.
 
 **⏳ EN COURS** — néant. Worktree clean, J2 launch-ready, gate vert.
 
-**📌 J3 — À DÉFINIR** (scope écrit + gaté §17 avant tout code). Candidats backlog :
-Help Center v1 (§9.16), Email invitations (§9.17 Sequenzy), auto-report/audit-history
-(§9.14), Product Health Dashboard (§9.15), Firebase App Check, Super Admin + onboarding.
+**📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
+pas démarré (plan gaté à venir). Items + rescopes :
+1. **Help Center v1** (§9.16) — frontend, ✅ inclus.
+2. **Email invitations** (§9.17 Sequenzy) — inclus **dès détails API Sequenzy
+   confirmés** (endpoint/auth/payload + clé en secret worker). Hook : invite-create
+   `team-invites.ts:55`.
+3. **Audit history view** — vue read-only (`fsListAudits` existe), ✅ inclus.
+4. **Auto-report on submit** — **derrière config flag (défaut OFF)**, après #3.
+5. **Dashboard real data** — câbler UNIQUEMENT sources réelles existantes ;
+   **empty-states honnêtes** pour trend/impact (PAS de données fabriquées ;
+   stockage historique = hors J3).
+6. **DEBUG-gate logs verbeux** prod — ✅ inclus, petit.
+7. **Firebase App Check** — **monitor mode d'abord**, enforcement plus tard.
+
+Non-goals J3 réaffirmés : pas de fake metrics/trends, pas de Super Admin/
+impersonation, pas de PDF renderer, pas de refactor/caching layer, pas de streams
+parallèles.
+
+Séquence (low-risk → dépendance/config) : (1)+(6) → (3)+(5 rescopé) → (2 après API
+Sequenzy) → (4 flag) → (7 monitor→enforce).
 
 **📌 Post-J3 / scale** — Real PDF, caching agents-catalog (KV), DEBUG-gating logs,
 accept-invite arrayUnion, App Check enforcement, phases features K3B/K3C.
@@ -1832,6 +1849,7 @@ streams features parallèles avant scope.
 |---|---|---|---|
 | J1→J2 | smoke 1–25 + ciblé (billing, rules, CORS) | portal/clé, persistence workspace/report… (fixés live) | docs, R1 share-path |
 | J2→Pre-J3 | §17 7 axes (3 reviewers parallèles + vérif manuelle) | TTL string, invoices IDOR, sync write, cache OAuth (`94a1644`) | logs verbeux, mock dashboard, arrayUnion, billing-config gate, skeleton routes |
+| Pre-J3 scope | §17 pre-flight read-only sur scope J3 proposé | 3 rescopes requis (auto-report→flag, dashboard→real+empty-states, AppCheck→monitor-first) ; dépendance Sequenzy API | Super Admin, PDF, caching, refactor (non-goals) |
 | J3→… | §17 obligatoire (même pattern) | TBD | TBD |
 
 ---
