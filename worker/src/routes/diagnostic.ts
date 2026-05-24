@@ -17,6 +17,7 @@
 import { Hono } from 'hono';
 import { firestoreSet } from '../lib/firestoreAdmin';
 import { verifyTurnstile } from '../lib/turnstile';
+import { checkCooldown } from '../lib/rateLimit';
 import {
   validateAnswers,
   computeScore,
@@ -55,6 +56,12 @@ diagnostic.post('/api/public/diagnostic', async c => {
   const ts = await verifyTurnstile(env, token, remoteIp);
   if (!ts.ok) {
     return c.json({ error: 'Turnstile check failed', code: ts.code ?? 'TURNSTILE_FAILED' }, 400);
+  }
+
+  // Per-IP cooldown — Turnstile stops bots, not a human spamming the funnel.
+  const rl = await checkCooldown(env.FIREBASE_SERVICE_ACCOUNT_JSON, 'diagnostic', remoteIp, 15_000);
+  if (!rl.ok) {
+    return c.json({ error: 'Too many requests. Please wait a moment.', code: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, 429);
   }
 
   // 2. Validate answers shape against canonical question set
@@ -120,7 +127,8 @@ diagnostic.post('/api/public/diagnostic', async c => {
     return c.json({ error: 'Failed to save diagnostic', code: 'PERSIST_FAILED' }, 500);
   }
 
-  console.log('[diagnostic] saved — id:', id, 'score:', score.normalizedScore, 'bucket:', score.bucket, 'email:', lead.email);
+  // PII: do NOT log lead.email (lands in persistent Cloudflare tail logs).
+  console.log('[diagnostic] saved — id:', id, 'score:', score.normalizedScore, 'bucket:', score.bucket);
 
   return c.json({
     id,

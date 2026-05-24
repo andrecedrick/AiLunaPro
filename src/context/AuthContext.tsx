@@ -21,6 +21,7 @@ import {
   loadSession,
 } from '../lib/auth/storage';
 import { resolveLayer } from '../lib/featureFlags';
+import { apiChangeRole, apiRemoveMember, getIdToken } from '../lib/team/teamApiClient';
 import {
   subscribeAuthState,
   firebaseLogin,
@@ -29,8 +30,6 @@ import {
   firebaseSwitchOrg,
   firebaseCreateOrg,
   firebaseInviteMember,
-  firebaseUpdateMemberRole,
-  firebaseRemoveMember,
   getCurrentFirebaseUser,
   firebaseSendPasswordReset,
   firebaseUpdateProfile,
@@ -278,9 +277,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setMembers(prev => prev.map(m => (m.userId === userId ? { ...m, role } : m)));
       setSession(prev => (prev?.userId === userId ? { ...prev, role } : prev));
       if (LAYER === 'firebase' && session) {
-        firebaseUpdateMemberRole(session.orgId, userId, role).catch(err =>
-          console.error('[AuthContext.updateMemberRole] FAILED — role change not persisted, UI optimistic only:', err),
-        );
+        // Worker-authoritative: member writes are blocked for the client SDK by
+        // Firestore rules (update:if false). Route through the worker service
+        // account so the change actually persists.
+        const orgId = session.orgId;
+        (async () => {
+          try {
+            const idToken = await getIdToken();
+            await apiChangeRole(orgId, userId, role, idToken);
+          } catch (err) {
+            console.error('[AuthContext.updateMemberRole] FAILED — role change not persisted:', err);
+          }
+        })();
       }
     },
     [session],
@@ -290,9 +298,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (userId: string) => {
       setMembers(prev => prev.filter(m => m.userId !== userId));
       if (LAYER === 'firebase' && session) {
-        firebaseRemoveMember(session.orgId, userId).catch(err =>
-          console.error('[AuthContext.removeMember] FAILED — removal not persisted, UI optimistic only:', err),
-        );
+        // Worker-authoritative: client SDK member delete is blocked by rules
+        // (delete:if false). Route through the worker service account.
+        const orgId = session.orgId;
+        (async () => {
+          try {
+            const idToken = await getIdToken();
+            await apiRemoveMember(orgId, userId, idToken);
+          } catch (err) {
+            console.error('[AuthContext.removeMember] FAILED — removal not persisted:', err);
+          }
+        })();
       }
     },
     [session],

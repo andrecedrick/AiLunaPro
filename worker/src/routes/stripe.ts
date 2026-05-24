@@ -19,7 +19,7 @@
 
 import { Hono } from 'hono';
 import { getStripe } from '../lib/stripe';
-import { firestoreSet, firestoreGet } from '../lib/firestoreAdmin';
+import { firestoreSet, firestoreGetWithMeta, firestoreSetIfMatch } from '../lib/firestoreAdmin';
 import { firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { incrementBalance, syncBalanceAllocation } from '../lib/tokens';
 import { TOKEN_PACKS, isValidPack } from '../lib/token-costs';
@@ -120,8 +120,14 @@ async function handleEvent(
           break;
         }
         const topupPath = `organizations/${orgId}/tokens/current/topups/${session.id}`;
-        // Idempotency: pending → retry credit. credited → skip. New → create pending.
-        let shouldCredit = false;
+
+        // Idempotent credit. The double-credit hazard: if we credit first and
+        // then mark the doc, a failure in between lets a Stripe retry credit
+        // again. Instead we CLAIM the credit atomically (pending → credited,
+        // guarded by updateTime) BEFORE incrementing. Only one webhook delivery
+        // wins the claim; retries see 'credited' (skip) or lose the compare
+        // (412 → skip). If the increment fails after a won claim, we log for
+        // manual reconciliation rather than risk a second credit.
         try {
           await firestoreCreateIfNotExists(saJson, topupPath, {
             stripeSessionId:       session.id,
@@ -134,32 +140,43 @@ async function handleEvent(
             status:                'pending',
             createdAt:             new Date().toISOString(),
           });
-          shouldCredit = true;
         } catch (err) {
-          if (err instanceof Error && err.message === 'ALREADY_EXISTS') {
-            const existing = await firestoreGet(saJson, topupPath);
-            const status   = existing?.status as string | undefined;
-            if (status === 'credited') {
-              console.log('[webhook] tokens_topup already credited — skipping:', session.id);
-              break;
-            }
-            console.log('[webhook] tokens_topup pending — retrying credit:', session.id);
-            shouldCredit = true;
-          } else {
-            throw err;
-          }
+          if (!(err instanceof Error && err.message === 'ALREADY_EXISTS')) throw err;
         }
-        if (shouldCredit) {
-          try {
-            const result = await incrementBalance(saJson, orgId, tokensAdded);
-            await firestoreSet(saJson, topupPath, {
-              status:     'credited',
-              creditedAt: new Date().toISOString(),
-            }, { merge: true });
-            console.log('[webhook] tokens_topup credited — orgId:', orgId, 'pack:', pack, 'tokens:', tokensAdded, 'newBalance:', result.balanceAfter);
-          } catch (err) {
-            console.error('[webhook] tokens_topup increment failed:', err);
+
+        // Read with meta for the atomic claim.
+        const topupMeta = await firestoreGetWithMeta(saJson, topupPath);
+        if (!topupMeta) {
+          console.error('[webhook] tokens_topup doc missing after create — skipping:', session.id);
+          break;
+        }
+        if (topupMeta.data.status === 'credited') {
+          console.log('[webhook] tokens_topup already credited — skipping:', session.id);
+          break;
+        }
+
+        // Claim pending → credited atomically. Loser/retry → PRECONDITION_FAILED.
+        try {
+          await firestoreSetIfMatch(saJson, topupPath, {
+            status:     'credited',
+            creditedAt: new Date().toISOString(),
+          }, topupMeta.updateTime, { merge: true });
+        } catch (err) {
+          if (err instanceof Error && err.message === 'PRECONDITION_FAILED') {
+            console.log('[webhook] tokens_topup claimed by another delivery — skipping:', session.id);
+            break;
           }
+          throw err;
+        }
+
+        // Won the claim — credit exactly once.
+        try {
+          const result = await incrementBalance(saJson, orgId, tokensAdded);
+          console.log('[webhook] tokens_topup credited — orgId:', orgId, 'pack:', pack, 'tokens:', tokensAdded, 'newBalance:', result.balanceAfter);
+        } catch (err) {
+          // Status is already 'credited' so no retry will re-credit. Tokens not
+          // added → manual reconciliation. Loud log (no silent double-credit).
+          console.error('[webhook] tokens_topup CREDIT FAILED after claim — manual reconciliation needed. session:', session.id, 'tokens:', tokensAdded, err);
         }
         break;
       }

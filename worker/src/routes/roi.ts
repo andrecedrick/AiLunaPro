@@ -17,6 +17,7 @@
 import { Hono } from 'hono';
 import { firestoreSet } from '../lib/firestoreAdmin';
 import { verifyTurnstile } from '../lib/turnstile';
+import { checkCooldown } from '../lib/rateLimit';
 import { validateLead, expiresAtFromNow } from '../lib/diagnostic-shared';
 import { validateInputs, computeRoi, generateRoiId, type RoiInputs } from '../lib/roi-shared';
 import type { AppEnv } from '../index';
@@ -49,6 +50,12 @@ roi.post('/api/public/roi-calculation', async c => {
   const ts = await verifyTurnstile(env, token, remoteIp);
   if (!ts.ok) {
     return c.json({ error: 'Turnstile check failed', code: ts.code ?? 'TURNSTILE_FAILED' }, 400);
+  }
+
+  // Per-IP cooldown — Turnstile stops bots, not a human spamming the funnel.
+  const rl = await checkCooldown(env.FIREBASE_SERVICE_ACCOUNT_JSON, 'roi', remoteIp, 15_000);
+  if (!rl.ok) {
+    return c.json({ error: 'Too many requests. Please wait a moment.', code: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, 429);
   }
 
   // 2. Validate inputs (numeric ranges + workflow enum)
@@ -107,12 +114,12 @@ roi.post('/api/public/roi-calculation', async c => {
     return c.json({ error: 'Failed to save ROI estimate', code: 'PERSIST_FAILED' }, 500);
   }
 
+  // PII: do NOT log lead.email (lands in persistent Cloudflare tail logs).
   console.log(
     '[roi] saved — id:', id,
     'workflow:', inputs.targetWorkflow,
     'monthlySaved:', result.estimatedMonthlyCostSaved,
     'payback:', result.estimatedPaybackMonths,
-    'email:', lead.email,
   );
 
   return c.json({ id, result });
