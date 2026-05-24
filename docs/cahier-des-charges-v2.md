@@ -547,6 +547,18 @@ Caractéristiques : orienté produit & UX, distinct du marketing (GA4), interne.
    une création automatique de report snapshot au Submit. Décision : documenter
    maintenant, implémenter post-J2 (modifie le flux audit → hors scope J2).
 
+6. **Qualité des champs « Describe… » (free-text)** *(post-J2)*. Les zones de
+   texte libre acceptent n'importe quelle saisie (gibberish) sans validation.
+   Elles N'AFFECTENT PAS le score numérique (scoring = réponses à choix), mais
+   nuisent à la crédibilité du rapport. À ajouter : longueur min, guidage,
+   détection gibberish basique, prompting utilisateur.
+
+7. **Copie obsolète Reports** *(post-J2 — cosmétique)*. Le footer de la page
+   Reports affiche encore « Reports are stored locally for now » alors que les
+   rapports persistent en Firestore (`fsCreateReport`). Corriger la copie.
+   Rappel : les rapports sont **par workspace** — la liste montre uniquement les
+   rapports du workspace actif (pas de perte si on change d'org).
+
 ---
 
 ## 10. Architecture technique
@@ -1565,6 +1577,11 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-24 | RBAC invite default = member (vérifié, non-bug) | InviteModal default 'member' ; owner assignable uniquement par owner. Claim "default owner" = mauvaise lecture (dropdown = ligne du owner lui-même) |
 | 2026-05-24 | Invite = lien only (pas de ghost account) ; email auto = post-J2 | Invite crée doc pending + lien ; user accepte via "Sign in to accept" (pas de compte auto). Email auto (Resend/SendGrid + worker) = post-J2 |
 | 2026-05-24 | "Last owner" guidance UX = post-J2 | Message correct mais peu guidé ; amélioration copy/inline post-J2 |
+| 2026-05-24 | Auto-create report au Submit Audit = post-J2 | Évite perception "audit perdu" ; voir §9.14 #5 |
+| 2026-05-24 | Validation qualité free-text "Describe…" = post-J2 | Gibberish accepté ; n'affecte pas le score (choix), mais crédibilité — §9.14 #6 |
+| 2026-05-24 | Reports = par workspace (pas de perte) ; footer "stored locally" obsolète | Vérifié : rapports persistent en Firestore, liste scoped au workspace actif — §9.14 #7 |
+| 2026-05-24 | Post-J2 inspection: 4 must-fix corrigés (e6c081f) | Team role/remove→worker API, topup idempotent, rate-limit public, email PII hors logs |
+| 2026-05-24 | Turnstile secret rotué + worker redéployé | Secret exposé dans bundle public corrigé/rotué ; vérifié sans régression |
 | 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
 | 2026-05-21 | Export rapport relibellé « Export (JSON) » | Le rendu PDF n'existe pas (mock) ; libellé honnête. PDF réel = feature post-J2 |
 | 2026-05-21 | Audits soumis persistés en DB (fsSubmitAudit) | Pas de perte DB ; surface UI historique OU auto-report = post-J2 |
