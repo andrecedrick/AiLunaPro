@@ -1764,6 +1764,78 @@ manuelle des points critiques (ex. TTL vérifié par round-trip REST).
 
 ---
 
+## 18. Roadmap & Planning *(Living Reference — source de vérité)*
+
+> Document vivant. Mis à jour à chaque gate §17. Sert de suivi de progression,
+> aide à la décision, et garde-fou propreté/scalabilité.
+
+### 18.1 Phases
+
+**✅ J1 — Stripe intégration réelle (test mode)** — FAIT
+Subscription sync hardening (product→plan partagé, APP_BASE_URL, syncBalanceAllocation),
+checkout / portal / webhook / tokens, multi-currency, balance optimistic-concurrency.
+
+**✅ J2 — Déploiement production** — FAIT
+Worker prod `ailunapro-worker` + `api.ailunapro.com` ; frontend Pages
+`audit.ailunapro.com` ; rules déployées ; 7 secrets ; Turnstile ; observabilité.
+Smoke 1–25 OK. Correctifs live : persistence workspace (allSettled/arrayUnion/UUID),
+selector full-list+search, list-read hardening, report persistence (strip-undefined),
+portal+clé Stripe, billing RBAC (Owner⊇Billing), demo-creds masquées, Export
+relibellé, bouton mort désactivé, Turnstile sitekey+rotation, TTL (GDPR).
+
+**✅ Gate Pre-J3 (§17)** — FAIT
+4 must-fix livrés (`94a1644`) : TTL→timestamp (vérifié), billing-invoices IDOR,
+sync-session membership guard, cache token OAuth. Defer list documentée.
+
+**⏳ EN COURS** — néant. Worktree clean, J2 launch-ready, gate vert.
+
+**📌 J3 — À DÉFINIR** (scope écrit + gaté §17 avant tout code). Candidats backlog :
+Help Center v1 (§9.16), Email invitations (§9.17 Sequenzy), auto-report/audit-history
+(§9.14), Product Health Dashboard (§9.15), Firebase App Check, Super Admin + onboarding.
+
+**📌 Post-J3 / scale** — Real PDF, caching agents-catalog (KV), DEBUG-gating logs,
+accept-invite arrayUnion, App Check enforcement, phases features K3B/K3C.
+
+### 18.2 Diagramme
+
+```mermaid
+flowchart LR
+  J1["✅ J1 Stripe test-mode"] --> G1{{"🔍 Gate"}}
+  G1 --> J2["✅ J2 Prod deploy + smoke 1-25"]
+  J2 --> G2{{"🔍 Pre-J3 Gate: 4 must-fix ✓"}}
+  G2 --> J3["📌 J3 (scope TBD, §17-gated)"]
+  J3 --> G3{{"🔍 Gate §17"}}
+  G3 --> P["📌 Post-J3 / scale"]
+  P --> G4{{"🔍 Gate §17"}}
+```
+
+### 18.3 Recommandations
+
+**Do next (technique)** : Firebase App Check (vraie protection bot) · DEBUG-gate
+logs verbeux · purge docs publics pré-fix (expiresAt string) · accept-invite arrayUnion.
+**Do next (produit)** : Help Center v1 (réduit support) · Email invitations
+(Sequenzy prêt) · données réelles dashboard (crédibilité).
+**Do NOT yet** : PDF renderer réel, Super Admin + impersonation (lourd sécurité),
+caching layer, sprawl features K3 — différer jusqu'à scope J3 verrouillé. Pas de
+streams features parallèles avant scope.
+
+### 18.4 Optimisation & scale
+- Worker : confirmer gain cache token sous charge ; KV pour agents-catalog (read-heavy immuable).
+- Frontend : câbler données réelles + retirer fixtures mock du bundle.
+- Sécurité : App Check + DEBUG log gating + operator-allowlist pour admin plateforme.
+- Scale x10/x100/x1000 : surveiller `users.orgIds` (limite array/doc 1MB), quotas
+  token endpoint (mitigé par cache), rate-limits publics, fan-out lectures.
+
+### 18.5 Discipline d'inspection (mapping gates)
+
+| Transition | Checklists | Must-fix | Différé |
+|---|---|---|---|
+| J1→J2 | smoke 1–25 + ciblé (billing, rules, CORS) | portal/clé, persistence workspace/report… (fixés live) | docs, R1 share-path |
+| J2→Pre-J3 | §17 7 axes (3 reviewers parallèles + vérif manuelle) | TTL string, invoices IDOR, sync write, cache OAuth (`94a1644`) | logs verbeux, mock dashboard, arrayUnion, billing-config gate, skeleton routes |
+| J3→… | §17 obligatoire (même pattern) | TBD | TBD |
+
+---
+
 ## Annexe A — Decisions log
 
 | Date | Decision | Rationale |
