@@ -9,6 +9,8 @@
  */
 
 import type { ReactNode } from 'react';
+import { Callout } from '../../components/help/Callout';
+import { FlowDiagram } from '../../components/help/FlowDiagram';
 
 export interface HelpSection {
   id:    string;
@@ -62,6 +64,97 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
           Owners and admins can invite teammates from the Team page in the sidebar.
           Each invitee receives a link valid for 7 days. Roles are assigned at invitation time.
         </p>
+        <h3 style={h3}>How it flows</h3>
+        <FlowDiagram
+          steps={['New Audit', 'Submit Audit', 'Audit saved + score', 'Generate report', 'Reports list']}
+          caption="From audit to a shareable report snapshot"
+        />
+      </>
+    ),
+  },
+
+  {
+    id: 'audit-vs-report',
+    title: 'Audit vs Report',
+    body: (
+      <>
+        <h3 style={h3}>In short</h3>
+        <ul style={ul}>
+          <li style={li}>An <strong>Audit</strong> captures your answers and computes your score.</li>
+          <li style={li}>A <strong>Report</strong> is a <strong>snapshot</strong> of an audit, created intentionally to share or archive.</li>
+        </ul>
+        <Callout variant="info">
+          <strong>Submitting saves your audit + score.</strong> A <strong>Report</strong> is a
+          snapshot, created only when you click <strong>Generate report</strong>.
+        </Callout>
+        <h3 style={h3}>What is an Audit?</h3>
+        <ul style={ul}>
+          <li style={li}>Your answers to structured questions.</li>
+          <li style={li}>Your compliance / maturity score.</li>
+          <li style={li}>A dynamic analysis that can evolve with scoring rules.</li>
+        </ul>
+        <Callout variant="note">An audit remains editable until you generate a report.</Callout>
+        <h3 style={h3}>What is a Report?</h3>
+        <ul style={ul}>
+          <li style={li}>A frozen snapshot at a specific point in time.</li>
+          <li style={li}>Created only when clicking <strong>Generate report</strong>.</li>
+          <li style={li}>Stable even if you run new audits later. Exportable and shareable, listed under <strong>Reports</strong> for the active workspace.</li>
+        </ul>
+        <FlowDiagram
+          steps={['Submit Audit', 'Audit saved', 'Generate report?', 'Report snapshot', 'Reports list']}
+          caption="A report is created only on Generate report"
+        />
+        <Callout variant="note">
+          <strong>Submit Audit</strong> → saves audit + score. <strong>Generate report</strong> → creates a snapshot visible in <em>Reports</em>.
+        </Callout>
+        <p style={p}><em>Coming soon:</em> optional auto-report on submit, and an audit history view distinct from reports.</p>
+      </>
+    ),
+  },
+
+  {
+    id: 'reports-workspaces',
+    title: 'Reports & Workspaces',
+    body: (
+      <>
+        <p style={p}>
+          Reports are <strong>per workspace</strong>, not global. The Reports list shows only
+          the reports of the <strong>active</strong> workspace.
+        </p>
+        <FlowDiagram
+          steps={['Workspace A → its reports', 'Workspace B → its reports']}
+          caption="Each workspace keeps its own reports"
+        />
+        <Callout variant="warning">
+          Don't see an old report? It likely belongs to <strong>another workspace</strong>.
+          Switch workspace from the selector at the top of the sidebar.
+        </Callout>
+        <Callout variant="note">
+          The dashboard date filter does <strong>not</strong> affect the Reports list.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
+    id: 'filling-the-audit',
+    title: 'How to fill the audit properly',
+    body: (
+      <>
+        <p style={p}>
+          Good inputs make a credible audit. Take a minute to answer honestly — the result
+          reflects what you put in.
+        </p>
+        <Callout variant="info">
+          The <strong>“Describe…”</strong> free-text fields add context. Your <strong>score comes
+          from the structured (choice) questions</strong>, not the free text. Use clear, real,
+          readable information for a credible report.
+        </Callout>
+        <ul style={ul}>
+          <li style={li}>Answer every structured question — they drive the score and findings.</li>
+          <li style={li}>Use the free-text fields for real context (owners, tools, processes), not placeholder text.</li>
+          <li style={li}>Re-run the audit as your practices evolve to track progress.</li>
+        </ul>
       </>
     ),
   },
@@ -379,6 +472,27 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     title: 'FAQ',
     body: (
       <>
+        <h3 style={h3}>Why don't I see my old reports?</h3>
+        <p style={p}>
+          Reports are <strong>per workspace</strong>. An older report likely belongs to a
+          different workspace — switch workspace from the selector at the top of the sidebar.
+          The dashboard date filter does not affect the Reports list.
+        </p>
+        <h3 style={h3}>Why is Reports empty?</h3>
+        <p style={p}>
+          A submitted audit alone does not create a report. Open a submitted audit and click
+          <strong> Generate report</strong> to create a snapshot — it then appears under Reports.
+        </p>
+        <h3 style={h3}>Does random text affect my score?</h3>
+        <p style={p}>
+          No. The score comes from the structured (choice) questions. Free-text “Describe…”
+          fields add context only — but clear, real input makes your report credible.
+        </p>
+        <h3 style={h3}>What is saved, and when?</h3>
+        <p style={p}>
+          <strong>Submit Audit</strong> saves your answers + score. <strong>Generate report</strong>
+          creates a separate, shareable snapshot. See “Audit vs Report” above.
+        </p>
         <h3 style={h3}>Is my data secure?</h3>
         <p style={p}>
           AiLunaPro uses authenticated access, role-based permissions, Firestore security
