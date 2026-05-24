@@ -125,6 +125,30 @@ function Locked() {
   );
 }
 
+/* ── Operator-managed view (production) ───────────────────────
+ * Stripe platform config (products, prices, promo codes, key health) is
+ * operator-only — NOT per-tenant. In production we hide these admin panels
+ * from tenant owners; the operator manages Stripe via the Stripe Dashboard +
+ * `wrangler secret`. Tenant billing (plan, usage, invoices, manage
+ * subscription/tokens) lives on the main Billing page (#/billing), untouched.
+ */
+function OperatorManaged() {
+  return (
+    <SettingsLayout title="Billing">
+      <div style={{ padding: 32, textAlign: 'center' }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+          Managed by the platform operator
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.55, maxWidth: 460, margin: '6px auto 0' }}>
+          Stripe configuration is managed centrally by AiLunaPro.
+          For your plan, usage, invoices, and subscription, use the{' '}
+          <strong>Billing</strong> page in the sidebar.
+        </div>
+      </div>
+    </SettingsLayout>
+  );
+}
+
 /* ── Main page ────────────────────────────────────────────── */
 export function BillingSettingsPage() {
   const { session } = useAuth();
@@ -151,6 +175,8 @@ export function BillingSettingsPage() {
   useEffect(() => { if (canView) load(); }, [canView, load]);
 
   if (!canView) return <Locked />;
+  // Production: hide platform Stripe admin from tenant owners (operator-only).
+  if (import.meta.env.PROD) return <OperatorManaged />;
 
   return (
     <SettingsLayout title="Billing">
