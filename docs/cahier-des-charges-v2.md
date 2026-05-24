@@ -559,6 +559,30 @@ Caractéristiques : orienté produit & UX, distinct du marketing (GA4), interne.
    Rappel : les rapports sont **par workspace** — la liste montre uniquement les
    rapports du workspace actif (pas de perte si on change d'org).
 
+#### 9.16 Help Center — expansion *(post-J2 — documentation utilisateur)*
+Étendre le Help Center pour clarifier l'usage et réduire la confusion.
+Sections à ajouter / mettre à jour :
+
+1. **Audit vs Report**
+   - « Submit Audit » enregistre les réponses + le score de l'audit.
+   - Un **Report est un snapshot**, créé uniquement au clic « Generate report ».
+   - Expliquer pourquoi les rapports ne sont pas auto-créés aujourd'hui.
+   - Mentionner auto-report / historique audits comme amélioration post-J2 (§9.14 #5).
+
+2. **Reports & Workspaces**
+   - Les rapports sont **par workspace**, pas globaux.
+   - Changer de workspace change la liste de rapports visible.
+   - Le filtre de date du dashboard n'affecte PAS la liste Reports.
+
+3. **Bien remplir l'audit**
+   - Importance d'une saisie réelle et lisible dans les champs « Describe… ».
+   - Les champs free-text ajoutent du contexte ; le score vient des questions
+     structurées (§9.14 #6).
+   - Encourager des informations claires et réelles pour un audit crédible.
+
+4. **Questions fréquentes / malentendus**
+   - « Pourquoi je ne vois pas mes anciens rapports ? » → explication workspace.
+
 ---
 
 ## 10. Architecture technique
