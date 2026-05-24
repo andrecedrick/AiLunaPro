@@ -14,6 +14,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
 const invites = new Hono<AppEnv>();
@@ -101,7 +102,7 @@ invites.post('/api/team/invites', requireAuth(), requireRole(['owner', 'admin'])
     return c.json({ error: msg }, 500);
   }
 
-  console.log('[team-invites] created', inviteId, 'role=', body.role, 'invitedBy=', uid);
+  dlog(env, '[team-invites] created', inviteId, 'role=', body.role, 'invitedBy=', uid);
 
   // Return invite link with raw token (only chance to see it)
   return c.json({
@@ -220,7 +221,7 @@ invites.post('/api/team/invites/:inviteId/regenerate', requireAuth(), requireRol
     return c.json({ error: err instanceof Error ? err.message : 'Regenerate failed' }, 500);
   }
 
-  console.log('[team-invites] regenerated', inviteId);
+  dlog(env, '[team-invites] regenerated', inviteId);
   return c.json({
     inviteId,
     rawToken:  newToken,
@@ -345,7 +346,7 @@ invites.post('/api/team/invites/accept', requireAuth(), async c => {
     console.warn('[team-invites] mark accepted failed:', err);
   }
 
-  console.log('[team-invites] accepted', inviteId, 'uid=', uid, 'orgId=', orgId, 'role=', role);
+  dlog(env, '[team-invites] accepted', inviteId, 'uid=', uid, 'orgId=', orgId, 'role=', role);
   return c.json({ ok: true, orgId, role });
 });
 

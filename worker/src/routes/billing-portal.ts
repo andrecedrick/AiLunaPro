@@ -15,6 +15,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
+import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
 const portal = new Hono<AppEnv>();
@@ -44,7 +45,7 @@ portal.post('/api/billing/portal', requireAuth(), requireRole(['owner', 'billing
   const orgId = body.orgId;
   if (!orgId) return c.json({ error: 'Missing orgId' }, 400);
 
-  console.log('[portal] orgId=', orgId);
+  dlog(env, '[portal] orgId=', orgId);
 
   const sub = await firestoreGet(
     env.FIREBASE_SERVICE_ACCOUNT_JSON,
@@ -56,7 +57,7 @@ portal.post('/api/billing/portal', requireAuth(), requireRole(['owner', 'billing
     console.warn('[portal] no stripeCustomerId found for orgId=', orgId);
     return c.json({ error: 'No active Stripe customer found for this organization' }, 404);
   }
-  console.log('[portal] customerId=', customerId);
+  dlog(env, '[portal] customerId=', customerId);
 
   // J1: APP_BASE_URL-driven return URL. localhost is dev-only fallback.
   const baseUrl   = env.APP_BASE_URL ?? 'http://localhost:5173';
@@ -78,7 +79,7 @@ portal.post('/api/billing/portal', requireAuth(), requireRole(['owner', 'billing
     throw err;
   }
 
-  console.log('[portal] session created url=', session.url);
+  dlog(env, '[portal] session created url=', session.url);
   return c.json({ url: session.url });
 });
 

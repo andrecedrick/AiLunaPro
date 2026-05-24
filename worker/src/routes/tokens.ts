@@ -17,6 +17,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
+import { dlog } from '../lib/log';
 import { ensureTokenCycleFresh, consumeTokens } from '../lib/tokens';
 import { firestoreSet as firestoreSetWrite } from '../lib/firestoreAdmin';
 import { TOKEN_PACKS, isValidPack, isValidAction, allocationForPlan } from '../lib/token-costs';
@@ -123,7 +124,7 @@ tokens.post('/api/tokens/topup', requireAuth(), requireRole(['owner', 'billing']
   }
 
   if (!session.url) return c.json({ error: 'Stripe session created but URL is empty' }, 502);
-  console.log('[tokens] topup checkout created — orgId:', orgId, 'pack:', def.pack, 'session:', session.id);
+  dlog(env, '[tokens] topup checkout created — orgId:', orgId, 'pack:', def.pack, 'session:', session.id);
   return c.json({ url: session.url, pack: def.pack, tokensAdded: def.tokensAdded });
 });
 
@@ -423,7 +424,7 @@ tokens.post('/api/tokens/_debug/repair', requireAuth(), requireRole(['owner']), 
     updatedAt:   now,
   }, { merge: true });
 
-  console.log('[tokens] repair — orgId:', orgId, 'balance:', balance, 'allocation:', monthlyAllocation, 'topups:', topupTotal, 'consumed:', consumed);
+  dlog(env, '[tokens] repair — orgId:', orgId, 'balance:', balance, 'allocation:', monthlyAllocation, 'topups:', topupTotal, 'consumed:', consumed);
 
   return c.json({
     ok: true,

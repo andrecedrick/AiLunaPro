@@ -22,6 +22,7 @@ import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
+import { dlog } from '../lib/log';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import { isSupportedCurrency, type Currency } from '../lib/currency';
@@ -145,7 +146,7 @@ checkout.post('/api/billing/checkout', requireAuth(), requireRole(['owner', 'bil
     detectedRegion   = det.region;
   }
 
-  console.log('[checkout] orgId=', orgId, 'plan=', plan,
+  dlog(env, '[checkout] orgId=', orgId, 'plan=', plan,
               'detected_country=', detectedRegion ?? '(none)',
               'detected_currency=', detectedCurrency,
               'source=', detectionSource);
@@ -170,7 +171,7 @@ checkout.post('/api/billing/checkout', requireAuth(), requireRole(['owner', 'bil
 
   // Step C: fallback to defaultCurrency if different and detected failed
   if (!priceId && defaultCurrency !== detectedCurrency) {
-    console.log('[checkout] no price for', detectedCurrency, '— falling back to default', defaultCurrency);
+    dlog(env, '[checkout] no price for', detectedCurrency, '— falling back to default', defaultCurrency);
     priceId = await resolvePriceForCurrency(stripe, productId, defaultCurrency, activeMap, planKey);
     if (priceId) {
       checkoutCurrency     = defaultCurrency;
@@ -194,7 +195,7 @@ checkout.post('/api/billing/checkout', requireAuth(), requireRole(['owner', 'bil
     }, 400);
   }
 
-  console.log('[checkout] resolved priceId=', priceId,
+  dlog(env, '[checkout] resolved priceId=', priceId,
               'checkout_currency=', checkoutCurrency,
               'fallback=', currencyFallbackUsed);
 
@@ -245,7 +246,7 @@ checkout.post('/api/billing/checkout', requireAuth(), requireRole(['owner', 'bil
     return c.json({ error: 'Stripe session created but URL is empty' }, 502);
   }
 
-  console.log('[checkout] session created:', session.id);
+  dlog(env, '[checkout] session created:', session.id);
   return c.json({
     url:                  session.url,
     detectedCurrency,

@@ -22,6 +22,7 @@ import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { getStripe } from '../lib/stripe';
 import { firestoreSet, firestoreGet } from '../lib/firestoreAdmin';
+import { dlog } from '../lib/log';
 import { syncBalanceAllocation } from '../lib/tokens';
 import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
 import { assertStripeKeyAllowed } from '../lib/env';
@@ -62,7 +63,7 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
     return c.json({ error: 'Missing sessionId' }, 400);
   }
 
-  console.log('[sync-session] sessionId=', sessionId, 'uid=', uid);
+  dlog(env, '[sync-session] sessionId=', sessionId, 'uid=', uid);
 
   const stripe = getStripe(env.STRIPE_SECRET_KEY);
 
@@ -79,9 +80,9 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
     throw err;
   }
 
-  console.log('[sync-session] stripe session client_reference_id=', session.client_reference_id);
-  console.log('[sync-session] metadata.orgId=', session.metadata?.orgId);
-  console.log('[sync-session] payment_status=', session.payment_status, 'status=', session.status);
+  dlog(env, '[sync-session] stripe session client_reference_id=', session.client_reference_id);
+  dlog(env, '[sync-session] metadata.orgId=', session.metadata?.orgId);
+  dlog(env, '[sync-session] payment_status=', session.payment_status, 'status=', session.status);
 
   if (session.payment_status !== 'paid' && session.status !== 'complete') {
     return c.json({
@@ -114,7 +115,7 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
     }, 400);
   }
 
-  console.log('[sync-session] resolved orgId=', orgId);
+  dlog(env, '[sync-session] resolved orgId=', orgId);
 
   // Membership guard: the caller must be a billing-capable member of the
   // resolved org. Without this, any authenticated user with a replayed/known
@@ -140,7 +141,7 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
     ? (metadataPlan as 'Starter' | 'Professional' | 'Enterprise')
     : planLabelFromProductId(productId);
 
-  console.log('[sync-session] subscriptionId=', sub.id, 'plan=', plan, 'productId=', productId);
+  dlog(env, '[sync-session] subscriptionId=', sub.id, 'plan=', plan, 'productId=', productId);
 
   const item       = sub.items?.data?.[0];
   const customerId = typeof session.customer === 'string'
@@ -170,7 +171,7 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
       `organizations/${orgId}/subscriptions/current`,
       subDoc,
     );
-    console.log('[sync-session] write success orgId=', orgId, 'plan=', plan);
+    dlog(env, '[sync-session] write success orgId=', orgId, 'plan=', plan);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Firestore write failed';
     console.error('[sync-session] write failed:', msg);
