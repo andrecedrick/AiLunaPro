@@ -648,6 +648,54 @@ claires, étapes numérotées, espacement généreux).
 - *Aides visuelles* : Mermaid pour les flux ; screenshots annotés uniquement UI
   stable ; les visuels soutiennent la compréhension sans surcharger.
 
+**Exemple design-ready (barre de qualité)** — la Section 2 « Audit vs Report »
+rédigée au niveau attendu pour les 5 sections (titres clairs, paragraphes
+courts, callouts, takeaway, Mermaid). À reproduire pour les autres sections :
+
+> ### Audit vs Report — understand the difference
+>
+> **In short**
+> - An **Audit** captures your answers and computes your score.
+> - A **Report** is a **snapshot** of an audit, created intentionally to be shared or archived.
+>
+> **What is an Audit?**
+> - Your answers to structured questions
+> - Your compliance/maturity score
+> - A dynamic analysis that can evolve with scoring rules
+>
+> ✅ Clicking **Submit Audit** saves your answers and score.
+>
+> 💡 *An audit remains editable until you generate a report.*
+>
+> **What is a Report?**
+> - A **frozen snapshot** at a specific point in time
+> - Created **only** when clicking **Generate report**
+> - Stable even if you run new audits later
+>
+> ✅ Reports are exportable, shareable, and listed under **Reports** for the active workspace.
+>
+> **Key takeaway**
+> - ✅ **Submit Audit** → saves audit + score
+> - ✅ **Generate report** → creates a snapshot visible in *Reports*
+>
+> **Where are reports stored?**
+> - Reports are **per workspace**.
+> - Switching workspace changes the visible reports.
+> - The dashboard date filter **does not affect** the Reports list.
+>
+> **Coming post-J2**
+> - Optional auto-report on submit
+> - Audit history view distinct from reports
+
+```mermaid
+flowchart LR
+  A[New Audit] --> B[Submit Audit]
+  B --> C[Audit Saved + Score]
+  C --> D[Generate Report]
+  D --> E[Report Snapshot]
+  E --> F[Reports List]
+```
+
 ---
 
 ## 10. Architecture technique
