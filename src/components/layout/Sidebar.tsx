@@ -10,6 +10,7 @@ const NAV_ROUTES: Partial<Record<string, Route>> = {
   dashboard: { name: 'dashboard' },
   'new-audit': { name: 'audit/new' },
   reports: { name: 'reports' },
+  'audit-history': { name: 'audit/history' },
   registry: { name: 'registry' },
   agents: { name: 'agents' },
   team: { name: 'team' },
@@ -27,6 +28,7 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'reports') return 'reports';
   if (name === 'reports/detail') return 'reports';
   if (name === 'reports/share') return 'reports';
+  if (name === 'audit/history') return 'audit-history';
   if (name === 'registry') return 'registry';
   if (name === 'agents') return 'agents';
   if (name === 'agents/detail') return 'agents';

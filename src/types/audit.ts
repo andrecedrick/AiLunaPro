@@ -63,6 +63,7 @@ export type Route =
   | { name: 'audit/new' }
   | { name: 'audit/result'; auditId?: string }
   | { name: 'audit/assistance'; auditId?: string }
+  | { name: 'audit/history' }
   | { name: 'reports' }
   | { name: 'reports/detail'; reportId: string }
   | { name: 'reports/share'; reportId: string }

@@ -19,6 +19,7 @@ const DashboardPage        = lazy(() => import('./pages/DashboardPage').then(m =
 const NewAuditPage         = lazy(() => import('./pages/NewAuditPage').then(m => ({ default: m.NewAuditPage })));
 const AuditResultPage      = lazy(() => import('./pages/AuditResultPage').then(m => ({ default: m.AuditResultPage })));
 const AuditAssistancePage  = lazy(() => import('./pages/AuditAssistancePage').then(m => ({ default: m.AuditAssistancePage })));
+const AuditHistoryPage     = lazy(() => import('./pages/AuditHistoryPage').then(m => ({ default: m.AuditHistoryPage })));
 const ReportsListPage      = lazy(() => import('./pages/ReportsListPage').then(m => ({ default: m.ReportsListPage })));
 const ReportDetailPage     = lazy(() => import('./pages/ReportDetailPage').then(m => ({ default: m.ReportDetailPage })));
 const ReportSharePage      = lazy(() => import('./pages/ReportSharePage').then(m => ({ default: m.ReportSharePage })));
@@ -57,6 +58,8 @@ function PageOutlet() {
         return <AuditResultPage />;
       case 'audit/assistance':
         return <AuditAssistancePage />;
+      case 'audit/history':
+        return <AuditHistoryPage />;
       case 'reports':
         return <ReportsListPage />;
       case 'reports/detail':
