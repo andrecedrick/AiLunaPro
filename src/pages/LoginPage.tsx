@@ -5,6 +5,11 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import { loginValidate } from '../utils/validators/auth';
+import { resolveLayer } from '../lib/featureFlags';
+
+// Demo credentials only work in the mock auth layer. Never show them in the
+// firebase layer / production (security + credibility).
+const SHOW_DEMO_CREDS = resolveLayer('auth') === 'mock';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -133,36 +138,40 @@ export function LoginPage() {
         </Button>
       </form>
 
-      {/* Divider */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          margin: '22px 0',
-        }}
-      >
-        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Demo credentials</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-      </div>
+      {SHOW_DEMO_CREDS && (
+        <>
+          {/* Divider */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              margin: '22px 0',
+            }}
+          >
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Demo credentials</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          </div>
 
-      {/* Demo hint */}
-      <div
-        style={{
-          background: 'var(--surface-2)',
-          border: '1px solid var(--border)',
-          borderRadius: 10,
-          padding: '12px 14px',
-          fontSize: 12,
-          color: 'var(--text-secondary)',
-          lineHeight: 1.7,
-          fontFamily: 'monospace',
-        }}
-      >
-        <span style={{ color: 'var(--text-muted)' }}>email: </span>sophie@acmecorp.io<br />
-        <span style={{ color: 'var(--text-muted)' }}>pass: &nbsp;</span>password123
-      </div>
+          {/* Demo hint — mock layer only */}
+          <div
+            style={{
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              padding: '12px 14px',
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              lineHeight: 1.7,
+              fontFamily: 'monospace',
+            }}
+          >
+            <span style={{ color: 'var(--text-muted)' }}>email: </span>sophie@acmecorp.io<br />
+            <span style={{ color: 'var(--text-muted)' }}>pass: &nbsp;</span>password123
+          </div>
+        </>
+      )}
 
       {/* Sign up link */}
       <p
