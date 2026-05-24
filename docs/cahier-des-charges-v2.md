@@ -696,6 +696,41 @@ flowchart LR
   E --> F[Reports List]
 ```
 
+#### 9.17 Email invitations *(post-J2 — exécution préparée)*
+Le flux d'invitation par **lien** reste pour le launch (copie manuelle ; l'UI
+affiche « Email delivery coming soon »). L'envoi automatique d'email est
+**différé post-J2** mais entièrement scopé ici (fondation déjà en place).
+
+**Provider** : **Sequenzy** (https://www.sequenzy.com) — déjà configuré, domaine
+d'envoi vérifié (DKIM/SPF posés sur `audit` : `sequenzy._domainkey.audit` TXT).
+Transactional email. (Alternative équivalente : Resend — mêmes responsabilités.)
+
+**Domaine d'envoi** : sous-domaine vérifié de `ailunapro.com` (audit), DKIM+SPF
+OK. Expéditeur transactionnel dédié (ex. `no-reply@…`).
+
+**Responsabilité worker** : nouvelle route worker (service account / clé API
+provider en secret `wrangler secret put`) déclenchée à la création d'invite
+(`apiCreateInvite`) — envoie l'email avec le lien d'acceptation. Jamais d'envoi
+côté client (clé API = secret serveur uniquement).
+
+**Template email d'invitation** :
+- Objet : invitation à rejoindre le workspace `{orgName}`.
+- Corps : nom de l'invitant, **workspace**, **rôle** attribué, bouton/lien
+  d'acceptation (`/#/invite/{orgId}/{inviteId}/{rawToken}`), expiration (7 j).
+- Branding AiLunaPro (logo, ton pro & accessible).
+
+**Sécurité** :
+- **Aucun mot de passe** dans l'email. Acceptation **link-based** uniquement :
+  l'invité clique → « Sign in to accept » → Firebase Auth → route worker
+  `/accept` (vérifie le hash du token). Pas de compte auto/ghost.
+- Token d'invite à usage unique, expirant ; lien régénérable (révoque l'ancien).
+- Clé API provider = secret worker, jamais exposée (pas de `VITE_`).
+- Rate-limit/anti-abus sur l'envoi (réutiliser le pattern cooldown si pertinent).
+
+**Reste pour launch (inchangé)** : invite crée doc pending + lien copiable ; UI
+« Email delivery coming soon ». Implémentation post-J2 = brancher la route
+d'envoi sur l'event de création d'invite.
+
 ---
 
 ## 10. Architecture technique
@@ -1723,6 +1758,7 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-24 | Demo credentials masquées hors mock layer (e88985c) | LoginPage affichait sophie@acmecorp.io/password123 en prod ; gated par `resolveLayer('auth')==='mock'`. Valeurs inertes en prod (mock layer off) |
 | 2026-05-24 | Auth bot-protection = Firebase App Check (post-J2), PAS widget Turnstile sur login/signup | Login/signup = Firebase Auth client SDK direct (pas de hop worker) ; un widget de formulaire est contournable via REST direct. App Check = vraie protection edge. Documenté, post-J2 |
 | 2026-05-24 | Remove member : accès révoqué immédiatement (worker requireRole 403 + rules isAnyMember=false) ; force-logout instantané = post-J2 | Le doc member supprimé bloque actions + lectures tout de suite. Reste : token session valide + UI stale jusqu'au reload. Hardening post-J2 = revoke refresh token / listener realtime membership → auto-redirect |
+| 2026-05-24 | Email invitations = post-J2, exécution préparée (§9.17) | Provider Sequenzy configuré (domaine vérifié DKIM/SPF) ; launch garde le flux lien + UI "coming soon" ; spec route worker + template + sécurité figée pour impl rapide post-J2 |
 | 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
 | 2026-05-21 | Export rapport relibellé « Export (JSON) » | Le rendu PDF n'existe pas (mock) ; libellé honnête. PDF réel = feature post-J2 |
 | 2026-05-21 | Audits soumis persistés en DB (fsSubmitAudit) | Pas de perte DB ; surface UI historique OU auto-report = post-J2 |
