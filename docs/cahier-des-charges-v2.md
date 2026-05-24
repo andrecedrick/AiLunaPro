@@ -1722,6 +1722,48 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 
 ---
 
+## 17. Gate d'inspection de fin d'étape *(RÈGLE GLOBALE — obligatoire)*
+
+**Règle :** à la **fin de chaque étape** (J2, J3, J4, …) et **avant** toute
+transition vers l'étape suivante, exécuter un **PLAN D'INSPECTION COMPLET** avec
+la checklist diagnostique ci-dessous. C'est un **hard gate** :
+❌ **aucune transition d'étape sans inspection passée.**
+
+### Checklist obligatoire (à chaque fois)
+1. **Security & Auth** — cohérence RBAC (UI / worker / Firestore rules), secrets
+   (bundle / logs / env), anti-bot (Turnstile / App Check), accès cross-tenant.
+2. **Bugs & silent failures** — erreurs avalées, UI optimiste sans rollback,
+   races (rôles, invites, Stripe, sessions).
+3. **Performance & loading** — bundle frontend, lazy-loading, worker cold start,
+   caching (token OAuth, lectures Firestore redondantes, N+1).
+4. **Firestore & data hygiene** — TTL **effective** (Timestamp vs string),
+   indexes, requêtes lourdes, PII safety (pas de logs/leaks).
+5. **Observability & logging** — signal vs bruit, visibilité des erreurs en prod,
+   séparation dev/prod.
+6. **Code quality & maintainability** — dead code, mock leftovers, TODO/FIXME,
+   structure, fichiers > 500 lignes, duplication.
+7. **Scale & risk diagnostics** — comportement à **x10 / x100 / x1000**
+   (limites Firestore doc/array, quotas, rate-limits, fan-out, coûts).
+
+### Output attendu (rapport concis)
+- ✅ **Safe**
+- ⚠️ **Warning** (différable)
+- ❌ **Must-fix** (bloque l'étape suivante)
+
+Chaque inspection DOIT en plus :
+- Vérifier qu'**aucune étape n'a été sautée** ;
+- Énoncer explicitement **ce qu'il faut faire ensuite** ;
+- Énoncer explicitement **ce qu'il NE faut PAS faire** ;
+- Proposer optimisations, options, features et corrections (perf, sécurité,
+  complétude produit).
+
+**Exécution :** inspection read-only d'abord (rapport classifié) → approbation
+des must-fix → correction en batch → re-vérification → green-light étape
+suivante. Pattern éprouvé : reviewers parallèles read-only + vérification
+manuelle des points critiques (ex. TTL vérifié par round-trip REST).
+
+---
+
 ## Annexe A — Decisions log
 
 | Date | Decision | Rationale |
@@ -1759,6 +1801,7 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-24 | Auth bot-protection = Firebase App Check (post-J2), PAS widget Turnstile sur login/signup | Login/signup = Firebase Auth client SDK direct (pas de hop worker) ; un widget de formulaire est contournable via REST direct. App Check = vraie protection edge. Documenté, post-J2 |
 | 2026-05-24 | Remove member : accès révoqué immédiatement (worker requireRole 403 + rules isAnyMember=false) ; force-logout instantané = post-J2 | Le doc member supprimé bloque actions + lectures tout de suite. Reste : token session valide + UI stale jusqu'au reload. Hardening post-J2 = revoke refresh token / listener realtime membership → auto-redirect |
 | 2026-05-24 | Email invitations = post-J2, exécution préparée (§9.17) | Provider Sequenzy configuré (domaine vérifié DKIM/SPF) ; launch garde le flux lien + UI "coming soon" ; spec route worker + template + sécurité figée pour impl rapide post-J2 |
+| 2026-05-24 | Gate d'inspection fin d'étape = RÈGLE GLOBALE obligatoire (§17) | Hard gate avant chaque transition (J2→J3→…) ; checklist 7 axes + scale x10/x100/x1000 ; output ✅/⚠️/❌ + next/not-next + optimisations ; read-only → fix batch → re-verify → green-light |
 | 2026-05-24 | Inspection pré-J3 : 4 must-fix corrigés (94a1644) | (1) TTL réel : expiresAt en timestampValue (était stringValue → TTL no-op, GDPR) — vérifié PASS ; (2) IDOR billing-invoices fermé (requireRole owner/billing) ; (3) garde membership sur billing/sync-session ; (4) cache token OAuth worker (perf/quota). Docs publics PRÉ-fix gardent expiresAt string → purge manuelle. Defer list (logs verbeux, mock dashboard, accept-invite arrayUnion, billing-config gate, skeleton routes) documentée, non bloquante |
 | 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
 | 2026-05-21 | Export rapport relibellé « Export (JSON) » | Le rendu PDF n'existe pas (mock) ; libellé honnête. PDF réel = feature post-J2 |
