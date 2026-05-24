@@ -560,28 +560,71 @@ Caractéristiques : orienté produit & UX, distinct du marketing (GA4), interne.
    rapports du workspace actif (pas de perte si on change d'org).
 
 #### 9.16 Help Center — expansion *(post-J2 — documentation utilisateur)*
-Étendre le Help Center pour clarifier l'usage et réduire la confusion.
-Sections à ajouter / mettre à jour :
 
-1. **Audit vs Report**
-   - « Submit Audit » enregistre les réponses + le score de l'audit.
-   - Un **Report est un snapshot**, créé uniquement au clic « Generate report ».
-   - Expliquer pourquoi les rapports ne sont pas auto-créés aujourd'hui.
-   - Mentionner auto-report / historique audits comme amélioration post-J2 (§9.14 #5).
+**Help v1 (Option 2, ≤5 sections).** Structure fondation, étendue ensuite en
+Q&A complet (Option 1). Approche visuelle : **Mermaid** (texte, versionné, rendu
+in-Help) > screenshots ; screenshots annotés **uniquement** pour UI stable
+(workspace switcher) ; callouts = note boxes, pas d'images. Éviter le PNG-heavy
+qui pourrit aux changements UI.
 
-2. **Reports & Workspaces**
-   - Les rapports sont **par workspace**, pas globaux.
-   - Changer de workspace change la liste de rapports visible.
-   - Le filtre de date du dashboard n'affecte PAS la liste Reports.
+**Section 1 — Getting Started**
+Ce qu'est AiLunaPro + problème résolu. Diagramme :
+```mermaid
+flowchart LR
+  A[New Audit] --> B[Submit Audit]
+  B --> C[Score + réponses sauvés]
+  C --> D[Generate report]
+  D --> E[Reports list]
+```
 
-3. **Bien remplir l'audit**
-   - Importance d'une saisie réelle et lisible dans les champs « Describe… ».
-   - Les champs free-text ajoutent du contexte ; le score vient des questions
-     structurées (§9.14 #6).
-   - Encourager des informations claires et réelles pour un audit crédible.
+**Section 2 — Audit vs Report**
+Cycle de vie. Callout (note box) :
+> **Submitting saves your audit + score.** A **Report is a snapshot**, created
+> only when you click **Generate report**.
+```mermaid
+flowchart TD
+  S[Submit Audit] --> P[(Audit persisté: status=submitted + réponses)]
+  P -. pas de report auto .-> R{Generate report ?}
+  R -- oui --> G[(Report snapshot persisté)]
+  R -- non --> N[Audit conservé, aucun report listé]
+```
+Note : auto-report / historique audits = amélioration post-J2 (§9.14 #5).
 
-4. **Questions fréquentes / malentendus**
-   - « Pourquoi je ne vois pas mes anciens rapports ? » → explication workspace.
+**Section 3 — Reports & Workspaces**
+Scoping par workspace (rapports NON globaux).
+```mermaid
+flowchart TD
+  U[Utilisateur] --> WA[Workspace A]
+  U --> WB[Workspace B]
+  WA --> RA[Reports de A uniquement]
+  WB --> RB[Reports de B uniquement]
+```
+- 1 screenshot annoté : le **workspace switcher** (sidebar).
+- Callout : **le filtre de date du dashboard n'affecte PAS la liste Reports.**
+
+**Section 4 — How to fill the audit properly**
+Bonnes pratiques de saisie. Callout :
+> Les champs **« Describe… » = narratif contextuel**. Le **score vient des
+> questions structurées** (choix), pas du texte libre. Saisir des infos réelles
+> et lisibles → audit crédible.
+
+**Section 5 — FAQ**
+- « Pourquoi je ne vois pas mes anciens rapports ? » → ils sont dans un **autre
+  workspace** (rapports scopés par workspace).
+- « Pourquoi Reports est vide ? » → cliquer **Generate report** depuis un audit
+  soumis ; un audit soumis seul ne crée pas de report.
+- « Le texte aléatoire affecte-t-il le score ? » → **Non** (score = questions
+  structurées), mais nuit à la crédibilité.
+- « Qu'est-ce qui est sauvé, et quand ? » → Submit = audit + score ;
+  Generate report = snapshot report.
+
+**Référence — Luna AI Assistant** *(post-J2, phase « Agents / Remediation »)*
+À documenter quand introduit :
+- Luna = assistant **contextuel**, apparaît **après un audit/report**, pas un
+  chat générique.
+- Rôle : expliquer les findings, générer plans de remédiation/action, guider les
+  prochaines étapes.
+- Appartient à la phase post-J2 « Agents / Remediation » (après launch).
 
 ---
 
