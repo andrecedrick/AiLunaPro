@@ -731,6 +731,40 @@ côté client (clé API = secret serveur uniquement).
 « Email delivery coming soon ». Implémentation post-J2 = brancher la route
 d'envoi sur l'event de création d'invite.
 
+**Contrat REST Sequenzy (verrouillé — J3 #2)**
+
+```
+POST https://api.sequenzy.com/api/v1/transactional/send
+Headers:
+  Authorization: Bearer <SEQUENZY_API_KEY>
+  Content-Type: application/json
+Body (approche slug — Option b retenue):
+  {
+    "to": "<invitee email>",
+    "slug": "team-invite",
+    "variables": { "WORKSPACE": "...", "ROLE": "...", "ACCEPT_URL": "...", "EXPIRES": "..." },
+    "replyTo": "<org owner email>"   // optionnel
+  }
+Réponse 200: { success, jobId, to, transactional: { id, slug, name } }
+```
+
+- **Template** : `slug: "team-invite"` (Option b — copie gérée côté Sequenzy,
+  worker n'envoie que les variables). Création du template = tâche J3 approuvée
+  séparément (write Sequenzy), avant d'activer l'envoi.
+- **ACCEPT_URL** = `${APP_BASE_URL}/#/invite/{orgId}/{inviteId}/{rawToken}`.
+- **Secret worker** : `SEQUENZY_API_KEY` via `wrangler secret put` — server-side
+  uniquement, jamais `VITE_`, jamais frontend, jamais commité. Clé prod distincte
+  de toute clé MCP dev.
+- **MCP Sequenzy** = dev-tooling uniquement, JAMAIS le runtime prod. Le runtime
+  reste worker → REST.
+- **Échec non-fatal** : si l'envoi échoue, le doc invite est quand même créé, le
+  lien reste copiable dans l'UI, l'échec est loggé (`console.error`). L'envoi ne
+  bloque jamais la création d'invite.
+- **Sécurité** : pas de mot de passe dans l'email ; acceptation link-based
+  uniquement (token hash vérifié à `/accept`) ; pas de compte auto/ghost.
+- **Hook** : `worker/src/routes/team-invites.ts` create (`:55`) + regenerate
+  (`:188`) — envoi après écriture du doc invite (best-effort).
+
 ---
 
 ## 10. Architecture technique
