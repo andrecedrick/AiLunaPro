@@ -12,13 +12,16 @@
 import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
+import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import type { AppEnv } from '../index';
 
 const portal = new Hono<AppEnv>();
 
-portal.post('/api/billing/portal', requireAuth(), async c => {
+// Owner ⊇ Billing only. requireRole also verifies org membership (non-member →
+// no role → 403), closing the prior any-authenticated-user gap.
+portal.post('/api/billing/portal', requireAuth(), requireRole(['owner', 'billing']), async c => {
   const env = c.env as AppEnv['Bindings'] & {
     STRIPE_SECRET_KEY?: string;
     FIREBASE_SERVICE_ACCOUNT_JSON?: string;

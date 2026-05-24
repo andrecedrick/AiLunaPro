@@ -1719,6 +1719,7 @@ Plus `wrangler.toml [env.production]` activation with production `FIREBASE_PROJE
 | 2026-05-24 | Reports = par workspace (pas de perte) ; footer "stored locally" obsolète | Vérifié : rapports persistent en Firestore, liste scoped au workspace actif — §9.14 #7 |
 | 2026-05-24 | Post-J2 inspection: 4 must-fix corrigés (e6c081f) | Team role/remove→worker API, topup idempotent, rate-limit public, email PII hors logs |
 | 2026-05-24 | Turnstile secret rotué + worker redéployé | Secret exposé dans bundle public corrigé/rotué ; vérifié sans régression |
+| 2026-05-24 | RBAC billing verrouillé : Owner ⊇ Billing ; Billing = délégué manage ; Admin/Member/Client = AUCUN billing | Owner toujours autorisé (solo/founder, zéro friction). Billing role peut payer/gérer abonnement/acheter tokens. Admin retiré du billing. Appliqué : firestore.rules `canManageBilling`=['owner','billing'], worker topup + checkout + portal `requireRole(['owner','billing'])` (ferme aussi le trou no-role-gate sur checkout/portal), frontend `canManage`=owner\|billing. Token BALANCE view reste séparé (member garde la visibilité, pas le paiement) |
 | 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
 | 2026-05-21 | Export rapport relibellé « Export (JSON) » | Le rendu PDF n'existe pas (mock) ; libellé honnête. PDF réel = feature post-J2 |
 | 2026-05-21 | Audits soumis persistés en DB (fsSubmitAudit) | Pas de perte DB ; surface UI historique OU auto-report = post-J2 |

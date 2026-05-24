@@ -88,11 +88,16 @@ service cloud.firestore {
     }
 
     /**
-     * True if the user can access billing data.
-     * Owner, admin, and the dedicated billing role.
+     * True if the user can access billing data (subscriptions, billing events,
+     * top-up history).
+     *
+     * Locked rule: Owner ⊇ Billing. The dedicated 'billing' role is an optional
+     * delegate. Admin / member / client have NO billing access. (Token BALANCE
+     * visibility is separate and handled by its own role list — members can see
+     * their balance without billing access.)
      */
     function canManageBilling(orgId) {
-      return isAuth() && getMemberRole(orgId) in ['owner', 'admin', 'billing'];
+      return isAuth() && getMemberRole(orgId) in ['owner', 'billing'];
     }
 
 

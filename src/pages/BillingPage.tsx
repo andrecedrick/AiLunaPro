@@ -545,7 +545,9 @@ export function BillingPage() {
   const [detectedCurrency, setDetectedCurrency]   = useState<Currency | null>(null);
 
   const role              = session?.role ?? 'member';
-  const canManage         = role === 'owner';
+  // Locked rule: Owner ⊇ Billing. Billing role is a manage delegate (pay,
+  // manage subscription, buy tokens). Admin / member / client: no billing.
+  const canManage         = role === 'owner' || role === 'billing';
   const canView           = role === 'owner' || role === 'billing';
   const isFirebaseLayer   = resolveLayer('auth') === 'firebase';
   const isBillingFirebase = resolveLayer('billing') === 'firebase';

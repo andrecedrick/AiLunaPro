@@ -21,6 +21,7 @@
 import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
+import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import { isSupportedCurrency, type Currency } from '../lib/currency';
@@ -83,7 +84,8 @@ async function resolvePriceForCurrency(
   }
 }
 
-checkout.post('/api/billing/checkout', requireAuth(), async c => {
+// Owner ⊇ Billing only. requireRole also verifies org membership.
+checkout.post('/api/billing/checkout', requireAuth(), requireRole(['owner', 'billing']), async c => {
   const env = c.env as AppEnv['Bindings'] & {
     STRIPE_SECRET_KEY?: string;
     FIREBASE_SERVICE_ACCOUNT_JSON?: string;

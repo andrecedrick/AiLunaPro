@@ -60,7 +60,7 @@ tokens.get('/api/tokens/balance', requireAuth(), requireRole(['owner', 'admin', 
 
 interface TopupBody { orgId: string; pack: string; }
 
-tokens.post('/api/tokens/topup', requireAuth(), requireRole(['owner', 'admin', 'billing']), async c => {
+tokens.post('/api/tokens/topup', requireAuth(), requireRole(['owner', 'billing']), async c => {
   const env = c.env as AppEnv['Bindings'] & {
     STRIPE_SECRET_KEY?:             string;
     STRIPE_TOKEN_PRICE_STARTER?:    string;
