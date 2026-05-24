@@ -21,7 +21,7 @@ import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { getStripe } from '../lib/stripe';
-import { firestoreSet } from '../lib/firestoreAdmin';
+import { firestoreSet, firestoreGet } from '../lib/firestoreAdmin';
 import { syncBalanceAllocation } from '../lib/tokens';
 import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
 import { assertStripeKeyAllowed } from '../lib/env';
@@ -115,6 +115,23 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
   }
 
   console.log('[sync-session] resolved orgId=', orgId);
+
+  // Membership guard: the caller must be a billing-capable member of the
+  // resolved org. Without this, any authenticated user with a replayed/known
+  // session id could write to another org's subscription doc (cross-workspace
+  // write). Service account read bypasses rules; we enforce role here.
+  {
+    const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!saJson) {
+      return c.json({ error: 'Service account not configured' }, 503);
+    }
+    const member = await firestoreGet(saJson, `organizations/${orgId}/members/${uid}`);
+    const role   = member?.role as string | undefined;
+    if (!role || !['owner', 'billing'].includes(role)) {
+      console.warn('[sync-session] membership denied — uid:', uid, 'orgId:', orgId, 'role:', role ?? 'none');
+      return c.json({ error: 'Forbidden: not a billing member of this organization', code: 'FORBIDDEN' }, 403);
+    }
+  }
 
   // Resolve plan: metadata.plan first, fallback product map
   const metadataPlan = session.metadata?.plan ?? sub.metadata?.plan;

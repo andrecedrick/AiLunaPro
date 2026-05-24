@@ -15,7 +15,7 @@
  */
 
 import { Hono } from 'hono';
-import { firestoreSet } from '../lib/firestoreAdmin';
+import { firestoreSet, fsTimestamp } from '../lib/firestoreAdmin';
 import { verifyTurnstile } from '../lib/turnstile';
 import { checkCooldown } from '../lib/rateLimit';
 import {
@@ -117,7 +117,7 @@ diagnostic.post('/api/public/diagnostic', async c => {
     },
     schemaVersion: 1,
     createdAt:     now,
-    expiresAt:     expiresAtFromNow(),
+    expiresAt:     fsTimestamp(expiresAtFromNow()),  // Timestamp type — required for Firestore TTL
   };
 
   try {

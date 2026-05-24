@@ -15,6 +15,7 @@
 import { Hono } from 'hono';
 import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
+import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import type { AppEnv } from '../index';
@@ -35,7 +36,9 @@ interface SafeInvoice {
   periodEnd:        number | null;
 }
 
-invoices.get('/api/billing/invoices', requireAuth(), async c => {
+// Owner ⊇ Billing only. requireRole reads orgId from query + verifies the
+// caller is a member of that org — closes the cross-tenant invoice read (IDOR).
+invoices.get('/api/billing/invoices', requireAuth(), requireRole(['owner', 'billing']), async c => {
   const env = c.env as AppEnv['Bindings'] & {
     STRIPE_SECRET_KEY?: string;
     FIREBASE_SERVICE_ACCOUNT_JSON?: string;

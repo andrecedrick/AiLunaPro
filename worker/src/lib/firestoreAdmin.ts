@@ -31,7 +31,27 @@ export interface FsObject { [k: string]: FsValue }
 
 // ── JWT + token ───────────────────────────────────────────────
 
+// Module-level OAuth token cache, keyed by service-account email. Avoids
+// re-minting a JWT + round-tripping oauth2.googleapis.com on every Firestore
+// call (was +80-200ms × N per request and a token-endpoint quota risk).
+// Reused until 60s before expiry.
+const tokenCache = new Map<string, { token: string; expEpochMs: number }>();
+
 async function getAccessToken(sa: ServiceAccount): Promise<string> {
+  const cached = tokenCache.get(sa.client_email);
+  if (cached && Date.now() < cached.expEpochMs) {
+    return cached.token;
+  }
+  const minted = await mintAccessToken(sa);
+  tokenCache.set(sa.client_email, {
+    token:      minted.token,
+    // Refresh 60s early to avoid edge-of-expiry races.
+    expEpochMs: Date.now() + (minted.expiresInSec - 60) * 1000,
+  });
+  return minted.token;
+}
+
+async function mintAccessToken(sa: ServiceAccount): Promise<{ token: string; expiresInSec: number }> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = {
@@ -88,20 +108,36 @@ async function getAccessToken(sa: ServiceAccount): Promise<string> {
     throw new Error(`Failed to get access token: ${text}`);
   }
 
-  const data = await res.json() as { access_token: string };
-  return data.access_token;
+  const data = await res.json() as { access_token: string; expires_in?: number };
+  return { token: data.access_token, expiresInSec: data.expires_in ?? 3600 };
 }
 
 // ── Firestore REST helpers ────────────────────────────────────
 
+/**
+ * Branded wrapper to force a field to be stored as a Firestore Timestamp
+ * (`timestampValue`) instead of a plain string. REQUIRED for any field a TTL
+ * policy targets — Firestore TTL only deletes when the field is a real
+ * Timestamp; an ISO string silently never expires. Use `fsTimestamp(iso)`.
+ */
+const FS_TIMESTAMP = '__fsTimestamp' as const;
+export interface FsTimestamp { [FS_TIMESTAMP]: string }
+export function fsTimestamp(rfc3339: string): FsTimestamp {
+  return { [FS_TIMESTAMP]: rfc3339 };
+}
+function isFsTimestamp(v: unknown): v is FsTimestamp {
+  return typeof v === 'object' && v !== null && FS_TIMESTAMP in v;
+}
+
 type WritableScalar = string | boolean | number | null | undefined;
-type WritableValue  = WritableScalar | WritableValue[] | { [k: string]: WritableValue };
+type WritableValue  = WritableScalar | FsTimestamp | WritableValue[] | { [k: string]: WritableValue };
 
 function encodeValue(v: WritableValue): FirestoreValue {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === 'boolean')        return { booleanValue: v };
   if (typeof v === 'number')         return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
   if (typeof v === 'string')         return { stringValue: v };
+  if (isFsTimestamp(v))              return { timestampValue: v[FS_TIMESTAMP] };
   if (Array.isArray(v))              return { arrayValue: { values: v.map(encodeValue) } };
   return { mapValue: { fields: toFirestoreFields(v as Record<string, WritableValue>) } };
 }
