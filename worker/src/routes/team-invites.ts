@@ -197,24 +197,45 @@ async function listInvitesViaRest(saJson: string, projectId: string, orgId: stri
   });
   const tokData = await tokRes.json() as { access_token: string };
 
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/organizations/${orgId}/invites?pageSize=50`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${tokData.access_token}` } });
-  if (!res.ok) throw new Error(`listDocuments failed: ${await res.text()}`);
-  const data = await res.json() as { documents?: Array<{ name: string; fields: Record<string, { stringValue?: string; integerValue?: string; booleanValue?: boolean; timestampValue?: string }> }> };
+  // Paginate via nextPageToken so orgs with >1 page of invites aren't silently
+  // truncated. pageSize=300 keeps round-trips low; MAX_PAGES is a safety cap
+  // (300×50 = 15000 invites) to bound an unexpected loop.
+  type InviteDoc = { name: string; fields: Record<string, { stringValue?: string; integerValue?: string; booleanValue?: boolean; timestampValue?: string }> };
+  const base = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/organizations/${orgId}/invites?pageSize=300`;
+  const out: Array<Record<string, unknown>> = [];
+  let pageToken = '';
+  const MAX_PAGES = 50;
+  let pages = 0;
 
-  return (data.documents ?? []).map(doc => {
-    const fields = doc.fields ?? {};
-    const id = doc.name.split('/').pop() ?? '';
-    const out: Record<string, unknown> = { id };
-    for (const [k, v] of Object.entries(fields)) {
-      if (k === 'tokenHash') continue;        // never expose
-      if (v.stringValue    !== undefined) out[k] = v.stringValue;
-      else if (v.integerValue   !== undefined) out[k] = parseInt(v.integerValue, 10);
-      else if (v.booleanValue   !== undefined) out[k] = v.booleanValue;
-      else if (v.timestampValue !== undefined) out[k] = v.timestampValue;
+  do {
+    const url = pageToken ? `${base}&pageToken=${encodeURIComponent(pageToken)}` : base;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${tokData.access_token}` } });
+    if (!res.ok) throw new Error(`listDocuments failed: ${await res.text()}`);
+    const data = await res.json() as { documents?: InviteDoc[]; nextPageToken?: string };
+
+    for (const doc of data.documents ?? []) {
+      const fields = doc.fields ?? {};
+      const id = doc.name.split('/').pop() ?? '';
+      const row: Record<string, unknown> = { id };
+      for (const [k, v] of Object.entries(fields)) {
+        if (k === 'tokenHash') continue;        // never expose
+        if (v.stringValue    !== undefined) row[k] = v.stringValue;
+        else if (v.integerValue   !== undefined) row[k] = parseInt(v.integerValue, 10);
+        else if (v.booleanValue   !== undefined) row[k] = v.booleanValue;
+        else if (v.timestampValue !== undefined) row[k] = v.timestampValue;
+      }
+      out.push(row);
     }
-    return out;
-  });
+
+    pageToken = data.nextPageToken ?? '';
+    pages++;
+    if (pages >= MAX_PAGES) {
+      console.warn('[team-invites] invite list pagination cap reached for org', orgId);
+      break;
+    }
+  } while (pageToken);
+
+  return out;
 }
 
 /* ── POST /api/team/invites/:inviteId/regenerate ──────── */
