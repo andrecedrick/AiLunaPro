@@ -1907,7 +1907,12 @@ Help v1, DEBUG-gate logs, audit-history, dashboard real-data, email invites
 monitor, build gate `tsc -b --force`, audit RBAC fix (member), cleanup (logs +
 audits-update immutability guard). Defers tracés (non bloquants).
 
-**⏳ J4 — "Production hardening, routing & trust"** — scope approuvé, exécution en cours.
+**✅ J4 — "Production hardening, routing & trust"** — FAIT + clôturé (gate §17 J4→J5 PASS).
+Sequenzy error sanitization, gating logs admin/seed, deep-link hydration Phase-1
+(reports/audit-history/help), invite pagination worker-side, advisory platform-admin
+(§9.18) + App Check monitor (§9.19, enforcement OFF). 0 must-fix. Defers : hash-write-
+on-navigate (Phase 2), App Check enforcement (gate ultérieur), operator-allowlist impl,
+load-more UI, reports/detail+share deep-link params.
 
 Plan d'exécution J4 (batches) :
 - **Batch 1** *(en cours)* : #3 sanitization logs Sequenzy (status/code only, jamais
@@ -1926,7 +1931,7 @@ Plan d'exécution J4 (batches) :
   enforcement, agents caching, gros refactors, streams parallèles.
 - Chaque item : typecheck → build/deploy → verify → commit séparé. Clôture J4 = §17.
 
-**EN COURS** — Batch 1.
+**EN COURS** — néant. J4 clôturé (gate PASS), prêt pour scope J5.
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2002,6 +2007,7 @@ streams features parallèles avant scope.
 | J2→Pre-J3 | §17 7 axes (3 reviewers parallèles + vérif manuelle) | TTL string, invoices IDOR, sync write, cache OAuth (`94a1644`) | logs verbeux, mock dashboard, arrayUnion, billing-config gate, skeleton routes |
 | Pre-J3 scope | §17 pre-flight read-only sur scope J3 proposé | 3 rescopes requis (auto-report→flag, dashboard→real+empty-states, AppCheck→monitor-first) ; dépendance Sequenzy API | Super Admin, PDF, caching, refactor (non-goals) |
 | J3→J4 | §17 7 axes (2 reviewers read-only + baseline FAIL=0) | **0 must-fix** — PASS. Cleanup appliqué : logs billing-invoices gated (dlog), guard immuabilité audits update (organizationId/createdBy figés) | logs admin/seed restants, Sequenzy error-body PII (low), invite pagination (pré-GA), deep-link hash hydration, App Check enforcement (gate ultérieur), audits update field-level au-delà ownership |
+| J4→J5 | §17 7 axes (1 reviewer read-only + baseline FAIL=0) | **0 must-fix** — PASS. Tous deltas ✅ (routing Phase-1, pagination capée, sanitize, logs gated, no dead code) | hash-write-on-navigate (Phase 2), App Check enforcement, operator-allowlist impl, load-more UI, reports/detail+share deep-link params |
 
 ---
 
