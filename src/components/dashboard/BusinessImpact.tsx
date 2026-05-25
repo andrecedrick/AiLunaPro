@@ -1,5 +1,12 @@
-import { mockBusinessImpact } from '../../data/mockDashboard';
+import { EmptyState } from './EmptyState';
 
+/**
+ * Business Impact — measured outcomes from the compliance programme.
+ *
+ * No persisted impact-metrics source exists yet (risk reduction, governance
+ * score deltas, time saved require historical tracking we don't store). Showing
+ * fabricated numbers would mislead — honest empty-state until real metrics land.
+ */
 export function BusinessImpact() {
   return (
     <div
@@ -20,50 +27,10 @@ export function BusinessImpact() {
           Measured outcomes from your compliance programme
         </div>
       </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-        {mockBusinessImpact.map(item => (
-          <div
-            key={item.id}
-            style={{
-              background: 'var(--surface-2)',
-              borderRadius: 14,
-              padding: '18px 16px',
-              border: '1px solid var(--border)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-            }}
-          >
-            <div
-              style={{
-                width: 32,
-                height: 4,
-                borderRadius: 2,
-                background: item.color,
-                marginBottom: 4,
-              }}
-            />
-            <div
-              style={{
-                fontFamily: 'var(--font-heading)',
-                fontWeight: 800,
-                fontSize: 32,
-                color: item.color,
-                lineHeight: 1,
-              }}
-            >
-              {item.value}
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-              {item.label}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              {item.sub}
-            </div>
-          </div>
-        ))}
-      </div>
+      <EmptyState
+        title="Impact metrics appear as your programme matures"
+        hint="Run audits over time to build a track record. Risk reduction, governance progress, and time saved will be computed from your real history — no estimates."
+      />
     </div>
   );
 }

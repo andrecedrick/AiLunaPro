@@ -1,8 +1,10 @@
-import { mockReports } from '../../data/mockDashboard';
 import { Badge } from '../ui/Badge';
 import type { ReportStatus, RiskLevel } from '../../types/firestore';
 import { useRoute } from '../../context/RouteContext';
 import { useToast } from '../../hooks/useToast';
+import { useReports } from '../../context/ReportsContext';
+import { formatDate } from '../../utils/formatters';
+import { EmptyState } from './EmptyState';
 
 function riskColor(risk: RiskLevel): string {
   const map: Record<RiskLevel, string> = {
@@ -145,6 +147,21 @@ function downloadBlob(content: string, filename: string, mime: string) {
 export function RecentReports() {
   const { navigate } = useRoute();
   const { showToast } = useToast();
+  const { reports } = useReports();
+
+  // Real reports for the active workspace, newest first, top 3 (4th grid cell
+  // is the export card).
+  const cards = [...reports]
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+    .slice(0, 3)
+    .map(r => ({
+      id:     r.id,
+      title:  r.title,
+      date:   formatDate(r.createdAt, 'date'),
+      status: r.status,
+      score:  r.scoreSnapshot,
+      risk:   r.riskSnapshot,
+    }));
 
   const handleViewAll = () => navigate({ name: 'reports' });
 
@@ -153,14 +170,18 @@ export function RecentReports() {
       showToast('Dashboard PDF export coming soon.', 'info');
       return;
     }
+    if (reports.length === 0) {
+      showToast('No reports to export yet.', 'info');
+      return;
+    }
     if (fmt === 'CSV') {
-      const header = 'id,title,date,status,score,risk\n';
-      const rows = mockReports.map(r => `${r.id},${JSON.stringify(r.title)},${r.date},${r.status},${r.score},${r.risk}`).join('\n');
+      const header = 'id,title,createdAt,status,score,risk\n';
+      const rows = reports.map(r => `${r.id},${JSON.stringify(r.title)},${r.createdAt},${r.status},${r.scoreSnapshot},${r.riskSnapshot}`).join('\n');
       downloadBlob(header + rows, 'reports.csv', 'text/csv;charset=utf-8');
       showToast('CSV downloaded.', 'success');
     }
     if (fmt === 'JSON') {
-      downloadBlob(JSON.stringify(mockReports, null, 2), 'reports.json', 'application/json');
+      downloadBlob(JSON.stringify(reports, null, 2), 'reports.json', 'application/json');
       showToast('JSON downloaded.', 'success');
     }
   };
@@ -182,7 +203,7 @@ export function RecentReports() {
             Recent Reports
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-            {mockReports.length} reports generated
+            {reports.length} report{reports.length === 1 ? '' : 's'} generated
           </div>
         </div>
         <button
@@ -198,9 +219,16 @@ export function RecentReports() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) 260px', gap: 14 }}>
-        {mockReports.map(report => (
-          <ReportCard key={report.id} report={report} />
-        ))}
+        {cards.length === 0 ? (
+          <div style={{ gridColumn: '1 / 4' }}>
+            <EmptyState
+              title="No reports yet"
+              hint="Generate a report from a submitted audit — it appears here and under Reports for this workspace."
+            />
+          </div>
+        ) : (
+          cards.map(report => <ReportCard key={report.id} report={report} />)
+        )}
 
         {/* Export options card */}
         <div
