@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SettingsLayout } from './SettingsLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { FormField, AuthInput } from '../../components/auth/FormField';
 import { Button } from '../../components/ui/Button';
+import { resolveLayer } from '../../lib/featureFlags';
+import { firebaseGetEmailVerified, firebaseSendEmailVerification } from '../../lib/auth/firebaseAuthService';
 
 /**
  * Settings — Profile.
@@ -20,8 +22,33 @@ export function ProfilePage() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // Email verification (firebase layer only). null = unknown/resolving.
+  const isFirebase = resolveLayer('auth') === 'firebase';
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   const dirty = name !== (user?.displayName ?? '') || email !== (user?.email ?? '');
+
+  useEffect(() => {
+    if (!isFirebase) return;
+    let active = true;
+    firebaseGetEmailVerified({ reload: true })
+      .then(v => { if (active) setEmailVerified(v); })
+      .catch(() => { if (active) setEmailVerified(null); });
+    return () => { active = false; };
+  }, [isFirebase]);
+
+  const onVerifyEmail = async () => {
+    if (verifying) return;
+    setVerifying(true);
+    const res = await firebaseSendEmailVerification();
+    setVerifying(false);
+    if (res.success) {
+      showToast(`Verification email sent to ${email}. Check inbox and spam, then sign out and back in.`, 'success');
+    } else {
+      showToast(res.error ?? 'Could not send verification email.', 'error');
+    }
+  };
 
   const onSave = async () => {
     if (!dirty || saving) return;
@@ -127,6 +154,37 @@ export function ProfilePage() {
           padding: 22,
         }}
       >
+        {/* Email verification (firebase only) */}
+        {isFirebase && emailVerified !== null && (
+          <div style={{ marginBottom: 18, paddingBottom: 18, borderBottom: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, marginBottom: 6, color: 'var(--text-primary)' }}>
+              Email verification
+            </h3>
+            {emailVerified ? (
+              <p style={{ fontSize: 12, color: 'var(--green-text)', margin: 0 }}>
+                ✓ Your email is verified.
+              </p>
+            ) : (
+              <>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 0, marginBottom: 12 }}>
+                  Your email is <strong>not verified</strong>. Some features (e.g. platform
+                  operator access) require a verified email. We'll send a verification link;
+                  after confirming, sign out and back in.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onClick={onVerifyEmail}
+                  disabled={verifying}
+                  style={verifying ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                >
+                  {verifying ? 'Sending…' : 'Send verification email'}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
         <h3
           style={{
             fontSize: 14,

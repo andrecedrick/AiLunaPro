@@ -19,6 +19,8 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  sendEmailVerification,
+  reload,
   updateProfile as firebaseUpdateAuthProfile,
   type User as FirebaseUser,
   type Unsubscribe,
@@ -558,6 +560,42 @@ export async function firebaseSendPasswordReset(
     ) {
       return { success: false, error: 'No account found for that email address.' };
     }
-    return { success: false, error: 'Failed to send reset email. Please try again.' };
+    // Surface the actual Firebase code so config issues (e.g. unauthorized
+    // domain, provider disabled) are diagnosable — never swallow silently.
+    return { success: false, error: `Failed to send reset email${code ? ` (${code})` : ''}. Please try again.` };
+  }
+}
+
+/**
+ * Current signed-in user's email-verified state (live, after optional reload).
+ * Returns null when not in firebase mode / no current user.
+ */
+export async function firebaseGetEmailVerified(opts?: { reload?: boolean }): Promise<boolean | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+  if (opts?.reload) {
+    try { await reload(user); } catch { /* keep last-known */ }
+  }
+  return user.emailVerified === true;
+}
+
+/**
+ * Send a Firebase email-verification message to the signed-in user.
+ * Used to verify operator/admin emails (platform-admin gate requires a
+ * verified email). Surfaces the actual Firebase code on failure.
+ */
+export async function firebaseSendEmailVerification(): Promise<{ success: boolean; error?: string }> {
+  const user = auth.currentUser;
+  if (!user) return { success: false, error: 'You must be signed in to verify your email.' };
+  if (user.emailVerified) return { success: true };
+  try {
+    await sendEmailVerification(user);
+    return { success: true };
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code ?? '';
+    if (code === 'auth/too-many-requests') {
+      return { success: false, error: 'Too many requests. Wait a few minutes and try again.' };
+    }
+    return { success: false, error: `Failed to send verification email${code ? ` (${code})` : ''}.` };
   }
 }

@@ -12,7 +12,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { fetchBillingConfigStatus } from '../../lib/billing/configService';
-import { fetchIsPlatformAdmin } from '../../lib/platform/platformService';
+import { fetchPlatformMe } from '../../lib/platform/platformService';
 import type { BillingConfigStatus, KeyStatus, StripeMode } from '../../types/billingConfig';
 import { SettingsLayout } from './SettingsLayout';
 import { MetadataEditor } from '../../components/billing/MetadataEditor';
@@ -126,7 +126,7 @@ function CheckingAccess() {
  * `wrangler secret`. Tenant billing (plan, usage, invoices, manage
  * subscription/tokens) lives on the main Billing page (#/billing), untouched.
  */
-function OperatorManaged() {
+function OperatorManaged({ unverifiedEmail = false }: { unverifiedEmail?: boolean }) {
   return (
     <SettingsLayout title="Billing">
       <div style={{ padding: 32, textAlign: 'center' }}>
@@ -138,6 +138,17 @@ function OperatorManaged() {
           For your plan, usage, invoices, and subscription, use the{' '}
           <strong>Billing</strong> page in the sidebar.
         </div>
+        {unverifiedEmail && (
+          <div style={{
+            fontSize: 12, color: 'var(--text-muted)', marginTop: 14, lineHeight: 1.5,
+            maxWidth: 460, margin: '14px auto 0',
+            background: 'var(--yellow-soft-bg)', borderRadius: 8, padding: '10px 14px',
+          }}>
+            Platform admin access requires a <strong>verified email</strong>. If you are an
+            operator, verify your email from <strong>Settings → Profile</strong>, then sign
+            out and back in.
+          </div>
+        )}
       </div>
     </SettingsLayout>
   );
@@ -152,6 +163,7 @@ export function BillingSettingsPage() {
   // Operator allowlist gate (J5 Batch 3). null = resolving. Platform admins are
   // NOT org members — this is independent of session.role. Fail-closed.
   const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean | null>(null);
+  const [emailVerified, setEmailVerified]     = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -168,9 +180,17 @@ export function BillingSettingsPage() {
 
   useEffect(() => {
     let active = true;
-    fetchIsPlatformAdmin()
-      .then(ok => { if (active) setIsPlatformAdmin(ok); })
-      .catch(() => { if (active) setIsPlatformAdmin(false); });
+    fetchPlatformMe()
+      .then(me => {
+        if (!active) return;
+        setIsPlatformAdmin(me.isPlatformAdmin);
+        setEmailVerified(me.emailVerified);
+      })
+      .catch(() => {
+        if (!active) return;
+        setIsPlatformAdmin(false);
+        setEmailVerified(null);
+      });
     return () => { active = false; };
   }, []);
 
@@ -178,8 +198,9 @@ export function BillingSettingsPage() {
 
   // Resolving allowlist → placeholder. Non-operator (incl. tenant owners/
   // admins/members) → "managed by operator" notice. Operator → admin panels.
+  // When the caller's email is unverified, explain the verified-email rule.
   if (isPlatformAdmin === null) return <CheckingAccess />;
-  if (!isPlatformAdmin) return <OperatorManaged />;
+  if (!isPlatformAdmin) return <OperatorManaged unverifiedEmail={emailVerified === false} />;
 
   return (
     <SettingsLayout title="Billing">
