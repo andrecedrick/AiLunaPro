@@ -1868,7 +1868,26 @@ Help v1, DEBUG-gate logs, audit-history, dashboard real-data, email invites
 monitor, build gate `tsc -b --force`, audit RBAC fix (member), cleanup (logs +
 audits-update immutability guard). Defers tracés (non bloquants).
 
-**⏳ EN COURS** — néant. J3 clôturé, prêt pour scope J4.
+**⏳ J4 — "Production hardening, routing & trust"** — scope approuvé, exécution en cours.
+
+Plan d'exécution J4 (batches) :
+- **Batch 1** *(en cours)* : #3 sanitization logs Sequenzy (status/code only, jamais
+  body/email) · #5 gating logs admin/seed via `dlog` (billing-admin products/promos,
+  roi, diagnostic, agents seed ; garder boot + dev-bypass turnstile).
+- **Batch 2** *(advisory, no code)* : #2 éval métriques App Check (enforcement reste
+  OFF, gate ultérieur) · #6 reco platform-admin/operator-allowlist (doc only, pas de
+  Super Admin/impersonation).
+- **Batch 3** : #1 deep-link hash hydration **Phase 1 read-on-load only** (parser
+  `routeFromHash`, hydration unifiée dans App.tsx après auth-ready ; préserver invite/
+  diagnostic/roi/billing/success/tokens ; ajouter help?section/reports/audit-history ;
+  PAS de hash-write-on-navigate ; PAS de rewrite RouteContext ; matrice de régression)
+  · #4 invite pagination worker-side (boucle pageToken + cap sécurité ; UI load-more
+  différée).
+- Non-goals réaffirmés : Luna, Super Admin/impersonation, PDF réel, App Check
+  enforcement, agents caching, gros refactors, streams parallèles.
+- Chaque item : typecheck → build/deploy → verify → commit séparé. Clôture J4 = §17.
+
+**EN COURS** — Batch 1.
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
