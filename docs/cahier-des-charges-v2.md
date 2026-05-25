@@ -1796,6 +1796,47 @@ des must-fix → correction en batch → re-vérification → green-light étape
 suivante. Pattern éprouvé : reviewers parallèles read-only + vérification
 manuelle des points critiques (ex. TTL vérifié par round-trip REST).
 
+### 17.1 Règle permanente (hard gate — non négociable)
+
+> **Aucune nouvelle étape ne peut commencer tant que l'étape précédente n'a pas
+> été clôturée par : inspection complète · vérification "aucune étape sautée" ·
+> rapport classifié · résolution des must-fix · recommandations · guidance
+> do-next / do-NOT-next.**
+
+S'applique à **toute** frontière d'étape : J2, J3, J4, J5, et toute phase future.
+Jamais passer directement d'une phase à la suivante sans ce rapport.
+
+**Séquence obligatoire à chaque frontière :**
+```
+Étape terminée
+ → §17 inspection complète (7 axes)
+ → vérification aucune-étape-sautée
+ → recommandations
+ → corrections must-fix (s'il y en a)
+ → re-vérification
+ → proposition de scope étape suivante
+ → pre-flight étape suivante (read-only)
+ → implémentation seulement après approbation
+```
+
+### 17.2 Rapport de clôture d'étape (template obligatoire)
+
+Chaque clôture DOIT produire :
+
+1. **Stage completion check** — ce qui est complété / déployé / committé / vérifié.
+2. **No-step-skipped** — tout item planifié sauté ? Si oui classer : *deferred /
+   removed / blocked / replaced*.
+3. **Diagnostic 7 axes** — Security & Auth · Bugs/silent-failures ·
+   Performance/loading · Firestore/TTL/data hygiene · Observability/logs ·
+   Code quality/maintainability · Scale x10/x100/x1000.
+4. **Classification** — ✅ Safe / ⚠️ Deferred-non-blocking / ❌ Must-fix.
+   S'il n'y a aucun must-fix, le dire explicitement.
+5. **Recommandations** — do-next · do-NOT-yet · optimisations perf · hardening
+   sécurité · améliorations produit · options/features à considérer · correctifs
+   à prioriser.
+6. **Next-stage readiness** — définir le scope de la phase suivante UNIQUEMENT
+   après le rapport complet.
+
 ---
 
 ## 18. Roadmap & Planning *(Living Reference — source de vérité)*
@@ -1946,6 +1987,7 @@ streams features parallèles avant scope.
 | 2026-05-25 | J3 Batch A/B/C livrés | Help v1 (CSS FlowDiagram), DEBUG-gate logs, audit-history view, dashboard real-data + empty-states (zéro fabrication), build gate `tsc -b --force`, email invites worker→Sequenzy (template `team-invite`, non-fatal waitUntil), auto-report flag (défaut OFF) |
 | 2026-05-25 | Fix RBAC audits : member autorisé (rules isContentMember) + état 'forbidden' clair | audits create/update étaient isOwnerOrAdmin → member bloqué au niveau rules malgré le modèle. Corrigé isContentMember (owner/admin/member ✓ ; billing/client exclus). UI : message rôle clair au lieu de "Failed to load" ; AuditContext n'attente plus de write interdit |
 | 2026-05-24 | Gate d'inspection fin d'étape = RÈGLE GLOBALE obligatoire (§17) | Hard gate avant chaque transition (J2→J3→…) ; checklist 7 axes + scale x10/x100/x1000 ; output ✅/⚠️/❌ + next/not-next + optimisations ; read-only → fix batch → re-verify → green-light |
+| 2026-05-25 | §17 renforcé : hard-gate explicite + séquence + template rapport 6 parties (§17.1/17.2) | "Aucune nouvelle étape sans clôture complète". Séquence obligatoire figée ; template de rapport de clôture (completion check, no-step-skipped, 7 axes, classification, recommandations, next-stage readiness). Appliqué à toute frontière future |
 | 2026-05-24 | Inspection pré-J3 : 4 must-fix corrigés (94a1644) | (1) TTL réel : expiresAt en timestampValue (était stringValue → TTL no-op, GDPR) — vérifié PASS ; (2) IDOR billing-invoices fermé (requireRole owner/billing) ; (3) garde membership sur billing/sync-session ; (4) cache token OAuth worker (perf/quota). Docs publics PRÉ-fix gardent expiresAt string → purge manuelle. Defer list (logs verbeux, mock dashboard, accept-invite arrayUnion, billing-config gate, skeleton routes) documentée, non bloquante |
 | 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
 | 2026-05-21 | Export rapport relibellé « Export (JSON) » | Le rendu PDF n'existe pas (mock) ; libellé honnête. PDF réel = feature post-J2 |
