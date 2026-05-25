@@ -130,6 +130,12 @@ function AppShell() {
       navigate({ name: 'help' });
     } else if (h.startsWith('#/audit/history')) {
       navigate({ name: 'audit/history' });
+    } else if (h.startsWith('#/reports/share/')) {
+      const id = decodeURIComponent(h.slice('#/reports/share/'.length).split(/[?#]/)[0]);
+      navigate(id ? { name: 'reports/share', reportId: id } : { name: 'reports' });
+    } else if (h.startsWith('#/reports/detail/')) {
+      const id = decodeURIComponent(h.slice('#/reports/detail/'.length).split(/[?#]/)[0]);
+      navigate(id ? { name: 'reports/detail', reportId: id } : { name: 'reports' });
     } else if (h.startsWith('#/reports')) {
       navigate({ name: 'reports' });
     }

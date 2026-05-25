@@ -12,9 +12,13 @@ interface Props {
   hideShare?: boolean;
 }
 
-/* Mock public share URL — would be a real signed URL in the backend phase. */
+/* In-app shareable link (hash route). Reopens the shared report view for
+   authenticated users in the same workspace. NOT a public/external link —
+   external stakeholder sharing (public read endpoint, signed/expiring links)
+   is a separate deferred backend feature. */
 function buildShareUrl(reportId: string): string {
-  return `https://audit.ailunapro.com/share/${reportId}`;
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://audit.ailunapro.com';
+  return `${origin}/#/reports/share/${reportId}`;
 }
 
 /* Trigger a real download of the report data as JSON.
