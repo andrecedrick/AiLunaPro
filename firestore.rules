@@ -245,15 +245,16 @@ service cloud.firestore {
         // Billing role has no access to audit content.
         allow read: if isContentMember(orgId);
 
-        // Only owners/admins can create audit sessions.
+        // Content members (owner, admin, member) can create audit sessions —
+        // members run and submit audits per the Team & Roles model. Billing
+        // and client roles are excluded (isContentMember).
         // organizationId must match the path; createdBy must be the requester.
-        allow create: if isOwnerOrAdmin(orgId)
+        allow create: if isContentMember(orgId)
           && request.resource.data.organizationId == orgId
           && request.resource.data.createdBy == uid();
 
-        // Only owners/admins can update audit metadata (status, score, etc.).
-        // Members interact with the audit through the answers subcollection.
-        allow update: if isOwnerOrAdmin(orgId);
+        // Content members can update audit metadata (status, score, submit).
+        allow update: if isContentMember(orgId);
 
         // Only owners/admins can delete or archive audit sessions.
         allow delete: if isOwnerOrAdmin(orgId);
