@@ -765,6 +765,45 @@ Réponse 200: { success, jobId, to, transactional: { id, slug, name } }
 - **Hook** : `worker/src/routes/team-invites.ts` create (`:55`) + regenerate
   (`:188`) — envoi après écriture du doc invite (best-effort).
 
+#### 9.18 Platform-admin readiness *(J4 — advisory uniquement, PAS de code)*
+
+Reco de conception pour un tier **platform-operator** (distinct des rôles org).
+**Aucune implémentation en J4** — design + contraintes + risques seulement.
+
+**Modèle recommandé**
+- Identité via **allowlist env** : `PLATFORM_ADMIN_EMAILS` (ou uids) en secret
+  worker — vérifiée côté serveur.
+- Les platform admins **ne sont PAS des membres d'org** : jamais écrits dans
+  `organizations/{orgId}/members/{uid}` → n'apparaissent jamais dans les Teams,
+  n'affectent pas le RBAC par-org (owner/admin/member/billing/client inchangé).
+- Sert à gater de **futures routes plateforme** (config Stripe globale, métriques
+  cross-org, outils ops) — distinct de `requireRole` (qui est par-org).
+- La config **Settings→Billing admin reste masquée aux tenants** en prod
+  (déjà le cas via `import.meta.env.PROD`) ; un platform admin y accéderait via
+  l'allowlist plus tard (remplacer le PROD-hide par un gate allowlist).
+
+**Contraintes**
+- Secret serveur uniquement ; jamais `VITE_`/frontend/commité.
+- Lecture/vérification côté worker (middleware `requirePlatformAdmin` futur),
+  pas via Firestore rules (les rules sont org-scopées).
+- Aucune élévation depuis un rôle org : platform-admin est un canal séparé.
+
+**Risques**
+- Allowlist mal gérée = accès large → garder la liste minimale (dev + 1-3).
+- Pas de SSO/MFA spécifique au début → s'appuyer sur Firebase Auth du compte.
+
+**À NE PAS implémenter maintenant**
+- Super Admin UI, **impersonation** (nécessite design sécurité dédié : audit
+  trail, consentement, tokens scopés/time-boxed — gate §17 séparé), métriques
+  cross-org, gestion de comptes inter-org.
+
+#### 9.19 App Check — statut monitor *(J4)*
+Métriques actuelles : **données insuffisantes** (≈5 requêtes, 100% validées mais
+échantillon trop petit). **Monitor mode continue ; enforcement reste OFF.**
+L'activation de l'enforcement (Auth + Firestore) est un **gate §17 ultérieur
+séparé**, hors J4 — uniquement après métriques matures (volume représentatif,
+~100% validé, aucun trafic légitime bloqué).
+
 ---
 
 ## 10. Architecture technique
@@ -2005,6 +2044,8 @@ streams features parallèles avant scope.
 | 2026-05-24 | Email invitations = post-J2, exécution préparée (§9.17) | Provider Sequenzy configuré (domaine vérifié DKIM/SPF) ; launch garde le flux lien + UI "coming soon" ; spec route worker + template + sécurité figée pour impl rapide post-J2 |
 | 2026-05-25 | J3 Batch A/B/C livrés | Help v1 (CSS FlowDiagram), DEBUG-gate logs, audit-history view, dashboard real-data + empty-states (zéro fabrication), build gate `tsc -b --force`, email invites worker→Sequenzy (template `team-invite`, non-fatal waitUntil), auto-report flag (défaut OFF) |
 | 2026-05-25 | Fix RBAC audits : member autorisé (rules isContentMember) + état 'forbidden' clair | audits create/update étaient isOwnerOrAdmin → member bloqué au niveau rules malgré le modèle. Corrigé isContentMember (owner/admin/member ✓ ; billing/client exclus). UI : message rôle clair au lieu de "Failed to load" ; AuditContext n'attente plus de write interdit |
+| 2026-05-25 | J4 Batch 1 livré (6a3c7b7) | Sequenzy error sanitization (status only, jamais body/email) + gating logs admin/seed via dlog. No behavior change |
+| 2026-05-25 | J4 Batch 2 advisory documenté (§9.18/§9.19) | Platform-admin = allowlist env, non-membre, gate futures routes, impersonation différée (PAS de code) ; App Check métriques insuffisantes → monitor continue, enforcement OFF (gate ultérieur) |
 | 2026-05-24 | Gate d'inspection fin d'étape = RÈGLE GLOBALE obligatoire (§17) | Hard gate avant chaque transition (J2→J3→…) ; checklist 7 axes + scale x10/x100/x1000 ; output ✅/⚠️/❌ + next/not-next + optimisations ; read-only → fix batch → re-verify → green-light |
 | 2026-05-25 | §17 renforcé : hard-gate explicite + séquence + template rapport 6 parties (§17.1/17.2) | "Aucune nouvelle étape sans clôture complète". Séquence obligatoire figée ; template de rapport de clôture (completion check, no-step-skipped, 7 axes, classification, recommandations, next-stage readiness). Appliqué à toute frontière future |
 | 2026-05-24 | Inspection pré-J3 : 4 must-fix corrigés (94a1644) | (1) TTL réel : expiresAt en timestampValue (était stringValue → TTL no-op, GDPR) — vérifié PASS ; (2) IDOR billing-invoices fermé (requireRole owner/billing) ; (3) garde membership sur billing/sync-session ; (4) cache token OAuth worker (perf/quota). Docs publics PRÉ-fix gardent expiresAt string → purge manuelle. Defer list (logs verbeux, mock dashboard, accept-invite arrayUnion, billing-config gate, skeleton routes) documentée, non bloquante |
