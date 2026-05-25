@@ -1,6 +1,14 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useAudit } from '../context/AuditContext';
+import { useReports } from '../context/ReportsContext';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
+
+/**
+ * Auto-report on submit — OFF by default. Enable only via the build-time flag
+ * VITE_AUTO_REPORT_ON_SUBMIT='true'. When off, behavior is unchanged: a report
+ * is created only when the user clicks Generate report.
+ */
+const AUTO_REPORT_ON_SUBMIT = import.meta.env.VITE_AUTO_REPORT_ON_SUBMIT === 'true';
 import { formatDate } from '../utils/formatters';
 import { ResultHero } from '../components/result/ResultHero';
 import { SectionScores } from '../components/result/SectionScores';
@@ -17,10 +25,24 @@ import { ResultActions } from '../components/result/ResultActions';
  */
 export function AuditResultPage() {
   const { draft } = useAudit();
+  const { reports, createReport } = useReports();
 
   const result = useMemo(() => computeAuditResult(draft.answers), [draft.answers]);
 
   const submittedAt = formatDate(draft.submittedAt || draft.updatedAt, 'datetime');
+
+  // Auto-report (flag-gated, default OFF). On a submitted audit, create a report
+  // snapshot once if none exists for this draft. Guarded to fire at most once.
+  const autoReportDone = useRef(false);
+  useEffect(() => {
+    if (!AUTO_REPORT_ON_SUBMIT) return;
+    if (draft.status !== 'submitted') return;
+    if (autoReportDone.current) return;
+    if (reports.some(r => r.draftId === draft.id)) { autoReportDone.current = true; return; }
+    autoReportDone.current = true;
+    createReport(draft, result);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.status, draft.id, reports]);
 
   return (
     <div>

@@ -14,6 +14,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { sendTransactional } from '../lib/sequenzy';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
@@ -54,7 +55,11 @@ interface CreateInviteBody {
 }
 
 invites.post('/api/team/invites', requireAuth(), requireRole(['owner', 'admin']), async c => {
-  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string };
+  const env = c.env as AppEnv['Bindings'] & {
+    FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+    APP_BASE_URL?:                  string;
+    SEQUENZY_API_KEY?:              string;
+  };
   const uid       = c.get('uid')   as string;
   const viewerRole = c.get('role') as Role;
 
@@ -103,6 +108,34 @@ invites.post('/api/team/invites', requireAuth(), requireRole(['owner', 'admin'])
   }
 
   dlog(env, '[team-invites] created', inviteId, 'role=', body.role, 'invitedBy=', uid);
+
+  // Best-effort invitation email (non-fatal). Never blocks invite creation:
+  // the invite doc + copyable link already exist regardless of email outcome.
+  // waitUntil keeps the isolate alive until the send settles (Workers cancel
+  // un-awaited work once the response returns).
+  c.executionCtx.waitUntil((async () => {
+    try {
+      const org       = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `organizations/${orgId}`);
+      const workspace = (org?.name as string) || 'your workspace';
+      const baseUrl   = env.APP_BASE_URL ?? 'http://localhost:5173';
+      const acceptUrl = `${baseUrl}/#/invite/${orgId}/${inviteId}/${token}`;
+      const r = await sendTransactional(env.SEQUENZY_API_KEY, {
+        to:   inviteDoc.email,
+        slug: 'team-invite',
+        variables: {
+          WORKSPACE:    workspace,
+          INVITEE_NAME: inviteDoc.displayName || '',
+          ROLE:         body.role,
+          ACCEPT_URL:   acceptUrl,
+          EXPIRES:      expires.toISOString().slice(0, 10),
+        },
+      });
+      if (!r.ok) console.error('[team-invites] invite email failed (non-fatal):', r.error);
+      else dlog(env, '[team-invites] invite email sent', inviteId);
+    } catch (err) {
+      console.error('[team-invites] invite email error (non-fatal):', err);
+    }
+  })());
 
   // Return invite link with raw token (only chance to see it)
   return c.json({
@@ -187,7 +220,11 @@ async function listInvitesViaRest(saJson: string, projectId: string, orgId: stri
 /* ── POST /api/team/invites/:inviteId/regenerate ──────── */
 
 invites.post('/api/team/invites/:inviteId/regenerate', requireAuth(), requireRole(['owner', 'admin']), async c => {
-  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string };
+  const env = c.env as AppEnv['Bindings'] & {
+    FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+    APP_BASE_URL?:                  string;
+    SEQUENZY_API_KEY?:              string;
+  };
   const orgId      = c.get('orgId') as string;
   const viewerRole = c.get('role')  as Role;
   const inviteId   = c.req.param('inviteId');
@@ -222,6 +259,31 @@ invites.post('/api/team/invites/:inviteId/regenerate', requireAuth(), requireRol
   }
 
   dlog(env, '[team-invites] regenerated', inviteId);
+
+  // Best-effort re-send of the invitation email with the new link (non-fatal).
+  c.executionCtx.waitUntil((async () => {
+    try {
+      const org       = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `organizations/${orgId}`);
+      const workspace = (org?.name as string) || 'your workspace';
+      const baseUrl   = env.APP_BASE_URL ?? 'http://localhost:5173';
+      const acceptUrl = `${baseUrl}/#/invite/${orgId}/${inviteId}/${newToken}`;
+      const r = await sendTransactional(env.SEQUENZY_API_KEY, {
+        to:   String(invite.email ?? ''),
+        slug: 'team-invite',
+        variables: {
+          WORKSPACE:    workspace,
+          INVITEE_NAME: String(invite.displayName ?? ''),
+          ROLE:         String(invite.role ?? ''),
+          ACCEPT_URL:   acceptUrl,
+          EXPIRES:      newExpires.toISOString().slice(0, 10),
+        },
+      });
+      if (!r.ok) console.error('[team-invites] regen email failed (non-fatal):', r.error);
+    } catch (err) {
+      console.error('[team-invites] regen email error (non-fatal):', err);
+    }
+  })());
+
   return c.json({
     inviteId,
     rawToken:  newToken,

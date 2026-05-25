@@ -22,6 +22,10 @@ interface ImportMetaEnv {
   // ── Optional: Local Firebase emulators (development only) ─────────────
   readonly VITE_FIRESTORE_EMULATOR_HOST?: string; // e.g. localhost:8080
   readonly VITE_AUTH_EMULATOR_URL?: string;       // e.g. http://localhost:9099
+
+  // ── Optional: J3 feature flag — auto-create a report on audit submit ──
+  // 'true' enables; unset/anything else = OFF (default; unchanged behavior).
+  readonly VITE_AUTO_REPORT_ON_SUBMIT?: string;
 }
 
 interface ImportMeta {
