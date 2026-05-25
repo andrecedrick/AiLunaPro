@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useReports } from '../context/ReportsContext';
 import { useRoute } from '../context/RouteContext';
+import { useToast } from '../hooks/useToast';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
 import { Button } from '../components/ui/Button';
 import { ResultHero } from '../components/result/ResultHero';
@@ -12,6 +13,13 @@ import type { Report } from '../types/report';
 import type { RiskLevel } from '../types/scoring';
 import { formatDate, formatRiskLevel } from '@/utils/formatters';
 
+/* In-app share URL (hash route). Same-workspace reopen only — NOT a
+   public/external link. Mirrors ExportBar.buildShareUrl. */
+function buildShareUrl(reportId: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://audit.ailunapro.com';
+  return `${origin}/#/reports/share/${reportId}`;
+}
+
 const RISK_BADGE: Record<RiskLevel, { bg: string; fg: string }> = {
   low: { bg: 'var(--green-bg)', fg: 'var(--green-text)' },
   medium: { bg: 'var(--amber-bg)', fg: 'var(--amber-text)' },
@@ -21,7 +29,8 @@ const RISK_BADGE: Record<RiskLevel, { bg: string; fg: string }> = {
 
 export function ReportSharePage() {
   const { route, navigate } = useRoute();
-  const { getReport } = useReports();
+  const { getReport, recordExport } = useReports();
+  const { showToast } = useToast();
 
   const reportId = route.name === 'reports/share' ? route.reportId : '';
   const report = getReport(reportId);
@@ -43,9 +52,29 @@ export function ReportSharePage() {
     );
   }
 
+  // In-app / same-workspace copy. No external endpoint, no public access.
+  const handleCopyShare = async () => {
+    const url = buildShareUrl(report.id);
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(url);
+      copied = true;
+    } catch {
+      copied = false;
+    }
+    recordExport(report.id, 'share-link', { url, clipboard: copied ? 'ok' : 'unavailable' });
+    showToast(
+      copied ? 'Share link copied.' : 'Could not copy link. Try again.',
+      copied ? 'success' : 'warning',
+    );
+  };
+
   return (
     <div className="shared-report" style={{ maxWidth: 980, margin: '0 auto' }}>
-      <SharedBanner reportId={report.id} onBack={() => navigate({ name: 'reports/detail', reportId: report.id })} />
+      <SharedBanner
+        onCopy={handleCopyShare}
+        onBack={() => navigate({ name: 'reports/detail', reportId: report.id })}
+      />
 
       <ReportTopline report={report} />
 
@@ -69,7 +98,7 @@ export function ReportSharePage() {
   );
 }
 
-function SharedBanner({ onBack }: { reportId: string; onBack: () => void }) {
+function SharedBanner({ onCopy, onBack }: { onCopy: () => void; onBack: () => void }) {
   return (
     <div
       className="shared-banner"
@@ -103,24 +132,44 @@ function SharedBanner({ onBack }: { reportId: string; onBack: () => void }) {
           Read-only view for people in your workspace, opened from the in-app share link. Internal action buttons are hidden.
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          background: 'rgba(255,255,255,0.16)',
-          border: '1.5px solid rgba(255,255,255,0.4)',
-          color: '#fff',
-          padding: '8px 16px',
-          borderRadius: 10,
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: 'pointer',
-          fontFamily: 'var(--font-body)',
-          backdropFilter: 'blur(4px)',
-        }}
-      >
-        ← Back to internal view
-      </button>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={onCopy}
+          style={{
+            background: 'rgba(255,255,255,0.16)',
+            border: '1.5px solid rgba(255,255,255,0.4)',
+            color: '#fff',
+            padding: '8px 16px',
+            borderRadius: 10,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          🔗 Copy share link
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: 'rgba(255,255,255,0.16)',
+            border: '1.5px solid rgba(255,255,255,0.4)',
+            color: '#fff',
+            padding: '8px 16px',
+            borderRadius: 10,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          ← Back to internal view
+        </button>
+      </div>
     </div>
   );
 }
