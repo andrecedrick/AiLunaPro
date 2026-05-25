@@ -46,8 +46,9 @@ export async function sendTransactional(
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    return { ok: false, error: `Sequenzy ${res.status}: ${text}` };
+    // Do NOT echo the response body — it can contain the invitee email or
+    // other sensitive payload. Surface status only (lands in worker logs).
+    return { ok: false, error: `Sequenzy send failed (HTTP ${res.status})` };
   }
   return { ok: true };
 }

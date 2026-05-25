@@ -16,6 +16,7 @@
 
 import { Hono } from 'hono';
 import { firestoreSet, fsTimestamp } from '../lib/firestoreAdmin';
+import { dlog } from '../lib/log';
 import { verifyTurnstile } from '../lib/turnstile';
 import { checkCooldown } from '../lib/rateLimit';
 import { validateLead, expiresAtFromNow } from '../lib/diagnostic-shared';
@@ -115,7 +116,7 @@ roi.post('/api/public/roi-calculation', async c => {
   }
 
   // PII: do NOT log lead.email (lands in persistent Cloudflare tail logs).
-  console.log(
+  dlog(env,
     '[roi] saved — id:', id,
     'workflow:', inputs.targetWorkflow,
     'monthlySaved:', result.estimatedMonthlyCostSaved,

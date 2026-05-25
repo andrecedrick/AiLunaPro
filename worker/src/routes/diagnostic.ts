@@ -18,6 +18,7 @@ import { Hono } from 'hono';
 import { firestoreSet, fsTimestamp } from '../lib/firestoreAdmin';
 import { verifyTurnstile } from '../lib/turnstile';
 import { checkCooldown } from '../lib/rateLimit';
+import { dlog } from '../lib/log';
 import {
   validateAnswers,
   computeScore,
@@ -128,7 +129,7 @@ diagnostic.post('/api/public/diagnostic', async c => {
   }
 
   // PII: do NOT log lead.email (lands in persistent Cloudflare tail logs).
-  console.log('[diagnostic] saved — id:', id, 'score:', score.normalizedScore, 'bucket:', score.bucket);
+  dlog(env, '[diagnostic] saved — id:', id, 'score:', score.normalizedScore, 'bucket:', score.bucket);
 
   return c.json({
     id,

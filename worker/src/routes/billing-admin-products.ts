@@ -15,6 +15,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireOwner } from '../middleware/requireOwner';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { dlog } from '../lib/log';
 import { isSupportedCurrency, isSupportedInterval } from '../lib/currency';
 import {
   PLAN_TO_PRODUCT,
@@ -203,7 +204,7 @@ products.post('/api/billing/admin/prices', requireAuth(), requireOwner(), async 
     return c.json({ error: `Firestore write failed: ${msg}` }, 500);
   }
 
-  console.log('[admin-prices] created', body.plan, body.currency, body.amountCents, '→', price.id);
+  dlog(env, '[admin-prices] created', body.plan, body.currency, body.amountCents, '→', price.id);
 
   return c.json({
     priceId:  price.id,

@@ -24,6 +24,7 @@ import {
   firestoreGet,
   firestoreCreateIfNotExists,
 } from '../lib/firestoreAdmin';
+import { dlog } from '../lib/log';
 import { validateAgent, type AgentCatalogEntry, type AgentStatus } from '../lib/agents-shared';
 import { AILUNAPRO_AGENT_SEED } from '../data/agents-seed';
 import type { AppEnv } from '../index';
@@ -258,7 +259,7 @@ agents.post('/api/agents/admin/seed', requireAuth(), requireRole(ADMIN_ROLES), a
     }
   }
 
-  console.log('[agents] seed —', { created: created.length, updated: updated.length, skipped: skipped.length, errors: errors.length });
+  dlog(env, '[agents] seed —', { created: created.length, updated: updated.length, skipped: skipped.length, errors: errors.length });
   return c.json({ ok: true, created, updated, skipped, errors });
 });
 

@@ -15,6 +15,7 @@ import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { requireOwner } from '../middleware/requireOwner';
 import { getStripe } from '../lib/stripe';
+import { dlog } from '../lib/log';
 import {
   PLAN_TO_PRODUCT,
   generatePromoCode,
@@ -195,7 +196,7 @@ promos.post('/api/billing/admin/promotion-codes', requireAuth(), requireOwner(),
     throw err;
   }
 
-  console.log('[admin-promos] created', code, 'coupon=', coupon.id, 'pc=', pc.id);
+  dlog(env, '[admin-promos] created', code, 'coupon=', coupon.id, 'pc=', pc.id);
 
   const result: PromoListItem = {
     id:               pc.id,
@@ -235,7 +236,7 @@ promos.post('/api/billing/admin/promotion-codes/:id/disable', requireAuth(), req
     throw err;
   }
 
-  console.log('[admin-promos] disabled', id);
+  dlog(env, '[admin-promos] disabled', id);
   return c.json({ ok: true });
 });
 
