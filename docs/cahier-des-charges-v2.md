@@ -804,6 +804,15 @@ L'activation de l'enforcement (Auth + Firestore) est un **gate §17 ultérieur
 séparé**, hors J4 — uniquement après métriques matures (volume représentatif,
 ~100% validé, aucun trafic légitime bloqué).
 
+**Revue J5 (Batch 2, advisory — aucun code).** Statut inchangé depuis J4 :
+échantillon toujours insuffisant (pas de volume représentatif accumulé),
+init reste *monitor* dans `src/lib/firebase.ts` (try/catch, no-op si clé absente,
+**aucun blocage de requête**). **Enforcement reste OFF.** Critères d'activation
+inchangés. Pré-requis avant tout futur gate enforcement : (1) métriques matures
+console, (2) ~100% tokens validés sur volume réel, (3) zéro trafic légitime
+bloqué en simulation, (4) plan de rollback (toggle console = réversible immédiat).
+**Décision J5 : ne pas activer.** Réévaluation à un gate ultérieur dédié.
+
 ---
 
 ## 10. Architecture technique

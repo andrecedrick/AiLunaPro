@@ -97,10 +97,10 @@ function SharedBanner({ onBack }: { reportId: string; onBack: () => void }) {
             opacity: 0.92,
           }}
         >
-          🔗 Shared report — read-only preview
+          🔗 Shared report — read-only view
         </div>
         <div style={{ fontSize: 13, marginTop: 4, opacity: 0.92 }}>
-          This is the view a stakeholder receives via your share link. Internal CTAs are removed.
+          Read-only view for people in your workspace, opened from the in-app share link. Internal action buttons are hidden.
         </div>
       </div>
       <button
