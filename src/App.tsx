@@ -107,9 +107,16 @@ function AppShell() {
   const { route, navigate } = useRoute();
   const { isAuthenticated, isLoading, session } = useAuth();
 
-  /* ── Invite link + Diagnostic deep-link detection ──────
-     #/invite/{orgId}/{inviteId}/{token}    → accept-invite
-     #/diagnostic                            → diagnostic (K1A public)         */
+  /* ── Deep-link hydration on fresh load (J4 #1, Phase 1: read-on-load) ──
+     Opens the correct page when a hash URL is loaded directly / shared.
+     Billing routes are handled by the dedicated effect below (they carry
+     query-param side-effects). This effect covers the public + authenticated
+     content routes. Order matters: more-specific prefixes first.
+       #/invite/{orgId}/{inviteId}/{token} → accept-invite
+       #/diagnostic / #/roi-calculator     → public (K1A/K2A)
+       #/help[?section=...]                → help (section read by HelpPage)
+       #/audit/history                     → audit history (J3)
+       #/reports                           → reports list                       */
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const h = window.location.hash;
@@ -121,6 +128,10 @@ function AppShell() {
       navigate({ name: 'roi-calculator' });
     } else if (h.startsWith('#/help')) {
       navigate({ name: 'help' });
+    } else if (h.startsWith('#/audit/history')) {
+      navigate({ name: 'audit/history' });
+    } else if (h.startsWith('#/reports')) {
+      navigate({ name: 'reports' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
