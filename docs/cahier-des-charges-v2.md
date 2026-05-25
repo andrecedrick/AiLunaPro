@@ -1844,6 +1844,18 @@ parallèles.
 Séquence (low-risk → dépendance/config) : (1)+(6) → (3)+(5 rescopé) → (2 après API
 Sequenzy) → (4 flag) → (7 monitor→enforce).
 
+**Plan d'exécution J3 (approuvé) — batches**
+- **Batch A** *(en cours)* : #1 Help Center v1 (frontend, Mermaid lazy, §9.16) ·
+  #6 DEBUG-gate logs verbeux (worker `dlog(env)` derrière `DEBUG_LOGGING`).
+- **Batch B** : #3 Audit history view (read-only, `fsListAudits`) · #5 Dashboard
+  real-data + empty-states honnêtes (pas de fabrication).
+- **Batch C** *(bloqué jusqu'à go template)* : #2 Email invites worker→Sequenzy
+  REST (§9.17, slug `team-invite`, secret `SEQUENZY_API_KEY` déjà posé) · #4
+  Auto-report derrière flag (défaut OFF). Pré-requis : créer template `team-invite`
+  (write Sequenzy, approbation explicite) — PAS encore fait.
+- **Batch D** : #7 App Check **monitor mode** (enforcement = gate ultérieur).
+- Chaque item : build → tsc → deploy → verify → commit séparé. Clôture J3 = §17.
+
 **📌 Post-J3 / scale** — Real PDF, caching agents-catalog (KV), DEBUG-gating logs,
 accept-invite arrayUnion, App Check enforcement, phases features K3B/K3C.
 
@@ -1925,6 +1937,8 @@ streams features parallèles avant scope.
 | 2026-05-24 | Auth bot-protection = Firebase App Check (post-J2), PAS widget Turnstile sur login/signup | Login/signup = Firebase Auth client SDK direct (pas de hop worker) ; un widget de formulaire est contournable via REST direct. App Check = vraie protection edge. Documenté, post-J2 |
 | 2026-05-24 | Remove member : accès révoqué immédiatement (worker requireRole 403 + rules isAnyMember=false) ; force-logout instantané = post-J2 | Le doc member supprimé bloque actions + lectures tout de suite. Reste : token session valide + UI stale jusqu'au reload. Hardening post-J2 = revoke refresh token / listener realtime membership → auto-redirect |
 | 2026-05-24 | Email invitations = post-J2, exécution préparée (§9.17) | Provider Sequenzy configuré (domaine vérifié DKIM/SPF) ; launch garde le flux lien + UI "coming soon" ; spec route worker + template + sécurité figée pour impl rapide post-J2 |
+| 2026-05-25 | J3 Batch A/B/C livrés | Help v1 (CSS FlowDiagram), DEBUG-gate logs, audit-history view, dashboard real-data + empty-states (zéro fabrication), build gate `tsc -b --force`, email invites worker→Sequenzy (template `team-invite`, non-fatal waitUntil), auto-report flag (défaut OFF) |
+| 2026-05-25 | Fix RBAC audits : member autorisé (rules isContentMember) + état 'forbidden' clair | audits create/update étaient isOwnerOrAdmin → member bloqué au niveau rules malgré le modèle. Corrigé isContentMember (owner/admin/member ✓ ; billing/client exclus). UI : message rôle clair au lieu de "Failed to load" ; AuditContext n'attente plus de write interdit |
 | 2026-05-24 | Gate d'inspection fin d'étape = RÈGLE GLOBALE obligatoire (§17) | Hard gate avant chaque transition (J2→J3→…) ; checklist 7 axes + scale x10/x100/x1000 ; output ✅/⚠️/❌ + next/not-next + optimisations ; read-only → fix batch → re-verify → green-light |
 | 2026-05-24 | Inspection pré-J3 : 4 must-fix corrigés (94a1644) | (1) TTL réel : expiresAt en timestampValue (était stringValue → TTL no-op, GDPR) — vérifié PASS ; (2) IDOR billing-invoices fermé (requireRole owner/billing) ; (3) garde membership sur billing/sync-session ; (4) cache token OAuth worker (perf/quota). Docs publics PRÉ-fix gardent expiresAt string → purge manuelle. Defer list (logs verbeux, mock dashboard, accept-invite arrayUnion, billing-config gate, skeleton routes) documentée, non bloquante |
 | 2026-05-21 | Report persist: strip undefined avant setDoc | `weakestSection: undefined` rejeté par Firestore → report jamais sauvé (erreur avalée) |
