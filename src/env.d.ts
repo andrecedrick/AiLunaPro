@@ -26,6 +26,10 @@ interface ImportMetaEnv {
   // ── Optional: J3 feature flag — auto-create a report on audit submit ──
   // 'true' enables; unset/anything else = OFF (default; unchanged behavior).
   readonly VITE_AUTO_REPORT_ON_SUBMIT?: string;
+
+  // ── Optional: Firebase App Check reCAPTCHA v3 site key (public) ────────
+  // When set, App Check initializes in MONITOR mode. Unset = no-op.
+  readonly VITE_RECAPTCHA_APPCHECK_KEY?: string;
 }
 
 interface ImportMeta {
