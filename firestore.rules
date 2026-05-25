@@ -253,8 +253,13 @@ service cloud.firestore {
           && request.resource.data.organizationId == orgId
           && request.resource.data.createdBy == uid();
 
-        // Content members can update audit metadata (status, score, submit).
-        allow update: if isContentMember(orgId);
+        // Content members can update audit metadata (status, score, submit),
+        // but ownership/system fields are immutable: organizationId and
+        // createdBy cannot be changed on update (prevents a member moving an
+        // audit to another org or spoofing the author).
+        allow update: if isContentMember(orgId)
+          && request.resource.data.organizationId == resource.data.organizationId
+          && request.resource.data.createdBy == resource.data.createdBy;
 
         // Only owners/admins can delete or archive audit sessions.
         allow delete: if isOwnerOrAdmin(orgId);

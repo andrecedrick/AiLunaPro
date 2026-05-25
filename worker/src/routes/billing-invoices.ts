@@ -18,6 +18,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
+import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
 const invoices = new Hono<AppEnv>();
@@ -50,7 +51,7 @@ invoices.get('/api/billing/invoices', requireAuth(), requireRole(['owner', 'bill
   const orgId = c.req.query('orgId');
   if (!orgId) return c.json({ error: 'Missing orgId query param' }, 400);
 
-  console.log('[invoices] orgId=', orgId);
+  dlog(env, '[invoices] orgId=', orgId);
 
   // Read customer id from subscriptions/current
   const sub = await firestoreGet(
@@ -93,7 +94,7 @@ invoices.get('/api/billing/invoices', requireAuth(), requireRole(['owner', 'bill
     };
   });
 
-  console.log('[invoices] count=', safe.length);
+  dlog(env, '[invoices] count=', safe.length);
   return c.json({ invoices: safe });
 });
 

@@ -1821,7 +1821,13 @@ relibellé, bouton mort désactivé, Turnstile sitekey+rotation, TTL (GDPR).
 4 must-fix livrés (`94a1644`) : TTL→timestamp (vérifié), billing-invoices IDOR,
 sync-session membership guard, cache token OAuth. Defer list documentée.
 
-**⏳ EN COURS** — néant. Worktree clean, J2 launch-ready, gate vert.
+**✅ J3 — "Product polish & adoption"** — FAIT + clôturé (gate §17 J3→J4 PASS).
+Help v1, DEBUG-gate logs, audit-history, dashboard real-data, email invites
+(Sequenzy worker→REST, template `team-invite`), auto-report flag (OFF), App Check
+monitor, build gate `tsc -b --force`, audit RBAC fix (member), cleanup (logs +
+audits-update immutability guard). Defers tracés (non bloquants).
+
+**⏳ EN COURS** — néant. J3 clôturé, prêt pour scope J4.
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -1896,7 +1902,7 @@ streams features parallèles avant scope.
 | J1→J2 | smoke 1–25 + ciblé (billing, rules, CORS) | portal/clé, persistence workspace/report… (fixés live) | docs, R1 share-path |
 | J2→Pre-J3 | §17 7 axes (3 reviewers parallèles + vérif manuelle) | TTL string, invoices IDOR, sync write, cache OAuth (`94a1644`) | logs verbeux, mock dashboard, arrayUnion, billing-config gate, skeleton routes |
 | Pre-J3 scope | §17 pre-flight read-only sur scope J3 proposé | 3 rescopes requis (auto-report→flag, dashboard→real+empty-states, AppCheck→monitor-first) ; dépendance Sequenzy API | Super Admin, PDF, caching, refactor (non-goals) |
-| J3→… | §17 obligatoire (même pattern) | TBD | TBD |
+| J3→J4 | §17 7 axes (2 reviewers read-only + baseline FAIL=0) | **0 must-fix** — PASS. Cleanup appliqué : logs billing-invoices gated (dlog), guard immuabilité audits update (organizationId/createdBy figés) | logs admin/seed restants, Sequenzy error-body PII (low), invite pagination (pré-GA), deep-link hash hydration, App Check enforcement (gate ultérieur), audits update field-level au-delà ownership |
 
 ---
 
