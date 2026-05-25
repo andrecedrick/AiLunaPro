@@ -12,6 +12,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { fetchBillingConfigStatus } from '../../lib/billing/configService';
+import { fetchIsPlatformAdmin } from '../../lib/platform/platformService';
 import type { BillingConfigStatus, KeyStatus, StripeMode } from '../../types/billingConfig';
 import { SettingsLayout } from './SettingsLayout';
 import { MetadataEditor } from '../../components/billing/MetadataEditor';
@@ -107,19 +108,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/* ── Locked view for non-owners ───────────────────────────── */
-function Locked() {
+/* ── Access-check placeholder (operator allowlist resolving) ── */
+function CheckingAccess() {
   return (
     <SettingsLayout title="Billing">
-      <div style={{ padding: 32, textAlign: 'center' }}>
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}>
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Owner-only</div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-          Billing settings are restricted to workspace owners.
-        </div>
+      <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+        Checking access…
       </div>
     </SettingsLayout>
   );
@@ -155,9 +149,9 @@ export function BillingSettingsPage() {
   const [status, setStatus]     = useState<BillingConfigStatus | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
-
-  const role = session?.role ?? 'member';
-  const canView = role === 'owner';
+  // Operator allowlist gate (J5 Batch 3). null = resolving. Platform admins are
+  // NOT org members — this is independent of session.role. Fail-closed.
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,11 +166,20 @@ export function BillingSettingsPage() {
     }
   }, []);
 
-  useEffect(() => { if (canView) load(); }, [canView, load]);
+  useEffect(() => {
+    let active = true;
+    fetchIsPlatformAdmin()
+      .then(ok => { if (active) setIsPlatformAdmin(ok); })
+      .catch(() => { if (active) setIsPlatformAdmin(false); });
+    return () => { active = false; };
+  }, []);
 
-  if (!canView) return <Locked />;
-  // Production: hide platform Stripe admin from tenant owners (operator-only).
-  if (import.meta.env.PROD) return <OperatorManaged />;
+  useEffect(() => { if (isPlatformAdmin === true) load(); }, [isPlatformAdmin, load]);
+
+  // Resolving allowlist → placeholder. Non-operator (incl. tenant owners/
+  // admins/members) → "managed by operator" notice. Operator → admin panels.
+  if (isPlatformAdmin === null) return <CheckingAccess />;
+  if (!isPlatformAdmin) return <OperatorManaged />;
 
   return (
     <SettingsLayout title="Billing">

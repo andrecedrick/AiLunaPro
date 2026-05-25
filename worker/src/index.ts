@@ -41,6 +41,7 @@ import agentsRoutes          from './routes/agents';
 import diagnosticRoutes      from './routes/diagnostic';
 import roiRoutes             from './routes/roi';
 import recommendRoutes       from './routes/recommend';
+import platformRoutes        from './routes/platform';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -65,11 +66,18 @@ export type AppEnv = {
     APP_ENV?:                      string;
     // K1A — Cloudflare Turnstile secret for /api/public/diagnostic
     TURNSTILE_SECRET_KEY?:         string;
+    // J5 Batch 3 — operator allowlist. Comma-separated platform-admin emails.
+    // Set via `wrangler secret put PLATFORM_ADMIN_EMAILS --env production`.
+    // Platform admins are NOT org members; this gates operator-only surfaces.
+    PLATFORM_ADMIN_EMAILS?:        string;
   };
   Variables: {
     uid:    string;
     orgId?: string;
     role?:  'owner' | 'admin' | 'member' | 'billing' | 'client';
+    // J5 Batch 3 — email claims from the verified Firebase token (auth middleware).
+    email?:         string;
+    emailVerified?: boolean;
   };
 };
 
@@ -134,6 +142,7 @@ app.route('/', agentsRoutes);
 app.route('/', diagnosticRoutes);
 app.route('/', roiRoutes);
 app.route('/', recommendRoutes);
+app.route('/', platformRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

@@ -53,6 +53,10 @@ export function requireAuth() {
       }
 
       c.set('uid', uid);
+      // Email claims — used by the platform-operator allowlist (lib/platformAdmin).
+      // Optional: not all auth methods carry an email; consumers must null-check.
+      if (typeof payload.email === 'string') c.set('email', payload.email);
+      c.set('emailVerified', payload.email_verified === true);
       await next();
     } catch {
       return c.json({ error: 'Invalid or expired token', code: 'UNAUTHORIZED' }, 401);
