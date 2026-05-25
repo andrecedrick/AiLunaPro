@@ -86,7 +86,7 @@ export function Topbar() {
   };
 
   const onNewAudit = () => {
-    if (!canCreateAudit) { showToast('You do not have permission to create audits.', 'warning'); return; }
+    if (!canCreateAudit) { showToast("Your role doesn't allow creating audits. Audits are for Owner, Admin, and Member.", 'warning'); return; }
     navigate({ name: 'audit/new' });
   };
 

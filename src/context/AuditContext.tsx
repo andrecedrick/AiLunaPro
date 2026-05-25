@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { auditSections, totalAuditQuestions } from '../data/mockAuditQuestions';
 import type { AnswerValue, AuditAnswers, AuditDraft } from '../types/audit';
+import { ROLE } from '../types/auth';
 import { resolveLayer } from '../lib/featureFlags';
 import { useAuth } from './AuthContext';
 import {
@@ -57,7 +58,7 @@ function newDraft(): AuditDraft {
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 
-export type AuditStatus = 'loading' | 'loaded' | 'error';
+export type AuditStatus = 'loading' | 'loaded' | 'error' | 'forbidden';
 
 interface AuditContextValue {
   /* state */
@@ -91,6 +92,7 @@ export function AuditProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const orgId = session?.orgId ?? null;
   const uid   = session?.userId ?? null;
+  const role  = session?.role;
 
   // Mock: init synchronously from localStorage.
   // Firebase: start empty + loading, populate async.
@@ -114,6 +116,14 @@ export function AuditProvider({ children }: { children: ReactNode }) {
     if (LAYER === 'mock') return;
     if (!orgId || !uid) return;
 
+    // Audit content is owner/admin/member only (isContentMember). Billing and
+    // client roles cannot create/load audits — don't attempt a draft write
+    // (it would 403 and surface as "Failed to load"); show a clear role state.
+    if (!ROLE.canUseFeatures(role)) {
+      setStatus('forbidden');
+      return;
+    }
+
     let cancelled = false;
     setStatus('loading');
 
@@ -136,7 +146,7 @@ export function AuditProvider({ children }: { children: ReactNode }) {
       });
 
     return () => { cancelled = true; };
-  }, [orgId, uid]);
+  }, [orgId, uid, role]);
 
   // ── Mock: mirror to localStorage on every change ──────────────────────────
 

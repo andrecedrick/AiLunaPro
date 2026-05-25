@@ -44,6 +44,23 @@ export function NewAuditPage() {
         >
           Loading audit…
         </div>
+      ) : status === 'forbidden' ? (
+        <div
+          style={{
+            padding: '48px 24px',
+            textAlign: 'center',
+            maxWidth: 460,
+            margin: '0 auto',
+          }}
+        >
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Your role doesn't allow creating audits
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.55 }}>
+            Audits are available to Owner, Admin, and Member roles. Ask a workspace
+            owner or admin if you need audit access.
+          </div>
+        </div>
       ) : status === 'error' ? (
         <div
           style={{
