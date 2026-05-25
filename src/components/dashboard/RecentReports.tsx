@@ -157,7 +157,7 @@ export function RecentReports() {
     .map(r => ({
       id:     r.id,
       title:  r.title,
-      date:   formatDate(r.createdAt, 'date'),
+      date:   formatDate(r.createdAt, 'medium'),
       status: r.status,
       score:  r.scoreSnapshot,
       risk:   r.riskSnapshot,
