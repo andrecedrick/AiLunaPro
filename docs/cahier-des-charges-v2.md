@@ -1931,7 +1931,27 @@ Plan d'exécution J4 (batches) :
   enforcement, agents caching, gros refactors, streams parallèles.
 - Chaque item : typecheck → build/deploy → verify → commit séparé. Clôture J4 = §17.
 
-**EN COURS** — néant. J4 clôturé (gate PASS), prêt pour scope J5.
+**⏳ J5 — "Trust & Shareable Links"** — scope approuvé, exécution en cours.
+
+Plan J5 (batches) :
+- **Batch 1** *(en cours)* : report deep-links in-app (fix `buildShareUrl` → hash
+  `#/reports/share/{id}`, parse `#/reports/share|detail/{id}` au load) + Help
+  section deep-link polish. Reopen **same-workspace authed only** (pas de partage
+  public externe).
+- **Batch 2** *(advisory)* : App Check enforcement readiness = review only (OFF) ;
+  trust/copy polish (ne pas impliquer un partage externe inexistant).
+- **Batch 3** : operator allowlist — `PLATFORM_ADMIN_EMAILS` (secret worker) +
+  middleware `requirePlatformAdmin` + `GET /api/platform/me` ; gate Settings→Billing
+  admin (remplace le PROD-hide). Platform admin **non-membre org**, jamais dans
+  `members/{uid}`, pas dans Team, pas d'impersonation, pas de Super Admin UI.
+- **Batch 4** *(dernier, risque modéré)* : hash-write-on-navigate — serializer
+  `routeToHash` + write replaceState dans RouteContext ; matrice de régression
+  complète ; préserver invite/diagnostic/roi/billing/success/tokens + Help section.
+- Non-goals réaffirmés : partage public externe, App Check enforcement, impersonation,
+  Luna, PDF réel, agents caching, gros refactors.
+- Chaque item : typecheck → build/deploy → verify → commit. Clôture J5 = §17.
+
+**EN COURS** — Batch 1.
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
