@@ -9,6 +9,7 @@
  */
 
 import { resolveLayer } from '../featureFlags';
+import { WORKER_BASE } from '../billing/stripeClient';
 
 async function getIdToken(): Promise<string | null> {
   try {
@@ -32,17 +33,19 @@ export interface PlatformMe {
 }
 
 export async function fetchPlatformMe(): Promise<PlatformMe> {
-  const apiUrl    = import.meta.env.VITE_API_URL;
   const authLayer = resolveLayer('auth');
 
-  // Mock mode or no API URL → not a platform admin (fail-closed).
-  if (authLayer === 'mock' || !apiUrl) return { isPlatformAdmin: false, emailVerified: null };
+  // Mock auth → no real Firebase token → not a platform admin (fail-closed).
+  // NOTE: base URL is WORKER_BASE (VITE_WORKER_URL), same as stripeClient.
+  // In DEV it is '' (relative, proxied by Vite); in PROD it is the API origin.
+  // Do NOT gate on truthiness of the base — '' is a valid relative base.
+  if (authLayer === 'mock') return { isPlatformAdmin: false, emailVerified: null };
 
   const token = await getIdToken();
   if (!token) return { isPlatformAdmin: false, emailVerified: null };
 
   try {
-    const res = await fetch(`${apiUrl}/api/platform/me`, {
+    const res = await fetch(`${WORKER_BASE}/api/platform/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return { isPlatformAdmin: false, emailVerified: null };
