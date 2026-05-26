@@ -15,7 +15,11 @@ async function getIdToken(): Promise<string | null> {
     const { auth } = await import('../firebase-auth');
     const user = auth.currentUser;
     if (!user) return null;
-    return await user.getIdToken();
+    // Force refresh: email_verified is baked into the ID token. After verifying
+    // an email, the cached token still carries email_verified=false until it
+    // expires (~1h). Force a refresh so the platform-admin check sees the
+    // current claim without requiring a full sign-out/sign-in.
+    return await user.getIdToken(true);
   } catch {
     return null;
   }
