@@ -843,6 +843,19 @@ Firebase Console → Authentication → Templates :
 Note : le branding template Firebase = sujet/corps/expéditeur-nom/reply-to ; l'expéditeur
 reste `…firebaseapp.com` sauf SMTP custom (hors scope).
 
+**Branding appliqué (opérateur, 2026-05-27)** : sender name `AiLunaPro`, reply-to
+`service@audit.ailunapro.com`, sujets verification/reset personnalisés. Expéditeur
+toujours `noreply@audit-ai-cc9e2.firebaseapp.com` (défaut).
+
+**Suivi DNS — domaine email custom `mail.ailunapro.com`** *(manuel, hors code)* :
+DNS configuré côté opérateur pour activer un domaine d'envoi custom Firebase Auth
+(fonctionnalité native Firebase = vérification de domaine expéditeur via DNS ; **PAS**
+un serveur SMTP custom). **Statut : en attente de vérification Firebase.** Tant que la
+console affiche encore l'expéditeur `…firebaseapp.com`, le domaine n'est pas encore
+vérifié/activé. À re-vérifier après propagation DNS : si l'expéditeur passe à
+`mail.ailunapro.com`, mettre à jour la FAQ Help (qui cite l'adresse expéditeur) +
+ce bloc. Aucun changement de code requis (le SDK client reste inchangé).
+
 ---
 
 ## 10. Architecture technique
