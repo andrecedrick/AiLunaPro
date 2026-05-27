@@ -2035,7 +2035,22 @@ Plan J5 (batches) — *historique, livré* :
   /api/me & /api/platform/me 401 (binding présent, no regression). **0 must-fix.**
 - **Différé** : `canGoBack` stale-until-render (étroit, pré-existant — ne pas re-toucher la nav).
 
-Prochaine étape J6 : scope à définir (gaté).
+**✅ J6 — "Branded Auth Emails & Account Trust"** — **CLÔTURÉ (§17 PASS, 0 must-fix)** le 2026-05-27.
+Scope tight (≈70% UX déjà livrée J5). Décision moteur verrouillée : Firebase Auth natif
+(verification + reset) ; Sequenzy = invites only ; Options B/C différées (voir §9.20).
+- **B1 (code)** `c293ba2` : signup auto-envoie la vérification email (best-effort,
+  non-fatal — ne bloque jamais la création) + copy "check spam/promotions" (Profile,
+  parité ForgotPassword). Exigence email-vérifié (gate platform-admin) inchangée.
+- **B2 (docs)** `b38a139` : cahier §9.20 (modèle auth-email + runbook Console opérateur :
+  sender name AiLunaPro, reply-to, templates verification/reset, authorized domains) +
+  Help FAQ "Didn't get the verification/reset email?".
+- **Gate §17** : baseline PASS=75 FAIL=0 · build/tsc ✅ · worktree clean · prod match
+  (`DzJ7ViFO`). **0 must-fix.** Aucune surface sécu ajoutée (appel Firebase natif,
+  non-fatal, pas de nouvel endpoint, pas de mint de lien).
+- **Différé** : custom action handler (B), Sequenzy auth-email minting (C), SMTP custom,
+  `canGoBack` (toujours différé).
+
+Prochaine étape J7 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2116,6 +2131,8 @@ scope J6 verrouillé.
 | J3→J4 | §17 7 axes (2 reviewers read-only + baseline FAIL=0) | **0 must-fix** — PASS. Cleanup appliqué : logs billing-invoices gated (dlog), guard immuabilité audits update (organizationId/createdBy figés) | logs admin/seed restants, Sequenzy error-body PII (low), invite pagination (pré-GA), deep-link hash hydration, App Check enforcement (gate ultérieur), audits update field-level au-delà ownership |
 | J4→J5 | §17 7 axes (1 reviewer read-only + baseline FAIL=0) | **0 must-fix** — PASS. Tous deltas ✅ (routing Phase-1, pagination capée, sanitize, logs gated, no dead code) | hash-write-on-navigate (Phase 2), App Check enforcement, operator-allowlist impl, load-more UI, reports/detail+share deep-link params |
 | J5→J6 | §17 7 axes (2 reviewers read-only sécu+routing + baseline PASS=74 FAIL=0) | **0 must-fix** — PASS. Operator allowlist (fail-closed, email vérifié requis, no leak), deep-links + hash-write-on-navigate validés navigateur clean. Polish appliqué : `buildShareUrl` encodeURIComponent + `back()` pop hors updater | `FIREBASE_PROJECT_ID` fallback (no prod impact), `canGoBack` stale (pré-existant), App Check enforcement, Operator Secrets Management UI (futur), partage public externe (jamais), auth-emails brandés Sequenzy (futur) |
+| Pre-J6 hygiène | §17 mini-gate (baseline PASS=75 FAIL=0) | **0 must-fix** — PASS. Junk purgé, gitignore outillage Ruflo, CLAUDE.md restauré projet, `FIREBASE_PROJECT_ID` fail-closed (`2d2e978`+`333ebc6`) | `canGoBack` (différé) |
+| J6→J7 | §17 7 axes (baseline PASS=75 FAIL=0, build/tsc, worktree clean, prod match) | **0 must-fix** — PASS. Auth-email model verrouillé (Firebase natif), signup auto-verify non-fatal, docs §9.20 + Help FAQ. Aucune surface sécu ajoutée | custom action handler (B), Sequenzy auth-email minting (C), SMTP custom, `canGoBack`, App Check enforcement, Operator Secrets UI |
 
 ---
 
