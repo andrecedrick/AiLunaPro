@@ -289,6 +289,16 @@ export async function firebaseSignup(
     const now     = new Date().toISOString();
     const initials = makeInitials(name);
 
+    // J6: send the verification email immediately on signup. Best-effort and
+    // NON-FATAL — a delivery/quota error must never block account creation.
+    // The verified-email requirement (e.g. platform-admin gate) is unchanged;
+    // users can also resend later from Settings → Profile.
+    try {
+      await sendEmailVerification(cred.user);
+    } catch (verifyErr) {
+      console.warn('[signup] verification email send failed (non-fatal):', verifyErr);
+    }
+
     if (orgName && orgName.trim()) {
       // Legacy/optional path: user explicitly chose to create a workspace.
       const orgId   = `org_${uid.slice(0, 8)}`;

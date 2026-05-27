@@ -44,7 +44,7 @@ export function ProfilePage() {
     const res = await firebaseSendEmailVerification();
     setVerifying(false);
     if (res.success) {
-      showToast(`Verification email sent to ${email}. Check inbox and spam, then sign out and back in.`, 'success');
+      showToast(`Verification email sent to ${email}. Check inbox and spam/promotions, then sign out and back in.`, 'success');
     } else {
       showToast(res.error ?? 'Could not send verification email.', 'error');
     }
