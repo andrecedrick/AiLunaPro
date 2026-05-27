@@ -813,6 +813,36 @@ console, (2) ~100% tokens validés sur volume réel, (3) zéro trafic légitime
 bloqué en simulation, (4) plan de rollback (toggle console = réversible immédiat).
 **Décision J5 : ne pas activer.** Réévaluation à un gate ultérieur dédié.
 
+#### 9.20 Modèle d'emails d'authentification *(J6)*
+**Décision (J6, verrouillée)** : moteur d'emails auth = **Firebase Auth** (natif).
+- **Firebase Auth** envoie : **vérification d'email** (`sendEmailVerification`) +
+  **réinitialisation mot de passe** (`sendPasswordResetEmail`). Liens oobCode via le
+  handler par défaut `https://audit-ai-cc9e2.firebaseapp.com/__/auth/action`,
+  expéditeur `noreply@audit-ai-cc9e2.firebaseapp.com`.
+- **Sequenzy** envoie : **invitations équipe uniquement** (`team-invites.ts` →
+  `sendTransactional`, slug `team-invite`).
+- **J6 livré** : vérification auto-envoyée au signup (best-effort, non-fatal,
+  `firebaseAuthService` signup) ; resend + état vérifié/non-vérifié + refresh token
+  (`getIdToken(true)`) en Profile (J5) ; messaging platform-admin "email vérifié requis"
+  (J5) ; copy "check spam/promotions" (ForgotPassword + Profile).
+- **Différé (non construit)** : emails auth brandés via Sequenzy (Option C — le worker
+  mintrait les liens via Admin Identity-Toolkit `accounts:sendOobCode?returnOobLink=true`
+  puis enverrait via Sequenzy) — **risque sécu élevé** (endpoint de mint = énumération/
+  abus, rate-limit, SPF/DKIM à notre charge) → reporté ; custom action handler brandé
+  (Option B, `actionCodeSettings.url` → page `audit.ailunapro.com`) → reporté.
+
+**Runbook opérateur — branding templates Firebase (Console, hors code) :**
+Firebase Console → Authentication → Templates :
+1. **Verification email** : sender name = `AiLunaPro`, reply-to = (email support),
+   personnaliser subject/body.
+2. **Password reset** : idem (sender name `AiLunaPro`, reply-to, subject/body).
+3. Authentication → Settings → **Authorized domains** : inclure
+   `audit.ailunapro.com` (requis seulement si Option B/custom action URL adoptée plus
+   tard ; le handler par défaut `…firebaseapp.com` est auto-autorisé).
+4. Vérifier délivrabilité (inbox vs spam) après modif.
+Note : le branding template Firebase = sujet/corps/expéditeur-nom/reply-to ; l'expéditeur
+reste `…firebaseapp.com` sauf SMTP custom (hors scope).
+
 ---
 
 ## 10. Architecture technique

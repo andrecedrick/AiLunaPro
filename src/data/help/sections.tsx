@@ -463,6 +463,16 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
           Invitations expire after 7 days. Ask your workspace owner or admin to regenerate
           the invite from the Team page.
         </p>
+        <h3 style={h3}>Didn't get the verification or password reset email?</h3>
+        <p style={p}>
+          Verification and password reset emails are sent by Firebase from{' '}
+          <strong>noreply@audit-ai-cc9e2.firebaseapp.com</strong>. Check your{' '}
+          <strong>spam / promotions</strong> folder first. You can resend the verification
+          email from <strong>Settings → Profile</strong>, or request a new reset link from
+          the <strong>Forgot password</strong> page. After verifying, sign out and back in
+          so your account reflects the verified status. (Team invitations are separate and
+          sent via AiLunaPro's email provider.)
+        </p>
       </>
     ),
   },
