@@ -463,6 +463,15 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
           Invitations expire after 7 days. Ask your workspace owner or admin to regenerate
           the invite from the Team page.
         </p>
+        <h3 style={h3}>Blank screen, "Oops", or broken layout?</h3>
+        <p style={p}>
+          This is almost always a browser <strong>ad-blocker or privacy extension</strong>{' '}
+          (or a corporate/VPN/DNS filter) blocking the app's scripts, styles, or data
+          requests — you may see <strong>ERR_BLOCKED_BY_CLIENT</strong> in the console.
+          Fix it by allowing <strong>audit.ailunapro.com</strong> and{' '}
+          <strong>*.googleapis.com</strong> in your blocker, or open the app in a clean
+          browser profile with no extensions, then reload.
+        </p>
         <h3 style={h3}>Didn't get the verification or password reset email?</h3>
         <p style={p}>
           Verification and password reset emails are sent by Firebase from{' '}
