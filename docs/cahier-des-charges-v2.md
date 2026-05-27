@@ -1989,7 +1989,23 @@ Plan J5 (batches) — *historique, livré* :
   Luna, PDF réel, agents caching, gros refactors.
 - Chaque item : typecheck → build/deploy → verify → commit. Clôture J5 = §17.
 
-**CLÔTURÉ** — voir bloc §17 ci-dessus. Prochaine étape J6 : scope à définir (gaté).
+**CLÔTURÉ** — voir bloc §17 ci-dessus.
+
+**🧹 Pre-J6 — Hygiene & Configuration Hardening Pass** — **CLÔTURÉ** (mini-gate §17) le 2026-05-27.
+- **A** suppression artefacts shell 0-octet (racine + worker/). **B** `.gitignore` : ignore
+  outillage local Ruflo/claude-flow (`.claude-flow/`, `.swarm/`, `.mcp.json`, `ruvector.db`,
+  `.claude/{agents,commands,helpers,skills}/`, `*.backup.*`) ; hooks `settings.json` →
+  `.claude/helpers/*` via `IF EXIST` + fallback `%USERPROFILE%` (checkout neuf OK). **C**
+  CLAUDE.md restauré projet-focus + règles discipline + §17/§18, template swarm Ruflo retiré.
+  **D** `settings.json` commité (hooks actifs, no secret). **E** `FIREBASE_PROJECT_ID`
+  fail-closed (drop fallback `'audit-ai-cc9e2'` ; 500 CONFIG_ERROR si binding manquant ;
+  prod inchangé). Commits `2d2e978` (hygiène) + `333ebc6` (auth hardening).
+- **Mini-gate** : baseline **PASS=75 WARN=2 FAIL=0** (21→2 warns, junk purgé ; 2 restants =
+  env dev-local TOKEN_DEBUG/TURNSTILE) · worker tsc ✅ · worktree clean · /healthz 200 ·
+  /api/me & /api/platform/me 401 (binding présent, no regression). **0 must-fix.**
+- **Différé** : `canGoBack` stale-until-render (étroit, pré-existant — ne pas re-toucher la nav).
+
+Prochaine étape J6 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
