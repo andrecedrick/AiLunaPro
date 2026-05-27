@@ -39,35 +39,23 @@ export async function fetchPlatformMe(): Promise<PlatformMe> {
   // NOTE: base URL is WORKER_BASE (VITE_WORKER_URL), same as stripeClient.
   // In DEV it is '' (relative, proxied by Vite); in PROD it is the API origin.
   // Do NOT gate on truthiness of the base — '' is a valid relative base.
-  if (authLayer === 'mock') {
-    console.info('[platform] skip: mock auth layer');
-    return { isPlatformAdmin: false, emailVerified: null };
-  }
+  if (authLayer === 'mock') return { isPlatformAdmin: false, emailVerified: null };
 
   const token = await getIdToken();
-  if (!token) {
-    console.info('[platform] skip: no id token');
-    return { isPlatformAdmin: false, emailVerified: null };
-  }
+  if (!token) return { isPlatformAdmin: false, emailVerified: null };
 
-  const url = `${WORKER_BASE}/api/platform/me`;
   try {
-    console.info('[platform] fetch start →', url);
-    const res = await fetch(url, {
+    const res = await fetch(`${WORKER_BASE}/api/platform/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    console.info('[platform] response status', res.status);
     if (!res.ok) return { isPlatformAdmin: false, emailVerified: null };
-    const data = (await res.json()) as { isPlatformAdmin?: boolean; emailVerified?: boolean; diag?: unknown };
-    // Safe to log: diag has masked email + match boolean + count only.
-    console.info('[platform] result', data);
+    const data = (await res.json()) as { isPlatformAdmin?: boolean; emailVerified?: boolean };
     return {
       isPlatformAdmin: data.isPlatformAdmin === true,
       emailVerified: typeof data.emailVerified === 'boolean' ? data.emailVerified : null,
     };
-  } catch (err) {
-    // ERR_BLOCKED_BY_CLIENT (ad-blocker / privacy extension) lands here.
-    console.error('[platform] fetch failed:', (err as Error)?.message ?? err);
+  } catch {
+    // Fail-closed (e.g. ERR_BLOCKED_BY_CLIENT from an ad-blocker/privacy ext).
     return { isPlatformAdmin: false, emailVerified: null };
   }
 }
