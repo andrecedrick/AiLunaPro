@@ -11,6 +11,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useRoute } from '../../context/RouteContext';
 import { fetchBillingConfigStatus } from '../../lib/billing/configService';
 import { fetchPlatformMe } from '../../lib/platform/platformService';
 import type { BillingConfigStatus, KeyStatus, StripeMode } from '../../types/billingConfig';
@@ -157,6 +158,7 @@ function OperatorManaged({ unverifiedEmail = false }: { unverifiedEmail?: boolea
 /* ── Main page ────────────────────────────────────────────── */
 export function BillingSettingsPage() {
   const { session } = useAuth();
+  const { navigate } = useRoute();
   const [status, setStatus]     = useState<BillingConfigStatus | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
@@ -204,6 +206,44 @@ export function BillingSettingsPage() {
 
   return (
     <SettingsLayout title="Billing">
+      {/* J7: operator-only entry point to the read-only Operator Console.
+          This section already renders only for platform admins. */}
+      <div
+        style={{
+          marginBottom: 18,
+          padding: '12px 16px',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+          <strong style={{ color: 'var(--text-primary)' }}>Operator Console</strong> — read-only
+          platform/ops status + guided setup commands.
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate({ name: 'operator' })}
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            padding: '8px 14px',
+            borderRadius: 8,
+            border: '1px solid var(--violet)',
+            background: 'transparent',
+            color: 'var(--violet-text)',
+            cursor: 'pointer',
+          }}
+        >
+          Open Operator Console →
+        </button>
+      </div>
+
       <div style={{ marginBottom: 18, fontSize: 13, color: 'var(--text-muted)' }}>
         Check Stripe readiness before enabling real billing. Read-only — secrets are never exposed.
         Set values via <code style={{ fontFamily: 'monospace', background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4 }}>wrangler secret put</code>.

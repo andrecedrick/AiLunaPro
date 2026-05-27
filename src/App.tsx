@@ -36,6 +36,7 @@ const BillingPage          = lazy(() => import('./pages/BillingPage').then(m => 
 const BillingSuccessPage   = lazy(() => import('./pages/BillingSuccessPage').then(m => ({ default: m.BillingSuccessPage })));
 const AcceptInvitePage     = lazy(() => import('./pages/AcceptInvitePage').then(m => ({ default: m.AcceptInvitePage })));
 const BillingSettingsPage  = lazy(() => import('./pages/settings/BillingSettingsPage').then(m => ({ default: m.BillingSettingsPage })));
+const OperatorConsolePage  = lazy(() => import('./pages/settings/OperatorConsolePage').then(m => ({ default: m.OperatorConsolePage })));
 const TokensPage           = lazy(() => import('./pages/TokensPage').then(m => ({ default: m.TokensPage })));
 const AgentsPage           = lazy(() => import('./pages/AgentsPage').then(m => ({ default: m.AgentsPage })));
 const AgentDetailPage      = lazy(() => import('./pages/AgentDetailPage').then(m => ({ default: m.AgentDetailPage })));
@@ -82,6 +83,8 @@ function PageOutlet() {
         return <BillingSuccessPage />;
       case 'settings/billing':
         return <BillingSettingsPage />;
+      case 'operator':
+        return <OperatorConsolePage />;
       case 'billing/tokens':
         return <TokensPage />;
       case 'agents':
@@ -128,6 +131,8 @@ function AppShell() {
       navigate({ name: 'roi-calculator' });
     } else if (h.startsWith('#/help')) {
       navigate({ name: 'help' });
+    } else if (h.startsWith('#/operator')) {
+      navigate({ name: 'operator' });
     } else if (h.startsWith('#/audit/history')) {
       navigate({ name: 'audit/history' });
     } else if (h.startsWith('#/reports/share/')) {

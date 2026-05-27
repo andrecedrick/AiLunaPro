@@ -77,6 +77,7 @@ export type Route =
   | { name: 'settings/org' }
   | { name: 'settings/preferences' }
   | { name: 'settings/billing' }
+  | { name: 'operator' }
   | { name: 'billing' }
   | { name: 'billing/success' }
   | { name: 'billing/tokens' }
