@@ -37,7 +37,14 @@ export function requireAuth() {
     }
 
     const token = authHeader.slice(7);
-    const projectId: string = c.env.FIREBASE_PROJECT_ID ?? 'audit-ai-cc9e2';
+    // Fail-closed: never fall back to a hardcoded project ID. Prod sets
+    // FIREBASE_PROJECT_ID via wrangler.toml [vars] + [env.production.vars];
+    // a missing binding is a misconfiguration and must not silently verify
+    // tokens against the wrong audience.
+    const projectId = c.env.FIREBASE_PROJECT_ID;
+    if (!projectId) {
+      return c.json({ error: 'Server auth misconfigured', code: 'CONFIG_ERROR' }, 500);
+    }
 
     try {
       const { payload } = await jwtVerify(token, getJwks(), {
