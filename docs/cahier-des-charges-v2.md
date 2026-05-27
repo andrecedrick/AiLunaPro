@@ -856,6 +856,33 @@ vérifié/activé. À re-vérifier après propagation DNS : si l'expéditeur pas
 `mail.ailunapro.com`, mettre à jour la FAQ Help (qui cite l'adresse expéditeur) +
 ce bloc. Aucun changement de code requis (le SDK client reste inchangé).
 
+#### 9.21 Operator Config Console *(J7)*
+**Console opérateur read-only** (J7A) + **setup guidé** (J7B). Surface platform-admin
+uniquement (`requirePlatformAdmin` worker + `fetchPlatformMe` front ; non-admin → notice
+« Managed by the platform operator »). Route `operator` (`#/operator`), point d'entrée
+depuis Settings → Billing (section déjà gated) ; **pas de lien Sidebar**.
+
+**Modèle d'agrégation (read-only)** : agrège des statuts masqués/booléens existants —
+`GET /api/platform/ops-status` (booléens-only : stripe secret/webhook, firebase service
+account, turnstile, sequenzy, platform-admin-emails, token price IDs, app base URL +
+`appEnv` + `stripeMode`), Stripe `config-status` (publishable last4 + price IDs masqués),
+webhook health, + notes de posture (App Check monitor OFF §9.19, modèle auth-email §9.20,
+domaine `mail.ailunapro.com` pending). **Aucune valeur secrète, aucun last4 de secret.**
+
+**Modèle de setup guidé (J7B)** : pour chaque secret pertinent/manquant, affiche le nom +
+une commande **copiable** `npx wrangler secret put NAME --env production` (bouton copy).
+**Aucun champ de saisie de secret, aucune sauvegarde, aucune valeur affichée.** Wrangler
+reste le **seul** chemin d'écriture des secrets.
+
+**J7C différé (édition de secrets depuis l'UI)** — **trop risqué, reporté**. Rationale
+sécurité : un Worker ne peut pas muter ses propres secrets ; il faudrait l'**API
+Cloudflare + un token CF** stocké dans le worker = credential maître (compromission worker
+→ réécriture de tous les secrets / escalade), transport secret front→worker, et **pas de
+rollback sûr** (on ne stocke pas — et ne doit pas stocker — les anciennes valeurs).
+Interdits permanents : **pas de saisie/sauvegarde de secret depuis le front**, **pas de
+secret en Firestore (plaintext ou autre)**, **pas d'affichage de valeur secrète**, **pas
+de token API Cloudflare en J7**. Réévaluation = gate dédié ultérieur avec revue sécurité.
+
 ---
 
 ## 10. Architecture technique
