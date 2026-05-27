@@ -22,6 +22,21 @@ dist-ssr
 # Claude Code local tooling artifact (per-session worktrees)
 .claude/worktrees/
 
+# Ruflo / claude-flow LOCAL tooling artifacts (not required for the app to
+# build/run; generated per-machine by `ruflo init`). settings.json hooks
+# reference .claude/helpers/* via `IF EXIST` and fall back to %USERPROFILE%,
+# so a fresh checkout works without these committed.
+.claude-flow/
+.swarm/
+.mcp.json
+ruvector.db
+.claude/agents/
+.claude/commands/
+.claude/helpers/
+.claude/skills/
+*.backup.md
+*.backup.json
+
 # Test coverage output
 coverage
 
