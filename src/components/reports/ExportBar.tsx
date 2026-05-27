@@ -18,7 +18,7 @@ interface Props {
    is a separate deferred backend feature. */
 function buildShareUrl(reportId: string): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://audit.ailunapro.com';
-  return `${origin}/#/reports/share/${reportId}`;
+  return `${origin}/#/reports/share/${encodeURIComponent(reportId)}`;
 }
 
 /* Trigger a real download of the report data as JSON.

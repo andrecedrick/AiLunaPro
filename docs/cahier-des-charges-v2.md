@@ -1940,9 +1940,38 @@ Plan d'exécution J4 (batches) :
   enforcement, agents caching, gros refactors, streams parallèles.
 - Chaque item : typecheck → build/deploy → verify → commit séparé. Clôture J4 = §17.
 
-**⏳ J5 — "Trust & Shareable Links"** — scope approuvé, exécution en cours.
+**✅ J5 — "Trust & Shareable Links"** — **CLÔTURÉ (§17 PASS, 0 must-fix)** le 2026-05-27.
 
-Plan J5 (batches) :
+Clôture §17 (6-part) :
+1. **Scope livré** : B1 deep-links report (`#/reports/share|detail/{id}`) + fix
+   `buildShareUrl` hash (`f8fbfd8`) · B2 copy SharedBanner sans implication externe +
+   App Check advisory §9.19 OFF (`a42c7e8`) · B2.1 "Copy share link" sur vue partagée
+   (`f6677c6`) · B3 operator allowlist (`0163bef`+`fef6757`) · B4 hash-write-on-navigate
+   `routeToHash`+RouteContext replaceState (`d79015a`) · polish §17 encode+back()
+   (`Dl_Cn91B`).
+2. **Inspection 7 axes** : build/tsc ✅ · baseline PASS=74 FAIL=0 · sécu gate ✅ ·
+   routing/deep-link ✅ · isolation cross-tenant ✅ · scope adherence ✅ · debug-strip ✅.
+3. **Findings** : **0 ❌**. ⚠️ mineurs : `FIREBASE_PROJECT_ID` fallback (prod = même
+   valeur, no impact), `canGoBack` stale (pré-existant), help-section sync edge (étroit).
+   Corrigés en polish : `buildShareUrl` encodeURIComponent (Export+Share) + `back()`
+   pop hors updater (race double-tap + StrictMode).
+4. **Must-fix** : aucun.
+5. **Reco do-next** : drop `FIREBASE_PROJECT_ID` fallback (fail-closed) ; durcir
+   `canGoBack` ; nettoyer junk repo (artefacts shell racine) + décider diffs `.claude/*`.
+6. **Do-NOT (verrous)** : pas de partage public externe (in-app same-workspace only) ·
+   App Check enforcement OFF (gate ultérieur) · pas d'édition secrets Stripe UI
+   (= "Operator Secrets Management" futur) · pas d'impersonation/Super Admin UI ·
+   platform admins non-membres org · pas de scope J6 avant revue gate.
+
+**Régression B4 (validée navigateur clean)** : les "régressions" Team ErrorBoundary +
+layout report cassé étaient du **blocage client** (`ERR_BLOCKED_BY_CLIENT`, ad-blocker/
+extension bloquant Firestore/CSS/fonts), PAS du code. Confirmé : OK en navigateur propre.
+
+**Auth-email (clarifié J5)** : Firebase Auth = verification + password reset
+(`sendEmailVerification`/`sendPasswordResetEmail`). Sequenzy = invitations équipe
+uniquement. Emails auth brandés via Sequenzy = feature future séparée (hors J5).
+
+Plan J5 (batches) — *historique, livré* :
 - **Batch 1** *(en cours)* : report deep-links in-app (fix `buildShareUrl` → hash
   `#/reports/share/{id}`, parse `#/reports/share|detail/{id}` au load) + Help
   section deep-link polish. Reopen **same-workspace authed only** (pas de partage
@@ -1960,7 +1989,7 @@ Plan J5 (batches) :
   Luna, PDF réel, agents caching, gros refactors.
 - Chaque item : typecheck → build/deploy → verify → commit. Clôture J5 = §17.
 
-**EN COURS** — Batch 1.
+**CLÔTURÉ** — voir bloc §17 ci-dessus. Prochaine étape J6 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2013,13 +2042,16 @@ flowchart LR
 
 ### 18.3 Recommandations
 
-**Do next (technique)** : Firebase App Check (vraie protection bot) · DEBUG-gate
-logs verbeux · purge docs publics pré-fix (expiresAt string) · accept-invite arrayUnion.
-**Do next (produit)** : Help Center v1 (réduit support) · Email invitations
-(Sequenzy prêt) · données réelles dashboard (crédibilité).
-**Do NOT yet** : PDF renderer réel, Super Admin + impersonation (lourd sécurité),
-caching layer, sprawl features K3 — différer jusqu'à scope J3 verrouillé. Pas de
-streams features parallèles avant scope.
+**Do next (technique)** : drop `FIREBASE_PROJECT_ID` fallback (fail-closed sur binding
+manquant) · durcir `canGoBack` (stale entre nav) · nettoyer junk repo (artefacts shell
+racine) + statuer diffs `.claude/*`/CLAUDE.md · App Check enforcement = gate dédié quand
+métriques mûres.
+**Do next (produit)** : Operator Secrets Management UI (édition sécurisée secrets Stripe,
+future) · auth-emails brandés via Sequenzy (verification/reset, future) · PDF renderer réel.
+**Do NOT yet** : partage public externe report (jamais — in-app same-workspace only) ·
+App Check enforcement (OFF jusqu'à gate dédié) · Super Admin/impersonation (lourd sécurité) ·
+édition secrets depuis UI hors feature dédiée. Pas de streams features parallèles avant
+scope J6 verrouillé.
 
 ### 18.4 Optimisation & scale
 - Worker : confirmer gain cache token sous charge ; KV pour agents-catalog (read-heavy immuable).
@@ -2037,6 +2069,7 @@ streams features parallèles avant scope.
 | Pre-J3 scope | §17 pre-flight read-only sur scope J3 proposé | 3 rescopes requis (auto-report→flag, dashboard→real+empty-states, AppCheck→monitor-first) ; dépendance Sequenzy API | Super Admin, PDF, caching, refactor (non-goals) |
 | J3→J4 | §17 7 axes (2 reviewers read-only + baseline FAIL=0) | **0 must-fix** — PASS. Cleanup appliqué : logs billing-invoices gated (dlog), guard immuabilité audits update (organizationId/createdBy figés) | logs admin/seed restants, Sequenzy error-body PII (low), invite pagination (pré-GA), deep-link hash hydration, App Check enforcement (gate ultérieur), audits update field-level au-delà ownership |
 | J4→J5 | §17 7 axes (1 reviewer read-only + baseline FAIL=0) | **0 must-fix** — PASS. Tous deltas ✅ (routing Phase-1, pagination capée, sanitize, logs gated, no dead code) | hash-write-on-navigate (Phase 2), App Check enforcement, operator-allowlist impl, load-more UI, reports/detail+share deep-link params |
+| J5→J6 | §17 7 axes (2 reviewers read-only sécu+routing + baseline PASS=74 FAIL=0) | **0 must-fix** — PASS. Operator allowlist (fail-closed, email vérifié requis, no leak), deep-links + hash-write-on-navigate validés navigateur clean. Polish appliqué : `buildShareUrl` encodeURIComponent + `back()` pop hors updater | `FIREBASE_PROJECT_ID` fallback (no prod impact), `canGoBack` stale (pré-existant), App Check enforcement, Operator Secrets Management UI (futur), partage public externe (jamais), auth-emails brandés Sequenzy (futur) |
 
 ---
 

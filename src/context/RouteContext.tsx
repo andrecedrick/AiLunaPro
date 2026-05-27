@@ -46,15 +46,12 @@ export function RouteProvider({ children }: { children: ReactNode }) {
   }, [writeHash]);
 
   const back = useCallback(() => {
-    // Peek the target before popping so we can sync the hash too.
-    const target = historyRef.current.length > 0
-      ? historyRef.current[historyRef.current.length - 1]
-      : null;
-    setRoute(prev => {
-      const prevRoute = historyRef.current.pop();
-      return prevRoute ?? prev;
-    });
-    if (target) writeHash(target);
+    // Pop once, outside the updater — avoids a double-tap peek/pop race and
+    // StrictMode's double-invoke popping twice. Sync the hash to the target.
+    const prevRoute = historyRef.current.pop();
+    if (!prevRoute) return;
+    setRoute(prevRoute);
+    writeHash(prevRoute);
   }, [writeHash]);
 
   const value = useMemo<RouteContextValue>(

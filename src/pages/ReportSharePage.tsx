@@ -17,7 +17,7 @@ import { formatDate, formatRiskLevel } from '@/utils/formatters';
    public/external link. Mirrors ExportBar.buildShareUrl. */
 function buildShareUrl(reportId: string): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://audit.ailunapro.com';
-  return `${origin}/#/reports/share/${reportId}`;
+  return `${origin}/#/reports/share/${encodeURIComponent(reportId)}`;
 }
 
 const RISK_BADGE: Record<RiskLevel, { bg: string; fg: string }> = {
