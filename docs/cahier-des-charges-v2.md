@@ -2112,6 +2112,16 @@ secrets UI) différé (§9.21, rationale sécu).
   pas d'affichage valeur · pas de token API Cloudflare (J7C = gate dédié) · pas
   d'impersonation/accès workspace client.
 
+**🛠️ Post-J7 — Stripe operator config (no-code task)** — **CLÔTURÉ** le 2026-05-28.
+Suivi du Console Operator J7 (4 items "Not set") : opérateur a posé les 4 secrets worker
+manquants via wrangler (`STRIPE_PRICE_STARTER/PROFESSIONAL/ENTERPRISE`, `STRIPE_PUBLISHABLE_KEY`)
++ `VITE_STRIPE_PUBLISHABLE_KEY=pk_test_…` ajouté à `.env.production` (git-ignored) +
+frontend rebuild/redeploy (`index-Cm3lnwUV.js`). Vérifié prod navigateur clean :
+Operator Console → tous items **Configured**, `stripeMode=test`, Billing tiers + Stripe
+Checkout (test mode) opérationnels, top-up tokens OK, aucune valeur secrète en
+UI/DOM/Network, gate non-admin intact. Stripe Dashboard : Starter $9.90/mo + Price IDs
+actifs. **Aucun changement de code.** Worktree clean.
+
 Prochaine étape J8 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
