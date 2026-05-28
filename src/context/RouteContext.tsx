@@ -22,6 +22,10 @@ const RouteContext = createContext<RouteContextValue | undefined>(undefined);
 export function RouteProvider({ children }: { children: ReactNode }) {
   const [route, setRoute] = useState<Route>({ name: 'dashboard' });
   const historyRef = useRef<Route[]>([]);
+  // J8: track history depth in state so canGoBack re-derives correctly.
+  // historyRef alone (a ref) wouldn't trigger the useMemo to refresh, leaving
+  // canGoBack stale-until-next-render after a navigate/back.
+  const [histDepth, setHistDepth] = useState(0);
 
   /* J5 Batch 4 — hash-write-on-navigate (Phase 2). Reflect the current route
      in the address bar so URLs are shareable/reloadable. replaceState (not
@@ -42,6 +46,7 @@ export function RouteProvider({ children }: { children: ReactNode }) {
       historyRef.current.push(prev);
       return next;
     });
+    setHistDepth(d => d + 1);
     writeHash(next);
   }, [writeHash]);
 
@@ -51,6 +56,7 @@ export function RouteProvider({ children }: { children: ReactNode }) {
     const prevRoute = historyRef.current.pop();
     if (!prevRoute) return;
     setRoute(prevRoute);
+    setHistDepth(d => Math.max(0, d - 1));
     writeHash(prevRoute);
   }, [writeHash]);
 
@@ -59,9 +65,9 @@ export function RouteProvider({ children }: { children: ReactNode }) {
       route,
       navigate,
       back,
-      canGoBack: historyRef.current.length > 0,
+      canGoBack: histDepth > 0,
     }),
-    [route, navigate, back],
+    [route, navigate, back, histDepth],
   );
 
   return <RouteContext.Provider value={value}>{children}</RouteContext.Provider>;
