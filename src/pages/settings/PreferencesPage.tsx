@@ -8,11 +8,14 @@ import {
   CURRENCY_VALUES,
   LANGUAGE_LABELS,
   LANGUAGE_VALUES,
+  USER_PROFILE_LABELS,
+  USER_PROFILE_VALUES,
   loadNotifPrefs,
   saveNotifPrefs,
   type DisplayCurrency,
   type Language,
   type NotificationPrefs,
+  type UserProfile,
 } from '../../lib/preferences';
 
 /**
@@ -22,7 +25,7 @@ import {
  */
 export function PreferencesPage() {
   const { theme, setTheme } = useTheme();
-  const { language, setLanguage, displayCurrency, setDisplayCurrency } = usePreferences();
+  const { language, setLanguage, displayCurrency, setDisplayCurrency, userProfile, setUserProfile } = usePreferences();
   const { showToast } = useToast();
 
   const [notif, setNotif] = useState<NotificationPrefs>(() => loadNotifPrefs());
@@ -39,6 +42,11 @@ export function PreferencesPage() {
   const onSelectCurrency = (next: DisplayCurrency) => {
     setDisplayCurrency(next);
     showToast(`Currency: ${CURRENCY_LABELS[next]}`, 'success');
+  };
+
+  const onSelectProfile = (next: UserProfile) => {
+    setUserProfile(next);
+    showToast(`Profile: ${USER_PROFILE_LABELS[next]}`, 'success');
   };
 
   const onToggleNotif = (key: keyof NotificationPrefs) => {
@@ -89,6 +97,23 @@ export function PreferencesPage() {
         >
           {CURRENCY_VALUES.map(v => (
             <option key={v} value={v}>{CURRENCY_LABELS[v]}</option>
+          ))}
+        </select>
+      </Card>
+
+      {/* User profile (J9 Phase B-lite) */}
+      <Card
+        title="Profile"
+        hint="Tunes the tone of guidance and the recommended starting resource. Never changes scoring, findings, or any regulatory mapping."
+      >
+        <select
+          value={userProfile}
+          onChange={e => onSelectProfile(e.target.value as UserProfile)}
+          aria-label="Profile"
+          style={selectStyle()}
+        >
+          {USER_PROFILE_VALUES.map(v => (
+            <option key={v} value={v}>{USER_PROFILE_LABELS[v]}</option>
           ))}
         </select>
       </Card>

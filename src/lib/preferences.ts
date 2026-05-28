@@ -60,6 +60,26 @@ export function isDisplayCurrency(v: unknown): v is DisplayCurrency {
   return typeof v === 'string' && (CURRENCY_VALUES as readonly string[]).includes(v);
 }
 
+/**
+ * J9 Phase B-lite: user profile preference. Affects only result-page tone
+ * + resource link (UI/copy switch). Never affects scoring, findings, or any
+ * regulatory mapping — those stay deterministic. Per-user only (no org-level
+ * override). Persisted in localStorage like other prefs.
+ */
+export type UserProfile = 'enterprise' | 'entrepreneur' | 'individual';
+
+export const USER_PROFILE_VALUES: readonly UserProfile[] = ['enterprise', 'entrepreneur', 'individual'];
+
+export const USER_PROFILE_LABELS: Record<UserProfile, string> = {
+  enterprise:   'Enterprise',
+  entrepreneur: 'Entrepreneur / Startup',
+  individual:   'Individual',
+};
+
+export function isUserProfile(v: unknown): v is UserProfile {
+  return typeof v === 'string' && (USER_PROFILE_VALUES as readonly string[]).includes(v);
+}
+
 export interface NotificationPrefs {
   weeklyDigest: boolean;
   reportReady: boolean;
@@ -70,6 +90,7 @@ const KEYS = {
   lang:     'ailunapro-lang',
   notif:    'ailunapro-notif-prefs',
   currency: 'ailunapro-display-currency',
+  profile:  'ailunapro-user-profile',
 } as const;
 
 const DEFAULT_NOTIF: NotificationPrefs = {
@@ -123,4 +144,19 @@ export function loadDisplayCurrency(): DisplayCurrency {
 
 export function saveDisplayCurrency(c: DisplayCurrency): void {
   try { localStorage.setItem(KEYS.currency, c); } catch { /* noop */ }
+}
+
+/* ── User profile (J9 Phase B-lite, UI/copy only) ─────────── */
+
+export function loadUserProfile(): UserProfile {
+  try {
+    const v = localStorage.getItem(KEYS.profile);
+    return isUserProfile(v) ? v : 'enterprise';
+  } catch {
+    return 'enterprise';
+  }
+}
+
+export function saveUserProfile(p: UserProfile): void {
+  try { localStorage.setItem(KEYS.profile, p); } catch { /* noop */ }
 }

@@ -1,6 +1,28 @@
 import { Badge } from '../ui/Badge';
 import type { AuditResult, Effort, Impact } from '../../types/scoring';
 import { RegulatoryRefs } from './RegulatoryRefs';
+import { usePreferences } from '../../context/PreferencesContext';
+import type { UserProfile } from '../../lib/preferences';
+
+/** J9 Phase B-lite: one external resource link per profile (static).
+ *  Informational, opens in a new tab. Never affects scoring or findings. */
+const PROFILE_RESOURCE: Record<UserProfile, { label: string; href: string; note: string }> = {
+  enterprise: {
+    label: 'ISO/IEC 42001 — AI management systems',
+    href:  'https://www.iso.org/standard/81230.html',
+    note:  'Suggested management-system reference for enterprise AI programmes.',
+  },
+  entrepreneur: {
+    label: 'NIST AI Risk Management Framework (Playbook)',
+    href:  'https://airc.nist.gov/AI_RMF_Knowledge_Base/Playbook',
+    note:  'Practical, lightweight playbook to apply NIST AI RMF in a startup context.',
+  },
+  individual: {
+    label: 'OECD AI Principles',
+    href:  'https://oecd.ai/en/ai-principles',
+    note:  'High-level responsible-AI principles useful for personal AI usage.',
+  },
+};
 
 const IMPACT_BG: Record<Impact, string> = {
   critical: 'var(--critical-bg)',
@@ -28,6 +50,9 @@ interface Props {
 }
 
 export function RecommendationsList({ result }: Props) {
+  const { userProfile } = usePreferences();
+  const resource = PROFILE_RESOURCE[userProfile];
+
   // Order by impact, then by timeframe
   const ordered = [...result.recommendations].sort((a, b) => {
     const impactOrder = { critical: 4, high: 3, medium: 2, low: 1 };
@@ -64,6 +89,33 @@ export function RecommendationsList({ result }: Props) {
         <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>
           {ordered.length} actions
         </span>
+      </div>
+
+      {/* Profile-specific external starter resource. Informational, static. */}
+      <div
+        style={{
+          marginBottom: 14,
+          padding: '10px 12px',
+          background: 'var(--surface-2, var(--surface))',
+          border: '1px dashed var(--border)',
+          borderRadius: 10,
+          fontSize: 12,
+          color: 'var(--text-secondary)',
+          lineHeight: 1.5,
+        }}
+      >
+        <strong style={{ color: 'var(--text-primary)' }}>Recommended starter resource</strong> ·{' '}
+        <a
+          href={resource.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'var(--violet-text)', fontWeight: 600 }}
+        >
+          {resource.label} ↗
+        </a>
+        <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
+          {resource.note}
+        </div>
       </div>
 
       {ordered.length === 0 ? (

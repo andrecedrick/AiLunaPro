@@ -24,8 +24,11 @@ import {
   saveLanguage,
   loadDisplayCurrency,
   saveDisplayCurrency,
+  loadUserProfile,
+  saveUserProfile,
   type Language,
   type DisplayCurrency,
+  type UserProfile,
 } from '../lib/preferences';
 
 interface PreferencesValue {
@@ -33,6 +36,9 @@ interface PreferencesValue {
   setLanguage:        (l: Language) => void;
   displayCurrency:    DisplayCurrency;
   setDisplayCurrency: (c: DisplayCurrency) => void;
+  /** J9 Phase B-lite: user profile (UI/copy switch only, never scoring). */
+  userProfile:        UserProfile;
+  setUserProfile:     (p: UserProfile) => void;
 }
 
 const PreferencesContext = createContext<PreferencesValue | undefined>(undefined);
@@ -40,6 +46,7 @@ const PreferencesContext = createContext<PreferencesValue | undefined>(undefined
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [language,        setLanguageState]        = useState<Language>(() => loadLanguage());
   const [displayCurrency, setDisplayCurrencyState] = useState<DisplayCurrency>(() => loadDisplayCurrency());
+  const [userProfile,     setUserProfileState]     = useState<UserProfile>(() => loadUserProfile());
 
   const setLanguage = useCallback((l: Language) => {
     setLanguageState(l);
@@ -51,8 +58,22 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     saveDisplayCurrency(c);
   }, []);
 
+  const setUserProfile = useCallback((p: UserProfile) => {
+    setUserProfileState(p);
+    saveUserProfile(p);
+  }, []);
+
   return (
-    <PreferencesContext.Provider value={{ language, setLanguage, displayCurrency, setDisplayCurrency }}>
+    <PreferencesContext.Provider
+      value={{
+        language,
+        setLanguage,
+        displayCurrency,
+        setDisplayCurrency,
+        userProfile,
+        setUserProfile,
+      }}
+    >
       {children}
     </PreferencesContext.Provider>
   );
