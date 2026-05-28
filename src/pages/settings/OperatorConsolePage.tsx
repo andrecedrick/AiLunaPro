@@ -16,6 +16,7 @@ import { useRoute } from '../../context/RouteContext';
 import { useToast } from '../../hooks/useToast';
 import { fetchPlatformMe } from '../../lib/platform/platformService';
 import { fetchOpsStatus, type OpsStatus } from '../../lib/platform/opsStatusService';
+import { fetchPlatformMetrics, type PlatformMetrics } from '../../lib/platform/metricsService';
 import { fetchBillingConfigStatus } from '../../lib/billing/configService';
 import type { BillingConfigStatus } from '../../types/billingConfig';
 
@@ -131,6 +132,45 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function formatCents(cents: number): string {
+  const dollars = cents / 100;
+  return dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+}
+
+function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div
+      style={{
+        background: 'var(--surface-2, var(--surface))',
+        border: '1px solid var(--border)',
+        borderRadius: 10,
+        padding: '12px 14px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: 'var(--text-muted)',
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>
+        {value}
+      </div>
+      {sub && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Notice({ title, body }: { title: string; body: string }) {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px', textAlign: 'center' }}>
@@ -146,6 +186,8 @@ export function OperatorConsolePage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [ops, setOps] = useState<OpsStatus | null>(null);
   const [stripe, setStripe] = useState<BillingConfigStatus | null>(null);
+  const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -158,11 +200,18 @@ export function OperatorConsolePage() {
           setLoading(false);
           return;
         }
-        return Promise.allSettled([fetchOpsStatus(), fetchBillingConfigStatus()]).then(([o, s]) => {
+        setMetricsLoading(true);
+        return Promise.allSettled([
+          fetchOpsStatus(),
+          fetchBillingConfigStatus(),
+          fetchPlatformMetrics(),
+        ]).then(([o, s, m]) => {
           if (!active) return;
           if (o.status === 'fulfilled') setOps(o.value);
           if (s.status === 'fulfilled') setStripe(s.value);
+          if (m.status === 'fulfilled') setMetrics(m.value);
           setLoading(false);
+          setMetricsLoading(false);
         });
       })
       .catch(() => {
@@ -240,6 +289,60 @@ export function OperatorConsolePage() {
           Ops status unavailable (request blocked or failed). Status booleans below may be incomplete.
         </div>
       )}
+
+      {/* J8: Platform Metrics — aggregates only, no PII. */}
+      <Section title="Platform metrics (aggregate)">
+        {metricsLoading ? (
+          <div style={{ padding: '14px 0', fontSize: 13, color: 'var(--text-muted)' }}>
+            Loading metrics…
+          </div>
+        ) : !metrics ? (
+          <div style={{ padding: '14px 0', fontSize: 13, color: 'var(--text-muted)' }}>
+            Metrics unavailable (request failed or blocked). No customer data is fetched here.
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: 14,
+                padding: '12px 0',
+              }}
+            >
+              <MetricCard label="MRR (test)" value={formatCents(metrics.mrrCents)} sub={`${metrics.activeSubscriptions} active subs`} />
+              <MetricCard label="Active subs" value={String(metrics.activeSubscriptions)} sub="paying customers" />
+              <MetricCard
+                label="Recent invoices"
+                value={String(metrics.recentInvoices.total)}
+                sub={`paid ${metrics.recentInvoices.paid} · open ${metrics.recentInvoices.open}${metrics.recentInvoices.uncollectible ? ` · uncoll. ${metrics.recentInvoices.uncollectible}` : ''}${metrics.recentInvoices.void ? ` · void ${metrics.recentInvoices.void}` : ''}`}
+              />
+              <MetricCard
+                label="Token-active orgs"
+                value={String(metrics.tokenActiveOrgsCount)}
+                sub="balance > 0"
+              />
+            </div>
+            <div style={{ padding: '0 0 10px', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              {metrics.stripeUnavailable && (
+                <div style={{ color: 'var(--yellow-text)' }}>
+                  ⚠ Stripe API temporarily unavailable — Stripe-derived values may be partial.
+                </div>
+              )}
+              <div>
+                Last invoice event:{' '}
+                {metrics.recentInvoices.lastEventAt
+                  ? new Date(metrics.recentInvoices.lastEventAt).toLocaleString()
+                  : '—'}
+                {' · '}generated {new Date(metrics.generatedAt).toLocaleTimeString()} (60s cache)
+              </div>
+              <div style={{ fontStyle: 'italic' }}>
+                Aggregates only — no customer IDs, emails, or per-tenant data.
+              </div>
+            </div>
+          </>
+        )}
+      </Section>
 
       {s && (
         <>
