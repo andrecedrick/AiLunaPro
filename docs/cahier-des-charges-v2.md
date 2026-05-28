@@ -883,6 +883,30 @@ Interdits permanents : **pas de saisie/sauvegarde de secret depuis le front**, *
 secret en Firestore (plaintext ou autre)**, **pas d'affichage de valeur secrète**, **pas
 de token API Cloudflare en J7**. Réévaluation = gate dédié ultérieur avec revue sécurité.
 
+**Extension J8 — Platform Metrics (read-only, agrégats)** *(2026-05-28)*. Nouvelle
+section « Platform metrics (aggregate) » dans la console opérateur, alimentée par
+`GET /api/platform/metrics` (auth + `requirePlatformAdmin`, cache mémoire 60s/isolat).
+Cards exposées :
+1. **MRR** (test mode) — somme des `subscriptions.list({status:'active'})` normalisée
+   au mois (day/week/month/year), cap dur **≤10 pages × 100 = ≤1000 subs** scannées
+   (à saturation, MRR devient une borne inférieure — documenté en code).
+2. **Active subscriptions** — total de la liste.
+3. **Recent invoices** — `invoices.list({limit:25})` agrégé en **counts par status**
+   (paid/open/uncollectible/void) + `lastEventAt`. **Aucun ID/customer/email** retourné.
+4. **Token-active orgs** — count d'organisations avec `tokens/current.balance > 0`
+   (Firestore collectionGroup query, filtre serveur `balance > 0`, filtre doc-id
+   `tokens/current` côté worker). Pas de somme/consommation per-org (différé).
+Fail-soft Stripe : si l'API plante → zéros + flag `stripeUnavailable: true`.
+
+**Règle d'or — agrégats seulement** : la console opérateur n'expose **JAMAIS** :
+- d'IDs ou emails de customers,
+- d'identifiants d'organisations (orgId),
+- de données per-tenant ou par-utilisateur,
+- de valeurs de secrets ou de last4 de secrets,
+- d'actions d'édition (lecture seule).
+Tout futur enrichissement métriques doit respecter cette règle ; sinon → revue
+sécurité dédiée + gate §17 séparé.
+
 ---
 
 ## 10. Architecture technique
@@ -2122,7 +2146,25 @@ Checkout (test mode) opérationnels, top-up tokens OK, aucune valeur secrète en
 UI/DOM/Network, gate non-admin intact. Stripe Dashboard : Starter $9.90/mo + Price IDs
 actifs. **Aucun changement de code.** Worktree clean.
 
-Prochaine étape J8 : scope à définir (gaté).
+**✅ J8 — "Operator Metrics + Small Hardening"** — **EN ATTENTE DE CLÔTURE §17** (Batch 4 docs commit, §17-exit gate à exécuter ensuite).
+Scope tight : agrégation plateforme read-only (extension §9.21) + `canGoBack` polish.
+- **B1 (worker)** `6a29b29` : `GET /api/platform/metrics` (auth+`requirePlatformAdmin`,
+  cache 60s/isolat). MRR (cap ≤1000 subs), active subs, recent invoices counts-only +
+  `lastEventAt`, `tokenActiveOrgsCount` (collectionGroup, balance>0). Fail-soft Stripe.
+  Nouveau helper `firestoreRunQuery`.
+- **B2 (front)** `0188484` : `metricsService.fetchPlatformMetrics` + section « Platform
+  metrics » dans `OperatorConsolePage` (4 cards, loading/unavailable states, flag
+  `stripeUnavailable`, note explicite "agrégats only, no PII/per-tenant").
+- **B3 (canGoBack)** `a265661` : track `histDepth` en state ; canGoBack dérivé →
+  `useMemo` rafraîchi correctement. ~10 lignes. Nav inchangée.
+- **B4 (docs)** : extension §9.21 (metrics + règle d'or aucune PII), §18 entrée J8 +
+  gate row J8→J9.
+- **Non-goals respectés** : pas d'édition, pas de PII, pas de per-tenant drilldown,
+  pas de Sidebar link, pas de PDF/App Check/SuperAdmin/Sequenzy auth/CF API token.
+- **Différé** : `mail.ailunapro.com` DNS toujours en attente Firebase (§9.20) ; option B
+  branded action handler ; PDF renderer ; App Check enforcement.
+
+Prochaine étape J9 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2207,6 +2249,7 @@ scope J6 verrouillé.
 | J6→J7 | §17 7 axes (baseline PASS=75 FAIL=0, build/tsc, worktree clean, prod match) | **0 must-fix** — PASS. Auth-email model verrouillé (Firebase natif), signup auto-verify non-fatal, docs §9.20 + Help FAQ. Aucune surface sécu ajoutée | custom action handler (B), Sequenzy auth-email minting (C), SMTP custom, `canGoBack`, App Check enforcement, Operator Secrets UI |
 | Post-J6 stabilité | §17 ciblé (chunks 200, render path guardé, prod match) | **0 must-fix** — "Oops" New Audit = blocage client (ERR_BLOCKED_BY_CLIENT), pas code. Polish : ErrorBoundary chunk-aware + Help FAQ blocker (`10b9923`) | — |
 | J7→J8 | §17 7 axes (baseline PASS=75 FAIL=0, worker tsc+build, worktree clean, prod match, ops-status 401) | **0 must-fix** — PASS. Operator Console read-only + setup guidé wrangler, validé prod navigateur clean (admin console / non-admin notice, no secret leak, copy=cmd only). J7C différé | Stripe publishable/price IDs `Not set` (config opérateur), `canGoBack`, J7C secret-edit UI, CF API token, App Check enforcement, impersonation |
+| J8→J9 | §17 7 axes (à exécuter — gate de sortie Batch 4 docs commit puis inspection) | **À déterminer** — `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé) |
 
 ---
 
