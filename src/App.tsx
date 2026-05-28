@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
+import { lazyWithRetry as lazy } from './lib/routing/lazyWithRetry';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
@@ -195,6 +196,24 @@ function AppShell() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* ── Prefetch critical lazy chunks once user is authenticated ──────
+     Pulls the most-visited pages into the browser cache during idle time
+     so a later navigation doesn't hit a network at all. Best-effort —
+     errors are swallowed (the existing lazyWithRetry + ErrorBoundary
+     chunk-aware fallback still cover the failure path). */
+  useEffect(() => {
+    if (!isAuthenticated || !session?.orgId) return;
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const schedule = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 800));
+    schedule(() => {
+      // Fire-and-forget; chunks just need to land in the HTTP cache.
+      void import('./pages/NewAuditPage').catch(() => {});
+      void import('./pages/ReportsListPage').catch(() => {});
+      void import('./pages/ReportDetailPage').catch(() => {});
+      void import('./pages/settings/OperatorConsolePage').catch(() => {});
+    });
+  }, [isAuthenticated, session?.orgId]);
 
   /* ── Firebase: wait for onAuthStateChanged before rendering ── */
   if (isLoading) return null;

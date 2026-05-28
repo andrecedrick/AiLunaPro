@@ -70,9 +70,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
             </h1>
             <p className="text-gray-700 mb-4">
               {chunkFail
-                ? 'Part of the app failed to load. This is usually a network issue or a browser ad-blocker / privacy extension blocking the app. Reload the page, or allow audit.ailunapro.com (and *.googleapis.com) in your blocker.'
+                ? 'Part of the app failed to load. This is usually a network issue or a browser ad-blocker / privacy extension blocking the app.'
                 : 'Something went wrong. Please try again.'}
             </p>
+            {chunkFail && (
+              <ul className="text-gray-700 text-sm mb-4 list-disc list-inside">
+                <li>Reload the page (often fixes a transient network failure).</li>
+                <li>Allow <strong>audit.ailunapro.com</strong> in your ad-blocker.</li>
+                <li>Allow <strong>*.googleapis.com</strong> (Firebase / Firestore).</li>
+                <li>If on a corporate network: ask IT to allow the domains above.</li>
+              </ul>
+            )}
             {import.meta.env.DEV && (
               <details className="mb-4 text-sm bg-gray-100 p-2 rounded">
                 <summary className="font-mono text-red-600 cursor-pointer">
