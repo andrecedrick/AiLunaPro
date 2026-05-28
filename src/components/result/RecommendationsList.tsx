@@ -1,5 +1,6 @@
 import { Badge } from '../ui/Badge';
 import type { AuditResult, Effort, Impact } from '../../types/scoring';
+import { RegulatoryRefs } from './RegulatoryRefs';
 
 const IMPACT_BG: Record<Impact, string> = {
   critical: 'var(--critical-bg)',
@@ -147,6 +148,7 @@ export function RecommendationsList({ result }: Props) {
                     </span>
                   )}
                 </div>
+                <RegulatoryRefs refs={r.regulatoryRefs} />
               </div>
             );
           })}

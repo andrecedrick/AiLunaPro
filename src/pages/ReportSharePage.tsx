@@ -9,6 +9,7 @@ import { SectionScores } from '../components/result/SectionScores';
 import { FindingsList } from '../components/result/FindingsList';
 import { RecommendationsList } from '../components/result/RecommendationsList';
 import { Roadmap } from '../components/result/Roadmap';
+import { Disclaimer } from '../components/result/Disclaimer';
 import type { Report } from '../types/report';
 import type { RiskLevel } from '../types/scoring';
 import { formatDate, formatRiskLevel } from '@/utils/formatters';
@@ -92,6 +93,9 @@ export function ReportSharePage() {
         <RecommendationsList result={result} />
       </div>
       <Roadmap result={result} />
+
+      {/* J9: mandatory advisory disclaimer. */}
+      <Disclaimer />
 
       <PoweredByFooter />
     </div>

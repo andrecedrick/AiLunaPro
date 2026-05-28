@@ -20,6 +20,12 @@ const FINDING_RULES: FindingRule[] = [
         'You process sensitive data (PII / health / biometric / minors) but have no documented data governance framework. This is a critical compliance gap under GDPR and the EU AI Act.',
       relatedQuestions: ['data.governance_framework', 'data.types'],
       recommendationIds: ['R009', 'R005'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 10',     note: 'Data and data governance' },
+        { framework: 'GDPR',        ref: 'Art. 5 / 24', note: 'Principles + accountability' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-5' },
+        { framework: 'ISO_42001',   ref: 'cl. 6.1.3' },
+      ],
     };
   },
 
@@ -35,6 +41,12 @@ const FINDING_RULES: FindingRule[] = [
         'Fully autonomous AI decisions in a high-risk industry or for mission-critical systems present substantial regulatory and reputational risk. Human-in-the-loop or on-the-loop oversight is strongly advised.',
       relatedQuestions: ['over.model', 'profile.industry', 'tools.scope'],
       recommendationIds: ['R012', 'R007'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 14',    note: 'Human oversight' },
+        { framework: 'EU_AI_ACT',   ref: 'Annex III',  note: 'High-risk systems' },
+        { framework: 'NIST_AI_RMF', ref: 'MANAGE-2' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.3' },
+      ],
     };
   },
 
@@ -50,6 +62,11 @@ const FINDING_RULES: FindingRule[] = [
         'Without a designated cross-functional group accountable for AI risk, decisions are made ad hoc and accountability is unclear.',
       relatedQuestions: ['gov.committee'],
       recommendationIds: ['R001'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 17',     note: 'Quality management system' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-1.1' },
+        { framework: 'ISO_42001',   ref: 'cl. 5.1' },
+      ],
     };
   },
 
@@ -65,6 +82,11 @@ const FINDING_RULES: FindingRule[] = [
         'AI systems exposed to users or making consequential decisions should be red-teamed for prompt injection, jailbreaks, biased outputs, and data exfiltration.',
       relatedQuestions: ['sec.red_team', 'tools.scope'],
       recommendationIds: ['R004'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 15',     note: 'Accuracy, robustness, cybersecurity' },
+        { framework: 'NIST_AI_RMF', ref: 'MEASURE-2.7' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.2' },
+      ],
     };
   },
 
@@ -80,6 +102,11 @@ const FINDING_RULES: FindingRule[] = [
         'Customer-facing AI must be disclosed under the EU AI Act (Art. 50) and most consumer-protection regimes. Add clear in-product labels and update privacy disclosures.',
       relatedQuestions: ['trans.disclosure', 'tools.scope'],
       recommendationIds: ['R006', 'R013'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 50',     note: 'Transparency to natural persons' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-4.1' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.4' },
+      ],
     };
   },
 
@@ -94,6 +121,12 @@ const FINDING_RULES: FindingRule[] = [
         'Your team needs a clear runbook for pausing models, paging owners, and reviewing harmful outputs. Without it, response time to AI incidents is unpredictable.',
       relatedQuestions: ['over.escalation'],
       recommendationIds: ['R007', 'R010'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 73',     note: 'Serious incident reporting' },
+        { framework: 'EU_AI_ACT',   ref: 'Art. 14',     note: 'Human oversight' },
+        { framework: 'NIST_AI_RMF', ref: 'MANAGE-4.1' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.3' },
+      ],
     };
   },
 
@@ -108,6 +141,11 @@ const FINDING_RULES: FindingRule[] = [
         'Untrained users are the primary cause of AI mishaps (data leaks via prompts, blind trust in outputs). Roll out a baseline training programme.',
       relatedQuestions: ['train.staff_training'],
       recommendationIds: ['R008'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 4',      note: 'AI literacy' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-1.5' },
+        { framework: 'ISO_42001',   ref: 'cl. 7.2' },
+      ],
     };
   },
 
@@ -123,6 +161,11 @@ const FINDING_RULES: FindingRule[] = [
         'A leadership-approved policy clarifies acceptable use, prohibited use, and reporting expectations. Without it, governance decisions are not enforceable.',
       relatedQuestions: ['gov.written_policy'],
       recommendationIds: ['R002'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 17',     note: 'Quality management system' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-1.2' },
+        { framework: 'ISO_42001',   ref: 'cl. 5.2' },
+      ],
     };
   },
 
@@ -140,6 +183,11 @@ const FINDING_RULES: FindingRule[] = [
         'Adopt at least one external reference — ISO/IEC 42001, NIST AI RMF, or the EU AI Act — to anchor your controls and demonstrate diligence.',
       relatedQuestions: ['gov.frameworks'],
       recommendationIds: ['R003'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 17' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-1.1' },
+        { framework: 'ISO_42001',   ref: 'cl. 4.4', note: 'Management system' },
+      ],
     };
   },
 
@@ -155,6 +203,11 @@ const FINDING_RULES: FindingRule[] = [
         'You have fewer than 3 of the 5 listed controls (encryption, RBAC, audit logs, secrets, isolation). Prioritise the missing ones.',
       relatedQuestions: ['sec.controls'],
       recommendationIds: ['R005'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 15',     note: 'Accuracy, robustness, cybersecurity' },
+        { framework: 'NIST_AI_RMF', ref: 'MANAGE-2.1' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.2' },
+      ],
     };
   },
 
@@ -170,6 +223,11 @@ const FINDING_RULES: FindingRule[] = [
         'Affected users currently get no or generic explanations. Move toward category-level reasons, then per-decision explanations on request.',
       relatedQuestions: ['trans.explainability'],
       recommendationIds: ['R011', 'R013'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 13',     note: 'Transparency to deployer/user' },
+        { framework: 'NIST_AI_RMF', ref: 'MEASURE-3' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.4' },
+      ],
     };
   },
 
@@ -185,6 +243,11 @@ const FINDING_RULES: FindingRule[] = [
         'Self-assessed readiness is at level 1 or 2. Document a runbook, rehearse, and integrate AI scenarios into existing SOC playbooks.',
       relatedQuestions: ['sec.incident_readiness'],
       recommendationIds: ['R010'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 73',     note: 'Serious incident reporting' },
+        { framework: 'NIST_AI_RMF', ref: 'MANAGE-4' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.3' },
+      ],
     };
   },
 
@@ -201,6 +264,11 @@ const FINDING_RULES: FindingRule[] = [
         'Your team self-assesses at the Initial or Developing level. Quick wins: publish a policy, pick a framework, and run a baseline training session.',
       relatedQuestions: ['train.maturity'],
       recommendationIds: ['R002', 'R008'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 4',      note: 'AI literacy' },
+        { framework: 'EU_AI_ACT',   ref: 'Art. 17' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-1.5' },
+      ],
     };
   },
 
@@ -216,6 +284,11 @@ const FINDING_RULES: FindingRule[] = [
         'Training currently covers fewer than 3 of the 5 recommended topics. Round out coverage to bias, privacy, security, acceptable use and incident response.',
       relatedQuestions: ['train.topics'],
       recommendationIds: ['R008'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 4',      note: 'AI literacy' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-1.5' },
+        { framework: 'ISO_42001',   ref: 'cl. 7.2' },
+      ],
     };
   },
 
@@ -231,6 +304,11 @@ const FINDING_RULES: FindingRule[] = [
         'Identify high-stakes decision types (HR, credit, health, legal, content) and require a reviewer before AI output is acted upon.',
       relatedQuestions: ['over.review_categories'],
       recommendationIds: ['R012'],
+      regulatoryRefs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 14',     note: 'Human oversight' },
+        { framework: 'EU_AI_ACT',   ref: 'Annex III' },
+        { framework: 'NIST_AI_RMF', ref: 'MANAGE-2' },
+      ],
     };
   },
 ];

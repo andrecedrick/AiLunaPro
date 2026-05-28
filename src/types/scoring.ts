@@ -27,6 +27,33 @@ export interface SectionScore {
   contribution: number;
 }
 
+/**
+ * J9: optional regulatory / framework reference attached to a finding or
+ * recommendation. STATIC reference only — informational, never a legal claim.
+ * Frontend renders these as small "References:" chips beneath the item body.
+ *
+ * `framework`:
+ *   - EU_AI_ACT   → Regulation (EU) 2024/1689 — article number in `ref`.
+ *   - GDPR        → Regulation (EU) 2016/679.
+ *   - NIST_AI_RMF → NIST AI Risk Management Framework function/subcategory.
+ *   - ISO_42001   → ISO/IEC 42001 (AI management system) clause.
+ *   - OECD_AI     → OECD AI Principles (advisory).
+ */
+export type RegulatoryFramework =
+  | 'EU_AI_ACT'
+  | 'GDPR'
+  | 'NIST_AI_RMF'
+  | 'ISO_42001'
+  | 'OECD_AI';
+
+export interface RegulatoryRef {
+  framework: RegulatoryFramework;
+  /** Short label, e.g. 'Art. 10' or 'GOVERN-1.1' or 'cl. 6.1.3'. */
+  ref: string;
+  /** Optional one-line scope hint. */
+  note?: string;
+}
+
 /** A finding is a "thing the audit caught", with severity + context. */
 export interface Finding {
   id: string;
@@ -38,6 +65,8 @@ export interface Finding {
   relatedQuestions: string[];
   /** Recommendation ids that address this finding. */
   recommendationIds: string[];
+  /** J9: optional regulatory/framework references (advisory, not legal advice). */
+  regulatoryRefs?: RegulatoryRef[];
 }
 
 /** Recommendation category for the assistance layer. */
@@ -60,6 +89,8 @@ export interface Recommendation {
   whyItMatters?: string;
   /** Tangible outcome the user should expect once it's done. */
   expectedOutcome?: string;
+  /** J9: optional regulatory/framework references (advisory, not legal advice). */
+  regulatoryRefs?: RegulatoryRef[];
 }
 
 /** A roadmap bucket by time horizon. */

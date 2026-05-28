@@ -15,6 +15,7 @@ import { SectionScores } from '../components/result/SectionScores';
 import { FindingsList } from '../components/result/FindingsList';
 import { RecommendationsList } from '../components/result/RecommendationsList';
 import { Roadmap } from '../components/result/Roadmap';
+import { Disclaimer } from '../components/result/Disclaimer';
 import { AssistanceTeaser } from '../components/result/AssistanceTeaser';
 import { ResultActions } from '../components/result/ResultActions';
 
@@ -115,6 +116,10 @@ export function AuditResultPage() {
 
       {/* Bridge into the post-audit assistance flow */}
       <AssistanceTeaser result={result} />
+
+      {/* J9: mandatory advisory disclaimer (informational, not legal advice). */}
+      <Disclaimer />
+
 
       {/* Actions */}
       <ResultActions />

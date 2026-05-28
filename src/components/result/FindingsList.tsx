@@ -1,5 +1,6 @@
 import { Badge } from '../ui/Badge';
 import type { AuditResult, Severity } from '../../types/scoring';
+import { RegulatoryRefs } from './RegulatoryRefs';
 
 const SEVERITY_ORDER: Severity[] = ['critical', 'high', 'medium', 'low'];
 
@@ -133,6 +134,7 @@ export function FindingsList({ result }: Props) {
                         {f.recommendationIds.length === 1 ? '' : 's'}
                       </div>
                     )}
+                    <RegulatoryRefs refs={f.regulatoryRefs} />
                   </div>
                 ))}
               </div>
