@@ -2146,7 +2146,7 @@ Checkout (test mode) opérationnels, top-up tokens OK, aucune valeur secrète en
 UI/DOM/Network, gate non-admin intact. Stripe Dashboard : Starter $9.90/mo + Price IDs
 actifs. **Aucun changement de code.** Worktree clean.
 
-**✅ J8 — "Operator Metrics + Small Hardening"** — **EN ATTENTE DE CLÔTURE §17** (Batch 4 docs commit, §17-exit gate à exécuter ensuite).
+**✅ J8 — "Operator Metrics + Small Hardening"** — **CLÔTURÉ (§17 PASS, 0 must-fix)** le 2026-05-28.
 Scope tight : agrégation plateforme read-only (extension §9.21) + `canGoBack` polish.
 - **B1 (worker)** `6a29b29` : `GET /api/platform/metrics` (auth+`requirePlatformAdmin`,
   cache 60s/isolat). MRR (cap ≤1000 subs), active subs, recent invoices counts-only +
@@ -2249,7 +2249,7 @@ scope J6 verrouillé.
 | J6→J7 | §17 7 axes (baseline PASS=75 FAIL=0, build/tsc, worktree clean, prod match) | **0 must-fix** — PASS. Auth-email model verrouillé (Firebase natif), signup auto-verify non-fatal, docs §9.20 + Help FAQ. Aucune surface sécu ajoutée | custom action handler (B), Sequenzy auth-email minting (C), SMTP custom, `canGoBack`, App Check enforcement, Operator Secrets UI |
 | Post-J6 stabilité | §17 ciblé (chunks 200, render path guardé, prod match) | **0 must-fix** — "Oops" New Audit = blocage client (ERR_BLOCKED_BY_CLIENT), pas code. Polish : ErrorBoundary chunk-aware + Help FAQ blocker (`10b9923`) | — |
 | J7→J8 | §17 7 axes (baseline PASS=75 FAIL=0, worker tsc+build, worktree clean, prod match, ops-status 401) | **0 must-fix** — PASS. Operator Console read-only + setup guidé wrangler, validé prod navigateur clean (admin console / non-admin notice, no secret leak, copy=cmd only). J7C différé | Stripe publishable/price IDs `Not set` (config opérateur), `canGoBack`, J7C secret-edit UI, CF API token, App Check enforcement, impersonation |
-| J8→J9 | §17 7 axes (à exécuter — gate de sortie Batch 4 docs commit puis inspection) | **À déterminer** — `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé) |
+| J8→J9 | §17 7 axes (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `DIXN1a9n`, endpoints 401 no-auth : me/ops-status/metrics) | **0 must-fix** — PASS. `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté. Validation prod côté opérateur déjà confirmée Batch 2/3 | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé), tokens per-org sums (différé) |
 
 ---
 
