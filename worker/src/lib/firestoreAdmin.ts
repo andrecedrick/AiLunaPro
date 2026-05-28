@@ -321,3 +321,50 @@ export async function firestoreGet(
   if (!doc.fields) return null;
   return fromFirestoreFields(doc.fields);
 }
+
+/**
+ * Run a Firestore structured query against `parent` (e.g. '' for root, or
+ * '<docPath>' for a sub-tree). Pass a raw StructuredQuery body (supports
+ * collectionGroup queries via `from:[{collectionId, allDescendants:true}]`).
+ *
+ * Returns an array of decoded documents (name + fields). Empty array if no
+ * results. Used by platform-level aggregations (J8 metrics). The query body is
+ * trusted (built server-side, not from user input).
+ */
+export async function firestoreRunQuery(
+  saJson: string,
+  structuredQuery: Record<string, unknown>,
+  parent: string = '',
+): Promise<Array<{ name: string; fields: FsObject }>> {
+  const sa = JSON.parse(saJson) as ServiceAccount;
+  const token = await getAccessToken(sa);
+  const parentPath = parent
+    ? `/${parent}`
+    : '';
+  const url = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents${parentPath}:runQuery`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ structuredQuery }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Firestore runQuery failed: ${text}`);
+  }
+
+  // Response is a streaming array of { document?, readTime } entries.
+  // Empty result → array with no `document` field.
+  const arr = (await res.json()) as Array<{ document?: { name?: string; fields?: FirestoreFields } }>;
+  const out: Array<{ name: string; fields: FsObject }> = [];
+  for (const entry of arr) {
+    const d = entry.document;
+    if (!d || !d.name || !d.fields) continue;
+    out.push({ name: d.name, fields: fromFirestoreFields(d.fields) });
+  }
+  return out;
+}

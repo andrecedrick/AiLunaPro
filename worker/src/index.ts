@@ -43,6 +43,7 @@ import roiRoutes             from './routes/roi';
 import recommendRoutes       from './routes/recommend';
 import platformRoutes        from './routes/platform';
 import platformOpsRoutes     from './routes/platform-ops';
+import platformMetricsRoutes from './routes/platform-metrics';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -145,6 +146,7 @@ app.route('/', roiRoutes);
 app.route('/', recommendRoutes);
 app.route('/', platformRoutes);
 app.route('/', platformOpsRoutes);
+app.route('/', platformMetricsRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));
