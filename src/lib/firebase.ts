@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+// firebase/app-check is lazy-loaded (see initAppCheckLazy below) to keep it
+// out of the main bundle — it's monitor-only, never blocks any request.
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -24,19 +25,30 @@ export const app: FirebaseApp =
  * unverified metrics. Enforcement on Auth/Firestore stays OFF (console) — this
  * does NOT block any request. Enabling enforcement is a separate gated step.
  */
-if (typeof window !== "undefined") {
+/**
+ * Lazy App Check init — dynamic import of `firebase/app-check` keeps the
+ * ~30KB+ module out of the main bundle. Scheduled on idle so it never
+ * competes with first paint. Monitor-only; no request is ever blocked.
+ */
+async function initAppCheckLazy(): Promise<void> {
   const appCheckKey = import.meta.env.VITE_RECAPTCHA_APPCHECK_KEY as string | undefined;
-  if (appCheckKey) {
-    try {
-      initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(appCheckKey),
-        isTokenAutoRefreshEnabled: true,
-      });
-    } catch (err) {
-      // Never let App Check init break app boot (monitor mode, non-critical).
-      console.warn("[app-check] init skipped:", err);
-    }
+  if (!appCheckKey) return;
+  try {
+    const { initializeAppCheck, ReCaptchaV3Provider } = await import("firebase/app-check");
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(appCheckKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    // Never let App Check init break app boot (monitor mode, non-critical).
+    console.warn("[app-check] init skipped:", err);
   }
+}
+
+if (typeof window !== "undefined") {
+  const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+  const schedule = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1000));
+  schedule(() => { void initAppCheckLazy(); });
 }
 
 /**

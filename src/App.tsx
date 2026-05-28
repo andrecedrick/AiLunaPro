@@ -208,10 +208,13 @@ function AppShell() {
     const schedule = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 800));
     schedule(() => {
       // Fire-and-forget; chunks just need to land in the HTTP cache.
+      // KEEP THIS LIST TIGHT — only routes a typical authenticated user
+      // is highly likely to open in the first 30 seconds. Action-triggered
+      // pages (report detail, operator console, agents detail, …) stay
+      // lazy on-demand to avoid wasting bandwidth.
+      void import('./pages/DashboardPage').catch(() => {});
       void import('./pages/NewAuditPage').catch(() => {});
       void import('./pages/ReportsListPage').catch(() => {});
-      void import('./pages/ReportDetailPage').catch(() => {});
-      void import('./pages/settings/OperatorConsolePage').catch(() => {});
     });
   }, [isAuthenticated, session?.orgId]);
 
