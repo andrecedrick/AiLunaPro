@@ -771,29 +771,46 @@ export function BillingPage() {
             <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
               {isFirebaseLayer ? (
                 stripeCustomerId ? (
-                  <>
+                  /* J10 polish: aligned equal-width CTA group. Desktop = same row
+                     (wraps); mobile = full-width stacked via flex-basis + wrap. */
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 12,
+                      width: '100%',
+                      minWidth: 240,
+                      maxWidth: 420,
+                      alignItems: 'stretch',
+                    }}
+                  >
                     {hasActiveSubscription && (
                       <button
                         type="button"
                         onClick={() => handleManagePortal()}
                         disabled={checkoutLoading}
-                        style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1 }}
+                        style={{ flex: '1 1 180px', padding: '10px 16px', borderRadius: 10, border: '1.5px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 700, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1, fontFamily: 'var(--font-body)' }}
                       >
                         {checkoutLoading ? 'Loading…' : 'Manage subscription'}
                       </button>
                     )}
                     {/* J10: payment-methods deep-link into the Stripe Customer Portal. */}
-                    <button
-                      type="button"
-                      onClick={() => handleManagePortal('payment_method_update')}
-                      disabled={checkoutLoading}
-                      style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1 }}
-                    >
-                      {checkoutLoading ? 'Loading…' : 'Manage payment methods'}
-                    </button>
-                  </>
+                    <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleManagePortal('payment_method_update')}
+                        disabled={checkoutLoading}
+                        style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: '1.5px solid var(--border-strong, var(--border))', background: 'var(--surface)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1, fontFamily: 'var(--font-body)' }}
+                      >
+                        {checkoutLoading ? 'Loading…' : 'Manage payment methods'}
+                      </button>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
+                        Update card, set default, remove
+                      </span>
+                    </div>
+                  </div>
                 ) : (
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 220, textAlign: 'right', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 240, textAlign: 'right', lineHeight: 1.5 }}>
                     No Stripe customer yet. Payment methods become available after your first subscription or token purchase.
                   </div>
                 )
