@@ -144,10 +144,13 @@ export async function createCheckoutSession(
 export async function createPortalSession(
   orgId: string,
   idToken: string,
+  /** J10: optional deep-link flow. 'payment_method_update' lands on the
+   *  payment-methods section; omit for the generic portal home. */
+  flow?: 'payment_method_update',
 ): Promise<string> {
   const { url } = await workerPost<{ url: string }>(
     '/api/billing/portal',
-    { orgId },
+    { orgId, ...(flow ? { flow } : {}) },
     idToken,
     { errorClass: 'portal', logTag: 'billing portal' },
   );

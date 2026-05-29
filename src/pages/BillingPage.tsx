@@ -658,17 +658,18 @@ export function BillingPage() {
   };
 
   // ── Manage portal (active sub) ─────────────────────────
-  const handleManagePortal = async () => {
+  // J10: optional `flow` deep-links into the Stripe payment-methods section.
+  const handleManagePortal = async (flow?: 'payment_method_update') => {
     if (!session?.orgId) return;
     if (!isFirebaseLayer) return;
-    console.log('[billing portal] starting', { orgId: session.orgId, workerBase: WORKER_BASE || '(proxy)' });
+    console.log('[billing portal] starting', { orgId: session.orgId, flow: flow ?? 'home', workerBase: WORKER_BASE || '(proxy)' });
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
       const { auth } = await import('../lib/firebase-auth');
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) throw new Error('Not authenticated');
-      const url = await createPortalSession(session.orgId, idToken);
+      const url = await createPortalSession(session.orgId, idToken, flow);
       window.location.href = url;
     } catch (err) {
       console.error('[BillingPage] portal failed:', err);
@@ -769,16 +770,33 @@ export function BillingPage() {
           {canManage && (
             <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
               {isFirebaseLayer ? (
-                (hasActiveSubscription && stripeCustomerId) ? (
-                  <button
-                    type="button"
-                    onClick={handleManagePortal}
-                    disabled={checkoutLoading}
-                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1 }}
-                  >
-                    {checkoutLoading ? 'Loading…' : 'Manage subscription'}
-                  </button>
-                ) : null
+                stripeCustomerId ? (
+                  <>
+                    {hasActiveSubscription && (
+                      <button
+                        type="button"
+                        onClick={() => handleManagePortal()}
+                        disabled={checkoutLoading}
+                        style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1 }}
+                      >
+                        {checkoutLoading ? 'Loading…' : 'Manage subscription'}
+                      </button>
+                    )}
+                    {/* J10: payment-methods deep-link into the Stripe Customer Portal. */}
+                    <button
+                      type="button"
+                      onClick={() => handleManagePortal('payment_method_update')}
+                      disabled={checkoutLoading}
+                      style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1 }}
+                    >
+                      {checkoutLoading ? 'Loading…' : 'Manage payment methods'}
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 220, textAlign: 'right', lineHeight: 1.5 }}>
+                    No Stripe customer yet. Payment methods become available after your first subscription or token purchase.
+                  </div>
+                )
               ) : (
                 subscription.cancelAtPeriodEnd ? (
                   <button type="button" onClick={resumePlan} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>

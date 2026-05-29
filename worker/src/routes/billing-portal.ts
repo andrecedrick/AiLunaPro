@@ -36,14 +36,17 @@ portal.post('/api/billing/portal', requireAuth(), requireRole(['owner', 'billing
     return c.json({ error: 'Service account not configured' }, 503);
   }
 
-  let body: { orgId?: string };
+  let body: { orgId?: string; flow?: string };
   try {
-    body = await c.req.json<{ orgId: string }>();
+    body = await c.req.json<{ orgId: string; flow?: string }>();
   } catch {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
   const orgId = body.orgId;
   if (!orgId) return c.json({ error: 'Missing orgId' }, 400);
+  // J10: optional deep-link into the payment-methods section. Any other/absent
+  // value → generic portal landing (safe fallback). No new gating.
+  const wantPaymentMethods = body.flow === 'payment_method_update';
 
   dlog(env, '[portal] orgId=', orgId);
 
@@ -66,10 +69,20 @@ portal.post('/api/billing/portal', requireAuth(), requireRole(['owner', 'billing
 
   let session;
   try {
-    session = await stripe.billingPortal.sessions.create({
+    const params: Stripe.BillingPortal.SessionCreateParams = {
       customer:   customerId,
       return_url: returnUrl,
-    });
+    };
+    if (wantPaymentMethods) {
+      // Deep-link straight to the payment-method update flow. Requires the
+      // "Payment methods" feature enabled in the Stripe Dashboard portal config;
+      // if disabled, Stripe falls back to the portal home (still functional).
+      params.flow_data = {
+        type: 'payment_method_update',
+        after_completion: { type: 'redirect', redirect: { return_url: returnUrl } },
+      };
+    }
+    session = await stripe.billingPortal.sessions.create(params);
   } catch (err) {
     if (err instanceof Stripe.errors.StripeError) {
       console.error('[portal] Stripe error:', err.message);
