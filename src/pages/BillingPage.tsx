@@ -535,6 +535,23 @@ export function BillingPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
   const tokens = useTokens();
+  const { setDisplayCurrencyEphemeral } = usePreferences();
+
+  // J12 Batch A: smart-locale currency detection runs ONLY here (Billing),
+  // on-demand, NOT on the global app boot path. Dynamic-imports geoService so
+  // its code + the geo fetch never load on Dashboard/other routes. Sets an
+  // in-memory default only when the user has no explicit currency preference.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { hasExplicitDisplayCurrency } = await import('../lib/preferences');
+      if (hasExplicitDisplayCurrency()) return;
+      const { fetchSuggestedCurrency } = await import('../lib/locale/geoService');
+      const c = await fetchSuggestedCurrency();
+      if (active && c) setDisplayCurrencyEphemeral(c as Currency);
+    })().catch(() => { /* keep usd default */ });
+    return () => { active = false; };
+  }, [setDisplayCurrencyEphemeral]);
   const {
     subscription, invoices, usage,
     hasActiveSubscription,

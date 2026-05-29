@@ -16,7 +16,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useState,
   type ReactNode,
 } from 'react';
@@ -27,18 +26,19 @@ import {
   saveDisplayCurrency,
   loadUserProfile,
   saveUserProfile,
-  hasExplicitDisplayCurrency,
   type Language,
   type DisplayCurrency,
   type UserProfile,
 } from '../lib/preferences';
-import { fetchSuggestedCurrency } from '../lib/locale/geoService';
 
 interface PreferencesValue {
   language:           Language;
   setLanguage:        (l: Language) => void;
   displayCurrency:    DisplayCurrency;
   setDisplayCurrency: (c: DisplayCurrency) => void;
+  /** J12: set display currency WITHOUT persisting (smart-locale in-memory
+   *  default). Only setDisplayCurrency (explicit user choice) writes storage. */
+  setDisplayCurrencyEphemeral: (c: DisplayCurrency) => void;
   /** J9 Phase B-lite: user profile (UI/copy switch only, never scoring). */
   userProfile:        UserProfile;
   setUserProfile:     (p: UserProfile) => void;
@@ -61,16 +61,9 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     saveDisplayCurrency(c); // explicit user choice → persist
   }, []);
 
-  // J12 smart-locale: if the user has NOT explicitly chosen a currency, set an
-  // in-memory default from geo (display-only). NON-PERSISTENT — only an explicit
-  // selector change (setDisplayCurrency) writes localStorage.
-  useEffect(() => {
-    if (hasExplicitDisplayCurrency()) return;
-    let active = true;
-    fetchSuggestedCurrency()
-      .then(c => { if (active && c) setDisplayCurrencyState(c); })
-      .catch(() => { /* keep usd default */ });
-    return () => { active = false; };
+  // J12: in-memory only (no persist) — used by Billing-only smart-locale detect.
+  const setDisplayCurrencyEphemeral = useCallback((c: DisplayCurrency) => {
+    setDisplayCurrencyState(c);
   }, []);
 
   const setUserProfile = useCallback((p: UserProfile) => {
@@ -85,6 +78,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         setLanguage,
         displayCurrency,
         setDisplayCurrency,
+        setDisplayCurrencyEphemeral,
         userProfile,
         setUserProfile,
       }}
