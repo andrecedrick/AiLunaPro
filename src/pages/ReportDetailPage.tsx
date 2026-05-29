@@ -6,6 +6,7 @@ import { ReportHeader } from '../components/reports/ReportHeader';
 import { ExportHistory } from '../components/reports/ExportHistory';
 import { Button } from '../components/ui/Button';
 import { ResultHero } from '../components/result/ResultHero';
+import { AudioExplanation } from '../components/result/AudioExplanation';
 import { SectionScores } from '../components/result/SectionScores';
 import { FindingsList } from '../components/result/FindingsList';
 import { RecommendationsList } from '../components/result/RecommendationsList';
@@ -77,6 +78,7 @@ export function ReportDetailPage() {
         {/* Main column — reused result components, fed from snapshot */}
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <ResultHero result={result} />
+          <AudioExplanation result={result} />
           <SectionScores result={result} />
           <div
             style={{

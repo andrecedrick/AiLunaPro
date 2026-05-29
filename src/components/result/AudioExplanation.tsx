@@ -23,11 +23,47 @@ const SUPPORTED =
   'speechSynthesis' in window &&
   typeof window.SpeechSynthesisUtterance !== 'undefined';
 
+/** v1 spoken-language options. Only sets utterance.lang — NO translation. */
+const LANG_OPTIONS: { code: string; label: string }[] = [
+  { code: 'en-US', label: 'English' },
+  { code: 'fr-FR', label: 'Français' },
+  { code: 'es-ES', label: 'Español' },
+  { code: 'de-DE', label: 'Deutsch' },
+  { code: 'it-IT', label: 'Italiano' },
+  { code: 'pt-PT', label: 'Português' },
+];
+
+/** Match navigator.language to an option (by 2-letter prefix); else en-US. */
+function defaultLang(): string {
+  const nav = typeof navigator !== 'undefined' ? navigator.language : 'en-US';
+  const prefix = (nav || 'en').slice(0, 2).toLowerCase();
+  const hit = LANG_OPTIONS.find(o => o.code.slice(0, 2).toLowerCase() === prefix);
+  return hit ? hit.code : 'en-US';
+}
+
 export function AudioExplanation({ result }: { result: AuditResult }) {
   const [state, setState] = useState<PlayState>('idle');
+  const [lang, setLang] = useState<string>(() => (SUPPORTED ? defaultLang() : 'en-US'));
   // Index of the sentence currently/last spoken (for chunked playback).
   const idxRef = useRef(0);
   const sentencesRef = useRef<string[]>([]);
+  const langRef = useRef(lang);
+  langRef.current = lang;
+
+  // Is there a browser voice for the selected language? (voices load async.)
+  const [voiceMissing, setVoiceMissing] = useState(false);
+  useEffect(() => {
+    if (!SUPPORTED) return;
+    const check = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) return; // not loaded yet; onvoiceschanged will re-fire
+      const p = lang.slice(0, 2).toLowerCase();
+      setVoiceMissing(!voices.some(v => v.lang.slice(0, 2).toLowerCase() === p));
+    };
+    check();
+    window.speechSynthesis.onvoiceschanged = check;
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
+  }, [lang]);
 
   // Cancel any in-flight speech on unmount (covers route changes too).
   useEffect(() => {
@@ -63,7 +99,7 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
     }
     idxRef.current = start;
     const u = new SpeechSynthesisUtterance(sentences[start]);
-    u.lang = 'en-US';
+    u.lang = langRef.current;
     u.onend = () => {
       // Advance only if we're still in playing state (not stopped/paused).
       if (window.speechSynthesis.speaking || window.speechSynthesis.pending) return;
@@ -140,8 +176,34 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
           Spoken by your browser. The disclaimer is read first. Quality varies by device.
         </div>
+        {voiceMissing && (
+          <div style={{ fontSize: 11, color: 'var(--yellow-text)', marginTop: 4, lineHeight: 1.4 }}>
+            A voice for this language may be unavailable on this device; playback may use a default voice.
+          </div>
+        )}
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* Language selector — sets utterance.lang only (no translation). */}
+        <select
+          value={lang}
+          onChange={e => setLang(e.target.value)}
+          aria-label="Audio language"
+          style={{
+            padding: '8px 10px',
+            borderRadius: 8,
+            border: '1.5px solid var(--border)',
+            background: 'var(--surface)',
+            color: 'var(--text-secondary)',
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'var(--font-body)',
+            cursor: 'pointer',
+          }}
+        >
+          {LANG_OPTIONS.map(o => (
+            <option key={o.code} value={o.code}>{o.label}</option>
+          ))}
+        </select>
         {state !== 'playing' ? btn(state === 'paused' ? '▶ Resume' : '▶ Play', handlePlay, true) : btn('⏸ Pause', handlePause)}
         {state !== 'idle' && btn('⏹ Stop', handleStop)}
       </div>
