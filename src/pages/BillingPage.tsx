@@ -537,19 +537,24 @@ export function BillingPage() {
   const tokens = useTokens();
   const { setDisplayCurrencyEphemeral } = usePreferences();
 
-  // J12 Batch A: smart-locale currency detection runs ONLY here (Billing),
-  // on-demand, NOT on the global app boot path. Dynamic-imports geoService so
-  // its code + the geo fetch never load on Dashboard/other routes. Sets an
-  // in-memory default only when the user has no explicit currency preference.
+  // J12 (A+B): smart-locale detection + live FX run ONLY here (Billing),
+  // on-demand, NOT on the global boot path. Dynamic imports keep geo/FX code
+  // off Dashboard/other routes. fxReady forces a re-render once live rates land.
+  const [, setFxReady] = useState(false);
   useEffect(() => {
     let active = true;
     (async () => {
       const { hasExplicitDisplayCurrency } = await import('../lib/preferences');
-      if (hasExplicitDisplayCurrency()) return;
-      const { fetchSuggestedCurrency } = await import('../lib/locale/geoService');
-      const c = await fetchSuggestedCurrency();
-      if (active && c) setDisplayCurrencyEphemeral(c as Currency);
-    })().catch(() => { /* keep usd default */ });
+      if (!hasExplicitDisplayCurrency()) {
+        const { fetchSuggestedCurrency } = await import('../lib/locale/geoService');
+        const c = await fetchSuggestedCurrency();
+        if (active && c) setDisplayCurrencyEphemeral(c as Currency);
+      }
+      // Live reference FX (ECB, display-only); fail-safe keeps static fallback.
+      const { loadLiveRates } = await import('../lib/locale/fxRates');
+      await loadLiveRates();
+      if (active) setFxReady(true);
+    })().catch(() => { /* keep usd + static fallback */ });
     return () => { active = false; };
   }, [setDisplayCurrencyEphemeral]);
   const {

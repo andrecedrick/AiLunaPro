@@ -10,9 +10,12 @@
 
 import type { Currency } from '../billing/currencyConstants';
 import { CURRENCY_SYMBOLS } from '../billing/currencyConstants';
+import { resolveLayer } from '../featureFlags';
+import { WORKER_BASE } from '../billing/stripeClient';
 
-/** USD → currency multipliers (approximate). */
-const USD_TO: Record<Currency, number> = {
+/** USD → currency multipliers — STATIC fallback (approximate, display-only).
+ *  Live rates from /api/public/fx (ECB) override this once fetched. */
+const STATIC_USD_TO: Record<Currency, number> = {
   usd: 1,
   eur: 0.92,
   gbp: 0.79,
@@ -20,9 +23,33 @@ const USD_TO: Record<Currency, number> = {
   aud: 1.52,
 };
 
+// In-memory live rates (filled by loadLiveRates). Falls back to static.
+let liveRates: Partial<Record<Currency, number>> | null = null;
+
+/**
+ * J12 Batch B: fetch live reference rates from /api/public/fx (ECB, 6h cached
+ * server-side). Display-only. Fail-safe: any error keeps the static fallback.
+ * Call from Billing (on-demand) — never on global boot.
+ */
+export async function loadLiveRates(): Promise<void> {
+  if (resolveLayer('auth') === 'mock') return;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/public/fx`);
+    if (!res.ok) return;
+    const data = (await res.json()) as { rates?: Partial<Record<Currency, number>> };
+    if (data.rates) liveRates = { usd: 1, ...data.rates };
+  } catch {
+    /* keep static fallback */
+  }
+}
+
+function rate(to: Currency): number {
+  return liveRates?.[to] ?? STATIC_USD_TO[to] ?? 1;
+}
+
 /** Convert a USD amount to the target currency (approximate, display-only). */
 export function convertFromUsd(amountUsd: number, to: Currency): number {
-  return amountUsd * (USD_TO[to] ?? 1);
+  return amountUsd * rate(to);
 }
 
 /**
