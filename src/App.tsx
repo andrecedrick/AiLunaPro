@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { lazyWithRetry as lazy } from './lib/routing/lazyWithRetry';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -114,6 +114,17 @@ function PageOutlet() {
 function AppShell() {
   const { route, navigate } = useRoute();
   const { isAuthenticated, isLoading, session } = useAuth();
+
+  /* Perf P1: boot watchdog. If auth/session is still loading after ~8s (e.g.
+     Firestore blocked by an ad-blocker → SDK retries for minutes), stop
+     showing a blank screen and surface an actionable connectivity notice.
+     Auth keeps resolving in the background; if it succeeds the app proceeds. */
+  const [bootSlow, setBootSlow] = useState(false);
+  useEffect(() => {
+    if (!isLoading) { setBootSlow(false); return; }
+    const t = window.setTimeout(() => setBootSlow(true), 8000);
+    return () => window.clearTimeout(t);
+  }, [isLoading]);
 
   /* J13 Batch 2: analytics page_view on route change. route.name is the
      id-free template (ids live in separate fields) → no PII. track() is a
@@ -232,7 +243,31 @@ function AppShell() {
   }, [isAuthenticated, session?.orgId]);
 
   /* ── Firebase: wait for onAuthStateChanged before rendering ── */
-  if (isLoading) return null;
+  if (isLoading) {
+    // Perf P1: fail-fast notice after watchdog timeout instead of blank.
+    if (!bootSlow) return null;
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--page-bg)' }}>
+        <div style={{ maxWidth: 460, width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 24, textAlign: 'center' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: 'var(--font-heading)' }}>
+            Still connecting…
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55, margin: '0 0 16px' }}>
+            A browser ad-blocker / privacy extension or your network may be blocking{' '}
+            <strong>audit.ailunapro.com</strong> or <strong>*.googleapis.com</strong> (Firebase).
+            Allow these domains, or reload. The app will continue automatically once it connects.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient, var(--violet))', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   /* ── Invite acceptance: render before/after auth (chromeless) ── */
   if (route.name === 'accept-invite') {
