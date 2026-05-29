@@ -12,6 +12,7 @@ import { computeAuditResult } from '../lib/scoring/computeAuditResult';
 const AUTO_REPORT_ON_SUBMIT = import.meta.env.VITE_AUTO_REPORT_ON_SUBMIT === 'true';
 import { formatDate } from '../utils/formatters';
 import { ResultHero } from '../components/result/ResultHero';
+import { AudioExplanation } from '../components/result/AudioExplanation';
 import { SectionScores } from '../components/result/SectionScores';
 import { FindingsList } from '../components/result/FindingsList';
 import { RecommendationsList } from '../components/result/RecommendationsList';
@@ -97,6 +98,7 @@ export function AuditResultPage() {
 
       {/* Hero */}
       <ResultHero result={result} />
+      <AudioExplanation result={result} />
 
       {/* Section breakdown */}
       <SectionScores result={result} />
