@@ -957,11 +957,25 @@ done/dismissed v1 · ❌ pondération LLM · ❌ poids priorité per-tenant ·
 **Surfaces** : `AuditResultPage` · `ReportDetailPage` · `ReportSharePage`
 (au-dessus de `Roadmap`, disclaimer §9.22 déjà présent).
 
-**3. Audio Explanations — accessibilité & gain de temps**
-Lecture audio optionnelle (TTS sur contenu existant) du résumé résultat + risques
-clés + next-steps. Format court (2–3 min). Le **disclaimer obligatoire** §9.22 est
-lu en audio. **Aucune génération dynamique**, **aucune affirmation légale**, statique
-sur les findings/recos déjà calculés. Aucun stockage de l'audio côté client.
+**3. Audio Explanations — accessibilité & gain de temps** *(✅ LIVRÉ — J11, 2026-05-28)*
+Lecture audio optionnelle via **Web Speech API client-side** (`window.speechSynthesis`,
+**no cloud TTS, no endpoint, no API key, no stockage audio, no PII transmise**). Script
+déterministe `lib/audio/buildSpeechScript.ts` depuis aggregates existants + titres recos
+publics ; **disclaimer §9.22 lu en premier, toujours**. Composant
+`components/result/AudioExplanation.tsx` : Play/Pause/Resume/Stop, **jamais d'autoplay**,
+feature-detect (note si non supporté), chunk-per-sentence (workaround cutoff Chrome),
+cancel on unmount/route-change.
+- **Surfaces** : AuditResultPage (`3f2b84f`) + ReportDetailPage + ReportSharePage
+  (`c32eb47`, surface durable deep-linkée).
+- **Langue** (`c32eb47`) : sélecteur en/fr/es/de/it/pt → `utterance.lang` only (**no
+  translation** ; texte reste anglais v1) ; default = `navigator.language` match → en-US ;
+  note si voix indisponible. Labels réutilisent `LANGUAGE_LABELS` allowlisté (`2045318`).
+- **Qualité voix** (`f476090`+`c99740f`) : sélecteur de voix (filtré par langue, trié
+  best-first), auto-pick scoré (neural>natural>premium>siri>google>microsoft, pénalise
+  espeak/compact/pico), presets rate/pitch par langue (en .95, fr/es/it/pt .90/1.02,
+  de .92), micro-pauses ~280ms, connecteurs « Next/Now/Finally », bouton « Test voice ».
+- **Plafond connu** : qualité bornée par les voix OS/navigateur (Web Speech API) ; voix
+  vraiment premium = cloud TTS (Option B différée, hors scope — clé+endpoint+coût).
 
 **4. Attestation of Analysis (PAS un certificat de conformité)**
 Document téléchargeable **« AI Risk Assessment / Analysis Statement »** : scope, date,
@@ -2449,7 +2463,20 @@ Approche A (Stripe Customer Portal). Détails §9.23-5.
 - **Do-NOT** : ❌ card handling/storage · ❌ in-app card forms v1 · ❌ nouvel endpoint ·
   ❌ secret en UI · gating owner/billing maintenu.
 
-Prochaine étape J11 : scope à définir (gaté).
+**✅ J11 — "Audio Explanations"** — **CLÔTURÉ (§17 mini-gate PASS, 0 must-fix)** le 2026-05-28.
+Web Speech API client-side. Détails §9.23-3.
+- **Batch 1** `3f2b84f` : buildSpeechScript + AudioExplanation (AuditResultPage).
+- **Durable + langue** `c32eb47` : mount ReportDetail/Share (deep-linked) + sélecteur langue.
+- **Voix v1** `f476090` : voice dropdown + tuning + connecteurs.
+- **Voix v2** `c99740f` : presets par langue + micro-pauses + scoring agressif + Test voice (listening approval PASS).
+- **Fix §17** `2045318` : labels langue via `LANGUAGE_LABELS` allowlisté (baseline FR-strings FAIL→0).
+- **Gate §17** : baseline PASS=74 FAIL=0 · build clean · worktree clean · prod
+  `D2AjPr86` · grep audio = aucun fetch/réseau (pure client-side). **0 must-fix.**
+- **Do-NOT** : ❌ cloud TTS · ❌ endpoint/key · ❌ stockage audio · ❌ autoplay · ❌ PII ·
+  ❌ translation v1 · ❌ scoring/persistence. Disclaimer §9.22 toujours lu en premier.
+- **Différé** : Option B cloud TTS (voix premium), traduction du script (lié §9.24 i18n).
+
+Prochaine étape J12 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2537,6 +2564,7 @@ scope J6 verrouillé.
 | J8→J9 | §17 7 axes (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `DIXN1a9n`, endpoints 401 no-auth : me/ops-status/metrics) | **0 must-fix** — PASS. `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté. Validation prod côté opérateur déjà confirmée Batch 2/3 | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé), tokens per-org sums (différé) |
 | J9→J10 | §17 consolidé (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `Br8gGLwD`, forbidden-phrasing grep = uniquement listes d'interdictions, mappings reg. refs vérifiés) | **0 must-fix** — PASS. Phase A regulatoryRefs + Disclaimer + populated 15 findings + 13 recs ; Phase B-lite profile pref (tone only) ; Phase C-skeleton System Builder (6 steps, no persistence) ; Phase D Prioritized Action Plan (mapping verrouillé, wording verrouillé, profile=tone only) + Help FAQ ; hardening parallèles (lazyWithRetry, chunk-aware ErrorBoundary, App Check lazy, prefetch tightening) | System Builder content v2 + persistance différés, Action Plan persistance done/dismissed différée, PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, i18n §9.24 + analytics §9.25 + auth/PDF/audio §9.23 restants |
 | J10→J11 | §17 mini-gate (worker tsc clean, baseline PASS=75 FAIL=0, worktree clean, prod match `l9QAi4Lo`, portal no-auth 401) | **0 must-fix** — PASS. Payment Methods via Stripe Customer Portal (Approche A, réutilise `/api/billing/portal`, `flow_data` deep-link, no new endpoint, PCI SAQ-A, owner/billing gating, empty-state) + UI polish v1 (CTA equal-width) + v2 (rangée « Billing actions » dédiée). Validé visuellement prod | Approche B (SetupIntent+Elements) différée, pré-requis opérateur portal config, PDF renderer, Option B auth handler, App Check enforcement, `mail.ailunapro.com` DNS, §9.23 reste (Audio/Attestation/Webhooks) + §9.24 i18n + §9.25 analytics |
+| J11→J12 | §17 mini-gate (baseline PASS=74 FAIL=0, build clean, worktree clean, prod `D2AjPr86`, audio code = no fetch/network) | **0 must-fix** — PASS. Audio Explanations (Web Speech API client-side, disclaimer-first, no autoplay/PII/storage/endpoint) sur AuditResult+ReportDetail+ReportShare ; sélecteur langue (lang-only, no translation) + voix (scored auto-pick, per-lang presets, micro-pauses, Test voice). Listening approval PASS. Intermediate FR-strings FAIL fixed via allowlisted LANGUAGE_LABELS | Cloud TTS premium (Option B), traduction script (§9.24), Attestation/Webhooks (§9.23 reste), §9.24 i18n, §9.25 analytics, PDF renderer, App Check enforcement, `mail.ailunapro.com` DNS |
 | **§9.23 Planned/Partial** | partiel — Prioritized Action Plan **LIVRÉ** (J9 Phase D, `5c3461d`) ; reste planifié | **Livré** : Prioritized Action Plan (dérivation pure, 3 buckets verrouillés Critical/Important/Improvement, profile = tone only, wording verrouillé interdisant compliance claims). **Planifié / non implémenté** : AI System Builder guidé (skeleton J9 B3 ✅, contenu+persistance v2 différé), Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management, Webhooks sortants opt-in | Guardrails permanents §9.23 inchangés ; tout futur élargissement = §17 dédié |
 | **§9.24 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : Multilingual (fr/es/pt/it/de/ru + en default), Currency display auto, Smart locale detection (pref → navigator → CF-IPCountry → en/USD), UX i18n switcher + currency indicator. Chaque sous-item ouvrira son §17 dédié | Guardrails §9.24 : no LLM translation, no legal localization claim, no IP/PII stored, no billing logic change outside Stripe, display-layer only, disclaimer §9.22 traduit + relu humainement |
 | **§9.25 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun SDK, aucun gate ouvert. | **Planifié / non implémenté** : PostHog product analytics (EU-hosted / self-host préféré), events route + feature usage + perf, lazy SDK post-consentement, wrapper `lib/analytics/track.ts`. Phase A (route+perf) puis Phase B (feature usage) — chaque phase = §17 dédié | Guardrails §9.25 : ❌ session replay, ❌ keystrokes/form values, ❌ audit answers, ❌ PII/customer content, ❌ cross-tenant, ❌ ad-trackers. Opt-in + DNT + IP anonymization + IDs hashés. Jamais d'impact sur scoring/findings |
