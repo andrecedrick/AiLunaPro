@@ -1022,7 +1022,29 @@ Prioritized Action Plan (extension J9) → Payment Methods (Billing UX, valeur i
 → AI System Builder skeleton (J9 Phase C) → Attestation of Analysis (dépend PDF
 renderer) → Audio Explanations (dépend TTS architecture) → Webhooks sortants.
 
-#### 9.24 Internationalization, Currency & Smart Locale *(planifié — non implémenté)*
+#### 9.24 Internationalization, Currency & Smart Locale
+*(Smart locale detection + currency DISPLAY = ✅ LIVRÉ J12 ; multilingual UI translation = différé)*
+
+**✅ Livré J12 (2026-05-29)** : détection locale + affichage devise (display-only).
+- **Détection** : worker `GET /api/public/geo` (no-auth, `CF-IPCountry`→`REGION_TO_CURRENCY`,
+  no-cache headers, country code only, no IP/PII, `aea77a6`+`52fe97b`). Frontend
+  `geoService.fetchSuggestedCurrency` (cache:'no-store'). Ordre : pref explicite → geo →
+  fallback USD. **Non-persistant** : default in-memory (`setDisplayCurrencyEphemeral`) ;
+  seul un choix explicite du sélecteur persiste (`c3ceda1`).
+- **FX live** : worker `GET /api/public/fx` (no-auth, **feed ECB daily**, no key, cache 6h
+  isolate + Cache-Control 6h, fallback static→USD, `a5640fe`). Frontend `fxRates.loadLiveRates`
+  (live→static→USD). Affichage "≈ €N/mo approx · billed in USD" sur PricingCards.
+- **Perf** : détection geo+FX **Billing-only on-demand** (dynamic import) — **jamais sur le
+  boot global** ; retiré de PreferencesContext (`d09b5c3`). Dashboard = zéro geo/fx.
+  Main bundle 87KB (FX/geo hors main).
+- **Garde-fous respectés** : display-only, **Stripe USD source de vérité** ("billed in USD"
+  toujours affiché), no IP/PII, no clé FX payante, no UI translation.
+- **Différé** : traduction des strings UI (multilingual item ci-dessous), devise dans
+  l'en-tête sub active (déjà via données Stripe réelles).
+
+**Reste planifié — non implémenté (référence d'origine ci-dessous) :**
+
+#### 9.24 (réf. d'origine) Internationalization, Currency & Smart Locale *(planifié — non implémenté)*
 
 **Statut** : **documentation prévisionnelle uniquement** (2026-05-28). Aucun code,
 aucune implémentation. Chaque sous-item ouvrira son propre scope §17 (pré-flight →
@@ -2476,7 +2498,25 @@ Web Speech API client-side. Détails §9.23-3.
   ❌ translation v1 · ❌ scoring/persistence. Disclaimer §9.22 toujours lu en premier.
 - **Différé** : Option B cloud TTS (voix premium), traduction du script (lié §9.24 i18n).
 
-Prochaine étape J12 : scope à définir (gaté).
+**✅ J12 — "Smart Locale + Currency Display"** — **CLÔTURÉ (§17 mini-gate PASS, 0 must-fix)** le 2026-05-29.
+Display-only currency layer (§9.24 subset ; UI translation différée). Détails §9.24.
+- **B1** `aea77a6` : `/api/public/geo` (no-auth, country+suggestedCurrency, no IP/PII).
+- **B1.1** `52fe97b` : no-cache headers (Cache-Control/Pragma/Expires/Vary CF-IPCountry).
+- **B2** `c3ceda1` : frontend detect (non-persistent default) + static FX + "≈ €N billed in USD" PricingCards.
+- **Batch A perf** `d09b5c3` : geo/FX off global boot → Billing-only on-demand ; main 88.9→87KB ;
+  Dashboard zéro geo/fx (confirmé code : callers = BillingPage only).
+- **Batch B live FX** `a5640fe` : `/api/public/fx` ECB daily (no key, 6h cache, static fallback) +
+  `loadLiveRates` (Billing-only).
+- **Gate §17** : worker tsc clean · baseline PASS=75 FAIL=0 · worktree clean · geo+fx 200 ·
+  prod fe `index-COXIEMhY.js` / worker `668f04fa`. **0 must-fix.**
+- **Diagnostic** : "Couldn't load" + heaviness résiduels = **blocage client** (ERR_BLOCKED_BY_CLIENT
+  sur firestore.googleapis + CF beacon), PAS code. geo-sur-Dashboard observé = artefact Preserve-log
+  (visites Billing antérieures), pas un fetch frais.
+- **Différé** : UI translation (§9.24 multilingual), notice UX Firestore-blocked (optionnel),
+  Batch C chunk-retry (en attente ligne console chunk), cloud TTS, App Check enforcement,
+  `mail.ailunapro.com` DNS, §9.23 reste (Attestation/Webhooks), §9.25 analytics.
+
+Prochaine étape J13 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2565,6 +2605,7 @@ scope J6 verrouillé.
 | J9→J10 | §17 consolidé (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `Br8gGLwD`, forbidden-phrasing grep = uniquement listes d'interdictions, mappings reg. refs vérifiés) | **0 must-fix** — PASS. Phase A regulatoryRefs + Disclaimer + populated 15 findings + 13 recs ; Phase B-lite profile pref (tone only) ; Phase C-skeleton System Builder (6 steps, no persistence) ; Phase D Prioritized Action Plan (mapping verrouillé, wording verrouillé, profile=tone only) + Help FAQ ; hardening parallèles (lazyWithRetry, chunk-aware ErrorBoundary, App Check lazy, prefetch tightening) | System Builder content v2 + persistance différés, Action Plan persistance done/dismissed différée, PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, i18n §9.24 + analytics §9.25 + auth/PDF/audio §9.23 restants |
 | J10→J11 | §17 mini-gate (worker tsc clean, baseline PASS=75 FAIL=0, worktree clean, prod match `l9QAi4Lo`, portal no-auth 401) | **0 must-fix** — PASS. Payment Methods via Stripe Customer Portal (Approche A, réutilise `/api/billing/portal`, `flow_data` deep-link, no new endpoint, PCI SAQ-A, owner/billing gating, empty-state) + UI polish v1 (CTA equal-width) + v2 (rangée « Billing actions » dédiée). Validé visuellement prod | Approche B (SetupIntent+Elements) différée, pré-requis opérateur portal config, PDF renderer, Option B auth handler, App Check enforcement, `mail.ailunapro.com` DNS, §9.23 reste (Audio/Attestation/Webhooks) + §9.24 i18n + §9.25 analytics |
 | J11→J12 | §17 mini-gate (baseline PASS=74 FAIL=0, build clean, worktree clean, prod `D2AjPr86`, audio code = no fetch/network) | **0 must-fix** — PASS. Audio Explanations (Web Speech API client-side, disclaimer-first, no autoplay/PII/storage/endpoint) sur AuditResult+ReportDetail+ReportShare ; sélecteur langue (lang-only, no translation) + voix (scored auto-pick, per-lang presets, micro-pauses, Test voice). Listening approval PASS. Intermediate FR-strings FAIL fixed via allowlisted LANGUAGE_LABELS | Cloud TTS premium (Option B), traduction script (§9.24), Attestation/Webhooks (§9.23 reste), §9.24 i18n, §9.25 analytics, PDF renderer, App Check enforcement, `mail.ailunapro.com` DNS |
+| J12→J13 | §17 mini-gate (worker tsc clean, baseline PASS=75 FAIL=0, worktree clean, geo+fx 200, prod fe `COXIEMhY`/worker `668f04fa`) | **0 must-fix** — PASS. Smart locale detect + currency DISPLAY (display-only) : `/api/public/geo` (no-auth, no-cache, no IP/PII) + `/api/public/fx` (ECB daily, no key, 6h cache, static fallback) ; detect non-persistent ; "≈ local · billed in USD" ; **perf fix** geo/FX off global boot → Billing-only (Dashboard zéro geo/fx, main 87KB). Stripe USD authoritative | UI translation (§9.24 multilingual), notice UX Firestore-blocked (opt), Batch C chunk-retry (await console line), cloud TTS, Attestation/Webhooks §9.23, §9.25 analytics, PDF renderer, App Check enforcement, `mail.ailunapro.com` DNS |
 | **§9.23 Planned/Partial** | partiel — Prioritized Action Plan **LIVRÉ** (J9 Phase D, `5c3461d`) ; reste planifié | **Livré** : Prioritized Action Plan (dérivation pure, 3 buckets verrouillés Critical/Important/Improvement, profile = tone only, wording verrouillé interdisant compliance claims). **Planifié / non implémenté** : AI System Builder guidé (skeleton J9 B3 ✅, contenu+persistance v2 différé), Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management, Webhooks sortants opt-in | Guardrails permanents §9.23 inchangés ; tout futur élargissement = §17 dédié |
 | **§9.24 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : Multilingual (fr/es/pt/it/de/ru + en default), Currency display auto, Smart locale detection (pref → navigator → CF-IPCountry → en/USD), UX i18n switcher + currency indicator. Chaque sous-item ouvrira son §17 dédié | Guardrails §9.24 : no LLM translation, no legal localization claim, no IP/PII stored, no billing logic change outside Stripe, display-layer only, disclaimer §9.22 traduit + relu humainement |
 | **§9.25 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun SDK, aucun gate ouvert. | **Planifié / non implémenté** : PostHog product analytics (EU-hosted / self-host préféré), events route + feature usage + perf, lazy SDK post-consentement, wrapper `lib/analytics/track.ts`. Phase A (route+perf) puis Phase B (feature usage) — chaque phase = §17 dédié | Guardrails §9.25 : ❌ session replay, ❌ keystrokes/form values, ❌ audit answers, ❌ PII/customer content, ❌ cross-tenant, ❌ ad-trackers. Opt-in + DNT + IP anonymization + IDs hashés. Jamais d'impact sur scoring/findings |
