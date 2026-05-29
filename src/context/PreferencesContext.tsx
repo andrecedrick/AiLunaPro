@@ -16,6 +16,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from 'react';
@@ -26,10 +27,12 @@ import {
   saveDisplayCurrency,
   loadUserProfile,
   saveUserProfile,
+  hasExplicitDisplayCurrency,
   type Language,
   type DisplayCurrency,
   type UserProfile,
 } from '../lib/preferences';
+import { fetchSuggestedCurrency } from '../lib/locale/geoService';
 
 interface PreferencesValue {
   language:           Language;
@@ -55,7 +58,19 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
 
   const setDisplayCurrency = useCallback((c: DisplayCurrency) => {
     setDisplayCurrencyState(c);
-    saveDisplayCurrency(c);
+    saveDisplayCurrency(c); // explicit user choice → persist
+  }, []);
+
+  // J12 smart-locale: if the user has NOT explicitly chosen a currency, set an
+  // in-memory default from geo (display-only). NON-PERSISTENT — only an explicit
+  // selector change (setDisplayCurrency) writes localStorage.
+  useEffect(() => {
+    if (hasExplicitDisplayCurrency()) return;
+    let active = true;
+    fetchSuggestedCurrency()
+      .then(c => { if (active && c) setDisplayCurrencyState(c); })
+      .catch(() => { /* keep usd default */ });
+    return () => { active = false; };
   }, []);
 
   const setUserProfile = useCallback((p: UserProfile) => {

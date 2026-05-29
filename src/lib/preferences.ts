@@ -146,6 +146,15 @@ export function saveDisplayCurrency(c: DisplayCurrency): void {
   try { localStorage.setItem(KEYS.currency, c); } catch { /* noop */ }
 }
 
+/**
+ * J12: has the user EXPLICITLY chosen a display currency? (localStorage key
+ * present). When false, smart-locale detection may set an in-memory default
+ * without persisting — detection is non-persistent until the user confirms.
+ */
+export function hasExplicitDisplayCurrency(): boolean {
+  try { return localStorage.getItem(KEYS.currency) !== null; } catch { return false; }
+}
+
 /* ── User profile (J9 Phase B-lite, UI/copy only) ─────────── */
 
 export function loadUserProfile(): UserProfile {

@@ -21,6 +21,8 @@ import { useTokens } from '../context/TokensContext';
 import { PLAN_CONFIGS, type PlanTier } from '../types/billing';
 import { createCheckoutSession, createPortalSession, CheckoutError, PortalError, WORKER_BASE, fetchInvoices, type StripeInvoice } from '../lib/billing/stripeClient';
 import { CURRENCY_SYMBOLS, type Currency, type CurrencySettings, DEFAULT_CURRENCY_SETTINGS } from '../lib/billing/currencyConstants';
+import { usePreferences } from '../context/PreferencesContext';
+import { formatApproxFromUsd } from '../lib/locale/fxRates';
 import { formatMoney } from '../lib/billing/currencyFormat';
 import { resolveBillingCurrency } from '../lib/billing/currencyDetect';
 import { db } from '../lib/firestore';
@@ -176,6 +178,10 @@ interface PricingCardProps {
 function PricingCard({ plan, isCurrent, loading, disabled, onSubscribe }: PricingCardProps) {
   const isFree = plan.key === 'free';
   const accent = plan.bestValue;
+  // J12 display-only: approximate local-currency hint. Stripe bills in USD.
+  const { displayCurrency } = usePreferences();
+  const priceUsd = parseFloat(plan.price.replace(/[^0-9.]/g, '')) || 0;
+  const approx = priceUsd > 0 ? formatApproxFromUsd(priceUsd, displayCurrency as Currency) : null;
 
   return (
     <div style={{
@@ -233,6 +239,11 @@ function PricingCard({ plan, isCurrent, loading, disabled, onSubscribe }: Pricin
           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 4 }}>
             {plan.priceSuffix}
           </span>
+        )}
+        {approx && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+            {approx}{plan.priceSuffix ?? ''} approx · billed in USD
+          </div>
         )}
       </div>
 
