@@ -40,7 +40,27 @@ async function ensureInit(): Promise<void> {
         disable_surveys: true,         // no surveys.js load — minimal footprint
         persistence: 'localStorage',   // no cross-site cookies
         // Anonymous only — we never call identify() with uid/email.
-      });
+        //
+        // PRIVACY: PostHog auto-attaches $current_url/$pathname/$referrer (full
+        // window.location.href) to EVERY event — our hash routes carry ids
+        // (#/reports/detail/<id>) and query (?topup=, ?session_id=). Strip all
+        // URL-bearing props to ORIGIN ONLY. Our explicit `route` prop already
+        // carries the id-stripped route name, so no analytic value is lost.
+        sanitize_properties: (properties: Record<string, unknown>) => {
+          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+          const URL_KEYS = [
+            '$current_url', '$pathname', '$referrer', '$referring_domain',
+            '$initial_current_url', '$initial_pathname', '$initial_referrer',
+            '$initial_referring_domain', '$session_entry_url', '$session_entry_pathname',
+          ];
+          for (const k of URL_KEYS) {
+            if (k in properties && properties[k] != null) {
+              properties[k] = k.includes('referr') ? '' : origin;
+            }
+          }
+          return properties;
+        },
+      } as Parameters<typeof posthog.init>[1]);
       ph = posthog as unknown as { capture: (e: string, p?: Props) => void };
     })();
   }
