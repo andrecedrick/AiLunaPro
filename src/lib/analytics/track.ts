@@ -37,6 +37,7 @@ async function ensureInit(): Promise<void> {
         disable_session_recording: true,
         capture_pageview: false,       // we emit manual route events
         capture_pageleave: false,
+        disable_surveys: true,         // no surveys.js load — minimal footprint
         persistence: 'localStorage',   // no cross-site cookies
         // Anonymous only — we never call identify() with uid/email.
       });
