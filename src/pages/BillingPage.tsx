@@ -767,70 +767,67 @@ export function BillingPage() {
               </div>
             )}
           </div>
-          {canManage && (
+          {/* Mock-layer plan controls stay in the header; Firebase billing
+              actions move to the dedicated "Billing actions" row below. */}
+          {canManage && !isFirebaseLayer && (
             <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
-              {isFirebaseLayer ? (
-                stripeCustomerId ? (
-                  /* J10 polish: aligned equal-width CTA group. Desktop = same row
-                     (wraps); mobile = full-width stacked via flex-basis + wrap. */
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 12,
-                      width: '100%',
-                      minWidth: 240,
-                      maxWidth: 420,
-                      alignItems: 'stretch',
-                    }}
-                  >
-                    {hasActiveSubscription && (
-                      <button
-                        type="button"
-                        onClick={() => handleManagePortal()}
-                        disabled={checkoutLoading}
-                        style={{ flex: '1 1 180px', padding: '10px 16px', borderRadius: 10, border: '1.5px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 700, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1, fontFamily: 'var(--font-body)' }}
-                      >
-                        {checkoutLoading ? 'Loading…' : 'Manage subscription'}
-                      </button>
-                    )}
-                    {/* J10: payment-methods deep-link into the Stripe Customer Portal. */}
-                    <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <button
-                        type="button"
-                        onClick={() => handleManagePortal('payment_method_update')}
-                        disabled={checkoutLoading}
-                        style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: '1.5px solid var(--border-strong, var(--border))', background: 'var(--surface)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 13, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1, fontFamily: 'var(--font-body)' }}
-                      >
-                        {checkoutLoading ? 'Loading…' : 'Manage payment methods'}
-                      </button>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
-                        Update card, set default, remove
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 240, textAlign: 'right', lineHeight: 1.5 }}>
-                    No Stripe customer yet. Payment methods become available after your first subscription or token purchase.
-                  </div>
-                )
+              {subscription.cancelAtPeriodEnd ? (
+                <button type="button" onClick={resumePlan} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                  Resume plan
+                </button>
               ) : (
-                subscription.cancelAtPeriodEnd ? (
-                  <button type="button" onClick={resumePlan} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                    Resume plan
-                  </button>
-                ) : (
-                  <button type="button" onClick={cancelPlan} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                    Cancel plan
-                  </button>
-                )
-              )}
-              {checkoutError && (
-                <div style={{ fontSize: 12, color: 'var(--red-text)' }}>{checkoutError}</div>
+                <button type="button" onClick={cancelPlan} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                  Cancel plan
+                </button>
               )}
             </div>
           )}
         </div>
+
+        {/* J10 polish: dedicated "Billing actions" row (Firebase layer).
+            Full-width, clear hierarchy, equal-width CTAs. UI-only. */}
+        {canManage && isFirebaseLayer && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
+              Billing actions
+            </div>
+            {stripeCustomerId ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'stretch' }}>
+                {hasActiveSubscription && (
+                  <button
+                    type="button"
+                    onClick={() => handleManagePortal()}
+                    disabled={checkoutLoading}
+                    style={{ flex: '1 1 220px', maxWidth: 320, padding: '12px 18px', borderRadius: 10, border: '1.5px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 700, fontSize: 14, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1, fontFamily: 'var(--font-body)' }}
+                  >
+                    {checkoutLoading ? 'Loading…' : 'Manage subscription'}
+                  </button>
+                )}
+                <div style={{ flex: '1 1 220px', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleManagePortal('payment_method_update')}
+                    disabled={checkoutLoading}
+                    style={{ width: '100%', padding: '12px 18px', borderRadius: 10, border: '1.5px solid var(--border-strong, var(--border))', background: 'var(--surface)', color: 'var(--text-primary)', fontWeight: 700, fontSize: 14, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1, fontFamily: 'var(--font-body)' }}
+                  >
+                    {checkoutLoading ? 'Loading…' : 'Manage payment methods'}
+                  </button>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    Update card, set default, remove — handled securely by Stripe.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 520 }}>
+                No Stripe customer yet. Payment methods become available after your first
+                subscription or token purchase.
+              </div>
+            )}
+            {checkoutError && (
+              <div style={{ fontSize: 12, color: 'var(--red-text)', marginTop: 10 }}>{checkoutError}</div>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Tokens — J1.4A. Hidden for client/unauth via TokensProvider gate. */}
