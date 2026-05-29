@@ -1,0 +1,63 @@
+/**
+ * Analytics track() wrapper — J13 (PostHog Phase A).
+ *
+ * STRICT no-op unless consent === granted AND VITE_POSTHOG_KEY/HOST are set.
+ * PostHog SDK is lazy-imported on first track after consent — so non-consenting
+ * users (and the whole app pre-consent) never download or run it.
+ *
+ * Privacy: autocapture OFF, session recording OFF, manual pageview only,
+ * anonymous (no identify / no PII), EU host. Event payloads must carry NO PII
+ * (callers send route templates / counts only — never ids, emails, content).
+ */
+
+import { hasConsent } from './consent';
+
+type Props = Record<string, string | number | boolean | null | undefined>;
+
+const KEY  = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
+const HOST = (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ?? 'https://eu.i.posthog.com';
+
+let initPromise: Promise<unknown> | null = null;
+// Loaded PostHog instance once initialised; null until then.
+let ph: { capture: (e: string, p?: Props) => void } | null = null;
+
+function configured(): boolean {
+  return typeof KEY === 'string' && KEY.length > 0;
+}
+
+/** Lazy init — only called when consent granted + configured. */
+async function ensureInit(): Promise<void> {
+  if (ph || !configured() || !hasConsent()) return;
+  if (!initPromise) {
+    initPromise = (async () => {
+      const { default: posthog } = await import('posthog-js');
+      posthog.init(KEY as string, {
+        api_host: HOST,
+        autocapture: false,            // no DOM/click autocapture
+        disable_session_recording: true,
+        capture_pageview: false,       // we emit manual route events
+        capture_pageleave: false,
+        persistence: 'localStorage',   // no cross-site cookies
+        // Anonymous only — we never call identify() with uid/email.
+      });
+      ph = posthog as unknown as { capture: (e: string, p?: Props) => void };
+    })();
+  }
+  await initPromise;
+}
+
+/**
+ * Track an event. No-op without consent or configuration. Fire-and-forget;
+ * never throws into callers.
+ */
+export function track(event: string, props?: Props): void {
+  if (!hasConsent() || !configured()) return;
+  void ensureInit()
+    .then(() => { ph?.capture(event, props); })
+    .catch(() => { /* analytics must never break the app */ });
+}
+
+/** Initialise eagerly after a fresh consent grant (so the SDK is ready). */
+export function initAnalyticsIfConsented(): void {
+  if (hasConsent() && configured()) void ensureInit().catch(() => {});
+}
