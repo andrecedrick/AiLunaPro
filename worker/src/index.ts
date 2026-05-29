@@ -44,6 +44,7 @@ import recommendRoutes       from './routes/recommend';
 import platformRoutes        from './routes/platform';
 import platformOpsRoutes     from './routes/platform-ops';
 import platformMetricsRoutes from './routes/platform-metrics';
+import publicGeoRoutes       from './routes/public-geo';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -147,6 +148,7 @@ app.route('/', recommendRoutes);
 app.route('/', platformRoutes);
 app.route('/', platformOpsRoutes);
 app.route('/', platformMetricsRoutes);
+app.route('/', publicGeoRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));
