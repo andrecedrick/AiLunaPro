@@ -33,8 +33,18 @@ const LANG_OPTIONS: { code: string; label: string }[] = [
   { code: 'pt-PT', label: 'Português' },
 ];
 
-/** Names hinting at higher-quality / more natural voices. */
-const PREFERRED_VOICE_RE = /google|microsoft|natural|neural|siri|enhanced|premium/i;
+/** Per-language rate/pitch presets to soften robotic cadence. */
+const LANG_TUNING: Record<string, { rate: number; pitch: number }> = {
+  en: { rate: 0.95, pitch: 1.0 },
+  fr: { rate: 0.90, pitch: 1.02 },
+  es: { rate: 0.90, pitch: 1.02 },
+  it: { rate: 0.90, pitch: 1.02 },
+  pt: { rate: 0.90, pitch: 1.02 },
+  de: { rate: 0.92, pitch: 1.0 },
+};
+function tuningFor(lang: string): { rate: number; pitch: number } {
+  return LANG_TUNING[lang.slice(0, 2).toLowerCase()] ?? { rate: 0.95, pitch: 1.0 };
+}
 
 /** Voices whose lang matches the 2-letter prefix of `lang`. */
 function voicesForLang(lang: string): SpeechSynthesisVoice[] {
@@ -43,11 +53,26 @@ function voicesForLang(lang: string): SpeechSynthesisVoice[] {
   return window.speechSynthesis.getVoices().filter(v => v.lang.slice(0, 2).toLowerCase() === p);
 }
 
-/** Auto-pick: prefer natural-sounding voice names, else first match. */
+/** Quality score for a voice name — higher = more natural. Aggressive ranking. */
+function voiceScore(name: string): number {
+  const n = name.toLowerCase();
+  let s = 0;
+  if (/neural/.test(n)) s += 100;
+  if (/natural/.test(n)) s += 90;
+  if (/premium|enhanced/.test(n)) s += 80;
+  if (/siri/.test(n)) s += 60;
+  if (/google/.test(n)) s += 50;
+  if (/microsoft/.test(n)) s += 40;
+  // Penalise known robotic engines.
+  if (/espeak|robot|compact|pico/.test(n)) s -= 50;
+  return s;
+}
+
+/** Auto-pick: highest-scored voice; ties → first. */
 function pickDefaultVoice(list: SpeechSynthesisVoice[]): string {
   if (list.length === 0) return '';
-  const preferred = list.find(v => PREFERRED_VOICE_RE.test(v.name));
-  return (preferred ?? list[0]).voiceURI;
+  const best = [...list].sort((a, b) => voiceScore(b.name) - voiceScore(a.name))[0];
+  return best.voiceURI;
 }
 
 /** Match navigator.language to an option (by 2-letter prefix); else en-US. */
@@ -78,7 +103,8 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
   useEffect(() => {
     if (!SUPPORTED) return;
     const refresh = () => {
-      const list = voicesForLang(lang);
+      // Sort best-first so the dropdown surfaces natural voices at the top.
+      const list = voicesForLang(lang).sort((a, b) => voiceScore(b.name) - voiceScore(a.name));
       setVoices(list);
       // Keep current selection if still valid for this lang; else auto-pick.
       setVoiceURI(prev => (list.some(v => v.voiceURI === prev) ? prev : pickDefaultVoice(list)));
@@ -113,6 +139,25 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
     );
   }
 
+  // Build a tuned utterance (lang preset + chosen voice). Shared by playback
+  // and the "Test voice" button.
+  const makeUtterance = (text: string): SpeechSynthesisUtterance => {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = langRef.current;
+    const t = tuningFor(langRef.current);
+    u.rate = t.rate;
+    u.pitch = t.pitch;
+    u.volume = 1.0;
+    if (voiceURIRef.current) {
+      const v = window.speechSynthesis.getVoices().find(vv => vv.voiceURI === voiceURIRef.current);
+      if (v) u.voice = v;
+    }
+    return u;
+  };
+
+  // ~280ms micro-pause between sentences for a less rushed, more natural cadence.
+  const SECTION_PAUSE_MS = 280;
+
   const speakFrom = (start: number) => {
     const sentences = sentencesRef.current;
     if (start >= sentences.length) {
@@ -121,21 +166,14 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
       return;
     }
     idxRef.current = start;
-    const u = new SpeechSynthesisUtterance(sentences[start]);
-    u.lang = langRef.current;
-    // Conservative tuning to reduce robotic cadence.
-    u.rate = 0.95;
-    u.pitch = 1.0;
-    u.volume = 1.0;
-    // Assign chosen voice (next-utterance only — no mid-sentence switch).
-    if (voiceURIRef.current) {
-      const v = window.speechSynthesis.getVoices().find(vv => vv.voiceURI === voiceURIRef.current);
-      if (v) u.voice = v;
-    }
+    const u = makeUtterance(sentences[start]);
     u.onend = () => {
-      // Advance only if we're still in playing state (not stopped/paused).
       if (window.speechSynthesis.speaking || window.speechSynthesis.pending) return;
-      speakFrom(start + 1);
+      // Micro-pause before the next sentence (deterministic, no meaning change).
+      window.setTimeout(() => {
+        // Only continue if still playing (not stopped/paused meanwhile).
+        if (idxRef.current === start) speakFrom(start + 1);
+      }, SECTION_PAUSE_MS);
     };
     u.onerror = () => setState('idle');
     window.speechSynthesis.speak(u);
@@ -152,6 +190,14 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
     sentencesRef.current = buildSpeechScript(result);
     setState('playing');
     speakFrom(0);
+  };
+
+  // Test voice — speak a single demo sentence with current lang/voice/tuning.
+  // Does not affect the main playback state machine.
+  const handleTest = () => {
+    if (state === 'playing' || state === 'paused') return;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(makeUtterance('This is a sample of the selected voice.'));
   };
 
   const handlePause = () => {
@@ -260,6 +306,7 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
             ))}
           </select>
         )}
+        {state === 'idle' && btn('🔈 Test voice', handleTest)}
         {state !== 'playing' ? btn(state === 'paused' ? '▶ Resume' : '▶ Play', handlePlay, true) : btn('⏸ Pause', handlePause)}
         {state !== 'idle' && btn('⏹ Stop', handleStop)}
       </div>
