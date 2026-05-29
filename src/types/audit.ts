@@ -86,6 +86,7 @@ export type Route =
   | { name: 'diagnostic' }
   | { name: 'roi-calculator' }
   | { name: 'help' }
+  | { name: 'system-builder' }
   | { name: 'accept-invite' };
 
 export type RouteName = Route['name'];

@@ -44,6 +44,7 @@ const AgentDetailPage      = lazy(() => import('./pages/AgentDetailPage').then(m
 const DiagnosticPage       = lazy(() => import('./pages/DiagnosticPage').then(m => ({ default: m.DiagnosticPage })));
 const RoiCalculatorPage    = lazy(() => import('./pages/RoiCalculatorPage').then(m => ({ default: m.RoiCalculatorPage })));
 const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
+const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -94,6 +95,8 @@ function PageOutlet() {
         return <AgentDetailPage />;
       case 'help':
         return <HelpPage />;
+      case 'system-builder':
+        return <SystemBuilderPage />;
       case 'dashboard':
       default:
         return <DashboardPage />;
@@ -134,6 +137,8 @@ function AppShell() {
       navigate({ name: 'help' });
     } else if (h.startsWith('#/operator')) {
       navigate({ name: 'operator' });
+    } else if (h.startsWith('#/system-builder')) {
+      navigate({ name: 'system-builder' });
     } else if (h.startsWith('#/audit/history')) {
       navigate({ name: 'audit/history' });
     } else if (h.startsWith('#/reports/share/')) {
