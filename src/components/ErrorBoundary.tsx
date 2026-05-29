@@ -92,12 +92,22 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </details>
             )}
             {chunkFail ? (
-              <button
-                onClick={() => window.location.reload()}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
-              >
-                Reload page
-              </button>
+              <div className="flex flex-col gap-2">
+                {/* Retry the lazy import without a full reload (reset → Suspense
+                    re-attempts via lazyWithRetry). Lighter than a full reload. */}
+                <button
+                  onClick={this.reset}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
+                >
+                  Retry loading
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded"
+                >
+                  Reload page
+                </button>
+              </div>
             ) : (
               <button
                 onClick={this.reset}
