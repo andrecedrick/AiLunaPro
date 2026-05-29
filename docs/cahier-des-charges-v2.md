@@ -1029,6 +1029,73 @@ détection en best-effort uniquement ; pas de header personnalisé envoyé au ti
 Smart locale detection (lecture-only) → Multilingual core (en/fr/es first) →
 Currency display layer → langues additionnelles (pt/it/de/ru) au fil de l'eau.
 
+#### 9.25 Product Analytics & Telemetry *(planifié — non implémenté)*
+
+**Statut** : **documentation prévisionnelle uniquement** (2026-05-28). Aucun code,
+aucun SDK, aucun gate ouvert. Tout rollout d'analytics ouvrira son propre scope §17
+(pré-flight → plan gaté → batches → exit-gate).
+
+**Purpose**
+Comprendre comment les utilisateurs interagissent avec audits / guidance / builder
+pour **améliorer UX, clarté, adoption** — **PAS de surveillance**. Soutient les
+décisions produit pour enterprises / entrepreneurs / individuals.
+
+**Tooling**
+**PostHog** comme outil principal d'analytics produit. **Self-hosted ou EU-hosted
+préféré** quand possible (résidence des données + maîtrise GDPR). EU-hosted SaaS
+acceptable v1 ; self-host = option pour clients enterprise sensibles à la
+résidence des données.
+
+**Allowed telemetry (v1)**
+- **Page views** : niveau route uniquement (`/dashboard`, `/audit/new`,
+  `/reports`, `/operator`, …).
+- **Feature events** : `audit_started`, `audit_completed`, `report_viewed`,
+  `report_shared`, `guidance_expanded`, `system_builder_step_viewed`,
+  `audio_play`, `audio_pause`.
+- **Performance signals** : `chunk_load_failed`, `chunk_retry_recovered`,
+  `chunk_retry_failed`.
+- Tous payloads = **comptes agrégés** ou IDs hashés (jamais valeurs brutes).
+
+**Explicitement interdit (verrous permanents)**
+- ❌ **Session replay** (PostHog feature) — désactivé hard.
+- ❌ Capture de keystrokes / form values / clicks sur inputs.
+- ❌ Réponses d'audit (`AuditAnswers`) — jamais.
+- ❌ PII (emails, noms, orgIds en clair, IDs de customers Stripe).
+- ❌ Contenu utilisateur (notes, titres custom, messages d'invite).
+- ❌ Analytics cross-tenant ou benchmarking entre organisations.
+- ❌ Tracking publicitaire tiers / cookies marketing.
+
+**Privacy & consent**
+- **Opt-in** où requis (EU/CH/UK = consent banner avant chargement SDK ;
+  pas de cookies analytics avant consentement).
+- Respect **Do-Not-Track** (`navigator.doNotTrack`) → SDK ne s'initialise pas.
+- **IP anonymization** activée côté PostHog ; **aucune IP brute stockée**.
+- Event payload = IDs seulement (hashés quand applicable) ; aucune donnée
+  d'audit / answer / nom / email.
+- Retention configurée ; droits GDPR (accès / suppression) supportés.
+
+**Governance**
+- **Schéma d'analytics documenté** (events + properties par event) dans le repo
+  (`docs/analytics-schema.md`, futur).
+- **Chaque nouvel event** requiert review (PR + sign-off privacy) — vérifie :
+  pas de PII, pas de valeur d'input, pas de cross-tenant.
+- Analytics **n'affecte jamais** le scoring, les findings, les recommandations,
+  ou aucune décision applicative.
+- Usage **exclusif** : amélioration produit (UX, parcours, taux de complétion,
+  pages-à-erreur).
+
+**Architecture technique (pré-design)**
+- SDK PostHog chargé en **lazy chunk** post-consentement (jamais au boot path).
+- Wrapper d'abstraction `lib/analytics/track.ts` (futur) : tous appels passent
+  par lui ; respecte DNT + opt-in ; no-op si non consenti.
+- Worker reste **hors-piste** (pas d'event server-side v1 ; éviter de joindre
+  IP au moindre payload).
+
+**Ordre indicatif** (sujet à décision §17 à chaque ouverture) :
+Schema doc + governance (no code) → consent banner + DNT respect → wrapper
+lib/analytics → events Phase A (route + perf) → events Phase B (feature usage,
+post-validation privacy review).
+
 ---
 
 ## 10. Architecture technique
@@ -2374,6 +2441,7 @@ scope J6 verrouillé.
 | J8→J9 | §17 7 axes (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `DIXN1a9n`, endpoints 401 no-auth : me/ops-status/metrics) | **0 must-fix** — PASS. `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté. Validation prod côté opérateur déjà confirmée Batch 2/3 | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé), tokens per-org sums (différé) |
 | **§9.23 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : AI System Builder guidé, Prioritized Action Plan, Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management (Stripe official flows), Webhooks sortants opt-in. Chaque item ouvrira son §17 dédié | Guardrails permanents §9.23 : no compliance claim, no LLM, no PII in webhooks/audio, no secret exposure, informational only |
 | **§9.24 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : Multilingual (fr/es/pt/it/de/ru + en default), Currency display auto, Smart locale detection (pref → navigator → CF-IPCountry → en/USD), UX i18n switcher + currency indicator. Chaque sous-item ouvrira son §17 dédié | Guardrails §9.24 : no LLM translation, no legal localization claim, no IP/PII stored, no billing logic change outside Stripe, display-layer only, disclaimer §9.22 traduit + relu humainement |
+| **§9.25 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun SDK, aucun gate ouvert. | **Planifié / non implémenté** : PostHog product analytics (EU-hosted / self-host préféré), events route + feature usage + perf, lazy SDK post-consentement, wrapper `lib/analytics/track.ts`. Phase A (route+perf) puis Phase B (feature usage) — chaque phase = §17 dédié | Guardrails §9.25 : ❌ session replay, ❌ keystrokes/form values, ❌ audit answers, ❌ PII/customer content, ❌ cross-tenant, ❌ ad-trackers. Opt-in + DNT + IP anonymization + IDs hashés. Jamais d'impact sur scoring/findings |
 
 ---
 
