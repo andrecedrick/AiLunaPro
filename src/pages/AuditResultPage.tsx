@@ -16,6 +16,7 @@ import { SectionScores } from '../components/result/SectionScores';
 import { FindingsList } from '../components/result/FindingsList';
 import { RecommendationsList } from '../components/result/RecommendationsList';
 import { Roadmap } from '../components/result/Roadmap';
+import { ActionPlan } from '../components/result/ActionPlan';
 import { Disclaimer } from '../components/result/Disclaimer';
 import { AssistanceTeaser } from '../components/result/AssistanceTeaser';
 import { ResultActions } from '../components/result/ResultActions';
@@ -114,6 +115,7 @@ export function AuditResultPage() {
       </div>
 
       {/* Roadmap */}
+      <ActionPlan result={result} />
       <Roadmap result={result} />
 
       {/* Bridge into the post-audit assistance flow */}

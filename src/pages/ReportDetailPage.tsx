@@ -10,6 +10,7 @@ import { SectionScores } from '../components/result/SectionScores';
 import { FindingsList } from '../components/result/FindingsList';
 import { RecommendationsList } from '../components/result/RecommendationsList';
 import { Roadmap } from '../components/result/Roadmap';
+import { ActionPlan } from '../components/result/ActionPlan';
 import { Disclaimer } from '../components/result/Disclaimer';
 import { auditSections } from '../data/mockAuditQuestions';
 
@@ -88,6 +89,7 @@ export function ReportDetailPage() {
             <FindingsList result={result} />
             <RecommendationsList result={result} />
           </div>
+          <ActionPlan result={result} />
           <Roadmap result={result} />
 
           {/* J9: mandatory advisory disclaimer. */}

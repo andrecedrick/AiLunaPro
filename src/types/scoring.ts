@@ -93,6 +93,21 @@ export interface Recommendation {
   regulatoryRefs?: RegulatoryRef[];
 }
 
+/**
+ * J9 Phase D: Prioritized Action Plan.
+ * Derived from findings + recommendations — NEVER changes scoring or buckets
+ * any rec by anything other than the deterministic rule:
+ *   - critical:    referenced by a severity:'critical' finding OR impact:'critical'
+ *   - important:   severity:'high' related OR impact:'high' (not already critical)
+ *   - improvement: remainder
+ * Within bucket: sort by impact desc, then effort asc.
+ */
+export interface ActionPlan {
+  critical:    Recommendation[];
+  important:   Recommendation[];
+  improvement: Recommendation[];
+}
+
 /** A roadmap bucket by time horizon. */
 export interface RoadmapBucket {
   days: Timeframe;
