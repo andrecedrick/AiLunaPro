@@ -2383,7 +2383,45 @@ Scope tight : agrégation plateforme read-only (extension §9.21) + `canGoBack` 
 - **Différé** : `mail.ailunapro.com` DNS toujours en attente Firebase (§9.20) ; option B
   branded action handler ; PDF renderer ; App Check enforcement.
 
-Prochaine étape J9 : scope à définir (gaté).
+**✅ J9 — "AI Audit Guidance & System Builder"** — **CLÔTURÉ (§17 PASS, 0 must-fix)** le 2026-05-28.
+Tight v1 livré + extension Phase D Prioritized Action Plan + hardening parallèles.
+- **Phase A** `695f690` : `regulatoryRefs` (Finding + Recommendation), 15 findings + 13 recs
+  populés avec mappings EU AI Act / NIST AI RMF / ISO 42001 / GDPR ; `Disclaimer.tsx`
+  ("Informational guidance only · Not legal advice · Not a compliance certification") ;
+  monté sur AuditResultPage + ReportDetailPage + ReportSharePage ; chips refs sur
+  FindingsList + RecommendationsList. **Aucun changement de scoring.**
+- **Phase B-lite** `5778c6c` : `UserProfile` ('enterprise'|'entrepreneur'|'individual')
+  dans `lib/preferences.ts` + `PreferencesContext` + `PreferencesPage` selector ; 2 content
+  switches (tone Disclaimer + tone Action Plan intro). **Tone uniquement** ; jamais le
+  scoring, ni l'ordre, ni les buckets.
+- **Phase C-skeleton** `2d12a0d` : route `system-builder` + `SystemBuilderPage.tsx` —
+  6 steps statiques (purpose & risk · data governance · model selection · oversight ·
+  monitoring · documentation) avec checklist + key questions + refs chips + Disclaimer ;
+  CTA depuis AuditResultPage ("Designing a new AI system? → System Builder"). **No
+  persistence v1**, no input fields, no Sidebar link.
+- **Phase D — Prioritized Action Plan** `5c3461d` + `bf600af` : helper pur
+  `lib/scoring/actionPlan.ts` (mapping déterministe Critical/Important/Improvement,
+  tri impact desc puis effort asc) + composant `ActionPlan.tsx` (3 bands, cap
+  affichage 8 + "+N more", profile = intro tone only, wording verrouillé, légende
+  Roadmap-vs-ActionPlan) ; monté au-dessus de `Roadmap` sur les 3 surfaces ; cahier
+  §9.23 item 2 → ✅ LIVRÉ avec wording locks + Help FAQ "Roadmap vs Action Plan".
+- **Hardening parallèles** (hors core J9 mais shipped pendant le cycle) :
+  `cf4ce82` chunk-aware ErrorBoundary + `lazyWithRetry` + post-auth prefetch + Help
+  blocker FAQ ; `89637a0` lazy-load `firebase/app-check` + prefetch tightening
+  (Dashboard/NewAudit/ReportsList only).
+- **Gate §17 consolidé** : worker tsc ✅ · build 616ms ✅ · baseline PASS=75 FAIL=0 ·
+  worktree clean · prod match `Br8gGLwD` · forbidden-phrasing grep = uniquement
+  occurrences dans listes d'interdictions (cahier), aucune sur surface utilisateur.
+  **0 must-fix.**
+- **Findings ⚠️ (non bloquants)** : System Builder = skeleton (contenu étendu différé),
+  Action Plan = no persistence v1 (différé), `mail.ailunapro.com` DNS toujours en
+  attente Firebase (§9.20), App Check enforcement (gate ultérieur dédié).
+- **Do-NOT (verrous)** : ❌ LLM/dynamic generation · ❌ legal advice · ❌ compliance
+  certification claims · ❌ code generation · ❌ external public sharing · ❌ App Check
+  enforcement · ❌ Operator Secrets UI · ❌ impersonation/SuperAdmin · ❌ persistance
+  builder/action-plan v1 · ❌ Sidebar entries for builder/action-plan.
+
+Prochaine étape J10 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2469,6 +2507,7 @@ scope J6 verrouillé.
 | Post-J6 stabilité | §17 ciblé (chunks 200, render path guardé, prod match) | **0 must-fix** — "Oops" New Audit = blocage client (ERR_BLOCKED_BY_CLIENT), pas code. Polish : ErrorBoundary chunk-aware + Help FAQ blocker (`10b9923`) | — |
 | J7→J8 | §17 7 axes (baseline PASS=75 FAIL=0, worker tsc+build, worktree clean, prod match, ops-status 401) | **0 must-fix** — PASS. Operator Console read-only + setup guidé wrangler, validé prod navigateur clean (admin console / non-admin notice, no secret leak, copy=cmd only). J7C différé | Stripe publishable/price IDs `Not set` (config opérateur), `canGoBack`, J7C secret-edit UI, CF API token, App Check enforcement, impersonation |
 | J8→J9 | §17 7 axes (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `DIXN1a9n`, endpoints 401 no-auth : me/ops-status/metrics) | **0 must-fix** — PASS. `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté. Validation prod côté opérateur déjà confirmée Batch 2/3 | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé), tokens per-org sums (différé) |
+| J9→J10 | §17 consolidé (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `Br8gGLwD`, forbidden-phrasing grep = uniquement listes d'interdictions, mappings reg. refs vérifiés) | **0 must-fix** — PASS. Phase A regulatoryRefs + Disclaimer + populated 15 findings + 13 recs ; Phase B-lite profile pref (tone only) ; Phase C-skeleton System Builder (6 steps, no persistence) ; Phase D Prioritized Action Plan (mapping verrouillé, wording verrouillé, profile=tone only) + Help FAQ ; hardening parallèles (lazyWithRetry, chunk-aware ErrorBoundary, App Check lazy, prefetch tightening) | System Builder content v2 + persistance différés, Action Plan persistance done/dismissed différée, PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, i18n §9.24 + analytics §9.25 + auth/PDF/audio §9.23 restants |
 | **§9.23 Planned/Partial** | partiel — Prioritized Action Plan **LIVRÉ** (J9 Phase D, `5c3461d`) ; reste planifié | **Livré** : Prioritized Action Plan (dérivation pure, 3 buckets verrouillés Critical/Important/Improvement, profile = tone only, wording verrouillé interdisant compliance claims). **Planifié / non implémenté** : AI System Builder guidé (skeleton J9 B3 ✅, contenu+persistance v2 différé), Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management, Webhooks sortants opt-in | Guardrails permanents §9.23 inchangés ; tout futur élargissement = §17 dédié |
 | **§9.24 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : Multilingual (fr/es/pt/it/de/ru + en default), Currency display auto, Smart locale detection (pref → navigator → CF-IPCountry → en/USD), UX i18n switcher + currency indicator. Chaque sous-item ouvrira son §17 dédié | Guardrails §9.24 : no LLM translation, no legal localization claim, no IP/PII stored, no billing logic change outside Stripe, display-layer only, disclaimer §9.22 traduit + relu humainement |
 | **§9.25 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun SDK, aucun gate ouvert. | **Planifié / non implémenté** : PostHog product analytics (EU-hosted / self-host préféré), events route + feature usage + perf, lazy SDK post-consentement, wrapper `lib/analytics/track.ts`. Phase A (route+perf) puis Phase B (feature usage) — chaque phase = §17 dédié | Guardrails §9.25 : ❌ session replay, ❌ keystrokes/form values, ❌ audit answers, ❌ PII/customer content, ❌ cross-tenant, ❌ ad-trackers. Opt-in + DNT + IP anonymization + IDs hashés. Jamais d'impact sur scoring/findings |
