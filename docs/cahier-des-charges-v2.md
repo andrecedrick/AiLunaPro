@@ -971,11 +971,19 @@ de conformité). **Interdiction permanente** d'employer une formulation type
 Réutilise PDF renderer (futur, séparé). Avant ouverture du PDF renderer, ce livrable
 reste différé.
 
-**5. Payment Methods management — Billing UX**
-Section « Payment methods » dans Billing : add / update / remove carte de crédit via
-les flux officiels **Stripe Customer Payment Methods** (`SetupIntent` + Stripe
-Elements ou Customer Portal). **Aucune donnée carte stockée** côté AiLunaPro (PCI
-out of scope par design). Améliore UX enterprise / subscription.
+**5. Payment Methods management — Billing UX** *(✅ LIVRÉ — J10, 2026-05-28, commits `868ef8a` + `e8cabd2`)*
+**Approche A retenue : Stripe Customer Portal** (réutilise `/api/billing/portal`,
+**aucun nouvel endpoint**). Boutons « Manage subscription » + « Manage payment
+methods » dans BillingPage (CTA group equal-width responsive) ; le bouton payment-
+methods passe `flow: 'payment_method_update'` → le worker ajoute `flow_data` pour
+deep-link direct sur la section payment-methods du portail Stripe-hosted (fallback
+portail home si feature désactivée). **Aucune donnée carte** côté AiLunaPro
+(Stripe-hosted, **PCI SAQ-A**). Gating `requireRole(['owner','billing'])` inchangé ;
+empty-state « No Stripe customer yet » si pas de `stripeCustomerId`.
+**Différé (Approche B)** : `SetupIntent` + Stripe Elements (gestion in-app sans
+redirect) — non construit v1.
+**Pré-requis opérateur** : activer la feature « Payment methods » dans la config
+Stripe Dashboard → Customer portal (sinon deep-link retombe sur le portail home).
 
 **6. Webhooks for automation — optionnel, futur**
 - Webhooks **Stripe** lifecycle (payment succeeded/failed, subscription updated/
@@ -2421,7 +2429,22 @@ Tight v1 livré + extension Phase D Prioritized Action Plan + hardening parallè
   enforcement · ❌ Operator Secrets UI · ❌ impersonation/SuperAdmin · ❌ persistance
   builder/action-plan v1 · ❌ Sidebar entries for builder/action-plan.
 
-Prochaine étape J10 : scope à définir (gaté).
+**✅ J10 — "Payment Methods management"** — **CLÔTURÉ (§17 mini-gate PASS, 0 must-fix)** le 2026-05-28.
+Approche A (Stripe Customer Portal). Détails §9.23-5.
+- **Batch 1** `868ef8a` : worker `billing-portal.ts` accepte `flow` optionnel →
+  `flow_data` deep-link payment-methods (no new endpoint, gating owner/billing
+  inchangé) ; `stripeClient.createPortalSession(orgId, idToken, flow?)` ;
+  BillingPage boutons + empty-state « No Stripe customer yet ».
+- **Polish** `e8cabd2` : CTA group equal-width responsive (desktop same-row,
+  mobile stacked) + helper text « Update card, set default, remove ».
+- **Gate §17** : worker tsc ✅ · baseline PASS=75 FAIL=0 · worktree clean · prod
+  match `OnFUImAw` · portal no-auth 401 · validé visuellement prod. **0 must-fix.**
+- **Différé** : Approche B (SetupIntent+Elements), pré-requis opérateur (activer
+  feature payment-methods dans Stripe portal config).
+- **Do-NOT** : ❌ card handling/storage · ❌ in-app card forms v1 · ❌ nouvel endpoint ·
+  ❌ secret en UI · gating owner/billing maintenu.
+
+Prochaine étape J11 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2508,6 +2531,7 @@ scope J6 verrouillé.
 | J7→J8 | §17 7 axes (baseline PASS=75 FAIL=0, worker tsc+build, worktree clean, prod match, ops-status 401) | **0 must-fix** — PASS. Operator Console read-only + setup guidé wrangler, validé prod navigateur clean (admin console / non-admin notice, no secret leak, copy=cmd only). J7C différé | Stripe publishable/price IDs `Not set` (config opérateur), `canGoBack`, J7C secret-edit UI, CF API token, App Check enforcement, impersonation |
 | J8→J9 | §17 7 axes (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `DIXN1a9n`, endpoints 401 no-auth : me/ops-status/metrics) | **0 must-fix** — PASS. `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté. Validation prod côté opérateur déjà confirmée Batch 2/3 | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé), tokens per-org sums (différé) |
 | J9→J10 | §17 consolidé (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `Br8gGLwD`, forbidden-phrasing grep = uniquement listes d'interdictions, mappings reg. refs vérifiés) | **0 must-fix** — PASS. Phase A regulatoryRefs + Disclaimer + populated 15 findings + 13 recs ; Phase B-lite profile pref (tone only) ; Phase C-skeleton System Builder (6 steps, no persistence) ; Phase D Prioritized Action Plan (mapping verrouillé, wording verrouillé, profile=tone only) + Help FAQ ; hardening parallèles (lazyWithRetry, chunk-aware ErrorBoundary, App Check lazy, prefetch tightening) | System Builder content v2 + persistance différés, Action Plan persistance done/dismissed différée, PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, i18n §9.24 + analytics §9.25 + auth/PDF/audio §9.23 restants |
+| J10→J11 | §17 mini-gate (worker tsc clean, baseline PASS=75 FAIL=0, worktree clean, prod match `OnFUImAw`, portal no-auth 401) | **0 must-fix** — PASS. Payment Methods via Stripe Customer Portal (Approche A, réutilise `/api/billing/portal`, `flow_data` deep-link, no new endpoint, PCI SAQ-A, owner/billing gating, empty-state) + UI polish CTA equal-width responsive. Validé visuellement prod | Approche B (SetupIntent+Elements) différée, pré-requis opérateur portal config, PDF renderer, Option B auth handler, App Check enforcement, `mail.ailunapro.com` DNS, §9.23 reste (Audio/Attestation/Webhooks) + §9.24 i18n + §9.25 analytics |
 | **§9.23 Planned/Partial** | partiel — Prioritized Action Plan **LIVRÉ** (J9 Phase D, `5c3461d`) ; reste planifié | **Livré** : Prioritized Action Plan (dérivation pure, 3 buckets verrouillés Critical/Important/Improvement, profile = tone only, wording verrouillé interdisant compliance claims). **Planifié / non implémenté** : AI System Builder guidé (skeleton J9 B3 ✅, contenu+persistance v2 différé), Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management, Webhooks sortants opt-in | Guardrails permanents §9.23 inchangés ; tout futur élargissement = §17 dédié |
 | **§9.24 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : Multilingual (fr/es/pt/it/de/ru + en default), Currency display auto, Smart locale detection (pref → navigator → CF-IPCountry → en/USD), UX i18n switcher + currency indicator. Chaque sous-item ouvrira son §17 dédié | Guardrails §9.24 : no LLM translation, no legal localization claim, no IP/PII stored, no billing logic change outside Stripe, display-layer only, disclaimer §9.22 traduit + relu humainement |
 | **§9.25 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun SDK, aucun gate ouvert. | **Planifié / non implémenté** : PostHog product analytics (EU-hosted / self-host préféré), events route + feature usage + perf, lazy SDK post-consentement, wrapper `lib/analytics/track.ts`. Phase A (route+perf) puis Phase B (feature usage) — chaque phase = §17 dédié | Guardrails §9.25 : ❌ session replay, ❌ keystrokes/form values, ❌ audit answers, ❌ PII/customer content, ❌ cross-tenant, ❌ ad-trackers. Opt-in + DNT + IP anonymization + IDs hashés. Jamais d'impact sur scoring/findings |
