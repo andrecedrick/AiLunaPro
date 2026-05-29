@@ -33,6 +33,23 @@ const LANG_OPTIONS: { code: string; label: string }[] = [
   { code: 'pt-PT', label: 'Português' },
 ];
 
+/** Names hinting at higher-quality / more natural voices. */
+const PREFERRED_VOICE_RE = /google|microsoft|natural|neural|siri|enhanced|premium/i;
+
+/** Voices whose lang matches the 2-letter prefix of `lang`. */
+function voicesForLang(lang: string): SpeechSynthesisVoice[] {
+  if (!SUPPORTED) return [];
+  const p = lang.slice(0, 2).toLowerCase();
+  return window.speechSynthesis.getVoices().filter(v => v.lang.slice(0, 2).toLowerCase() === p);
+}
+
+/** Auto-pick: prefer natural-sounding voice names, else first match. */
+function pickDefaultVoice(list: SpeechSynthesisVoice[]): string {
+  if (list.length === 0) return '';
+  const preferred = list.find(v => PREFERRED_VOICE_RE.test(v.name));
+  return (preferred ?? list[0]).voiceURI;
+}
+
 /** Match navigator.language to an option (by 2-letter prefix); else en-US. */
 function defaultLang(): string {
   const nav = typeof navigator !== 'undefined' ? navigator.language : 'en-US';
@@ -50,18 +67,24 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
   const langRef = useRef(lang);
   langRef.current = lang;
 
-  // Is there a browser voice for the selected language? (voices load async.)
-  const [voiceMissing, setVoiceMissing] = useState(false);
+  // Voices for the selected language + the chosen voiceURI. Voices load async,
+  // so recompute on lang change AND on onvoiceschanged.
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => voicesForLang(lang));
+  const [voiceURI, setVoiceURI] = useState<string>('');
+  const voiceURIRef = useRef('');
+  voiceURIRef.current = voiceURI;
+  const voiceMissing = voices.length === 0;
+
   useEffect(() => {
     if (!SUPPORTED) return;
-    const check = () => {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length === 0) return; // not loaded yet; onvoiceschanged will re-fire
-      const p = lang.slice(0, 2).toLowerCase();
-      setVoiceMissing(!voices.some(v => v.lang.slice(0, 2).toLowerCase() === p));
+    const refresh = () => {
+      const list = voicesForLang(lang);
+      setVoices(list);
+      // Keep current selection if still valid for this lang; else auto-pick.
+      setVoiceURI(prev => (list.some(v => v.voiceURI === prev) ? prev : pickDefaultVoice(list)));
     };
-    check();
-    window.speechSynthesis.onvoiceschanged = check;
+    refresh();
+    window.speechSynthesis.onvoiceschanged = refresh;
     return () => { window.speechSynthesis.onvoiceschanged = null; };
   }, [lang]);
 
@@ -100,6 +123,15 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
     idxRef.current = start;
     const u = new SpeechSynthesisUtterance(sentences[start]);
     u.lang = langRef.current;
+    // Conservative tuning to reduce robotic cadence.
+    u.rate = 0.95;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+    // Assign chosen voice (next-utterance only — no mid-sentence switch).
+    if (voiceURIRef.current) {
+      const v = window.speechSynthesis.getVoices().find(vv => vv.voiceURI === voiceURIRef.current);
+      if (v) u.voice = v;
+    }
     u.onend = () => {
       // Advance only if we're still in playing state (not stopped/paused).
       if (window.speechSynthesis.speaking || window.speechSynthesis.pending) return;
@@ -204,6 +236,30 @@ export function AudioExplanation({ result }: { result: AuditResult }) {
             <option key={o.code} value={o.code}>{o.label}</option>
           ))}
         </select>
+        {/* Voice selector — only shown when voices for the language exist. */}
+        {voices.length > 0 && (
+          <select
+            value={voiceURI}
+            onChange={e => setVoiceURI(e.target.value)}
+            aria-label="Audio voice"
+            style={{
+              padding: '8px 10px',
+              borderRadius: 8,
+              border: '1.5px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: 'var(--font-body)',
+              cursor: 'pointer',
+              maxWidth: 180,
+            }}
+          >
+            {voices.map(v => (
+              <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
+            ))}
+          </select>
+        )}
         {state !== 'playing' ? btn(state === 'paused' ? '▶ Resume' : '▶ Play', handlePlay, true) : btn('⏸ Pause', handlePause)}
         {state !== 'idle' && btn('⏹ Stop', handleStop)}
       </div>

@@ -41,23 +41,24 @@ export function buildSpeechScript(result: AuditResult): string[] {
   s.push(`Your maturity level is ${result.maturityLevel}, ${MATURITY_SPOKEN[result.maturityLevel]}.`);
 
   // 3. Findings by severity (counts only, no detail/PII).
+  // Deterministic pacing connector "Next," — improves cadence, no meaning change.
   const f = result.findingsBySeverity;
   const total = f.critical + f.high + f.medium + f.low;
   if (total === 0) {
-    s.push('No findings were identified. Nice work.');
+    s.push('Next, the findings. No findings were identified. Nice work.');
   } else {
     const parts: string[] = [];
     if (f.critical) parts.push(`${f.critical} critical`);
     if (f.high) parts.push(`${f.high} high`);
     if (f.medium) parts.push(`${f.medium} medium`);
     if (f.low) parts.push(`${f.low} low`);
-    s.push(`We identified ${total} finding${total === 1 ? '' : 's'}: ${parts.join(', ')}.`);
+    s.push(`Next, the findings. We identified ${total} finding${total === 1 ? '' : 's'}: ${parts.join(', ')}.`);
   }
 
   // 4. Top 3 recommendations (public titles + whyItMatters; no PII).
   const top = result.recommendations.slice(0, 3);
   if (top.length > 0) {
-    s.push(`Here ${top.length === 1 ? 'is the top recommendation' : `are the top ${top.length} recommendations`}.`);
+    s.push(`Now, your top ${top.length === 1 ? 'recommendation' : `${top.length} recommendations`}.`);
     top.forEach((r, i) => {
       const why = r.whyItMatters ? ` ${r.whyItMatters}` : '';
       s.push(`${i + 1}. ${r.title}.${why}`);
@@ -65,7 +66,7 @@ export function buildSpeechScript(result: AuditResult): string[] {
   }
 
   // 5. Close.
-  s.push('Open the full report and the prioritized action plan for the complete details.');
+  s.push('Finally, open the full report and the prioritized action plan for the complete details.');
 
   return s;
 }
