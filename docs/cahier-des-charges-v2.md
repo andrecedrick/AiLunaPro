@@ -907,6 +907,69 @@ Fail-soft Stripe : si l'API plante → zéros + flag `stripeUnavailable: true`.
 Tout futur enrichissement métriques doit respecter cette règle ; sinon → revue
 sécurité dédiée + gate §17 séparé.
 
+#### 9.23 Planned Guidance, Builder, Audio & Billing Extensions *(planifié — non implémenté)*
+
+**Statut** : **documentation prévisionnelle uniquement** (2026-05-28). Aucun code,
+aucune implémentation. Aligne stakeholders sur la direction produit. Chaque item
+ouvrira son propre scope §17 (pré-flight → plan gaté → batches → exit-gate) avant
+toute écriture de code.
+
+**1. AI System Builder (guidé) — pré-déploiement**
+Assistant statique de **conception** de système IA (data / model / oversight /
+monitoring / governance). Format : checklist multi-étapes + questions plain-English +
+références EU AI Act / NIST AI RMF / ISO 42001 par étape. **No LLM**, **no codegen**,
+**no persistance v1**. Objectif éducatif & support de design avant production.
+Réutilise les fondations §9.22 (J9). v1 = pure UX / contenu statique.
+
+**2. Prioritized Action Plan — post-audit**
+Plan de remédiation priorisé après audit (3 buckets : **Critical / Important /
+Improvement**), ordre d'actions clair. **Aucune auto-application**, **aucune
+intégration aux systèmes du client**. Guidance informationnelle uniquement.
+Étend les composants existants `Roadmap` + `RecommendationsList` (J5/J9).
+
+**3. Audio Explanations — accessibilité & gain de temps**
+Lecture audio optionnelle (TTS sur contenu existant) du résumé résultat + risques
+clés + next-steps. Format court (2–3 min). Le **disclaimer obligatoire** §9.22 est
+lu en audio. **Aucune génération dynamique**, **aucune affirmation légale**, statique
+sur les findings/recos déjà calculés. Aucun stockage de l'audio côté client.
+
+**4. Attestation of Analysis (PAS un certificat de conformité)**
+Document téléchargeable **« AI Risk Assessment / Analysis Statement »** : scope, date,
+version, résumé des findings, **disclaimer clair** (PAS une certification légale ou
+de conformité). **Interdiction permanente** d'employer une formulation type
+« certifié conforme » / « compliance certified » / « passed audit » / equivalents.
+Réutilise PDF renderer (futur, séparé). Avant ouverture du PDF renderer, ce livrable
+reste différé.
+
+**5. Payment Methods management — Billing UX**
+Section « Payment methods » dans Billing : add / update / remove carte de crédit via
+les flux officiels **Stripe Customer Payment Methods** (`SetupIntent` + Stripe
+Elements ou Customer Portal). **Aucune donnée carte stockée** côté AiLunaPro (PCI
+out of scope par design). Améliore UX enterprise / subscription.
+
+**6. Webhooks for automation — optionnel, futur**
+- Webhooks **Stripe** lifecycle (payment succeeded/failed, subscription updated/
+  canceled) : consommation côté worker pour resync ; déjà partiellement en place via
+  `/api/stripe/webhook` — extension éventuelle pour notifs sortantes opt-in.
+- Webhooks **AiLunaPro sortants** (futur, opt-in) : audit completed, report generated.
+  **Aucune PII** dans le payload (IDs uniquement + métadonnées non sensibles) ;
+  signature HMAC ; retry policy ; documentation publique ; non-breaking.
+
+**Guardrails (verrous permanents pour tout item ci-dessus)** :
+- ❌ Aucune affirmation automatique de conformité (« compliant » / « certified »).
+- ❌ Aucun conseil légal.
+- ❌ Aucune décision pilotée par LLM.
+- ❌ Aucune exposition de secret.
+- ❌ Aucune PII dans webhooks ou audio.
+- ❌ Aucune persistance non-documentée.
+- ✅ Toute guidance reste **informationnelle** + disclaimer §9.22 systématique.
+- ✅ Chaque item ouvre son scope §17 dédié avant tout code.
+
+**Ordre indicatif d'exécution** (sujet à décision §17 à chaque ouverture) :
+Prioritized Action Plan (extension J9) → Payment Methods (Billing UX, valeur immédiate)
+→ AI System Builder skeleton (J9 Phase C) → Attestation of Analysis (dépend PDF
+renderer) → Audio Explanations (dépend TTS architecture) → Webhooks sortants.
+
 ---
 
 ## 10. Architecture technique
@@ -2250,6 +2313,7 @@ scope J6 verrouillé.
 | Post-J6 stabilité | §17 ciblé (chunks 200, render path guardé, prod match) | **0 must-fix** — "Oops" New Audit = blocage client (ERR_BLOCKED_BY_CLIENT), pas code. Polish : ErrorBoundary chunk-aware + Help FAQ blocker (`10b9923`) | — |
 | J7→J8 | §17 7 axes (baseline PASS=75 FAIL=0, worker tsc+build, worktree clean, prod match, ops-status 401) | **0 must-fix** — PASS. Operator Console read-only + setup guidé wrangler, validé prod navigateur clean (admin console / non-admin notice, no secret leak, copy=cmd only). J7C différé | Stripe publishable/price IDs `Not set` (config opérateur), `canGoBack`, J7C secret-edit UI, CF API token, App Check enforcement, impersonation |
 | J8→J9 | §17 7 axes (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `DIXN1a9n`, endpoints 401 no-auth : me/ops-status/metrics) | **0 must-fix** — PASS. `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté. Validation prod côté opérateur déjà confirmée Batch 2/3 | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé), tokens per-org sums (différé) |
+| **§9.23 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : AI System Builder guidé, Prioritized Action Plan, Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management (Stripe official flows), Webhooks sortants opt-in. Chaque item ouvrira son §17 dédié | Guardrails permanents §9.23 : no compliance claim, no LLM, no PII in webhooks/audio, no secret exposure, informational only |
 
 ---
 
