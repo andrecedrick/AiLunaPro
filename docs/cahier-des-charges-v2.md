@@ -970,6 +970,65 @@ Prioritized Action Plan (extension J9) → Payment Methods (Billing UX, valeur i
 → AI System Builder skeleton (J9 Phase C) → Attestation of Analysis (dépend PDF
 renderer) → Audio Explanations (dépend TTS architecture) → Webhooks sortants.
 
+#### 9.24 Internationalization, Currency & Smart Locale *(planifié — non implémenté)*
+
+**Statut** : **documentation prévisionnelle uniquement** (2026-05-28). Aucun code,
+aucune implémentation. Chaque sous-item ouvrira son propre scope §17 (pré-flight →
+plan gaté → batches → exit-gate) avant tout code.
+
+**1. Multilingual support (UI + contenu statique)**
+Langues planifiées v1 : **Français · Español · Português · Italiano · Deutsch ·
+Русский** (+ English par défaut). Scope : libellés UI / nav / settings + contenu
+statique guidance (audit explanations, recommendations, disclaimers §9.22). Les
+traductions **doivent préserver** les disclaimers et le ton ; relecture humaine
+obligatoire pour les phrasings réglementaires.
+Non-goals v1 : **❌ traduction automatique par LLM**, **❌ wording per-tenant
+custom**, **❌ revendication de localisation légale**. Architecture : i18n statique
+(catalogue par langue, chargé en lazy chunk par locale) ; pas de SDK lourd au boot.
+
+**2. Automatic currency handling (display-only)**
+Affichage des prix / montants dans la devise locale de l'utilisateur. Conversion
+depuis source FX fiable (display-only). **Stripe reste la source de vérité** pour
+billing + settlement ; la devise de facturation est clairement indiquée **avant**
+chaque checkout. Règles : pas de surcharge FX manuelle v1 ; cache FX raisonnable
+(daily) ; fallback transparent si source indisponible.
+
+**3. Smart locale detection (langue + devise)**
+Ordre de détection :
+1. **Préférence utilisateur** (set explicitement → priorité absolue).
+2. **OS / navigateur** (`navigator.language`).
+3. **Pays inféré IP** (best-effort, non-bloquant ; Cloudflare `CF-IPCountry` header
+   côté worker — déjà disponible, **aucune** IP stockée).
+4. Fallback **English + USD/EUR** par défaut.
+
+Comportement : app charge directement dans la langue/devise détectée ; override
+manuel via Preferences ; détection **non persistée** tant que l'utilisateur ne
+confirme pas une préférence.
+
+**Privacy** : ❌ pas de stockage d'IP brute, ❌ pas de PII dérivée de la locale ;
+détection en best-effort uniquement ; pas de header personnalisé envoyé au tiers.
+
+**4. UX international**
+- Switcher de langue dans Preferences (déjà ébauché : §9.22 Phase B-lite + persistance
+  localStorage existante via `lib/preferences.ts`).
+- Indicateur de devise dans Billing **avant** chaque checkout.
+- Disclaimer §9.22 (« Informational guidance only · Not legal advice · Not a
+  compliance certification ») **obligatoire dans toutes les langues**, traduction
+  validée humainement.
+
+**Guardrails permanents (verrous)** :
+- ❌ Aucune traduction LLM-based.
+- ❌ Aucune garantie de localisation légale.
+- ❌ Aucune PII dérivée de la détection locale.
+- ❌ Aucun changement de logique billing en dehors de Stripe.
+- ✅ Toutes les features i18n/devise sont **display-layer only**.
+- ✅ Disclaimer §9.22 systématique et **traduit + relu humainement** par langue.
+- ✅ Chaque item ouvre son scope §17 dédié avant tout code.
+
+**Ordre indicatif** (sujet à décision §17 à chaque ouverture) :
+Smart locale detection (lecture-only) → Multilingual core (en/fr/es first) →
+Currency display layer → langues additionnelles (pt/it/de/ru) au fil de l'eau.
+
 ---
 
 ## 10. Architecture technique
@@ -2314,6 +2373,7 @@ scope J6 verrouillé.
 | J7→J8 | §17 7 axes (baseline PASS=75 FAIL=0, worker tsc+build, worktree clean, prod match, ops-status 401) | **0 must-fix** — PASS. Operator Console read-only + setup guidé wrangler, validé prod navigateur clean (admin console / non-admin notice, no secret leak, copy=cmd only). J7C différé | Stripe publishable/price IDs `Not set` (config opérateur), `canGoBack`, J7C secret-edit UI, CF API token, App Check enforcement, impersonation |
 | J8→J9 | §17 7 axes (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `DIXN1a9n`, endpoints 401 no-auth : me/ops-status/metrics) | **0 must-fix** — PASS. `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté. Validation prod côté opérateur déjà confirmée Batch 2/3 | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé), tokens per-org sums (différé) |
 | **§9.23 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : AI System Builder guidé, Prioritized Action Plan, Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management (Stripe official flows), Webhooks sortants opt-in. Chaque item ouvrira son §17 dédié | Guardrails permanents §9.23 : no compliance claim, no LLM, no PII in webhooks/audio, no secret exposure, informational only |
+| **§9.24 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : Multilingual (fr/es/pt/it/de/ru + en default), Currency display auto, Smart locale detection (pref → navigator → CF-IPCountry → en/USD), UX i18n switcher + currency indicator. Chaque sous-item ouvrira son §17 dédié | Guardrails §9.24 : no LLM translation, no legal localization claim, no IP/PII stored, no billing logic change outside Stripe, display-layer only, disclaimer §9.22 traduit + relu humainement |
 
 ---
 
