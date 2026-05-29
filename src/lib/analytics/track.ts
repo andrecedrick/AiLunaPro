@@ -61,3 +61,13 @@ export function track(event: string, props?: Props): void {
 export function initAnalyticsIfConsented(): void {
   if (hasConsent() && configured()) void ensureInit().catch(() => {});
 }
+
+/**
+ * Emit a page_view with the route NAME only — never dynamic ids. The Route
+ * union encodes ids as fields (reportId/agentId/auditId), so route.name is
+ * already the template ('reports/detail', 'agents/detail', …) with NO id.
+ * We pass only the name string → no enumerable refs, no PII.
+ */
+export function trackPageView(routeName: string): void {
+  track('page_view', { route: routeName });
+}

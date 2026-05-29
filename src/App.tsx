@@ -115,6 +115,13 @@ function AppShell() {
   const { route, navigate } = useRoute();
   const { isAuthenticated, isLoading, session } = useAuth();
 
+  /* J13 Batch 2: analytics page_view on route change. route.name is the
+     id-free template (ids live in separate fields) → no PII. track() is a
+     no-op unless consent granted, so this is safe pre-consent. */
+  useEffect(() => {
+    void import('./lib/analytics/track').then(m => m.trackPageView(route.name)).catch(() => {});
+  }, [route.name]);
+
   /* ── Deep-link hydration on fresh load (J4 #1, Phase 1: read-on-load) ──
      Opens the correct page when a hash URL is loaded directly / shared.
      Billing routes are handled by the dedicated effect below (they carry

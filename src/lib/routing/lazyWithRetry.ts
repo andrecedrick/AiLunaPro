@@ -32,9 +32,18 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
       return await factory();
     } catch (err) {
       if (!isChunkError(err)) throw err;
+      // J13: reliability telemetry (no-op unless consent; no PII).
+      void import('../analytics/track').then(m => m.track('chunk_load_failed')).catch(() => {});
       // Single retry with small backoff.
       await new Promise(res => setTimeout(res, RETRY_DELAY_MS));
-      return await factory();
+      try {
+        const mod = await factory();
+        void import('../analytics/track').then(m => m.track('chunk_retry_recovered')).catch(() => {});
+        return mod;
+      } catch (err2) {
+        void import('../analytics/track').then(m => m.track('chunk_retry_failed')).catch(() => {});
+        throw err2;
+      }
     }
   });
 }
