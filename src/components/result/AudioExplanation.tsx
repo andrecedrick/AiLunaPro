@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AuditResult } from '../../types/scoring';
 import { buildSpeechScript } from '../../lib/audio/buildSpeechScript';
+import { LANGUAGE_LABELS } from '../../lib/preferences';
 
 type PlayState = 'idle' | 'playing' | 'paused';
 
@@ -23,14 +24,16 @@ const SUPPORTED =
   'speechSynthesis' in window &&
   typeof window.SpeechSynthesisUtterance !== 'undefined';
 
-/** v1 spoken-language options. Only sets utterance.lang — NO translation. */
+/** v1 spoken-language options. Only sets utterance.lang — NO translation.
+ *  Labels reuse the allowlisted LANGUAGE_LABELS (single source; native spelling
+ *  with accents lives only in lib/preferences.ts). */
 const LANG_OPTIONS: { code: string; label: string }[] = [
-  { code: 'en-US', label: 'English' },
-  { code: 'fr-FR', label: 'Français' },
-  { code: 'es-ES', label: 'Español' },
-  { code: 'de-DE', label: 'Deutsch' },
-  { code: 'it-IT', label: 'Italiano' },
-  { code: 'pt-PT', label: 'Português' },
+  { code: 'en-US', label: LANGUAGE_LABELS.en },
+  { code: 'fr-FR', label: LANGUAGE_LABELS.fr },
+  { code: 'es-ES', label: LANGUAGE_LABELS.es },
+  { code: 'de-DE', label: LANGUAGE_LABELS.de },
+  { code: 'it-IT', label: LANGUAGE_LABELS.it },
+  { code: 'pt-PT', label: LANGUAGE_LABELS.pt },
 ];
 
 /** Per-language rate/pitch presets to soften robotic cadence. */
