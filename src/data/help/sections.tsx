@@ -463,6 +463,18 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
           Invitations expire after 7 days. Ask your workspace owner or admin to regenerate
           the invite from the Team page.
         </p>
+        <h3 style={h3}>What's the difference between Roadmap and Action Plan?</h3>
+        <p style={p}>
+          Both views derive from the same audit findings and recommendations, but they
+          answer different questions. The <strong>Roadmap</strong> answers{' '}
+          <strong>when</strong> to ship work — items are bucketed by horizon (30 / 60
+          / 90 days) to help with planning and capacity. The <strong>Prioritized
+          Action Plan</strong> answers <strong>what to fix first</strong> — items are
+          bucketed by priority (Critical / Important / Improvement) using a fixed
+          deterministic rule on the existing finding severity and recommendation impact.
+          They are complementary, not duplicates. Neither view changes scoring, and
+          neither is a compliance certification.
+        </p>
         <h3 style={h3}>Blank screen, "Oops", or broken layout?</h3>
         <p style={p}>
           This is almost always a browser <strong>ad-blocker or privacy extension</strong>{' '}

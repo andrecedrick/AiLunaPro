@@ -921,11 +921,41 @@ références EU AI Act / NIST AI RMF / ISO 42001 par étape. **No LLM**, **no co
 **no persistance v1**. Objectif éducatif & support de design avant production.
 Réutilise les fondations §9.22 (J9). v1 = pure UX / contenu statique.
 
-**2. Prioritized Action Plan — post-audit**
-Plan de remédiation priorisé après audit (3 buckets : **Critical / Important /
-Improvement**), ordre d'actions clair. **Aucune auto-application**, **aucune
-intégration aux systèmes du client**. Guidance informationnelle uniquement.
-Étend les composants existants `Roadmap` + `RecommendationsList` (J5/J9).
+**2. Prioritized Action Plan — post-audit** *(✅ LIVRÉ — J9 Phase D, 2026-05-28, commit `5c3461d`)*
+Plan de remédiation priorisé après audit, 3 buckets : **Critical / Important /
+Improvement**. Implémentation = **dérivation pure et déterministe** sur
+`AuditResult` existant (helper `lib/scoring/actionPlan.ts` + composant
+`components/result/ActionPlan.tsx`) ; coexiste avec `Roadmap` (axe temps vs axe
+priorité).
+
+**Mapping verrouillé** (jamais changé sans gate §17 dédié) :
+- **Critical** : recommandation référencée par un finding `severity:'critical'`
+  **OU** `impact:'critical'`.
+- **Important** : finding `severity:'high'` **OU** `impact:'high'` (pas déjà dans Critical).
+- **Improvement** : reste.
+Tri intra-bucket : `impact` desc, puis `effort` asc. Cap d'affichage **8 +
+« +N more »** par bucket (déterministe, jamais de troncature de hiérarchie).
+
+**Wording verrouillé** (interdit de modifier hors §17 dédié) :
+- Critical → « Strongly advised before production deployment »
+- Important → « Short-term — address in the current quarter »
+- Improvement → « Best practice — schedule for maturity »
+- Bucket vide → « No items in this band — nothing actionable here for now. »
+- Légende systématique : « Roadmap shows **when** to ship; Action Plan shows
+  **what to fix first**. »
+- **INTERDIT** : « compliance certified », « passed audit », « deploy-ready »,
+  « certified compliant », ou toute affirmation équivalente de conformité légale.
+
+**Profile preference (§9.22 Phase B-lite)** affecte **uniquement le ton de
+l'intro** ; **jamais** le bucket assignment, l'ordre, ni le contenu des
+recommendations.
+
+**Non-goals locked** : ❌ auto-application sur infra client · ❌ persistance
+done/dismissed v1 · ❌ pondération LLM · ❌ poids priorité per-tenant ·
+❌ benchmarking cross-tenant · ❌ entrée Sidebar · ❌ revendication de conformité.
+
+**Surfaces** : `AuditResultPage` · `ReportDetailPage` · `ReportSharePage`
+(au-dessus de `Roadmap`, disclaimer §9.22 déjà présent).
 
 **3. Audio Explanations — accessibilité & gain de temps**
 Lecture audio optionnelle (TTS sur contenu existant) du résumé résultat + risques
@@ -2439,7 +2469,7 @@ scope J6 verrouillé.
 | Post-J6 stabilité | §17 ciblé (chunks 200, render path guardé, prod match) | **0 must-fix** — "Oops" New Audit = blocage client (ERR_BLOCKED_BY_CLIENT), pas code. Polish : ErrorBoundary chunk-aware + Help FAQ blocker (`10b9923`) | — |
 | J7→J8 | §17 7 axes (baseline PASS=75 FAIL=0, worker tsc+build, worktree clean, prod match, ops-status 401) | **0 must-fix** — PASS. Operator Console read-only + setup guidé wrangler, validé prod navigateur clean (admin console / non-admin notice, no secret leak, copy=cmd only). J7C différé | Stripe publishable/price IDs `Not set` (config opérateur), `canGoBack`, J7C secret-edit UI, CF API token, App Check enforcement, impersonation |
 | J8→J9 | §17 7 axes (worker tsc+build, baseline PASS=75 FAIL=0, worktree clean, prod match `DIXN1a9n`, endpoints 401 no-auth : me/ops-status/metrics) | **0 must-fix** — PASS. `requirePlatformAdmin` agrégats only (no PII), `canGoBack` polish state-derived, fail-soft Stripe, paging cap ≤1000 subs documenté. Validation prod côté opérateur déjà confirmée Batch 2/3 | PDF renderer, Option B branded handler, App Check enforcement, `mail.ailunapro.com` DNS pending, métriques token-consommation (différé), tokens per-org sums (différé) |
-| **§9.23 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : AI System Builder guidé, Prioritized Action Plan, Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management (Stripe official flows), Webhooks sortants opt-in. Chaque item ouvrira son §17 dédié | Guardrails permanents §9.23 : no compliance claim, no LLM, no PII in webhooks/audio, no secret exposure, informational only |
+| **§9.23 Planned/Partial** | partiel — Prioritized Action Plan **LIVRÉ** (J9 Phase D, `5c3461d`) ; reste planifié | **Livré** : Prioritized Action Plan (dérivation pure, 3 buckets verrouillés Critical/Important/Improvement, profile = tone only, wording verrouillé interdisant compliance claims). **Planifié / non implémenté** : AI System Builder guidé (skeleton J9 B3 ✅, contenu+persistance v2 différé), Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management, Webhooks sortants opt-in | Guardrails permanents §9.23 inchangés ; tout futur élargissement = §17 dédié |
 | **§9.24 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : Multilingual (fr/es/pt/it/de/ru + en default), Currency display auto, Smart locale detection (pref → navigator → CF-IPCountry → en/USD), UX i18n switcher + currency indicator. Chaque sous-item ouvrira son §17 dédié | Guardrails §9.24 : no LLM translation, no legal localization claim, no IP/PII stored, no billing logic change outside Stripe, display-layer only, disclaimer §9.22 traduit + relu humainement |
 | **§9.25 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun SDK, aucun gate ouvert. | **Planifié / non implémenté** : PostHog product analytics (EU-hosted / self-host préféré), events route + feature usage + perf, lazy SDK post-consentement, wrapper `lib/analytics/track.ts`. Phase A (route+perf) puis Phase B (feature usage) — chaque phase = §17 dédié | Guardrails §9.25 : ❌ session replay, ❌ keystrokes/form values, ❌ audit answers, ❌ PII/customer content, ❌ cross-tenant, ❌ ad-trackers. Opt-in + DNT + IP anonymization + IDs hashés. Jamais d'impact sur scoring/findings |
 
