@@ -2516,6 +2516,28 @@ Display-only currency layer (§9.24 subset ; UI translation différée). Détail
   Batch C chunk-retry (en attente ligne console chunk), cloud TTS, App Check enforcement,
   `mail.ailunapro.com` DNS, §9.23 reste (Attestation/Webhooks), §9.25 analytics.
 
+**✅ PERF — "Performance Hardening Pass"** — **CLÔTURÉ (§17 mini-gate PASS, 0 must-fix)** le 2026-05-30.
+Passe dédiée (hors J), plainte ">3 min load" = HANG pas bundle. 2 classes : (A) chunk-load
+stale-index après redeploys ; (B) Firestore-blocked auth hang.
+- **P1 watchdog** `925c690` : timer 8s sur `isLoading` ; <8s → null, ≥8s → notice "Still connecting…"
+  (ad-blocker/réseau peut bloquer audit.ailunapro.com / *.googleapis.com) + bouton Reload.
+  Remplace `return null` (blank) durant hang auth. Aucune logique auth/session touchée.
+- **Batch A** `9bcb741` : (a) `public/_headers` — HTML `no-cache, must-revalidate`, `/assets/*`
+  `immutable` ; (b) ErrorBoundary branche chunk : bouton "Retry loading" (reset → Suspense ré-import
+  via lazyWithRetry, sans full reload) + "Reload page" conservé.
+- **Fix infra (opérateur, dashboard CF)** : cause racine class-A = Browser Cache TTL zone = 4h
+  écrasait `_headers` (HTML servi `max-age=14400` même cf-cache MISS). Résolu par :
+  Browser Cache TTL → **"Respect Existing Headers"** + **Cache Rules** : `audit-html-bypass`
+  (`/` + `/index.html` → Bypass, FIRST), `audit-assets-cache` (`/assets/*` → long cache),
+  `audit-api-bypass` (`/api/*` → Bypass).
+- **Gate §17** : tsc+build clean (913ms) · worktree clean (parasite `3` 0-byte purgé) · HEAD `9bcb741` ·
+  **vérif prod** : `/` → `Cache-Control: no-cache, must-revalidate` (était `max-age=14400` ✅ FIXED) ·
+  `/assets/index-DyzcK_eg.js` → `max-age=31536000, immutable` ✅. **0 must-fix.**
+- **Warning connu non-bloquant** : `INEFFECTIVE_DYNAMIC_IMPORT` track.ts (J13, ConsentBanner static +
+  App/lazyWithRetry dynamic) — cosmétique, pas d'impact runtime/sécu.
+- **Différé** : P2 Firestore resilience (`experimentalForceLongPolling`/limited-mode) — SEULEMENT
+  si chunk-errors persistent après cette passe ; mesure repro returning-user + new-deploy à confirmer côté user.
+
 Prochaine étape J13 : scope à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
