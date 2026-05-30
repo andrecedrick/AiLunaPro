@@ -21,8 +21,40 @@ let initPromise: Promise<unknown> | null = null;
 // Loaded PostHog instance once initialised; null until then.
 let ph: { capture: (e: string, p?: Props) => void } | null = null;
 
+// Environment-block detection: PostHog /e/ ingestion can be blocked by browser
+// tracking-prevention, antivirus web-shield, corporate firewall, or DNS sinkhole
+// (NextDNS/Pi-hole/AdGuard) even with NO ad-block extension. config.js loads but
+// every /e/ POST fails net::ERR_BLOCKED_BY_CLIENT. We probe once after init and
+// flag it so the UI can show a non-intrusive hint. NEVER affects privacy posture.
+let analyticsBlocked = false;
+const BLOCKED_EVENT = 'ailunapro:analytics-blocked';
+
+/** True if outbound analytics ingestion is blocked by the environment. */
+export function isAnalyticsBlocked(): boolean {
+  return analyticsBlocked;
+}
+
 function configured(): boolean {
   return typeof KEY === 'string' && KEY.length > 0;
+}
+
+/**
+ * One-shot reachability probe to the ingestion host. A no-cors POST resolves
+ * (opaque) when the network path is open — even on a 4xx — and rejects only when
+ * the request is blocked client-side (extension / tracking-prevention / DNS).
+ * On block: set flag + dispatch event so a mounted notice can react. Never throws.
+ */
+async function probeReachable(): Promise<void> {
+  if (typeof fetch !== 'function') return;
+  try {
+    await fetch(`${HOST}/e/?probe=1`, { method: 'POST', mode: 'no-cors', keepalive: true, body: '' });
+    // Reached (opaque ok) → not blocked.
+  } catch {
+    analyticsBlocked = true;
+    if (typeof window !== 'undefined') {
+      try { window.dispatchEvent(new CustomEvent(BLOCKED_EVENT)); } catch { /* ignore */ }
+    }
+  }
 }
 
 /** Lazy init — only called when consent granted + configured. */
@@ -62,6 +94,8 @@ async function ensureInit(): Promise<void> {
         },
       } as Parameters<typeof posthog.init>[1]);
       ph = posthog as unknown as { capture: (e: string, p?: Props) => void };
+      // Fire-and-forget block probe (does not gate init / capture).
+      void probeReachable();
     })();
   }
   await initPromise;

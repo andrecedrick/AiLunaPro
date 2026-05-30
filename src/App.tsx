@@ -15,6 +15,7 @@ import { TokensProvider } from './context/TokensContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { ConsentBanner } from './components/ConsentBanner';
+import { AnalyticsBlockedNotice } from './components/AnalyticsBlockedNotice';
 
 /* ── Lazy-loaded pages: split bundle, faster initial load ── */
 const DashboardPage        = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -355,6 +356,7 @@ function App() {
                       <TokensProvider>
                         <AppShell />
                         <ConsentBanner />
+                        <AnalyticsBlockedNotice />
                       </TokensProvider>
                     </BillingProvider>
                   </RegistryProvider>
