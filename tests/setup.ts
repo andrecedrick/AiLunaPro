@@ -40,6 +40,9 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
+  // P2-a: firestore.ts now uses initializeFirestore (autoDetectLongPolling).
+  initializeFirestore: vi.fn(() => ({})),
+  connectFirestoreEmulator: vi.fn(),
   collection: vi.fn(),
   query: vi.fn(),
   where: vi.fn(),
