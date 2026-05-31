@@ -46,6 +46,7 @@ import platformOpsRoutes     from './routes/platform-ops';
 import platformMetricsRoutes from './routes/platform-metrics';
 import publicGeoRoutes       from './routes/public-geo';
 import publicFxRoutes        from './routes/public-fx';
+import auditExpressRoutes    from './routes/audit-express';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -151,6 +152,7 @@ app.route('/', platformOpsRoutes);
 app.route('/', platformMetricsRoutes);
 app.route('/', publicGeoRoutes);
 app.route('/', publicFxRoutes);
+app.route('/', auditExpressRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

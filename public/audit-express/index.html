@@ -80,6 +80,22 @@
       .boundaries { font-size: 13.5px; color: #555; }
       footer { margin-top: 36px; font-size: 12.5px; color: #8a8aa0; }
       a { color: #5a4bdc; }
+
+      /* Tap-flow preview (Phase 3) */
+      .q { margin: 16px 0; }
+      .q-label { font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+      .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+      .opt {
+        border: 1px solid #d8d8e8; background: #fff; color: #2a2a40;
+        border-radius: 999px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+      }
+      .opt[aria-pressed="true"] { background: #6d5efc; color: #fff; border-color: #6d5efc; }
+      .metric { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px dashed #e6e6f0; }
+      .metric .v { font-weight: 700; font-size: 18px; }
+      .why { background: none; border: none; color: #5a4bdc; font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
+      .why-box { font-size: 12px; color: #555; background: #f3f3fa; border-radius: 8px; padding: 8px 10px; margin: 6px 0 2px; }
+      .muted { color: #8a8aa0; font-size: 12.5px; }
+      [hidden] { display: none !important; }
     </style>
   </head>
   <body>
@@ -110,6 +126,78 @@
         Preparation support — not a certification, attestation, or legal advice.
       </div>
 
+      <section class="card" id="ax-preview">
+        <h2>Try the preview</h2>
+        <p class="muted">Tap your answers — no account, no personal data, nothing saved.</p>
+
+        <div class="q" data-q="workflow">
+          <div class="q-label">Which area would you most like to improve?</div>
+          <div class="opts">
+            <button class="opt" data-v="support">Customer support</button>
+            <button class="opt" data-v="sales">Sales</button>
+            <button class="opt" data-v="finance">Finance</button>
+            <button class="opt" data-v="documents">Documents</button>
+            <button class="opt" data-v="reporting">Reporting</button>
+            <button class="opt" data-v="admin">Admin</button>
+            <button class="opt" data-v="compliance">Compliance</button>
+            <button class="opt" data-v="marketing">Marketing</button>
+            <button class="opt" data-v="hr">HR</button>
+          </div>
+        </div>
+
+        <div class="q" data-q="monthlyHours">
+          <div class="q-label">Roughly how many hours per month go to repetitive work?</div>
+          <div class="opts">
+            <button class="opt" data-v="low">A little (~20)</button>
+            <button class="opt" data-v="medium">A fair amount (~80)</button>
+            <button class="opt" data-v="high">A lot (~160)</button>
+          </div>
+        </div>
+
+        <div class="q" data-q="hourlyCost">
+          <div class="q-label">Approximate average hourly cost of that work?</div>
+          <div class="opts">
+            <button class="opt" data-v="low">Lower (~$25)</button>
+            <button class="opt" data-v="medium">Mid (~$45)</button>
+            <button class="opt" data-v="high">Higher (~$75)</button>
+          </div>
+        </div>
+
+        <div class="q" data-q="aiUsage">
+          <div class="q-label">How is AI used in your organization today?</div>
+          <div class="opts">
+            <button class="opt" data-v="none">Not yet</button>
+            <button class="opt" data-v="individual">Individually</button>
+            <button class="opt" data-v="team">Across teams</button>
+            <button class="opt" data-v="structured">In structured workflows</button>
+          </div>
+        </div>
+
+        <div class="q" data-q="shadowAi">
+          <div class="q-label">How much visibility do you have over AI tools in use?</div>
+          <div class="opts">
+            <button class="opt" data-v="no_visibility">None</button>
+            <button class="opt" data-v="partial_visibility">Some</button>
+            <button class="opt" data-v="mostly_visible">Most</button>
+            <button class="opt" data-v="full_inventory">Full inventory</button>
+          </div>
+        </div>
+
+        <p style="margin-top:16px;">
+          <button class="cta" id="ax-run" type="button" disabled>Get preview</button>
+        </p>
+
+        <div id="ax-results" hidden>
+          <h2 style="margin-top:18px;">Your indicative preview</h2>
+          <div id="ax-metrics"></div>
+          <p class="disclaimer" style="margin-top:14px;">
+            Preparation support — not a certification, attestation, or legal advice.
+            All values are indicative estimates from deterministic, rule-based logic.
+          </p>
+        </div>
+        <noscript><p class="muted">Enable JavaScript to try the interactive preview.</p></noscript>
+      </section>
+
       <section class="card">
         <h2>How it works</h2>
         <p class="boundaries">
@@ -127,5 +215,108 @@
         Audit Express results are indicative estimates only.
       </footer>
     </main>
+
+    <script>
+      // Audit Express preview (Phase 3) — deterministic, no PII, nothing stored.
+      // Collects controlled tap answers and calls the compute-only Worker route.
+      (function () {
+        var API = 'https://api.ailunapro.com/api/public/audit-express/preview';
+        var taps = {};
+        var run = document.getElementById('ax-run');
+
+        // Tap selection (single choice per question group).
+        document.querySelectorAll('.q').forEach(function (group) {
+          var key = group.getAttribute('data-q');
+          group.querySelectorAll('.opt').forEach(function (btn) {
+            btn.setAttribute('type', 'button');
+            btn.addEventListener('click', function () {
+              group.querySelectorAll('.opt').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+              btn.setAttribute('aria-pressed', 'true');
+              taps[key] = btn.getAttribute('data-v');
+              run.disabled = Object.keys(taps).length < 5;
+            });
+          });
+        });
+
+        function prettyAgent(slug) {
+          return String(slug).replace(/-/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+        }
+
+        function refList(refs) {
+          if (!refs || !refs.length) return '';
+          return refs.map(function (r) { return r.kind + ': ' + r.ref; }).join(' · ');
+        }
+
+        // Build one metric row with a "Why?" toggle revealing trace references.
+        function metric(label, value, refs) {
+          var row = document.createElement('div');
+          row.className = 'metric';
+          var left = document.createElement('div');
+          left.textContent = label + ' ';
+          var why = document.createElement('button');
+          why.className = 'why';
+          why.type = 'button';
+          why.textContent = 'Why?';
+          var box = document.createElement('div');
+          box.className = 'why-box';
+          box.hidden = true;
+          box.textContent = refList(refs) || 'Rule-based estimate.';
+          why.addEventListener('click', function () { box.hidden = !box.hidden; });
+          left.appendChild(why);
+          var v = document.createElement('div');
+          v.className = 'v';
+          v.textContent = value;
+          row.appendChild(left);
+          row.appendChild(v);
+          var wrap = document.createElement('div');
+          wrap.appendChild(row);
+          wrap.appendChild(box);
+          return wrap;
+        }
+
+        function render(p) {
+          var out = document.getElementById('ax-metrics');
+          out.textContent = '';
+          var k2 = p.k2a, t2 = k2.trace || {}, r = k2.result;
+          out.appendChild(metric('Estimated time saved', r.estimatedTimeSavedHoursPerMonth + ' hours/month', t2.estimatedTimeSavedHoursPerMonth));
+          out.appendChild(metric('Estimated cost saved', '≈ $' + r.estimatedMonthlyCostSaved + '/month', t2.estimatedMonthlyCostSaved));
+          if (r.estimatedPaybackMonths != null) {
+            out.appendChild(metric('Estimated payback', '≈ ' + r.estimatedPaybackMonths + ' months', t2.estimatedPaybackMonths));
+          }
+          var k1 = p.k1a, t1 = k1.trace || {};
+          out.appendChild(metric('AI readiness level (indicative)', k1.bucket + ' (' + k1.normalizedScore + '/100)', t1.bucket));
+          out.appendChild(metric('Suggested starting points', (k1.recommendedAgentIds || []).map(prettyAgent).join(', '), t1.recommendedAgentIds));
+
+          var note = document.createElement('p');
+          note.className = 'muted';
+          note.style.marginTop = '8px';
+          note.textContent = 'Readiness is a short preview based on a few factors. The full audit gives a complete score. '
+            + 'Engine ' + p.engineVersion + '.';
+          out.appendChild(note);
+
+          document.getElementById('ax-results').hidden = false;
+        }
+
+        run.addEventListener('click', function () {
+          run.disabled = true;
+          run.textContent = 'Computing…';
+          fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ taps: taps }),
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (p) {
+              if (p && p.k2a && p.k1a) { render(p); }
+              else { document.getElementById('ax-metrics').textContent = 'Preview unavailable right now.'; document.getElementById('ax-results').hidden = false; }
+            })
+            .catch(function () {
+              document.getElementById('ax-metrics').textContent = 'Preview unavailable right now. Please try again later.';
+              document.getElementById('ax-results').hidden = false;
+            })
+            .finally(function () { run.disabled = false; run.textContent = 'Get preview'; });
+        });
+      })();
+    </script>
   </body>
 </html>
