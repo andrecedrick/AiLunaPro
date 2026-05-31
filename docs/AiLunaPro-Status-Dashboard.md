@@ -60,10 +60,10 @@ Transversaux : **U1** (mode assisté zéro-expertise), **K6 Luna Copilot** (orch
 | **S1 Suivi + Expert IA** | monitoring + rapport mensuel | **Planned** | — | AC : rapport mensuel + dialogue Expert |
 | **T1 Récup revenus** | dunning email (Sequenzy) + SMS | **Planned** | — | AC : impayé→email J0+SMS J+1+J+3 traçable |
 | **Q1 Intelligence Refresh** | veille modèles/prix, human-in-loop | **Planned** | — | AC : diffs→file revue admin, jamais auto-mutation |
-| **Audit Express (§3bis)** | demo publique <5min sans compte | **Planned** | — | AC : URL/3taps→€/risque <5min+CTA compte+PDF |
+| **Audit Express (§3bis)** | public <5min demo, no account | **Partial (Phase 2: surface shell)** | static `public/audit-express/index.html` (indexable, disclaimer, CTA) | Demo logic still planned (V1-lite/K1A-lite/K2A-lite/X1-lite) — later phases |
 | **P1 PDF Report (§3ter)** | artefact B2B exportable versionné | **Planned** | — | AC : audit→PDF reproductible brandable sourcé |
 | **Determinism (§0.4/§3quater)** | rule-based scoring + version stamp + traceability | **Shipped (Phase 0)** | `worker/src/lib/determinism.ts`; K1A `scoreDiagnostic` + K2A `scoreRoi`; 18 replay tests | Migrate remaining scored paths (`src/lib/scoring/*` K4/K3+) in a later phase |
-| **SEO/GEO surfaces (§7ter)** | pages publiques + sitemap/robots/schema/llms.txt | **Planned** | — | AC : pages indexables + `/app/*` noindex |
+| **SEO/GEO surfaces (§7ter)** | public indexable pages + robots + app noindex | **Partial (Phase 2)** | `/audit-express` indexable (canonical/OG/Twitter); app shell `noindex` (meta + `X-Robots-Tag`); `robots.txt` | Remaining public pages, sitemap.xml, schema.org, llms.txt — later |
 
 ---
 

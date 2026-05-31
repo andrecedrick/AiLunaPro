@@ -5,11 +5,22 @@
 # "Couldn't load the page" chunk-load failures after frequent redeploys).
 # Hashed /assets/* are content-addressed → safe to cache forever (immutable).
 
+# The app shell (served at / and /index.html) is private + hash-routed →
+# keep it out of search indexes (defense-in-depth with the noindex meta tag).
+# Public static surfaces under their own paths (e.g. /audit-express/*) are NOT
+# matched here and stay indexable.
 /
   Cache-Control: no-cache, must-revalidate
+  X-Robots-Tag: noindex
 
 /index.html
   Cache-Control: no-cache, must-revalidate
+  X-Robots-Tag: noindex
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Public Audit Express surface (Phase 2): HTML must always revalidate (same
+# stale-prevention policy as the app shell). Indexable — no X-Robots-Tag here.
+/audit-express/*
+  Cache-Control: no-cache, must-revalidate

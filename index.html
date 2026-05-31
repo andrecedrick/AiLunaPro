@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      The authenticated SPA app shell is private and hash-routed (every app view is
+      served from this index.html). Keep it OUT of search indexes. Public, indexable
+      surfaces (e.g. /audit-express) are separate static pages under public/ that do
+      NOT carry this directive. (Phase 2 — SEO/GEO boundaries.)
+    -->
+    <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content="AI Luna Pro — AI compliance audit & governance dashboard." />
     <title>AI Luna Pro — Compliance Dashboard</title>
     <script>
