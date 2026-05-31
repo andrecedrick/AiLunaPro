@@ -561,6 +561,36 @@ Fichier racine `llms.txt` — **stable, sourcé, sans hype** :
 
 ---
 
+## 7quinquies. CHECKPOINT OBLIGATOIRE — Inspection générale fin-d'étape + sync docs *(v2.4, bloquant)*
+
+> **Règle dure** : à la fin de **chaque étape/batch**, et **avant de déclarer une étape CLOSED**, exécuter
+> une **passe d'inspection GÉNÉRALE** (pas seulement les tests ciblés) pour découvrir proactivement
+> bugs/erreurs/régressions. Complète (n'annule pas) le gate §17 du `cahier-des-charges-v2.md`.
+
+**A. Passe d'inspection générale (tous obligatoires)**
+1. **Build/tsc** clean (le build gate échoue sur erreur de type).
+2. **Baseline inspect** : suite tests projet (`tests/`), distinguer échecs **pré-existants** vs **régressions** (rejouer à l'état précédent si doute).
+3. **Forbidden-phrasing grep** : aucune revendication certif/conformité/conseil juridique hors listes d'interdictions.
+4. **Routing** : pas de route cassée ; hash-routing app-only ; surfaces publiques non régressées.
+5. **Isolation cross-tenant** : pas d'IDOR ; scope `orgId`/`partnerId` ; `firestore.rules` cohérentes.
+6. **Sécurité & logs** : zéro PII/secret en logs/analytics ; `dlog` DEBUG-gated ; pas de secret en bundle public.
+7. **Caching correctness** : HTML `no-cache, must-revalidate` + `/assets/*` immutable + API bypass (curl prod).
+8. **Perf quick check** : pas de régression évidente (bundle entry, providers non-bloquants, lazy intact).
+9. **Hygiène repo** : **aucun artefact junk/untracked/0-byte** (`git status --porcelain` clean ; scan fichiers vides trackés).
+
+**B. Enregistrement (cahier et/ou §18)** — obligatoire à chaque clôture :
+- changements shippés · **commits** · **hashes prod** (fe/worker) · warnings connus · différés · do-next / do-NOT.
+
+**C. Règle de blocage**
+- Si **un seul** axe A **FAIL** → l'étape **ne peut pas être CLOSED** : corriger → re-gater → seulement ensuite clôturer.
+- Les échecs **pré-existants** (hors scope) sont **consignés ⚠️ différé** (pas must-fix), avec preuve qu'ils précèdent l'étape.
+
+**D. Pourquoi (anti-régression)**
+- Évite la récurrence de bugs (ex. junk 0-byte committé via `git add -A`, HTML cache stale, mock test cassé par refactor).
+  L'inspection générale > tests ciblés : elle **cherche** les régressions au lieu d'attendre qu'elles remontent en prod.
+
+---
+
 ## 8. Message à coller dans Claude Code (EN)
 
 ```
