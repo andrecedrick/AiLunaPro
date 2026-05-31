@@ -1103,11 +1103,15 @@ détection en best-effort uniquement ; pas de header personnalisé envoyé au ti
 Smart locale detection (lecture-only) → Multilingual core (en/fr/es first) →
 Currency display layer → langues additionnelles (pt/it/de/ru) au fil de l'eau.
 
-#### 9.25 Product Analytics & Telemetry *(planifié — non implémenté)*
+#### 9.25 Product Analytics & Telemetry *(✅ Phase A LIVRÉ — J13, 2026-05-31)*
 
-**Statut** : **documentation prévisionnelle uniquement** (2026-05-28). Aucun code,
-aucun SDK, aucun gate ouvert. Tout rollout d'analytics ouvrira son propre scope §17
-(pré-flight → plan gaté → batches → exit-gate).
+**Statut** : **Phase A LIVRÉE (J13)** — consent-first, US-hosted (`us.i.posthog.com`),
+zéro PII. Events : `page_view` (route template id-free) + chunk reliability. SDK lazy
+post-consent ; wrapper `lib/analytics/track.ts` no-op strict sans consentement. `sanitize_properties`
+force URL props origin-only. Block-by-env détecté + notice dismissible. DNT auto-decline.
+**Phase B (feature-usage events) = non implémentée**, ouvrira son §17 dédié.
+> ⚠️ **Résidence EU** : host actuel = **US** (`us.i.posthog.com`), pas EU. v1 acceptable
+> (anonyme, zéro PII, IP `ip=0`). EU-host/self-host = option future pour clients sensibles résidence.
 
 **Purpose**
 Comprendre comment les utilisateurs interagissent avec audits / guidance / builder
@@ -2535,10 +2539,41 @@ stale-index après redeploys ; (B) Firestore-blocked auth hang.
   `/assets/index-DyzcK_eg.js` → `max-age=31536000, immutable` ✅. **0 must-fix.**
 - **Warning connu non-bloquant** : `INEFFECTIVE_DYNAMIC_IMPORT` track.ts (J13, ConsentBanner static +
   App/lazyWithRetry dynamic) — cosmétique, pas d'impact runtime/sécu.
-- **Différé** : P2 Firestore resilience (`experimentalForceLongPolling`/limited-mode) — SEULEMENT
-  si chunk-errors persistent après cette passe ; mesure repro returning-user + new-deploy à confirmer côté user.
+- **P2-a long-polling** `7f4d985` (+ test mock `13a0776`) : `firestore.ts` `getFirestore` →
+  `initializeFirestore(app, { experimentalAutoDetectLongPolling: true })`. Cause racine class-B
+  prouvée (read-only) : shell gaté sur `await buildSession()` (getDoc user + `Promise.all` orgs/members)
+  dans `onAuthStateChanged` ; transport WebChannel streaming cassé par AV web-shield (Kaspersky)/proxy
+  → reads hang → blank jusqu'au watchdog 8s. Autodetect → fallback HTTP long-poll. Zéro changement
+  réseau sain, même API, zéro touche auth/scoring/billing.
+  **Vérif prod (profil extensions AdGuard+Kaspersky)** : Dashboard charge sans blank multi-min ;
+  Firestore `channel?VER=8…` = **200** ; PostHog `/e/` reste `ERR_BLOCKED_BY_CLIENT` (env, attendu).
+  Mock additif `initializeFirestore`+`connectFirestoreEmulator` (3 fichiers intégration importaient).
+- **Inspection Dashboard (read-only, demandée)** : providers déjà bien gatés — `TokensContext`
+  onSnapshot `if (!enabled || !orgId) return` (ne démarre pas avant session) ; geo/FX Billing-only ;
+  pages 100% lazy ; PostHog non-bloquant lazy post-consent ; App Check idle-lazy. **Aucun batch
+  supplémentaire justifié** : la "heaviness" résiduelle = environnement (extensions ralentissent/bloquent
+  googleapis) + multiplication requêtes long-poll (tradeoff intentionnel P2-a, chaque `channel?` ~50B/100ms).
+- **Gate §17 (P2-a)** : tsc+build clean (842ms) · worktree clean (worktree Ruflo périmé
+  `mystifying-burnell-011486` retiré) · HEAD `13a0776`. **0 must-fix.**
+- **⚠️ Baseline test rot (différé, hors scope, PRÉ-EXISTANT)** : `billingConfig`/`settings`/`billing`
+  integration = `TestingLibraryElementError: Unable to find text` (sélecteurs `getByText('TEST'/'UNSET'/
+  'Owner-only')` périmés vs copy actuelle) ; `firestore.rules` = emulator 8080 down (skipped) ; `Toast`
+  = PARSE_ERROR. **Vérifié à l'état pré-P2-a (`925c690`) : échouent déjà** → non causé par perf/J13.
+  PAS de bug produit (test "secret strings" échoue sur label, pas sur secret rendu). → cleanup test séparé.
 
-Prochaine étape J13 : scope à définir (gaté).
+**✅ J13 — "Analytics (PostHog Phase A)"** — **CLÔTURÉ (§17 mini-gate PASS, 0 must-fix)** le 2026-05-31.
+Analytics produit consent-first, US-hosted, zéro PII (§9.25 → Livré). Détails §9.25.
+- **B1** `eafb399` : consent (`consent.ts`) + wrapper `track()` strict no-op (sans consentement/clé) ; DNT auto-decline ; aucun event.
+- **B2** `73ec62d` : `trackPageView(route.name)` (id-free template) on route change + chunk events (`chunk_load_failed`/`retry_recovered`/`retry_failed`) ; SDK lazy `import('posthog-js')` post-consent.
+- **B2.1** `86a8f8a` : `disable_surveys:true` (pas de surveys.js).
+- **B2.2 (privacy fix)** `3e07847` : `sanitize_properties` strip `$current_url/$pathname/$referrer/$initial_*/$session_entry_*` → **origin-only** (referrers blanchis). PostHog auto-attachait href hash complet (reportId + `?topup=`/`?session_id=`). **Scrub vérifié prod incognito : `Current URL = https://audit.ailunapro.com` origin-only** ✅.
+- **Block-notice** `ed1a3ba` : `isAnalyticsBlocked()` probe `/e/` no-cors 1-shot post-init ; sur `net::ERR_BLOCKED_BY_CLIENT` (tracking-prevention/AV/firewall/DNS, même sans extension adblock) → flag + event → `AnalyticsBlockedNotice` dismissible ("allow us.i.posthog.com, optional"). Privacy inchangé.
+- **Config finale** : `autocapture:false`, `disable_session_recording:true`, `capture_pageview:false`, `capture_pageleave:false`, `disable_surveys:true`, `persistence:'localStorage'`, anonyme (jamais `identify`). Host `us.i.posthog.com`.
+- **Gate §17** : tsc+build clean (842ms) · worktree clean · prod fe `index-CdRkHlbM.js` (deploy `05208d72`) · events page_view reçus PostHog (Activity), scrub origin-only confirmé · **0 must-fix.**
+- **Verdict block-by-env** : `/e/` bloqué = environnement (AdGuard/Kaspersky/DNS), PAS code — accepté comme comportement final, notice fait son travail. Code path confirmé (trackPageView post-consent + route change ; no `$pageview`/autocapture/replay/surveys).
+- **Différé** : Phase B (feature-usage events), §9.25 reste ; UI translation §9.24 ; Attestation/Webhooks §9.23 ; App Check enforcement ; `mail.ailunapro.com` DNS ; cleanup test rot (voir PERF).
+
+Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
@@ -2628,6 +2663,8 @@ scope J6 verrouillé.
 | J10→J11 | §17 mini-gate (worker tsc clean, baseline PASS=75 FAIL=0, worktree clean, prod match `l9QAi4Lo`, portal no-auth 401) | **0 must-fix** — PASS. Payment Methods via Stripe Customer Portal (Approche A, réutilise `/api/billing/portal`, `flow_data` deep-link, no new endpoint, PCI SAQ-A, owner/billing gating, empty-state) + UI polish v1 (CTA equal-width) + v2 (rangée « Billing actions » dédiée). Validé visuellement prod | Approche B (SetupIntent+Elements) différée, pré-requis opérateur portal config, PDF renderer, Option B auth handler, App Check enforcement, `mail.ailunapro.com` DNS, §9.23 reste (Audio/Attestation/Webhooks) + §9.24 i18n + §9.25 analytics |
 | J11→J12 | §17 mini-gate (baseline PASS=74 FAIL=0, build clean, worktree clean, prod `D2AjPr86`, audio code = no fetch/network) | **0 must-fix** — PASS. Audio Explanations (Web Speech API client-side, disclaimer-first, no autoplay/PII/storage/endpoint) sur AuditResult+ReportDetail+ReportShare ; sélecteur langue (lang-only, no translation) + voix (scored auto-pick, per-lang presets, micro-pauses, Test voice). Listening approval PASS. Intermediate FR-strings FAIL fixed via allowlisted LANGUAGE_LABELS | Cloud TTS premium (Option B), traduction script (§9.24), Attestation/Webhooks (§9.23 reste), §9.24 i18n, §9.25 analytics, PDF renderer, App Check enforcement, `mail.ailunapro.com` DNS |
 | J12→J13 | §17 mini-gate (worker tsc clean, baseline PASS=75 FAIL=0, worktree clean, geo+fx 200, prod fe `COXIEMhY`/worker `668f04fa`) | **0 must-fix** — PASS. Smart locale detect + currency DISPLAY (display-only) : `/api/public/geo` (no-auth, no-cache, no IP/PII) + `/api/public/fx` (ECB daily, no key, 6h cache, static fallback) ; detect non-persistent ; "≈ local · billed in USD" ; **perf fix** geo/FX off global boot → Billing-only (Dashboard zéro geo/fx, main 87KB). Stripe USD authoritative | UI translation (§9.24 multilingual), notice UX Firestore-blocked (opt), Batch C chunk-retry (await console line), cloud TTS, Attestation/Webhooks §9.23, §9.25 analytics, PDF renderer, App Check enforcement, `mail.ailunapro.com` DNS |
+| PERF (hors J) | §17 mini-gate (tsc+build clean, worktree clean après purge worktree Ruflo périmé, prod hash match, vérif prod headers + extension-profile) | **0 must-fix** — PASS. P1 watchdog 8s (`925c690`) + Batch A `_headers` HTML no-cache/assets immutable + ErrorBoundary "Retry loading" (`9bcb741`) + fix infra CF (Browser Cache TTL Respect-Headers + Cache Rules html/assets/api) + P2-a Firestore `autoDetectLongPolling` (`7f4d985`, mock `13a0776`). Root causes prouvées read-only : (A) zone Browser-Cache-TTL 4h écrasait `_headers` ; (B) shell gaté sur `buildSession` Firestore reads, WebChannel cassé par AV/proxy. Vérif prod : `/`=no-cache (était 14400), assets immutable, Dashboard charge sous AdGuard+Kaspersky, Firestore `channel?`=200 | **⚠️ test rot PRÉ-EXISTANT** (billingConfig/settings/billing `getByText` périmés, firestore.rules emulator-down, Toast parse-err — échouent déjà @`925c690`, pas un bug produit) → cleanup test séparé ; P2-b/c (watchdog→login-shell, lazy analytics) optionnels ; Cache Reserve = skip (0 gain perçu) |
+| J13→J14 | §17 mini-gate (tsc+build clean 842ms, worktree clean, prod fe `CdRkHlbM` deploy `05208d72`, events reçus PostHog, scrub origin-only incognito) | **0 must-fix** — PASS. PostHog Phase A consent-first US-host zéro-PII : `page_view` (route id-free) + chunk events ; SDK lazy post-consent ; `track()` no-op strict ; `sanitize_properties` URL→origin-only (scrub vérifié) ; surveys/autocapture/replay OFF ; DNT auto-decline ; block-by-env probe + `AnalyticsBlockedNotice` dismissible. Verdict `/e/` block = env (AdGuard/Kaspersky/DNS), accepté final | Phase B feature-usage events (§17 dédié), EU-host/self-host (résidence, host actuel=US), §9.24 i18n, §9.23 Attestation/Webhooks, App Check enforcement, `mail.ailunapro.com` DNS, test rot cleanup |
 | **§9.23 Planned/Partial** | partiel — Prioritized Action Plan **LIVRÉ** (J9 Phase D, `5c3461d`) ; reste planifié | **Livré** : Prioritized Action Plan (dérivation pure, 3 buckets verrouillés Critical/Important/Improvement, profile = tone only, wording verrouillé interdisant compliance claims). **Planifié / non implémenté** : AI System Builder guidé (skeleton J9 B3 ✅, contenu+persistance v2 différé), Audio Explanations, Attestation of Analysis (PAS un certificat), Payment Methods management, Webhooks sortants opt-in | Guardrails permanents §9.23 inchangés ; tout futur élargissement = §17 dédié |
 | **§9.24 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun gate ouvert. | **Planifié / non implémenté** : Multilingual (fr/es/pt/it/de/ru + en default), Currency display auto, Smart locale detection (pref → navigator → CF-IPCountry → en/USD), UX i18n switcher + currency indicator. Chaque sous-item ouvrira son §17 dédié | Guardrails §9.24 : no LLM translation, no legal localization claim, no IP/PII stored, no billing logic change outside Stripe, display-layer only, disclaimer §9.22 traduit + relu humainement |
 | **§9.25 Planned** | **n/a** — doc-only (2026-05-28). Aucun code, aucun SDK, aucun gate ouvert. | **Planifié / non implémenté** : PostHog product analytics (EU-hosted / self-host préféré), events route + feature usage + perf, lazy SDK post-consentement, wrapper `lib/analytics/track.ts`. Phase A (route+perf) puis Phase B (feature usage) — chaque phase = §17 dédié | Guardrails §9.25 : ❌ session replay, ❌ keystrokes/form values, ❌ audit answers, ❌ PII/customer content, ❌ cross-tenant, ❌ ad-trackers. Opt-in + DNT + IP anonymization + IDs hashés. Jamais d'impact sur scoring/findings |
