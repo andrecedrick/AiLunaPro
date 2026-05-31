@@ -4,6 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BillingProvider, useBilling } from '../../src/context/BillingContext';
 import { MOCK_SUBSCRIPTION, MOCK_INVOICES, MOCK_USAGE } from '../../src/data/mockBilling';
 import { PLAN_CONFIGS } from '../../src/types/billing';
+import { AuthProvider } from '../../src/context/AuthContext';
+import { RouteProvider } from '../../src/context/RouteContext';
 
 /* ── Helpers ────────────────────────────────────────────── */
 
@@ -26,8 +28,16 @@ function TestConsumer() {
   );
 }
 
+// BillingContext now consumes useAuth → must be nested under AuthProvider
+// (itself under RouteProvider). Mock auth layer provides a default session.
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <BillingProvider>{children}</BillingProvider>;
+  return (
+    <RouteProvider>
+      <AuthProvider>
+        <BillingProvider>{children}</BillingProvider>
+      </AuthProvider>
+    </RouteProvider>
+  );
 }
 
 /* ── Tests ──────────────────────────────────────────────── */
@@ -107,7 +117,11 @@ describe('Role gating — BillingPage renders', () => {
   // Light smoke test: page renders without crashing when mounted with provider.
   // Full role-gating UI test requires router + auth context; deferred.
   it('BillingProvider renders children without throw', () => {
-    render(<BillingProvider><div data-testid="child">ok</div></BillingProvider>);
+    render(
+      <RouteProvider><AuthProvider>
+        <BillingProvider><div data-testid="child">ok</div></BillingProvider>
+      </AuthProvider></RouteProvider>,
+    );
     expect(screen.getByTestId('child').textContent).toBe('ok');
   });
 });

@@ -3,9 +3,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BillingSettingsPage } from '../../src/pages/settings/BillingSettingsPage';
 import * as configService from '../../src/lib/billing/configService';
+import * as platformService from '../../src/lib/platform/platformService';
 import type { BillingConfigStatus } from '../../src/types/billingConfig';
 import { AuthProvider } from '../../src/context/AuthContext';
 import { RouteProvider } from '../../src/context/RouteContext';
+
+/*
+ * CONTRAT ACTUEL (J5/J7 redesign) : BillingSettingsPage est **operator-gated**
+ * (allowlist plateforme via fetchPlatformMe), PAS owner-gated par role. Les
+ * tenant owners/members voient "Managed by the platform operator". Seul un
+ * operator (isPlatformAdmin=true, email vérifié) voit le panneau read-only
+ * (mode badge, key health, webhook). fetchPlatformMe est indépendant de session.role.
+ */
 
 /* ── Mock data ──────────────────────────────────────────── */
 
@@ -40,10 +49,9 @@ const EMPTY_STATUS: BillingConfigStatus = {
   webhook: { lastEventId: null, lastEventTimestamp: null, lastVerified: null, lastError: null },
 };
 
-/* ── Test wrapper that injects an owner session via localStorage ── */
+/* ── Wrapper (session seed; role is irrelevant to the operator gate) ── */
 
-function ownerWrapper() {
-  // Seed mock session before AuthProvider initializes
+function authWrapper() {
   const session = {
     userId: 'u_owner', orgId: 'org_1', role: 'owner',
     user: { id: 'u_owner', displayName: 'Owner', email: 'owner@x.com', initials: 'OW' },
@@ -60,75 +68,66 @@ function ownerWrapper() {
   );
 }
 
-function memberWrapper() {
-  const session = {
-    userId: 'u_m', orgId: 'org_1', role: 'member',
-    user: { id: 'u_m', displayName: 'Mem', email: 'm@x.com', initials: 'ME' },
-    org:  { id: 'org_1', name: 'Test', plan: 'Free', initials: 'TE', createdAt: '2026-01-01' },
-  };
-  localStorage.setItem('ailunapro-session', JSON.stringify(session));
-  localStorage.setItem('ailunapro-orgs',     JSON.stringify([session.org]));
-  localStorage.setItem('ailunapro-members',  JSON.stringify([{
-    userId: 'u_m', orgId: 'org_1', role: 'member', status: 'active',
-    displayName: 'Mem', email: 'm@x.com', initials: 'ME', joinedAt: '2026-01-01',
-  }]));
-  return ({ children }: { children: React.ReactNode }) => (
-    <RouteProvider><AuthProvider>{children}</AuthProvider></RouteProvider>
-  );
+/** Mock the platform allowlist resolution. */
+function mockOperator(isPlatformAdmin: boolean, emailVerified = true) {
+  vi.spyOn(platformService, 'fetchPlatformMe').mockResolvedValue({
+    isPlatformAdmin,
+    emailVerified,
+  } as Awaited<ReturnType<typeof platformService.fetchPlatformMe>>);
 }
 
 /* ── Tests ──────────────────────────────────────────────── */
 
-describe('BillingSettingsPage — I.5', () => {
+describe('BillingSettingsPage — operator-gated config view', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
   });
 
-  it('renders status from service for owner', async () => {
+  it('renders status from service for an OPERATOR', async () => {
+    mockOperator(true);
     vi.spyOn(configService, 'fetchBillingConfigStatus').mockResolvedValue(FULL_STATUS);
-    const Wrapper = ownerWrapper();
-    render(<BillingSettingsPage />, { wrapper: Wrapper });
+    render(<BillingSettingsPage />, { wrapper: authWrapper() });
     await waitFor(() => expect(screen.getByText('TEST')).toBeTruthy());
     expect(screen.getByText('····7H2K')).toBeTruthy();
     expect(screen.getByText('····A91X')).toBeTruthy();
     expect(screen.getByText('evt_1QabcXYZ')).toBeTruthy();
   });
 
-  it('shows masked indicators for unconfigured keys', async () => {
+  it('shows masked indicators for unconfigured keys (operator)', async () => {
+    mockOperator(true);
     vi.spyOn(configService, 'fetchBillingConfigStatus').mockResolvedValue(FULL_STATUS);
-    const Wrapper = ownerWrapper();
-    render(<BillingSettingsPage />, { wrapper: Wrapper });
+    render(<BillingSettingsPage />, { wrapper: authWrapper() });
     await waitFor(() => expect(screen.getAllByText('Not configured').length).toBeGreaterThan(0));
   });
 
-  it('shows UNSET banner when no key configured', async () => {
+  it('shows UNSET badge when no key configured (operator)', async () => {
+    mockOperator(true);
     vi.spyOn(configService, 'fetchBillingConfigStatus').mockResolvedValue(EMPTY_STATUS);
-    const Wrapper = ownerWrapper();
-    render(<BillingSettingsPage />, { wrapper: Wrapper });
+    render(<BillingSettingsPage />, { wrapper: authWrapper() });
     await waitFor(() => expect(screen.getByText('UNSET')).toBeTruthy());
   });
 
-  it('renders error state on fetch failure', async () => {
+  it('renders error state on fetch failure (operator)', async () => {
+    mockOperator(true);
     vi.spyOn(configService, 'fetchBillingConfigStatus').mockRejectedValue(new Error('boom'));
-    const Wrapper = ownerWrapper();
-    render(<BillingSettingsPage />, { wrapper: Wrapper });
+    render(<BillingSettingsPage />, { wrapper: authWrapper() });
     await waitFor(() => expect(screen.getByText(/Error: boom/)).toBeTruthy());
   });
 
-  it('blocks non-owner with locked view', () => {
+  it('shows operator-managed notice for NON-operator and never calls the config service', async () => {
+    mockOperator(false);
     const fetchSpy = vi.spyOn(configService, 'fetchBillingConfigStatus');
-    const Wrapper = memberWrapper();
-    render(<BillingSettingsPage />, { wrapper: Wrapper });
-    expect(screen.getByText('Owner-only')).toBeTruthy();
-    // Service must NOT be called for non-owners
+    render(<BillingSettingsPage />, { wrapper: authWrapper() });
+    await waitFor(() => expect(screen.getByText(/Managed by the platform operator/i)).toBeTruthy());
+    // Config status must NOT be fetched for non-operators (fail-closed).
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('never renders raw secret strings', async () => {
+  it('never renders raw secret strings (operator view)', async () => {
+    mockOperator(true);
     vi.spyOn(configService, 'fetchBillingConfigStatus').mockResolvedValue(FULL_STATUS);
-    const Wrapper = ownerWrapper();
-    const { container } = render(<BillingSettingsPage />, { wrapper: Wrapper });
+    const { container } = render(<BillingSettingsPage />, { wrapper: authWrapper() });
     await waitFor(() => expect(screen.getByText('TEST')).toBeTruthy());
     const html = container.innerHTML;
     expect(html).not.toMatch(/sk_test_/);

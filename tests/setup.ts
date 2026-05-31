@@ -47,17 +47,26 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn(),
   where: vi.fn(),
   getDocs: vi.fn(),
+  getDoc: vi.fn(async () => ({ exists: () => false, data: () => undefined })),
   setDoc: vi.fn(),
   updateDoc: vi.fn(),
   deleteDoc: vi.fn(),
   doc: vi.fn(),
+  onSnapshot: vi.fn(() => () => {}),
 }));
 
 // Force mock layer in all tests regardless of .env.local
-// (prevents any VITE_*_LAYER=firebase from .env.local bleeding into tests)
-import.meta.env.VITE_DATA_LAYER = 'mock';
-import.meta.env.VITE_AUTH_LAYER = 'mock';
-import.meta.env.VITE_API_URL    = 'http://localhost:5173';
+// (prevents any VITE_*_LAYER=firebase from .env.local bleeding into tests).
+// Domain-specific vars take precedence over VITE_DATA_LAYER (see resolveLayer),
+// so set every domain explicitly — otherwise a domain var inlined from .env.local
+// (e.g. VITE_BILLING_LAYER=firebase) overrides the global mock.
+import.meta.env.VITE_DATA_LAYER     = 'mock';
+import.meta.env.VITE_AUTH_LAYER     = 'mock';
+import.meta.env.VITE_BILLING_LAYER  = 'mock';
+import.meta.env.VITE_REGISTRY_LAYER = 'mock';
+import.meta.env.VITE_AUDIT_LAYER    = 'mock';
+import.meta.env.VITE_REPORTS_LAYER  = 'mock';
+import.meta.env.VITE_API_URL        = 'http://localhost:5173';
 
 // Cleanup after each test
 afterEach(() => {

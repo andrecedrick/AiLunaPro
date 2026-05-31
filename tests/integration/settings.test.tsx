@@ -67,8 +67,8 @@ describe('Phase H — preferences persistence', () => {
     localStorage.clear();
   });
 
-  it('loadLanguage returns "fr" by default', () => {
-    expect(loadLanguage()).toBe('fr');
+  it('loadLanguage returns "en" by default', () => {
+    expect(loadLanguage()).toBe('en');
   });
 
   it('saveLanguage + loadLanguage round-trips', () => {
