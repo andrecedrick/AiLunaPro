@@ -31,18 +31,41 @@ import {
 } from './firestore.rules.helpers';
 import type { RulesTestEnvironment } from '@firebase/rules-unit-testing';
 
+/*
+ * Infra hygiene (Phase 1): these tests require the Firestore emulator on
+ * 127.0.0.1:8080. We gate the whole suite on FIRESTORE_EMULATOR_HOST — the
+ * standard signal that the emulator is running (set automatically by
+ * `firebase emulators:exec`). When it is absent, every suite is SKIPPED
+ * cleanly (no file-level failure) and the hooks are no-ops. When it is present,
+ * the suite runs normally and can pass/fail as usual.
+ *
+ * Deterministic and fast: a synchronous env-var check, no network probe.
+ */
+const RUN_RULES = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+
+if (!RUN_RULES) {
+  // eslint-disable-next-line no-console
+  console.info(
+    '[firestore.rules] SKIPPED — Firestore emulator not signaled. ' +
+    'Set FIRESTORE_EMULATOR_HOST (e.g. run via `firebase emulators:exec`) to execute these rules tests.',
+  );
+}
+
 let env: RulesTestEnvironment;
 
 beforeAll(async () => {
+  if (!RUN_RULES) return;
   env = await setupTestEnv();
 });
 
 beforeEach(async () => {
+  if (!RUN_RULES) return;
   await env.clearFirestore();
   await seedFirestore(env);
 });
 
 afterAll(async () => {
+  if (!RUN_RULES) return;
   await teardownTestEnv();
 });
 
@@ -57,7 +80,7 @@ function db(ctx: ReturnType<typeof asActor>) {
 // /users/{userId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/users/{userId}', () => {
+describe.skipIf(!RUN_RULES)('/users/{userId}', () => {
   it('owner can read own profile at users/u_owner', async () => {
     const fs = db(asActor(env, UID.owner));
     await assertSucceeds(fs.doc(PATHS.userSelf(UID.owner)).get());
@@ -100,7 +123,7 @@ describe('/users/{userId}', () => {
 // /organizations/{orgId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/organizations/{orgId}', () => {
+describe.skipIf(!RUN_RULES)('/organizations/{orgId}', () => {
   it('owner can read organizations/org1', async () => {
     const fs = db(asActor(env, UID.owner));
     await assertSucceeds(fs.doc(PATHS.org(ORG_ID)).get());
@@ -172,7 +195,7 @@ describe('/organizations/{orgId}', () => {
 // /organizations/{orgId}/members/{memberId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/organizations/{orgId}/members/{memberId}', () => {
+describe.skipIf(!RUN_RULES)('/organizations/{orgId}/members/{memberId}', () => {
   it('member can read organizations/org1/members/u_owner', async () => {
     const fs = db(asActor(env, UID.member));
     await assertSucceeds(fs.doc(PATHS.member(ORG_ID, UID.owner)).get());
@@ -213,7 +236,7 @@ describe('/organizations/{orgId}/members/{memberId}', () => {
 // /organizations/{orgId}/audits/{auditId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/organizations/{orgId}/audits/{auditId}', () => {
+describe.skipIf(!RUN_RULES)('/organizations/{orgId}/audits/{auditId}', () => {
   it('member can read organizations/org1/audits/audit1', async () => {
     const fs = db(asActor(env, UID.member));
     await assertSucceeds(fs.doc(PATHS.audit(ORG_ID, AUDIT_ID)).get());
@@ -252,7 +275,7 @@ describe('/organizations/{orgId}/audits/{auditId}', () => {
 // /organizations/{orgId}/audits/{auditId}/answers/{answerId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/organizations/{orgId}/audits/{auditId}/answers/{answerId}', () => {
+describe.skipIf(!RUN_RULES)('/organizations/{orgId}/audits/{auditId}/answers/{answerId}', () => {
   it('member can read organizations/org1/audits/audit1/answers/answer1', async () => {
     const fs = db(asActor(env, UID.member));
     await assertSucceeds(fs.doc(PATHS.answer(ORG_ID, AUDIT_ID, ANSWER_ID)).get());
@@ -296,7 +319,7 @@ describe('/organizations/{orgId}/audits/{auditId}/answers/{answerId}', () => {
 // /organizations/{orgId}/reports/{reportId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/organizations/{orgId}/reports/{reportId}', () => {
+describe.skipIf(!RUN_RULES)('/organizations/{orgId}/reports/{reportId}', () => {
   it('owner can read organizations/org1/reports/report1', async () => {
     const fs = db(asActor(env, UID.owner));
     await assertSucceeds(fs.doc(PATHS.report(ORG_ID, REPORT_ID)).get());
@@ -337,7 +360,7 @@ describe('/organizations/{orgId}/reports/{reportId}', () => {
 // /organizations/{orgId}/registry/{systemId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/organizations/{orgId}/registry/{systemId}', () => {
+describe.skipIf(!RUN_RULES)('/organizations/{orgId}/registry/{systemId}', () => {
   it('member can read organizations/org1/registry/system1', async () => {
     const fs = db(asActor(env, UID.member));
     await assertSucceeds(fs.doc(PATHS.registry(ORG_ID, SYSTEM_ID)).get());
@@ -371,7 +394,7 @@ describe('/organizations/{orgId}/registry/{systemId}', () => {
 // /organizations/{orgId}/exports/{exportId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/organizations/{orgId}/exports/{exportId}', () => {
+describe.skipIf(!RUN_RULES)('/organizations/{orgId}/exports/{exportId}', () => {
   it('member can read organizations/org1/exports/export1', async () => {
     const fs = db(asActor(env, UID.member));
     await assertSucceeds(fs.doc(PATHS.export(ORG_ID, EXPORT_ID)).get());
@@ -394,7 +417,7 @@ describe('/organizations/{orgId}/exports/{exportId}', () => {
 // /organizations/{orgId}/activity_logs/{logId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/organizations/{orgId}/activity_logs/{logId}', () => {
+describe.skipIf(!RUN_RULES)('/organizations/{orgId}/activity_logs/{logId}', () => {
   it('owner can read organizations/org1/activity_logs/log1', async () => {
     const fs = db(asActor(env, UID.owner));
     await assertSucceeds(fs.doc(PATHS.activityLog(ORG_ID, LOG_ID)).get());
@@ -419,7 +442,7 @@ describe('/organizations/{orgId}/activity_logs/{logId}', () => {
 // /subscriptions/{subscriptionId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/subscriptions/{subscriptionId}', () => {
+describe.skipIf(!RUN_RULES)('/subscriptions/{subscriptionId}', () => {
   it('owner can read subscriptions/sub1', async () => {
     const fs = db(asActor(env, UID.owner));
     await assertSucceeds(fs.doc(PATHS.subscription(SUB_ID)).get());
@@ -449,7 +472,7 @@ describe('/subscriptions/{subscriptionId}', () => {
 // /billing_events/{eventId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/billing_events/{eventId}', () => {
+describe.skipIf(!RUN_RULES)('/billing_events/{eventId}', () => {
   it('billing can read billing_events/be1', async () => {
     const fs = db(asActor(env, UID.billing));
     await assertSucceeds(fs.doc(PATHS.billingEvent(BILLING_EVENT_ID)).get());
@@ -474,7 +497,7 @@ describe('/billing_events/{eventId}', () => {
 // /email_logs/{emailId}
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('/email_logs/{emailId}', () => {
+describe.skipIf(!RUN_RULES)('/email_logs/{emailId}', () => {
   it('owner can read email_logs/email1', async () => {
     const fs = db(asActor(env, UID.owner));
     await assertSucceeds(fs.doc(PATHS.emailLog(EMAIL_LOG_ID)).get());
@@ -504,7 +527,7 @@ describe('/email_logs/{emailId}', () => {
 // DEFAULT DENY — unknown paths
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('default deny — unknown paths', () => {
+describe.skipIf(!RUN_RULES)('default deny — unknown paths', () => {
   it('authenticated user CANNOT read unknown_collection/doc1', async () => {
     const fs = db(asActor(env, UID.owner));
     await assertFails(fs.doc('unknown_collection/doc1').get());
