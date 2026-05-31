@@ -2,9 +2,10 @@
 
 > **Remplace les addenda v2.1 et v2.2.** À fusionner dans `cahier-des-charges-v2.md`.
 > Contient les specs détaillées de **K6 Luna Copilot**, la **calibration € de L3**, le **barème tokens R1**,
-> et 4 nouveaux modules : **V1 Analyse de site**, **W1 Matrice Quick Win**, **X1 Audit de l'IA en place
-> (réduction OPEX)**, **Y1 SOP**.
-> Dernière mise à jour : 30 mai 2026.
+> 4 nouveaux modules : **V1 Analyse de site**, **W1 Matrice Quick Win**, **X1 Audit de l'IA en place
+> (réduction OPEX)**, **Y1 SOP**, **+ NFR (§7bis : perf/résilience/sécu/observabilité, learnings shippés)**
+> et **SEO & GEO (§7ter)** comme guardrails permanents.
+> Dernière mise à jour : 31 mai 2026.
 >
 > ⚠️ **Guardrail permanent** : finir d'abord J1.3A/J1.3B (billing admin, multi-currency, promo codes,
 > payment settings, portal diagnostics). **Ne pas casser** checkout / invoices / portal. Les modules
@@ -358,6 +359,114 @@ taux récupération dunning/panier · fraîcheur catalogue (<7 j) · NPS.
 - **J2** — Production / secrets / monitoring / i18n
 
 Chaque phase passe le **gate d'inspection** (v2 §17).
+
+---
+
+## 7bis. NFR — Performance, Résilience, Sécurité & Observabilité *(REQUIS + learnings shippés)*
+
+> **Statut** : guardrails **OBLIGATOIRES** pour tout module futur (V1, K6, X1, L3, R1…).
+> Items marqués ✅ = déjà livrés + validés prod (passe Perf Hardening + J13). Voir
+> `cahier-des-charges-v2.md` §18 (lignes gate **PERF** et **J13→J14**) pour les commits + preuves.
+
+### 7bis.1 Politique de cache SPA-safe (Cloudflare) — ✅ LIVRÉ
+- **HTML** (`/` + `/index.html`) → **`Cache-Control: no-cache, must-revalidate`** (jamais de TTL long).
+- **Assets hashés** (`/assets/*`) → **`max-age=31536000, immutable`**.
+- **Routes API** (`/api/*`) → **bypass cache**.
+- **INTERDIT** : toute Page Rule / Cache Rule / Browser-Cache-TTL de zone qui force un TTL HTML long.
+  Browser Cache TTL = **"Respect Existing Headers"**.
+- **Implémentation** : `public/_headers` (Vite copie vers dist root) + Cloudflare Cache Rules
+  (`audit-html-bypass` FIRST, `audit-assets-cache`, `audit-api-bypass`).
+- **Raison** : HTML stale (TTL 4h) référençait des hash de chunks supprimés après redeploy →
+  "Couldn't load the page" (class-A chunk-load). *(Réf. Batch A `9bcb741` + fix infra CF.)*
+- **AC** : `curl -I /` → `no-cache, must-revalidate` ; `/assets/*.js` → `immutable`.
+
+### 7bis.2 Résilience chunk-load — ✅ LIVRÉ
+- **`lazyWithRetry`** : 1 retry auto (backoff court) sur échec d'import dynamique (chunk/network).
+- **ErrorBoundary chunk-aware** : détecte erreurs chunk → message clair (ad-blocker/réseau) +
+  bouton **"Retry loading"** (reset → ré-import Suspense, sans full reload) + **"Reload page"**.
+- **Télémétrie** (no-PII, post-consent) : `chunk_load_failed` / `chunk_retry_recovered` / `chunk_retry_failed`.
+- **AC** : chunk échoué → 1 retry transparent ; si échec persistant → UI actionnable, jamais blank.
+
+### 7bis.3 Résilience Firestore + boot — ✅ LIVRÉ
+- **`initializeFirestore(app, { experimentalAutoDetectLongPolling: true })`** (jamais `getFirestore` nu).
+  Fallback HTTP long-poll quand WebChannel streaming cassé par antivirus web-shield (Kaspersky)/proxy/VPN.
+- **Boot watchdog** : **jamais d'écran blanc** sur hang long. Timer (≤8s) sur `isLoading` →
+  notice connectivité actionnable ("Still connecting…" + domaines à autoriser + bouton Reload).
+- **Providers fail-soft** : aucun provider ne doit bloquer le shell. Listeners gatés sur session
+  prête (ex. `TokensContext` onSnapshot `if (!enabled || !orgId) return`). Reads liste = `Promise.allSettled`
+  (jamais `Promise.all` — 1 read échoué ne vide pas la liste).
+- **AC** : sous AV/proxy, Dashboard charge ; Firestore `channel?…` = 200 ; pas de blank multi-min.
+  *(Réf. P1 watchdog `925c690`, P2-a long-poll `7f4d985`.)*
+
+### 7bis.4 Sécurité analytics (PostHog) — ✅ LIVRÉ
+- **Consent-first** + **DNT respecté** (`navigator.doNotTrack==='1'` → auto-decline). No-op strict sans consentement.
+- **Désactivé hard** : session **replay**, **autocapture**, **surveys**, `capture_pageview` auto, `capture_pageleave`.
+- **`sanitize_properties` OBLIGATOIRE** : force props URL (`$current_url`/`$pathname`/`$referrer`/`$initial_*`/
+  `$session_entry_*`) → **origin-only** (jamais hash/id/query ; referrers blanchis). Events portent route
+  template id-free uniquement. Anonyme (jamais `identify` avec uid/email).
+- **Détection block-by-env** : probe `/e/` → si `ERR_BLOCKED_BY_CLIENT` (tracking-prevention/AV/firewall/DNS)
+  → notice dismissible ("allow us.i.posthog.com, optionnel").
+- **SDK lazy** post-consent (jamais au boot path).
+- ⚠️ **Résidence** : host actuel = **US** (`us.i.posthog.com`). v1 acceptable (anonyme, `ip=0`, zéro PII).
+  **EU-host/self-host** = requis avant tout traitement de données EU sensibles.
+  *(Réf. J13 `eafb399`/`73ec62d`/`3e07847`/`ed1a3ba`.)*
+
+### 7bis.5 Protocole de mesure perf + budgets
+- **Mesure propre (obligatoire avant tout verdict perf)** : DevTools **Preserve log OFF**, **Disable cache OFF**,
+  incognito clean (sans extensions), 1 seul navigate, lire **DOMContentLoaded/Load** (PAS "Finish" cumulé).
+  Toujours comparer **incognito clean vs profil extensions** (sépare code vs environnement).
+- **Budgets cibles** (à tenir/valider) :
+  | Métrique | Cible |
+  |---|---|
+  | LCP (4G, mid-tier) | < 2.5 s |
+  | TTI | < 3.5 s |
+  | TBT | < 300 ms |
+  | Bundle entry (`index`) gz | < 120 KB (actuel ~91 KB) |
+  | Vendor chunks lazy (firebase-store/auth, posthog) | hors boot path / post-consent |
+- **Règle** : pas de fix perf "au feeling" — exiger trace/waterfall/console. Pas de régression
+  scoring/auth/billing/privacy. Pas de dépendance lourde nouvelle.
+
+---
+
+## 7ter. SEO & GEO (Search + Generative Engine Optimization) *(REQUIS — planifié)*
+
+> **Statut** : **planifié** (non implémenté). Guardrail **OBLIGATOIRE** dès qu'une surface marketing/help
+> publique est exposée. Chaque item ouvre son §17 dédié.
+
+### 7ter.1 Indexabilité
+- Surfaces **marketing/help publiques** = **indexables** : `sitemap.xml` + `robots.txt` (allow public).
+- Surfaces **app authentifiées** = **`noindex`** (meta robots + `X-Robots-Tag`), exclues du sitemap.
+- **`robots.txt`** : autorise public, **disallow** routes app/privées ; pointe le `sitemap.xml`.
+
+### 7ter.2 Métadonnées & social
+- **OpenGraph** + **Twitter cards** (title/description/image) sur surfaces publiques.
+- **Canonical URLs** (évite duplication ; attention au hash routing — canonicals propres par page publique).
+
+### 7ter.3 Données structurées (schema.org)
+- **Organization**, **SoftwareApplication**, **FAQPage** (JSON-LD) sur surfaces publiques pertinentes.
+
+### 7ter.4 GEO (moteurs génératifs / AI search)
+- Publier **`llms.txt`** (résumé + liens stables pour LLM crawlers).
+- Pages **FAQ / approche conformité** **stables** (URLs durables) optimisées citation par AI search engines.
+- **Aucune revendication de certification** conformité (cohérent règle produit globale).
+
+### 7ter.5 i18n (si/quand activé)
+- **`hreflang`** par locale + URLs localisées.
+- **Traductions humaines** — **JAMAIS de traduction LLM** pour le contenu indexé (qualité + crédibilité).
+  *(Cohérent §9.24 : lang-only display, pas de traduction auto.)*
+
+---
+
+## 7quater. Gating — NFR & SEO/GEO comme guardrails permanents
+- §7bis (NFR) + §7ter (SEO/GEO) = **critères de gate §17 OBLIGATOIRES** pour V1, K6, X1, W1, L3, L4, Y1, R1, S1, Q1.
+- **Aucun module futur ne PASS son exit-gate** s'il : casse la politique cache SPA, introduit un provider
+  bloquant le shell, ajoute analytics sans consent/scrub, ou expose une surface publique non-indexable/sans NFR.
+- **§18 (cahier-des-charges-v2.md)** :
+  - **Shippé/validé** : cache SPA-safe, chunk-resilience (lazyWithRetry + ErrorBoundary retry), Firestore
+    long-poll autodetect, boot watchdog, providers fail-soft, PostHog consent-first + scrub + block-notice
+    (lignes gate **PERF** + **J13→J14**, commits `9bcb741`/`925c690`/`7f4d985`/`ed1a3ba`).
+  - **Planifié** : SEO (sitemap/robots/OG/canonical/schema), GEO (llms.txt/FAQ), EU-host analytics,
+    budgets perf formels (LCP/TTI/TBT), i18n hreflang+traductions humaines.
 
 ---
 
