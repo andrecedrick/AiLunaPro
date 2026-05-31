@@ -1,25 +1,47 @@
 /**
- * Audit Express preview — public, COMPUTE-ONLY route (Phase 3, §3bis).
+ * Audit Express preview — public, COMPUTE-ONLY route (Phase 3) + Turnstile
+ * bot/abuse protection (Phase 4, §3bis / §7bis).
  *
- *   POST /api/public/audit-express/preview
+ *   GET  /api/public/audit-express/config   -> { turnstileSiteKey }
+ *   POST /api/public/audit-express/preview  -> deterministic preview
  *
  * Privacy contract (NON-NEGOTIABLE):
- *   - NO auth, NO PII: the body carries ONLY tap answers (controlled enums).
- *   - NO persistence: nothing is written to Firestore or any store.
- *   - NO lead capture, NO enrichment, NO Turnstile (added later if needed).
+ *   - NO auth, NO PII: the POST body carries ONLY tap answers + a Turnstile
+ *     token (an opaque anti-bot string, not user data).
+ *   - NO persistence: nothing is written to any store.
+ *   - NO lead capture, NO enrichment, NO IP logging (remoteIp is NOT sent to
+ *     siteverify — we omit it on purpose).
  *   - Deterministic: same taps => identical response (Phase 0 engines).
  *
- * Returns the stamped + traced K1A-lite / K2A-lite preview. Cache-bypassed
- * (no-store) like other /api routes per the NFR cache policy.
+ * Turnstile is verified server-side with TURNSTILE_SECRET_KEY (Worker env, never
+ * in the frontend). Production never bypasses (see lib/turnstile). Responses are
+ * cache-bypassed (no-store) per the NFR cache policy.
  */
 
 import { Hono } from 'hono';
 import { computePreview, validateTaps, type PreviewTaps } from '../lib/audit-express-preview';
+import { verifyTurnstile } from '../lib/turnstile';
 import type { AppEnv } from '../index';
 
 const auditExpress = new Hono<AppEnv>();
 
+type TurnstileBindings = AppEnv['Bindings'] & {
+  APP_ENV?:              string;
+  TURNSTILE_SECRET_KEY?: string;
+  TURNSTILE_SITE_KEY?:   string;
+};
+
+// Public config: the static /audit-express page fetches the PUBLIC site key so
+// it can render the Turnstile widget. No secret is ever exposed here.
+auditExpress.get('/api/public/audit-express/config', c => {
+  const env = c.env as TurnstileBindings;
+  c.header('Cache-Control', 'no-store');
+  return c.json({ turnstileSiteKey: env.TURNSTILE_SITE_KEY ?? null });
+});
+
 auditExpress.post('/api/public/audit-express/preview', async c => {
+  const env = c.env as TurnstileBindings;
+
   let body: unknown;
   try {
     body = await c.req.json();
@@ -27,21 +49,26 @@ auditExpress.post('/api/public/audit-express/preview', async c => {
     return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400);
   }
 
-  // Accept ONLY tap answers. Ignore any other fields entirely (defense against
-  // accidental PII): we read solely the validated tap keys, never the raw body.
-  const taps = (body && typeof body === 'object'
-    ? (body as Record<string, unknown>).taps ?? body
-    : body) as unknown;
+  const obj = (body && typeof body === 'object') ? (body as Record<string, unknown>) : {};
 
+  // 1. Bot/abuse protection — verify Turnstile token BEFORE any compute.
+  //    remoteIp intentionally omitted to avoid transmitting/handling IPs.
+  const token = typeof obj.turnstileToken === 'string' ? obj.turnstileToken : undefined;
+  const ts = await verifyTurnstile(env, token);
+  if (!ts.ok) {
+    return c.json({ error: 'Bot/abuse check failed', code: ts.code ?? 'TURNSTILE_FAILED' }, 400);
+  }
+
+  // 2. Accept ONLY tap answers (controlled enums). Never read PII fields.
+  const taps = (obj.taps ?? obj) as unknown;
   const err = validateTaps(taps);
   if (err) {
     return c.json({ error: err, code: 'INVALID_TAPS' }, 400);
   }
 
-  // Compute-only. No persistence, no logging of inputs.
+  // 3. Compute-only. No persistence, no logging of inputs.
   const preview = computePreview(taps as PreviewTaps);
 
-  // Never cache a compute response.
   c.header('Cache-Control', 'no-store');
   return c.json(preview);
 });

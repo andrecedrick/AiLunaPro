@@ -71,6 +71,11 @@ export type AppEnv = {
     APP_ENV?:                      string;
     // K1A — Cloudflare Turnstile secret for /api/public/diagnostic
     TURNSTILE_SECRET_KEY?:         string;
+    // Phase 4 — Cloudflare Turnstile PUBLIC site key, served to the static
+    // /audit-express page via GET /api/public/audit-express/config so the page
+    // can render the widget. Public value (safe to expose); pairs with
+    // TURNSTILE_SECRET_KEY. Operator sets it via `wrangler secret put` or vars.
+    TURNSTILE_SITE_KEY?:           string;
     // J5 Batch 3 — operator allowlist. Comma-separated platform-admin emails.
     // Set via `wrangler secret put PLATFORM_ADMIN_EMAILS --env production`.
     // Platform admins are NOT org members; this gates operator-only surfaces.
