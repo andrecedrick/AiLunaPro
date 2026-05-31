@@ -1,10 +1,12 @@
-# AUDIT AI / AiLunaPro — Cahier des charges v2.3 (FINAL, prêt pour Claude Code)
+# AUDIT AI / AiLunaPro — Cahier des charges v2.4 (FINAL, prêt pour Claude Code)
 
-> **Remplace les addenda v2.1 et v2.2.** À fusionner dans `cahier-des-charges-v2.md`.
+> **Remplace v2.1/v2.2/v2.3.** À fusionner dans `cahier-des-charges-v2.md`.
 > Contient les specs détaillées de **K6 Luna Copilot**, la **calibration € de L3**, le **barème tokens R1**,
-> 4 nouveaux modules : **V1 Analyse de site**, **W1 Matrice Quick Win**, **X1 Audit de l'IA en place
-> (réduction OPEX)**, **Y1 SOP**, **+ NFR (§7bis : perf/résilience/sécu/observabilité, learnings shippés)**
-> et **SEO & GEO (§7ter)** comme guardrails permanents.
+> 4 modules : **V1 Analyse de site**, **W1 Matrice Quick Win**, **X1 Audit de l'IA en place
+> (réduction OPEX)**, **Y1 SOP**, **+ NFR (§7bis)** et **SEO & GEO (§7ter)** comme guardrails permanents.
+> **v2.4 ajoute** : principe **Déterminisme & traçabilité** (§0.4), **Audit Express** killer demo publique
+> (§3bis), **P1 PDF Report Renderer** (§3ter), **surfaces SEO/GEO concrètes** (§7ter étendu),
+> **gating §17 étendu** (déterminisme + traçabilité + artefact + budgets perf, §7quater).
 > Dernière mise à jour : 31 mai 2026.
 >
 > ⚠️ **Guardrail permanent** : finir d'abord J1.3A/J1.3B (billing admin, multi-currency, promo codes,
@@ -21,6 +23,10 @@
 1. **Zéro-expertise** : utilisable seul de A à Z par un non-technicien. Pas d'écran vide, 1 action/écran, langage simple, « Luna le fait pour moi ».
 2. **La collecte fait la qualité** : questionnaire + documents + site + IA existante = audit et conseil de qualité.
 3. **Transparence = crédibilité** : « AiLunaPro est notre solution » affiché ; on dit quand l'externe est meilleur. Condition du N°1.
+4. **Déterminisme & traçabilité** *(NON NÉGOCIABLE)* : un même input doit produire un même audit scoré.
+   Le LLM **extrait** (température 0, structuré) ; le **scoring/classement est rule-based en code** (pas par le LLM) ;
+   chaque résultat est **versionné (snapshot)** ; **aucun chiffre/risque sans source cliquable**. Cadre produit :
+   AiLunaPro **aide à la préparation** EU AI Act — **jamais d'attestation/certification de conformité ni de conseil juridique**.
 
 ---
 
@@ -302,6 +308,55 @@ d'auto-mutation** de la logique d'audit/décision sans validation. Après valida
 
 ---
 
+## 3bis. Audit Express — Killer demo publique *(<5 min, sans compte) — priorité haute*
+
+> **Objectif** : prouver la valeur €/risque **avant tout compte**, en <5 min. Bat les incumbents
+> sur le **speed-to-value**. Porte d'entrée principale (SEO/GEO → demo → compte).
+
+- **Entrée** : page publique `/audit-express` (Turnstile, session éphémère anonyme, zéro PII stockée).
+- **Inputs** : URL (optionnelle) **ou** 3-5 réponses tap. Pas d'upload, pas de questionnaire long.
+- **Pipeline (lite, déterministe)** :
+  1. **V1-lite** : fetch + crawl léger (accueil/à-propos/services), extraction LLM (temp 0) → activité,
+     cible, **stack/IA détectés** (chatbots, widgets IA, analytics). Respect robots.txt, données publiques.
+  2. **K1A diagnostic-lite** : tâches automatisables + Shadow AI + **niveau EU AI Act indicatif** (rule-based).
+  3. **K2A ROI-lite** : économies €/mois + h/semaine estimées (fourchette sourcée).
+  4. **X1-lite** : 2-3 outils IA détectés → **économie OPEX indicative** (€/mois, sourcée).
+- **Outputs** (à l'écran, langage simple) : "Voici ce que Luna a vu" — tâches, Shadow AI, niveau EU AI Act
+  indicatif, **€X/mois économisables**, top 3 Quick Wins. **Chaque chiffre = source/raison cliquable.**
+- **CTA** : **créer un compte** pour (a) **sauvegarder** l'audit, (b) **exporter le PDF** (P1), (c) audit complet 9 étapes.
+- **Garde-fous** : "**Estimation de préparation, pas une attestation de conformité ni un conseil juridique.**"
+  Aucune donnée perso requise ; rien de stocké sans compte ; déterministe (même URL → même sortie).
+- **AC** : URL ou 3 taps → résultat €/risque en <5 min, sans compte, avec CTA compte+PDF, chiffres sourcés.
+
+---
+
+## 3ter. P1 — PDF Report Renderer *(NOUVEAU — artefact B2B partageable, priorité haute)*
+
+- **Objectif** : transformer un audit (Express ou complet) en **artefact PDF téléchargeable/partageable**
+  — preuve de valeur pour le board/COMEX, viralité B2B, livrable partenaire (R1 white-label).
+- **Contenu** : synthèse, profil, diagnostic + Shadow AI, **niveau EU AI Act indicatif**, Matrice Quick Win (W1),
+  ROI (K2A), **stack actuel vs optimisé + économie OPEX (X1)**, top actions. **Sources/raisons annexées.**
+- **Exigences** : **déterministe** (même audit → même PDF), **versionné** (snapshot horodaté + version moteur),
+  branding (partenaire en white-label R1), pas de PII non nécessaire, footer disclaimer "préparation, pas certification".
+- **Sortie** : PDF (+ MD optionnel), stocké (R2, scopé orgId/partnerId), lié à la session d'audit et à S1.
+- **Gating** : tout module produisant un livrable affichable DOIT pouvoir l'exporter en PDF/MD versionné (§7quater).
+- **AC** : un audit complété → PDF téléchargeable, reproductible (même input → même doc), brandable, sourcé.
+
+---
+
+## 3quater. Déterminisme & traçabilité — **SPEC** *(applique §0.4 à tous les modules LLM : V1, K6, X1, W1, K1A, K2A)*
+
+- **Séparation stricte** : le LLM **extrait/structure uniquement** (température **0**, sortie JSON schématisée) ;
+  **tout scoring, classement, seuil, € et niveau de risque = code rule-based** (jamais le LLM).
+  → garantit reproductibilité, auditabilité, et fiabilité white-label.
+- **Snapshots versionnés** : chaque audit persiste `{inputsHash, engineVersion, rulesetVersion, modelId, output, sources[], createdAt}`.
+  Rejouable. Une MAJ de barème/règles (Q1) crée une **nouvelle version**, n'altère pas les snapshots passés.
+- **Traçabilité** : chaque chiffre/risque/reco affiché porte une **source cliquable** (doc, page site, règle, benchmark).
+- **Gate (bloquant §17)** : **même input → même sortie scorée** (test rejoué : `inputsHash` identique ⇒ output identique).
+- **Cadre** : sorties = **aide à la préparation**, jamais attestation/certification/conseil juridique.
+
+---
+
 ## 4. Architecture — impacts (Cloudflare Worker + Firestore)
 
 **Collections** (multi-tenant, scopées `orgId`/`partnerId`) :
@@ -433,40 +488,76 @@ Chaque phase passe le **gate d'inspection** (v2 §17).
 > **Statut** : **planifié** (non implémenté). Guardrail **OBLIGATOIRE** dès qu'une surface marketing/help
 > publique est exposée. Chaque item ouvre son §17 dédié.
 
-### 7ter.1 Indexabilité
-- Surfaces **marketing/help publiques** = **indexables** : `sitemap.xml` + `robots.txt` (allow public).
-- Surfaces **app authentifiées** = **`noindex`** (meta robots + `X-Robots-Tag`), exclues du sitemap.
-- **`robots.txt`** : autorise public, **disallow** routes app/privées ; pointe le `sitemap.xml`.
+### 7ter.1 Surfaces publiques REQUISES (liste exacte)
+Pré-requis car l'app est **auth-gated** → sans ces pages, **zéro acquisition organique/AI-search**.
+Rendu **SSR/prerender statique** (pas derrière le shell hash-routé app), URLs propres (pas de `#`).
 
-### 7ter.2 Métadonnées & social
-- **OpenGraph** + **Twitter cards** (title/description/image) sur surfaces publiques.
-- **Canonical URLs** (évite duplication ; attention au hash routing — canonicals propres par page publique).
+| Page | URL | Rôle |
+|---|---|---|
+| Landing produit | `/` (marketing) | proposition de valeur, CTA Audit Express |
+| **Audit Express (demo)** | `/audit-express` | killer demo §3bis (entrée funnel) |
+| Cas d'usage PME | `/use-cases/pme` | SEO intent PME |
+| Cas d'usage indépendant | `/use-cases/independant` | SEO intent solo |
+| Cas d'usage RH / juridique | `/use-cases/rh`, `/use-cases/juridique` | SEO vertical |
+| EU AI Act expliqué | `/eu-ai-act` | pilier GEO (forte intent 2026) |
+| Shadow AI expliqué | `/shadow-ai` | pilier GEO |
+| FAQ | `/faq` | FAQPage schema, GEO |
+| Pricing | `/pricing` | intent transactionnel |
+| Méthodologie / approche | `/methodologie` | HowTo schema, trust |
+| Help public | `/help` | support indexable (≠ help in-app) |
+| Glossaire IA | `/glossaire` | longue traîne SEO/GEO |
 
-### 7ter.3 Données structurées (schema.org)
-- **Organization**, **SoftwareApplication**, **FAQPage** (JSON-LD) sur surfaces publiques pertinentes.
+### 7ter.2 Map indexable vs noindex
+- **INDEXABLE** : toutes les pages du tableau 7ter.1 (marketing/demo/cas/EU-AI-Act/FAQ/pricing/méthodo/help/glossaire).
+- **`noindex`** (meta robots + `X-Robots-Tag: noindex`) : **tout `/app/*`** — dashboard, audits, reports, billing,
+  settings, copilot session, registry, agents, team. **Exclu du sitemap.**
+- **Audit Express** `/audit-express` = indexable ; les **résultats de session** = noindex (éphémères, par-session).
 
-### 7ter.4 GEO (moteurs génératifs / AI search)
-- Publier **`llms.txt`** (résumé + liens stables pour LLM crawlers).
-- Pages **FAQ / approche conformité** **stables** (URLs durables) optimisées citation par AI search engines.
-- **Aucune revendication de certification** conformité (cohérent règle produit globale).
+### 7ter.3 sitemap / robots / canonical / OG
+- **`sitemap.xml`** : uniquement les URLs indexables (tableau 7ter.1) ; régénéré au build.
+- **`robots.txt`** : `Allow:` public ; `Disallow: /app/` (+ routes privées) ; ligne `Sitemap:` ; référence `llms.txt`.
+- **Canonical** : balise `<link rel="canonical">` propre **par page publique** (URLs sans `#` ; le hash-routing reste app-only).
+- **OpenGraph + Twitter cards** : `og:title/description/image/url` + `twitter:card=summary_large_image` sur chaque page publique.
 
-### 7ter.5 i18n (si/quand activé)
-- **`hreflang`** par locale + URLs localisées.
-- **Traductions humaines** — **JAMAIS de traduction LLM** pour le contenu indexé (qualité + crédibilité).
-  *(Cohérent §9.24 : lang-only display, pas de traduction auto.)*
+### 7ter.4 Données structurées (schema.org JSON-LD)
+- **Organization** (landing) : nom, logo, URL, description, `sameAs` réseaux.
+- **SoftwareApplication** (landing/pricing) : catégorie, offres/pricing, audience.
+- **FAQPage** (`/faq`, `/eu-ai-act`, `/shadow-ai`) : Q/R structurées (maximise extraction AI-search).
+- **HowTo** (`/methodologie`) : étapes de l'audit (sans promesse de certification).
+
+### 7ter.5 GEO — `llms.txt` (contenu exact)
+Fichier racine `llms.txt` — **stable, sourcé, sans hype** :
+- **Une phrase de positionnement** : "AiLunaPro — guided AI audit & managed-agent advisory for SMBs & independents (EU AI Act preparation)".
+- **Liens stables** : landing, `/audit-express`, `/eu-ai-act`, `/shadow-ai`, `/methodologie`, `/faq`, `/pricing`.
+- **Résumé produit** : parcours guidé 9 étapes, audit IA en place + OPEX, Quick Wins, ROI, agents gérés.
+- **Disclaimer obligatoire** : "**Preparation support, NOT a compliance certification, attestation, or legal advice.**"
+- **Ce qu'on ne fait pas** : pas de certif légale, pas de stockage PII en demo, déterministe.
+
+### 7ter.6 i18n (si/quand activé) — *(next, hors v2.4)*
+- **`hreflang`** par locale + URLs localisées ; **traductions humaines** — **JAMAIS de traduction LLM** indexée.
+  *(Cohérent §9.24 : lang-only display.)*
 
 ---
 
-## 7quater. Gating — NFR & SEO/GEO comme guardrails permanents
-- §7bis (NFR) + §7ter (SEO/GEO) = **critères de gate §17 OBLIGATOIRES** pour V1, K6, X1, W1, L3, L4, Y1, R1, S1, Q1.
-- **Aucun module futur ne PASS son exit-gate** s'il : casse la politique cache SPA, introduit un provider
-  bloquant le shell, ajoute analytics sans consent/scrub, ou expose une surface publique non-indexable/sans NFR.
+## 7quater. Gating — NFR & SEO/GEO & Déterminisme comme guardrails permanents
+- §0.4 (déterminisme) + §3quater + §7bis (NFR) + §7ter (SEO/GEO) = **critères de gate §17 OBLIGATOIRES**
+  pour V1, K6, X1, W1, K1A, K2A, L3, L4, Y1, R1, S1, Q1.
+- **Checks bloquants exit-gate (v2.4)** — un module ne PASS que si **tous** vérifiés :
+  1. **Déterminisme** : même input → même sortie scorée (LLM temp 0 extraction-only, scoring rule-based code, snapshot rejoué). ✅ test.
+  2. **Traçabilité** : chaque chiffre/risque/reco affiché → **source cliquable**.
+  3. **Artefact** : tout livrable affichable → **export PDF/MD versionné** (P1).
+  4. **Budgets perf** : LCP < 2.5s · TTI < 3.5s · TBT < 300ms · entry bundle gz < 120KB (mesure propre §7bis.5).
+  5. **NFR** : cache SPA-safe intact · aucun provider bloquant le shell · graceful-degradation 3rd-party.
+  6. **Privacy/analytics** : consent-first + scrub origin-only + no replay/autocapture/surveys.
+  7. **Surface publique** : module à valeur démontrable → page indexable correspondante (§7ter) OU justification noindex.
+  8. **Trust** : surface audit/risque → disclaimer "préparation, pas attestation/certification/conseil juridique".
 - **§18 (cahier-des-charges-v2.md)** :
-  - **Shippé/validé** : cache SPA-safe, chunk-resilience (lazyWithRetry + ErrorBoundary retry), Firestore
-    long-poll autodetect, boot watchdog, providers fail-soft, PostHog consent-first + scrub + block-notice
-    (lignes gate **PERF** + **J13→J14**, commits `9bcb741`/`925c690`/`7f4d985`/`ed1a3ba`).
-  - **Planifié** : SEO (sitemap/robots/OG/canonical/schema), GEO (llms.txt/FAQ), EU-host analytics,
-    budgets perf formels (LCP/TTI/TBT), i18n hreflang+traductions humaines.
+  - **Shippé/validé** : cache SPA-safe, chunk-resilience, Firestore long-poll, boot watchdog, providers fail-soft,
+    PostHog consent-first + scrub + block-notice (lignes gate **PERF** + **J13→J14**, commits `9bcb741`/`925c690`/`7f4d985`/`ed1a3ba`).
+  - **Planifié (v2.4)** : déterminisme/scoring rule-based + snapshots, Audit Express (§3bis), P1 PDF renderer (§3ter),
+    surfaces SEO/GEO (§7ter), budgets perf formels en gate, schema/llms.txt.
+  - **Next (PAS v2.4, listé non développé)** : i18n hreflang + traductions humaines · autosave draft local + sync ·
+    anti-abus crédits white-label (budget LLM org/jour + quotas + ledger) · EU-host/self-host analytics.
 
 ---
 
