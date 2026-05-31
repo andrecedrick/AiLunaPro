@@ -1,6 +1,6 @@
 # AiLunaPro — Status Dashboard *(source de vérité, réutilisable)*
 
-> Export standalone de §0bis (`cahier-des-charges-v2.3-FINAL.md`, contenu v2.4). MAJ 31 mai 2026.
+> Export standalone de §0bis (`cahier-des-charges-v2.4-FINAL.md`). MAJ 31 mai 2026.
 > Prod live : fe `index-CdRkHlbM.js` (deploy `05208d72`).
 > Légende : **Shipped** (livré+prod) · **Partial** (partiel/lite) · **Planned** (spec, non implémenté).
 
@@ -90,4 +90,4 @@ Transversaux : **U1** (mode assisté zéro-expertise), **K6 Luna Copilot** (orch
 
 ---
 
-*Source canonique : `docs/cahier-des-charges-v2.3-FINAL.md` §0bis (contenu v2.4). Ce fichier = export de réutilisation.*
+*Source canonique : `docs/cahier-des-charges-v2.4-FINAL.md` §0bis. Ce fichier = export de réutilisation.*

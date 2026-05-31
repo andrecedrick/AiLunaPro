@@ -761,4 +761,4 @@ J1.9 = S1 + T1 ; J1.10 = Q1 ; then J2 Production. Each phase passes the end-of-s
 
 ---
 
-*Fin du cahier des charges v2.3 FINAL. Remplace v2.1 et v2.2. À fusionner dans `cahier-des-charges-v2.md` puis transmettre à Claude Code.*
+*Fin du cahier des charges v2.4 FINAL. Remplace v2.1/v2.2/v2.3. À fusionner dans `cahier-des-charges-v2.md` puis transmettre à Claude Code.*
