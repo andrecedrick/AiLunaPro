@@ -1,4 +1,4 @@
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { initializeFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { app } from './firebase';
 
@@ -11,7 +11,17 @@ import { app } from './firebase';
  *   import { collection, getDocs } from 'firebase/firestore';
  *   const snap = await getDocs(collection(db, 'organizations'));
  */
-const db: Firestore = getFirestore(app);
+/**
+ * PERF (P2-a): auto-detect long-polling. Firestore defaults to WebChannel
+ * streaming, which antivirus web-shields (Kaspersky), corporate proxies, and
+ * some VPN/DNS layers frequently break — causing reads to hang/retry-backoff
+ * and blocking the auth-gated shell render. autoDetectLongPolling probes the
+ * connection and transparently falls back to HTTP long-polling when streaming
+ * is interfered with. No behaviour change on healthy networks; same API.
+ */
+const db: Firestore = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
 
 /**
  * Connect to the local Firestore emulator when
