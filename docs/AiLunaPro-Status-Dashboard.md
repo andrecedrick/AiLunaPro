@@ -36,8 +36,8 @@ Transversaux : **U1** (mode assisté zéro-expertise), **K6 Luna Copilot** (orch
 | Module / Section | Goal | Statut | Evidence (commit / prod) | Next action + AC |
 |---|---|---|---|---|
 | **Billing/Stripe** (J1–J2) | checkout/abo/portal/top-ups multi-devise | **Shipped** | J1–J2 closed ; prod | Stripe price IDs prod opérateur ; AC : live keys set |
-| **K1A Diagnostic** | tâches automatisables + Shadow AI + EU AI Act indicatif | **Shipped** | `DiagnosticPage` (public) | Rendre déterministe (rule-based) ; AC : même input→même sortie |
-| **K2A ROI** | économies €/mois + h/sem + payback | **Shipped** | `RoiCalculatorPage` (public) | idem déterminisme ; AC : fourchette sourcée stable |
+| **K1A Diagnostic** | automatable tasks + Shadow AI + indicative EU AI Act level | **Shipped + deterministic (Phase 0)** | `DiagnosticPage` (public); `scoreDiagnostic` stamped + traced | — |
+| **K2A ROI** | €/month + hours/week + payback | **Shipped + deterministic (Phase 0)** | `RoiCalculatorPage` (public); `scoreRoi` stamped + traced | — |
 | **K3+/K3A Reco fork** | AiLunaPro vs agents gérés, transparent | **Shipped** | J9 (reco populée) | seuils rule-based ; AC : score couverture reproductible |
 | **Prioritized Action Plan** | plan post-audit priorisé | **Shipped** | J9-D `5c3461d` | persistance done/dismissed (différé) |
 | **Payment Methods** | gérer cartes via Customer Portal | **Shipped** | J10 `868ef8a`/`e8cabd2` | — |
@@ -62,7 +62,7 @@ Transversaux : **U1** (mode assisté zéro-expertise), **K6 Luna Copilot** (orch
 | **Q1 Intelligence Refresh** | veille modèles/prix, human-in-loop | **Planned** | — | AC : diffs→file revue admin, jamais auto-mutation |
 | **Audit Express (§3bis)** | demo publique <5min sans compte | **Planned** | — | AC : URL/3taps→€/risque <5min+CTA compte+PDF |
 | **P1 PDF Report (§3ter)** | artefact B2B exportable versionné | **Planned** | — | AC : audit→PDF reproductible brandable sourcé |
-| **Déterminisme (§0.4/§3quater)** | LLM extract temp0 + scoring code + snapshots | **Planned** | — | AC : même input→même sortie scorée (gate) |
+| **Determinism (§0.4/§3quater)** | rule-based scoring + version stamp + traceability | **Shipped (Phase 0)** | `worker/src/lib/determinism.ts`; K1A `scoreDiagnostic` + K2A `scoreRoi`; 18 replay tests | Migrate remaining scored paths (`src/lib/scoring/*` K4/K3+) in a later phase |
 | **SEO/GEO surfaces (§7ter)** | pages publiques + sitemap/robots/schema/llms.txt | **Planned** | — | AC : pages indexables + `/app/*` noindex |
 
 ---

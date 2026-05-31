@@ -20,7 +20,7 @@ import { dlog } from '../lib/log';
 import { verifyTurnstile } from '../lib/turnstile';
 import { checkCooldown } from '../lib/rateLimit';
 import { validateLead, expiresAtFromNow } from '../lib/diagnostic-shared';
-import { validateInputs, computeRoi, generateRoiId, type RoiInputs } from '../lib/roi-shared';
+import { validateInputs, scoreRoi, generateRoiId, type RoiInputs } from '../lib/roi-shared';
 import type { AppEnv } from '../index';
 
 const roi = new Hono<AppEnv>();
@@ -74,8 +74,9 @@ roi.post('/api/public/roi-calculation', async c => {
   }
   const lead = leadCheck.lead;
 
-  // 4. Compute server-authoritative result
-  const result = computeRoi(inputs);
+  // 4. Compute server-authoritative result (Phase 0: deterministic + stamped + traced)
+  const scored = scoreRoi(inputs);
+  const result = scored.result;
 
   // 5. Persist
   const id  = generateRoiId();
@@ -93,6 +94,9 @@ roi.post('/api/public/roi-calculation', async c => {
     id,
     inputs,
     result,
+    // Phase 0 determinism stamp (additive; persistence schema unchanged).
+    engineVersion:  scored.engineVersion,
+    rulesetVersion: scored.rulesetVersion,
     lead: {
       email:       lead.email,
       companyName: lead.companyName,
@@ -123,7 +127,13 @@ roi.post('/api/public/roi-calculation', async c => {
     'payback:', result.estimatedPaybackMonths,
   );
 
-  return c.json({ id, result });
+  return c.json({
+    id,
+    result,
+    engineVersion:  scored.engineVersion,
+    rulesetVersion: scored.rulesetVersion,
+    trace:          scored.trace,
+  });
 });
 
 export default roi;

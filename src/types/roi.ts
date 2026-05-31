@@ -4,6 +4,7 @@
  */
 
 import type { Workflow } from '../data/roi-config';
+import type { Trace } from './diagnostic';
 
 export interface RoiInputs {
   teamSize:                       number;
@@ -23,4 +24,8 @@ export interface RoiResult {
 export interface RoiResponse {
   id:     string;
   result: RoiResult;
+  // Phase 0 determinism metadata (additive; present from engine v1).
+  engineVersion?:  string;
+  rulesetVersion?: string;
+  trace?:          Trace;
 }

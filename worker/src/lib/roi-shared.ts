@@ -16,8 +16,21 @@ import {
   isWorkflow,
   type Workflow,
 } from '../data/roi-config';
+import {
+  stamp,
+  ruleRef,
+  benchmarkRef,
+  type DeterminismStamp,
+  type Trace,
+} from './determinism';
 
 export type { Workflow };
+
+/**
+ * ROI ruleset version (savings rates, agent benchmark, formula, rounding).
+ * BUMP whenever any rate, benchmark, formula, or rounding rule changes.
+ */
+export const ROI_RULESET_VERSION = '1.0.0';
 
 export interface RoiInputs {
   /**
@@ -36,6 +49,17 @@ export interface RoiResult {
   estimatedYearlyCostSaved:        number;
   estimatedPaybackMonths:          number | null;
   recommendedAgentIds:             string[];   // length 2
+}
+
+/**
+ * Deterministic, stamped + traced K2A scored output (Phase 0).
+ * Wraps RoiResult with engineVersion/rulesetVersion/trace. Additive metadata;
+ * the numeric result fields are unchanged.
+ */
+export interface RoiScored extends DeterminismStamp {
+  result: RoiResult;
+  /** field name -> reason references (rule ids / benchmark keys). */
+  trace:  Trace;
 }
 
 /* ── Rounding helpers (single source) ─────────────────────── */
@@ -116,6 +140,25 @@ export function computeRoi(inputs: RoiInputs): RoiResult {
     estimatedPaybackMonths:          payback,
     recommendedAgentIds,
   };
+}
+
+/**
+ * Deterministic K2A scoring entry point (Phase 0).
+ *
+ * Pure: same inputs => identical output. No randomness, no Date, no locale.
+ * Returns the numeric RoiResult + version stamp + traceability references.
+ * Assumes inputs are pre-validated (call validateInputs first).
+ */
+export function scoreRoi(inputs: RoiInputs): RoiScored {
+  const result = computeRoi(inputs);
+  const trace: Trace = {
+    estimatedTimeSavedHoursPerMonth: [ruleRef(`roi.savingsRate.${inputs.targetWorkflow}`), ruleRef('roi.formula.timeSaved')],
+    estimatedMonthlyCostSaved:       [ruleRef('roi.formula.monthlyCost')],
+    estimatedYearlyCostSaved:        [ruleRef('roi.formula.yearlyCost(x12)')],
+    estimatedPaybackMonths:          [ruleRef('roi.formula.payback'), benchmarkRef('roi.benchmark.agentDefaultMonthlyUsd')],
+    recommendedAgentIds:             [ruleRef(`roi.workflowToAgents.${inputs.targetWorkflow}`)],
+  };
+  return { ...stamp(ROI_RULESET_VERSION), result, trace };
 }
 
 /* ── ID helper (local, generic body — no diagnostic coupling) ── */

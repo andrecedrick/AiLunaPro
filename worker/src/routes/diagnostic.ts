@@ -21,8 +21,7 @@ import { checkCooldown } from '../lib/rateLimit';
 import { dlog } from '../lib/log';
 import {
   validateAnswers,
-  computeScore,
-  recommendationsFor,
+  scoreDiagnostic,
   validateLead,
   generateDiagnosticId,
   expiresAtFromNow,
@@ -79,13 +78,12 @@ diagnostic.post('/api/public/diagnostic', async c => {
   }
   const lead = leadCheck.lead;
 
-  // 4. Score (server-authoritative)
-  const score = computeScore(answers);
-
-  // 5. Static recommendations (D5=A — no K3 dependency).
-  //    implementation_priority can prepend its mapped agent (weight 0,
-  //    never affects score). Trimmed to max 3.
-  const recommendedAgentIds = recommendationsFor(score.bucket, answers);
+  // 4. Score (server-authoritative; Phase 0: deterministic + stamped + traced).
+  //    scoreDiagnostic canonicalizes answers, computes score + bucket, applies
+  //    the static recommendation rule (implementation_priority prepend, weight 0,
+  //    never affects score; trimmed to max 3), and attaches version + trace.
+  const scored = scoreDiagnostic(answers);
+  const recommendedAgentIds = scored.recommendedAgentIds;
 
   // 6. Persist
   const id  = generateDiagnosticId();
@@ -103,9 +101,12 @@ diagnostic.post('/api/public/diagnostic', async c => {
   const doc = {
     id,
     answers,
-    score:                score.normalizedScore,
-    bucket:               score.bucket,
+    score:                scored.normalizedScore,
+    bucket:               scored.bucket,
     recommendedAgentIds,
+    // Phase 0 determinism stamp (additive; persistence schema unchanged).
+    engineVersion:        scored.engineVersion,
+    rulesetVersion:       scored.rulesetVersion,
     lead: {
       email:       lead.email,
       companyName: lead.companyName,
@@ -129,13 +130,16 @@ diagnostic.post('/api/public/diagnostic', async c => {
   }
 
   // PII: do NOT log lead.email (lands in persistent Cloudflare tail logs).
-  dlog(env, '[diagnostic] saved — id:', id, 'score:', score.normalizedScore, 'bucket:', score.bucket);
+  dlog(env, '[diagnostic] saved — id:', id, 'score:', scored.normalizedScore, 'bucket:', scored.bucket);
 
   return c.json({
     id,
-    score:               score.normalizedScore,
-    bucket:              score.bucket,
+    score:               scored.normalizedScore,
+    bucket:              scored.bucket,
     recommendedAgentIds,
+    engineVersion:       scored.engineVersion,
+    rulesetVersion:      scored.rulesetVersion,
+    trace:               scored.trace,
   });
 });
 

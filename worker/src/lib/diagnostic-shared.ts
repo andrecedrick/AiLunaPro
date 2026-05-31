@@ -18,14 +18,44 @@
  */
 
 import { DIAGNOSTIC_QUESTIONS, type DiagnosticQuestion } from '../data/diagnostic-questions';
+import {
+  stamp,
+  ruleRef,
+  benchmarkRef,
+  canonicalizeAnswers,
+  type DeterminismStamp,
+  type Trace,
+} from './determinism';
 
 export type Bucket = 'low' | 'medium' | 'high';
+
+/**
+ * Diagnostic ruleset version (cutoffs, weights, recommendation maps).
+ * BUMP this whenever any scoring rule, cutoff, weight, or recommendation map
+ * changes — so historical results stay attributable to the rules that produced them.
+ */
+export const DIAGNOSTIC_RULESET_VERSION = '1.0.0';
 
 export interface DiagnosticScore {
   rawScore:        number;
   maxRawScore:     number;
   normalizedScore: number; // 0–100
   bucket:          Bucket;
+}
+
+/**
+ * Deterministic, stamped + traced K1A scored output.
+ * The numeric fields are unchanged; engineVersion/rulesetVersion/trace are
+ * additive determinism metadata (§0.4). recommendedAgentIds is rule-derived.
+ */
+export interface DiagnosticScored extends DeterminismStamp {
+  rawScore:            number;
+  maxRawScore:         number;
+  normalizedScore:     number; // 0–100
+  bucket:              Bucket;
+  recommendedAgentIds: string[];
+  /** field name -> reason references (rule ids / benchmark keys). */
+  trace:               Trace;
 }
 
 const BUCKET_LOW_MAX:    number = 39;
@@ -111,6 +141,40 @@ export function recommendationsForBucket(bucket: Bucket): string[] {
  *
  * implementation_priority itself has weight 0 and never affects score.
  */
+/**
+ * Deterministic K1A scoring entry point (Phase 0).
+ *
+ * Pure: same canonicalized answers => identical output. No randomness, no Date,
+ * no locale. Returns numeric result + version stamp + traceability references.
+ * Assumes answers are pre-validated (call validateAnswers first).
+ */
+export function scoreDiagnostic(answers: Record<string, string>): DiagnosticScored {
+  const canonical = canonicalizeAnswers(answers);
+  const score = computeScore(canonical);
+  const recommendedAgentIds = recommendationsFor(score.bucket, canonical);
+  const usedPriorityOverride =
+    recommendedAgentIds.length > 0 &&
+    !recommendationsForBucket(score.bucket).slice(0, 1).includes(recommendedAgentIds[0]);
+
+  const trace: Trace = {
+    normalizedScore: [ruleRef('diagnostic.normalizedScore.weightedSum'), benchmarkRef('diagnostic.maxRawScore')],
+    bucket:          [ruleRef('diagnostic.bucket.cutoffs(low<=39,medium<=69,high<=100)')],
+    recommendedAgentIds: usedPriorityOverride
+      ? [ruleRef(`diagnostic.recommendations.${score.bucket}`), ruleRef('diagnostic.recommendations.priorityOverride')]
+      : [ruleRef(`diagnostic.recommendations.${score.bucket}`)],
+  };
+
+  return {
+    ...stamp(DIAGNOSTIC_RULESET_VERSION),
+    rawScore:        score.rawScore,
+    maxRawScore:     score.maxRawScore,
+    normalizedScore: score.normalizedScore,
+    bucket:          score.bucket,
+    recommendedAgentIds,
+    trace,
+  };
+}
+
 export function recommendationsFor(bucket: Bucket, answers: Record<string, string>): string[] {
   const base = [...RECOMMENDATIONS[bucket]];
   const priorityValue = answers.implementation_priority;
