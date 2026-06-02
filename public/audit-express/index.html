@@ -215,6 +215,9 @@
       .ax-opp-meta { display: flex; gap: 6px; flex-wrap: wrap; }
       .ax-tag { background: var(--brand-tint-bg); color: var(--violet-text); border-radius: 999px; padding: 3px 9px; font-size: 11px; font-weight: 600; white-space: nowrap; }
       .ax-opp-rationale { margin: 6px 0 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+      .ax-opp-why { margin: 4px 0 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+      .ax-opp-integrations { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+      .ax-opp-cta { margin-top: 10px; font-size: 13px; padding: 9px 16px; }
 
       .muted { color: var(--text-muted); font-size: 13px; }
       footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
@@ -727,6 +730,7 @@
             if (opps.length) {
               var aGroup = el('div', 'ax-group');
               aGroup.appendChild(el('h3', null, 'Automation opportunities (indicative)'));
+              if (u.automationHeadline) aGroup.appendChild(el('div', 'ax-subcat-label', u.automationHeadline));
               opps.forEach(function (o) {
                 var row = el('div', 'ax-opp');
                 var head = el('div', 'ax-opp-head');
@@ -736,9 +740,26 @@
                 meta.appendChild(el('span', 'ax-tag', 'effort: ' + o.effort));
                 head.appendChild(meta);
                 row.appendChild(head);
-                row.appendChild(el('p', 'ax-opp-rationale', o.rationale));
+                if (o.marketingPitch) row.appendChild(el('p', 'ax-opp-rationale', o.marketingPitch));
+                if (o.whyItMatters) row.appendChild(el('p', 'ax-opp-why', o.whyItMatters));
+                if (o.typicalWorkflow && o.typicalWorkflow.length) {
+                  var wf = el('ul', 'ax-list');
+                  o.typicalWorkflow.forEach(function (b) { wf.appendChild(el('li', null, b)); });
+                  row.appendChild(wf);
+                }
+                if (o.commonIntegrations && o.commonIntegrations.length) {
+                  row.appendChild(el('div', 'ax-opp-integrations', 'Works with: ' + o.commonIntegrations.join(', ')));
+                }
+                if (o.ctaLabel && o.ctaTarget) {
+                  var cta = document.createElement('a');
+                  cta.className = 'cta ax-opp-cta';
+                  cta.href = o.ctaTarget;
+                  cta.textContent = o.ctaLabel;
+                  row.appendChild(cta);
+                }
                 aGroup.appendChild(row);
               });
+              aGroup.appendChild(el('p', 'muted', 'Impact and effort are indicative estimates only.'));
               exBody.appendChild(aGroup);
             }
 

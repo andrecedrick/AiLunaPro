@@ -64,9 +64,13 @@ describe('understanding — rule coverage', () => {
       expect(Array.isArray(o.sources)).toBe(true);
       expect(['high', 'medium', 'low']).toContain(o.impact);
       expect(['low', 'medium', 'high']).toContain(o.effort);
+      expect(o.ctaTarget).toBe('/#/signup');
+      expect(['b2b', 'b2c', 'mixed']).toContain(o.audience);
     });
-    // Detected AI tool => the "expand assistant" opportunity is present.
-    expect(u.automationOpportunities.map(o => o.id)).toContain('expand-assistant-coverage');
+    // E-commerce + b2c audience => catalog opportunity present.
+    expect(u.automationOpportunities.map(o => o.id)).toContain('b2c.order-returns-faq');
+    // Audience-tailored headline.
+    expect(typeof u.automationHeadline).toBe('string');
   });
 
   it('gives an indicative EU AI Act band (limited when AI detected) — never a legal claim', () => {

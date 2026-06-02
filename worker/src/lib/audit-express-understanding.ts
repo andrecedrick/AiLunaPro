@@ -19,26 +19,25 @@
 
 import { ENGINE_VERSION, ruleRef, benchmarkRef, type Trace } from './determinism';
 import type { ExtractSnapshot, ExtractDetection } from './audit-express-extract';
+import {
+  selectOpportunities,
+  audienceHeadline,
+  type BusinessType,
+  type Audience,
+  type AutomationOpportunity,
+  type OpportunityContext,
+} from './audit-express-opportunities';
 
 export const UNDERSTANDING_RULESET_VERSION = '1.0.0';
 
-/* ── Controlled enums (locked at GO) ────────────────────────────────────── */
+/* ── Controlled enums (BusinessType/Audience live in the catalog module) ── */
 
-export type BusinessType =
-  | 'consulting' | 'agency' | 'ecommerce' | 'saas' | 'marketplace'
-  | 'content' | 'nonprofit' | 'local_service' | 'unknown';
-export type Audience = 'b2b' | 'b2c' | 'mixed' | 'unknown';
+export type { BusinessType, Audience, AutomationOpportunity };
 export type Confidence = 'low' | 'medium' | 'high';
-export type Impact = 'high' | 'medium' | 'low';
-export type Effort = 'low' | 'medium' | 'high';
 
 export interface Offer { tag: string; sources: string[] }
 export interface SignalItem { id: string; label: string; sources: string[] }
 export interface ShadowAiFlag { id: string; severity: 'info' | 'attention'; rationale: string; sources: string[]; ruleRef: string }
-export interface AutomationOpportunity {
-  id: string; title: string; impact: Impact; effort: Effort;
-  rationale: string; sources: string[]; ruleRef: string;
-}
 export interface BusinessProfile {
   businessType: BusinessType;
   audience:     Audience;
@@ -62,6 +61,7 @@ export interface Understanding {
   aiUsageSignals:              SignalItem[];
   shadowAiFlags:               ShadowAiFlag[];
   automationOpportunities:     AutomationOpportunity[];
+  automationHeadline:          string;
   deeperAudit:                 DeeperAudit;
   trace:                       Trace;
 }
@@ -211,84 +211,24 @@ function shadowAiFlags(dets: ExtractDetection[]): ShadowAiFlag[] {
   return flags;
 }
 
-/* ── Automation opportunities (rule-based map) ──────────────────────────── */
+/* ── Evidence signals for the opportunity selector ──────────────────────── */
 
-const IMPACT_RANK: Record<Impact, number> = { high: 3, medium: 2, low: 1 };
-const EFFORT_RANK: Record<Effort, number> = { low: 1, medium: 2, high: 3 };
+const PATH_SIGNAL_KEYS = ['contact', 'support', 'pricing', 'features', 'blog', 'product'];
 
-interface OppRule {
-  id: string; title: string; impact: Impact; effort: Effort; rationale: string; ruleRef: string;
-  test: (ctx: Ctx) => boolean;
-  sources: (ctx: Ctx) => string[];
-}
-interface Ctx {
-  type: BusinessType;
-  frags: Fragment[];
-  dets: ExtractDetection[];
-  has: (cat: string) => boolean;
-  pathHas: (kw: string) => string[];   // returns matching path sources
-  detSources: (cat: string) => string[];
-}
-
-const OPP_RULES: OppRule[] = [
-  { id: 'expand-assistant-coverage', title: 'Expand your existing assistant to more journeys', impact: 'medium', effort: 'low',
-    rationale: 'An AI/chat tool is already in use; extend it to deflect more repetitive questions.',
-    ruleRef: 'understanding.automation.aiChatPresent', test: c => c.has('ai_chat'), sources: c => c.detSources('ai_chat') },
-  { id: 'add-support-assistant', title: 'Add a support assistant for common questions', impact: 'high', effort: 'low',
-    rationale: 'Support/contact pages exist with no AI assistant detected; automate first-line answers.',
-    ruleRef: 'understanding.automation.supportNoAi', test: c => !c.has('ai_chat') && (c.pathHas('contact').length > 0 || c.pathHas('support').length > 0),
-    sources: c => [...c.pathHas('contact'), ...c.pathHas('support')] },
-  { id: 'automate-order-status', title: 'Automate order-status & returns replies', impact: 'high', effort: 'medium',
-    rationale: 'E-commerce signals detected; automate repetitive order/returns messages.',
-    ruleRef: 'understanding.automation.ecommerce', test: c => c.type === 'ecommerce', sources: c => c.detSources('ecommerce').concat(c.pathHas('product')) },
-  { id: 'self-serve-faq-deflection', title: 'Self-serve FAQ deflection for onboarding', impact: 'high', effort: 'low',
-    rationale: 'SaaS signals detected; deflect onboarding questions with a self-serve assistant.',
-    ruleRef: 'understanding.automation.saas', test: c => c.type === 'saas', sources: c => c.pathHas('pricing').concat(c.pathHas('features')) },
-  { id: 'automate-lead-capture-crm', title: 'Automate lead capture into a CRM', impact: 'high', effort: 'medium',
-    rationale: 'Analytics present but no booking/CRM signal; automate lead routing.',
-    ruleRef: 'understanding.automation.leadCapture', test: c => c.has('analytics') && !c.has('booking'), sources: c => c.detSources('analytics') },
-  { id: 'add-online-booking-automation', title: 'Add online booking with reminders', impact: 'high', effort: 'medium',
-    rationale: 'Local-service signals with no booking tool detected; automate scheduling + reminders.',
-    ruleRef: 'understanding.automation.localBooking', test: c => c.type === 'local_service' && !c.has('booking'), sources: c => c.pathHas('contact') },
-  { id: 'repurpose-content-pipeline', title: 'Automate content repurposing', impact: 'medium', effort: 'medium',
-    rationale: 'Content signals detected; automate turning articles into summaries/social posts.',
-    ruleRef: 'understanding.automation.content', test: c => c.type === 'content', sources: c => c.pathHas('blog') },
-  { id: 'automate-inbound-triage', title: 'Automate inbound message triage', impact: 'medium', effort: 'low',
-    rationale: 'A contact page exists; automate routing/triage of inbound requests.',
-    ruleRef: 'understanding.automation.contactTriage', test: c => c.pathHas('contact').length > 0, sources: c => c.pathHas('contact') },
-];
-
-// Generic fallbacks (low confidence) to always offer at least 3 ideas.
-const FALLBACK_OPPS: AutomationOpportunity[] = [
-  { id: 'document-qa-assistant', title: 'Document Q&A assistant for your team', impact: 'medium', effort: 'low', rationale: 'A general, high-leverage starting point.', sources: ['identity:title'], ruleRef: 'understanding.automation.fallback' },
-  { id: 'reporting-automation',  title: 'Automate recurring reports', impact: 'medium', effort: 'medium', rationale: 'A general, high-leverage starting point.', sources: ['identity:title'], ruleRef: 'understanding.automation.fallback' },
-  { id: 'email-triage',          title: 'Automate email triage & drafting', impact: 'low', effort: 'low', rationale: 'A general, high-leverage starting point.', sources: ['identity:title'], ruleRef: 'understanding.automation.fallback' },
-];
-
-function buildOpportunities(ctx: Ctx): AutomationOpportunity[] {
-  const out: AutomationOpportunity[] = [];
-  const seen = new Set<string>();
-  for (const r of OPP_RULES) {
-    if (!r.test(ctx)) continue;
-    if (seen.has(r.id)) continue;
-    seen.add(r.id);
-    out.push({ id: r.id, title: r.title, impact: r.impact, effort: r.effort, rationale: r.rationale,
-      sources: Array.from(new Set(r.sources(ctx))).sort(), ruleRef: r.ruleRef });
+/** Build the deterministic evidence-signal map (key -> sources) for selection. */
+function buildEvidence(s: ExtractSnapshot, frags: Fragment[], bt: { type: BusinessType; sources: string[] }, dets: ExtractDetection[]): Record<string, string[]> {
+  const ev: Record<string, string[]> = {};
+  const add = (key: string, sources: string[]) => {
+    ev[key] = Array.from(new Set((ev[key] || []).concat(sources))).sort();
+  };
+  for (const d of dets) add('cat:' + d.category, d.sources && d.sources.length ? d.sources : ['detection:' + d.id]);
+  if (bt.type !== 'unknown') add('type:' + bt.type, bt.sources.length ? bt.sources : ['identity:title']);
+  for (const pk of PATH_SIGNAL_KEYS) {
+    const srcs = frags.filter(f => f.source.startsWith('path:') && f.text.indexOf(pk) !== -1).map(f => f.source);
+    if (srcs.length) add('path:' + pk, srcs);
   }
-  for (const f of FALLBACK_OPPS) {
-    if (out.length >= 3) break;
-    if (seen.has(f.id)) continue;
-    seen.add(f.id);
-    out.push({ ...f });
-  }
-  out.sort((a, b) => {
-    const i = IMPACT_RANK[b.impact] - IMPACT_RANK[a.impact];
-    if (i !== 0) return i;
-    const e = EFFORT_RANK[a.effort] - EFFORT_RANK[b.effort];
-    if (e !== 0) return e;
-    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-  });
-  return out.slice(0, 5);
+  ev['identity'] = (s.identity && s.identity.title) ? ['identity:title'] : ['identity:title'];
+  return ev;
 }
 
 /* ── Deeper audit (indicative) ──────────────────────────────────────────── */
@@ -335,17 +275,16 @@ export function understand(s: ExtractSnapshot): Understanding {
   const profileSources = Array.from(new Set([...bt.sources, ...aud.sources])).sort();
   const confidence: Confidence = bt.score >= 3 ? 'high' : bt.score >= 1 ? 'medium' : 'low';
 
-  const ctx: Ctx = {
-    type: bt.type,
-    frags,
-    dets,
-    has: (cat: string) => dets.some(d => d.category === cat),
-    pathHas: (kw: string) => frags.filter(f => f.source.startsWith('path:') && f.text.indexOf(kw) !== -1).map(f => f.source),
-    detSources: (cat: string) => Array.from(new Set(dets.filter(d => d.category === cat).flatMap(d => d.sources))).sort(),
+  const evidence = buildEvidence(s, frags, bt, dets);
+  const oppCtx: OpportunityContext = {
+    audience:     aud.audience,
+    businessType: bt.type,
+    signals:      new Set(Object.keys(evidence)),
+    sourceFor:    (key: string) => (evidence[key] ? [...evidence[key]].sort() : []),
   };
 
   const flags = shadowAiFlags(dets);
-  const opportunities = buildOpportunities(ctx);
+  const opportunities = selectOpportunities(oppCtx);
   const audit = deeperAudit(dets, flags);
 
   const trace: Trace = {
@@ -370,6 +309,7 @@ export function understand(s: ExtractSnapshot): Understanding {
     aiUsageSignals: aiUsageSignals(dets),
     shadowAiFlags:  flags,
     automationOpportunities: opportunities,
+    automationHeadline: audienceHeadline(aud.audience),
     deeperAudit:    audit,
     trace,
   };
