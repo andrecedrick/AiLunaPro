@@ -15,6 +15,7 @@
  */
 
 import { ENGINE_VERSION, ruleRef, type Trace } from './determinism';
+import type { Understanding } from './audit-express-understanding';
 
 /* ── Versions & caps (pre-approved Phase 5 decisions) ───────────────────── */
 
@@ -421,6 +422,9 @@ export interface ExtractSnapshot {
   detections:      ExtractDetection[];
   trace:           Trace;
   note:            string;
+  // Phase 7 — pure rule-only interpretation, attached after assembly.
+  // Pure function of the capture, so it does not change inputsHash semantics.
+  understanding?:  Understanding;
   // createdAt is added by the route (metadata only; excluded from inputsHash).
 }
 

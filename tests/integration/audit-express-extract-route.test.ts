@@ -123,6 +123,10 @@ describe('extract route — caps & success', () => {
     expect(typeof j.inputsHash).toBe('string');
     expect(typeof j.createdAt).toBe('string');
     expect(j.detections.map((d: { id: string }) => d.id)).toContain('aichat.intercom');
+    // Phase 7 — understanding block attached (rule-only interpretation).
+    expect(j.understanding).toBeTruthy();
+    expect(typeof j.understanding.businessProfile.businessType).toBe('string');
+    expect(Array.isArray(j.understanding.automationOpportunities)).toBe(true);
   });
 
   it('returns NO raw PII (identity scrubbed)', async () => {

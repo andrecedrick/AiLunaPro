@@ -30,6 +30,7 @@ import {
   type ExtractSnapshot,
   type ExtractErrorCode,
 } from './audit-express-extract';
+import { understand } from './audit-express-understanding';
 
 export type RunResult =
   | { ok: true;  snapshot: ExtractSnapshot }
@@ -203,5 +204,8 @@ export async function runExtraction(rawUrl: string): Promise<RunResult> {
   }
 
   const snapshot = assembleSnapshot(v.url, captures);
+  // Phase 7 — pure, rule-only interpretation over the captured snapshot.
+  // No network, no Date, no randomness; same capture => same understanding.
+  snapshot.understanding = understand(snapshot);
   return { ok: true, snapshot };
 }

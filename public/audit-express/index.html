@@ -208,6 +208,13 @@
         #ax-analyze { width: 100%; }
         #ax-url { flex: 1 1 100%; }
       }
+      /* Automation opportunity cards (Phase 7) */
+      .ax-opp { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-top: 8px; }
+      .ax-opp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+      .ax-opp-title { font-weight: 600; color: var(--text-primary); font-size: 14px; }
+      .ax-opp-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+      .ax-tag { background: var(--brand-tint-bg); color: var(--violet-text); border-radius: 999px; padding: 3px 9px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+      .ax-opp-rationale { margin: 6px 0 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
 
       .muted { color: var(--text-muted); font-size: 13px; }
       footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
@@ -696,6 +703,62 @@
           pGroup.appendChild(pUl);
           exBody.appendChild(pGroup);
 
+          // Phase 7 — rule-only interpretation (read-only).
+          var u = s.understanding;
+          if (u) {
+            var bp = u.businessProfile || {};
+            function prettyType(t) { return String(t || 'unknown').replace(/_/g, ' '); }
+            var uGroup = el('div', 'ax-group');
+            uGroup.appendChild(el('h3', null, 'What this business does'));
+            var bUl = el('ul', 'ax-list');
+            bUl.appendChild(el('li', null, 'Type: ' + prettyType(bp.businessType) + ' (confidence: ' + (bp.confidence || 'low') + ')'));
+            if (bp.audience) bUl.appendChild(el('li', null, 'Audience: ' + bp.audience));
+            uGroup.appendChild(bUl);
+            if (bp.offers && bp.offers.length) {
+              var oWrap = el('div', 'ax-subcat');
+              oWrap.appendChild(el('div', 'ax-subcat-label', 'Offers'));
+              var oChips = el('div', 'ax-chips');
+              bp.offers.forEach(function (o) { oChips.appendChild(el('span', 'ax-chip', o.tag)); });
+              oWrap.appendChild(oChips); uGroup.appendChild(oWrap);
+            }
+            exBody.appendChild(uGroup);
+
+            var opps = u.automationOpportunities || [];
+            if (opps.length) {
+              var aGroup = el('div', 'ax-group');
+              aGroup.appendChild(el('h3', null, 'Automation opportunities (indicative)'));
+              opps.forEach(function (o) {
+                var row = el('div', 'ax-opp');
+                var head = el('div', 'ax-opp-head');
+                head.appendChild(el('span', 'ax-opp-title', o.title));
+                var meta = el('span', 'ax-opp-meta');
+                meta.appendChild(el('span', 'ax-tag', 'impact: ' + o.impact));
+                meta.appendChild(el('span', 'ax-tag', 'effort: ' + o.effort));
+                head.appendChild(meta);
+                row.appendChild(head);
+                row.appendChild(el('p', 'ax-opp-rationale', o.rationale));
+                aGroup.appendChild(row);
+              });
+              exBody.appendChild(aGroup);
+            }
+
+            var da = u.deeperAudit;
+            if (da) {
+              var dGroup2 = el('div', 'ax-group');
+              dGroup2.appendChild(el('h3', null, 'Deeper audit (indicative)'));
+              dGroup2.appendChild(el('p', 'muted', 'EU AI Act level: ' + da.euAiActLevelIndicative));
+              dGroup2.appendChild(el('p', 'ax-opp-rationale', da.euAiActRationale));
+              dGroup2.appendChild(el('p', 'ax-opp-rationale', da.shadowAiSummary));
+              if (da.quickWins && da.quickWins.length) {
+                dGroup2.appendChild(el('div', 'ax-subcat-label', 'Quick wins'));
+                var qUl = el('ul', 'ax-list');
+                da.quickWins.forEach(function (q) { qUl.appendChild(el('li', null, q.text)); });
+                dGroup2.appendChild(qUl);
+              }
+              exBody.appendChild(dGroup2);
+            }
+          }
+
           // Technical details disclosure — keep raw detection sources + trace IDs.
           var det = document.createElement('details');
           det.className = 'why-tech'; det.style.marginTop = '12px';
@@ -711,6 +774,17 @@
             Object.keys(s.trace).forEach(function (k) {
               lines.push('trace.' + k + ': ' + (s.trace[k] || []).map(function (r) { return r.kind + ':' + r.ref; }).join(' · '));
             });
+          }
+          if (u) {
+            lines.push('understanding ruleset ' + u.understandingRulesetVersion);
+            lines.push('businessType: ' + u.businessProfile.businessType + ' ← ' + (u.businessProfile.sources || []).join(', '));
+            (u.shadowAiFlags || []).forEach(function (f) { lines.push(f.id + ' ← ' + (f.sources || []).join(', ')); });
+            (u.automationOpportunities || []).forEach(function (o) { lines.push(o.id + ' [' + o.ruleRef + '] ← ' + (o.sources || []).join(', ')); });
+            if (u.trace) {
+              Object.keys(u.trace).forEach(function (k) {
+                lines.push('u.trace.' + k + ': ' + (u.trace[k] || []).map(function (r) { return r.kind + ':' + r.ref; }).join(' · '));
+              });
+            }
           }
           refs.textContent = lines.join('\n');
           det.appendChild(refs);
