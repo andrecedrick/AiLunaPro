@@ -170,7 +170,21 @@
       .metric { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--border); }
       .metric .v { font-family: var(--font-heading); font-weight: 700; font-size: 19px; color: var(--text-primary); }
       .why { background: none; border: none; color: var(--violet-text); font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
-      .why-box { font-size: 12px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 6px 0 2px; }
+      .why-box { font-size: 12px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 6px 0 2px; }
+      .why-explain { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+      .why-tech { margin-top: 8px; }
+      .why-tech > summary {
+        cursor: pointer; color: var(--violet-text); font-size: 12px; font-weight: 600;
+        list-style: none; display: inline-block;
+      }
+      .why-tech > summary::-webkit-details-marker { display: none; }
+      .why-tech > summary::before { content: "▸ "; }
+      .why-tech[open] > summary::before { content: "▾ "; }
+      .why-tech > summary:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px; }
+      .why-refs {
+        margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11.5px; color: var(--text-muted); word-break: break-word; line-height: 1.5;
+      }
 
       .muted { color: var(--text-muted); font-size: 13px; }
       footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
@@ -402,12 +416,54 @@
           return String(slug).replace(/-/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
         }
 
+        // Static, deterministic plain-English explanations for trace rule IDs
+        // and benchmark keys. NO LLM, NO network — a fixed dictionary. The raw
+        // IDs stay visible under "Technical details" so traceability is intact.
+        var TRACE_EXPLAIN_EXACT = {
+          'roi.formula.timeSaved':                'Time saved = your monthly repetitive hours times a typical savings rate.',
+          'roi.formula.monthlyCost':              'Cost saved = the time saved times your approximate hourly cost.',
+          'roi.formula.yearlyCost(x12)':          'Yearly figure = the monthly cost saved times 12.',
+          'roi.formula.payback':                  'Payback = a typical AI agent monthly cost divided by your monthly savings.',
+          'roi.benchmark.agentDefaultMonthlyUsd': 'Reference point: the assumed monthly cost of one AI agent.',
+          'diagnostic.normalizedScore.weightedSum': 'Your score is a weighted sum of your answers, scaled to 0-100.',
+          'diagnostic.maxRawScore':               'Reference point: the maximum possible score, used to scale to 0-100.',
+          'diagnostic.recommendations.priorityOverride': 'We moved one agent up the list to match the priority you selected.'
+        };
+        // Prefix rules (checked after exact match), most specific first.
+        var TRACE_EXPLAIN_PREFIX = [
+          ['diagnostic.bucket.cutoffs',   'Readiness band: low is 0-39, medium 40-69, high 70-100. "Indicative" means this is a short estimate, not the full audit.'],
+          ['diagnostic.recommendations.', 'Starting points are suggested from your readiness band.'],
+          ['roi.savingsRate.',            'Each work area has a typical share of repetitive time AI can take over; we applied the rate for the area you chose.'],
+          ['roi.workflowToAgents.',       'Agents are matched to the work area you selected.']
+        ];
+
+        function explainRef(ref) {
+          if (TRACE_EXPLAIN_EXACT[ref]) return TRACE_EXPLAIN_EXACT[ref];
+          for (var i = 0; i < TRACE_EXPLAIN_PREFIX.length; i++) {
+            if (ref.indexOf(TRACE_EXPLAIN_PREFIX[i][0]) === 0) return TRACE_EXPLAIN_PREFIX[i][1];
+          }
+          // Fallback: generic explanation; the exact key still shows in "Technical details".
+          return 'This value comes from a fixed scoring rule.';
+        }
+
+        // One short, human explanation per metric (dedupe sentences from its refs).
+        function explainRefs(refs) {
+          if (!refs || !refs.length) return 'This is a rule-based estimate.';
+          var seen = {}, out = [];
+          for (var i = 0; i < refs.length; i++) {
+            var s = explainRef(refs[i].ref);
+            if (!seen[s]) { seen[s] = true; out.push(s); }
+          }
+          return out.join(' ');
+        }
+
         function refList(refs) {
           if (!refs || !refs.length) return '';
           return refs.map(function (r) { return r.kind + ': ' + r.ref; }).join(' · ');
         }
 
-        // Build one metric row with a "Why?" toggle revealing trace references.
+        // Build one metric row with a "Why?" toggle. The toggle reveals a plain
+        // explanation plus a "Technical details" disclosure with the raw refs.
         function metric(label, value, refs) {
           var row = document.createElement('div');
           row.className = 'metric';
@@ -416,12 +472,37 @@
           var why = document.createElement('button');
           why.className = 'why';
           why.type = 'button';
+          why.setAttribute('aria-expanded', 'false');
           why.textContent = 'Why?';
           var box = document.createElement('div');
           box.className = 'why-box';
           box.hidden = true;
-          box.textContent = refList(refs) || 'Rule-based estimate.';
-          why.addEventListener('click', function () { box.hidden = !box.hidden; });
+
+          // Plain-English explanation (1-2 short sentences).
+          var explain = document.createElement('p');
+          explain.className = 'why-explain';
+          explain.textContent = explainRefs(refs);
+          box.appendChild(explain);
+
+          // Technical details disclosure — raw rule/benchmark IDs, exactly as before.
+          var tech = refList(refs);
+          if (tech) {
+            var det = document.createElement('details');
+            det.className = 'why-tech';
+            var sum = document.createElement('summary');
+            sum.textContent = 'Technical details';
+            var pre = document.createElement('div');
+            pre.className = 'why-refs';
+            pre.textContent = tech;
+            det.appendChild(sum);
+            det.appendChild(pre);
+            box.appendChild(det);
+          }
+
+          why.addEventListener('click', function () {
+            box.hidden = !box.hidden;
+            why.setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
+          });
           left.appendChild(why);
           var v = document.createElement('div');
           v.className = 'v';
