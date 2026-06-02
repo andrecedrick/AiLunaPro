@@ -33,69 +33,174 @@
     />
 
     <style>
-      :root { color-scheme: light; }
+      /* Brand fonts — same families as the main app (Inter body, Sora headings). */
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap');
+
+      /* ── Design tokens — mirror src/index.css (light surface only) ── */
+      :root {
+        color-scheme: light;
+
+        --page-bg:        #F4F6FB;
+        --surface:        #FFFFFF;
+        --surface-2:      #F8F9FD;
+        --border:         rgba(0, 0, 0, 0.07);
+        --border-strong:  rgba(0, 0, 0, 0.12);
+
+        --card-shadow:      0 2px 10px rgba(0, 0, 0, 0.06);
+        --card-shadow-glow: 0 4px 24px rgba(124, 58, 237, 0.15), 0 2px 10px rgba(0, 0, 0, 0.06);
+        --card-radius:      20px;
+
+        --text-primary:   #0F172A;
+        --text-secondary: #334155;
+        --text-muted:     #64748B;
+
+        --violet:         #7C3AED;
+        --violet-text:    #7C3AED;
+        --cyan:           #22D3EE;
+        --brand-gradient: linear-gradient(135deg, #7C3AED, #22D3EE);
+        --brand-tint-bg:  #EDE9FE;
+
+        --amber-bg:       #FEF3C7;
+        --amber-border:   #FDE68A;
+        --amber-text:     #92400E;
+
+        --focus-ring:     0 0 0 3px rgba(124, 58, 237, 0.35);
+
+        --font-body:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        --font-heading: 'Sora', 'Inter', system-ui, sans-serif;
+      }
+
       * { box-sizing: border-box; }
+
       body {
         margin: 0;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        color: #1a1a2e;
-        background: #f7f7fb;
+        font-family: var(--font-body);
+        font-size: 15px;
         line-height: 1.6;
+        color: var(--text-secondary);
+        background: var(--page-bg);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
-      .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 64px; }
-      header { margin-bottom: 28px; }
-      .brand { font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: #6b6b8a; font-weight: 700; }
-      h1 { font-size: 34px; line-height: 1.2; margin: 10px 0 14px; }
-      .lede { font-size: 17px; color: #36364a; margin: 0 0 24px; }
+
+      .wrap { max-width: 720px; margin: 0 auto; padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 24px) 72px; }
+
+      /* ── Header ── */
+      header { margin-bottom: 24px; }
+      .brand {
+        font-family: var(--font-heading);
+        font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase;
+        color: var(--violet-text); font-weight: 700;
+      }
+      h1 {
+        font-family: var(--font-heading);
+        font-size: clamp(30px, 6vw, 40px); line-height: 1.15; font-weight: 800;
+        margin: 12px 0 14px; letter-spacing: -0.5px;
+        background: var(--brand-gradient);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: var(--violet-text);
+      }
+      .lede { font-size: clamp(16px, 2.4vw, 18px); color: var(--text-secondary); margin: 0 0 8px; }
+
+      /* ── Cards ── */
       .card {
-        background: #fff;
-        border: 1px solid #e6e6f0;
-        border-radius: 14px;
-        padding: 22px 22px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--card-radius);
+        padding: clamp(20px, 4vw, 28px);
         margin: 18px 0;
-        box-shadow: 0 6px 24px rgba(20, 20, 50, 0.06);
+        box-shadow: var(--card-shadow);
       }
-      h2 { font-size: 18px; margin: 0 0 10px; }
+      #ax-preview { box-shadow: var(--card-shadow-glow); }
+      h2 { font-family: var(--font-heading); font-size: 19px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
       ul { margin: 8px 0 0; padding-left: 20px; }
-      li { margin: 6px 0; }
+      li { margin: 7px 0; }
+      .boundaries { font-size: 13.5px; color: var(--text-muted); }
+
+      /* ── Disclaimer (amber status token) ── */
       .disclaimer {
-        background: #fff8e6;
-        border: 1px solid #f0e2b0;
-        border-radius: 12px;
+        background: var(--amber-bg);
+        border: 1px solid var(--amber-border);
+        border-radius: 14px;
         padding: 14px 16px;
         font-size: 13.5px;
-        color: #5a4b12;
+        color: var(--amber-text);
         margin: 22px 0;
       }
-      .cta {
-        display: inline-block;
-        background: #6d5efc;
-        color: #fff;
-        text-decoration: none;
-        font-weight: 700;
-        padding: 13px 22px;
-        border-radius: 10px;
-        margin-top: 6px;
-      }
-      .boundaries { font-size: 13.5px; color: #555; }
-      footer { margin-top: 36px; font-size: 12.5px; color: #8a8aa0; }
-      a { color: #5a4bdc; }
 
-      /* Tap-flow preview (Phase 3) */
-      .q { margin: 16px 0; }
-      .q-label { font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+      /* ── Primary CTA (gradient — Get preview / Create account) ── */
+      .cta {
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--brand-gradient);
+        color: #FFFFFF;
+        text-decoration: none;
+        font-family: var(--font-body); font-weight: 600; font-size: 15px;
+        padding: 13px 26px;
+        border: none; border-radius: 12px;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+        transition: transform 0.1s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+      }
+      .cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.32); }
+      .cta:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(124, 58, 237, 0.22); }
+      .cta:disabled {
+        background: var(--border-strong); color: #FFFFFF;
+        box-shadow: none; cursor: not-allowed; opacity: 0.65; transform: none;
+      }
+
+      /* ── Tap-flow preview (Phase 3) — chips ── */
+      .q { margin: 18px 0; }
+      .q-label { font-weight: 600; font-size: 14px; color: var(--text-primary); margin-bottom: 10px; }
       .opts { display: flex; flex-wrap: wrap; gap: 8px; }
       .opt {
-        border: 1px solid #d8d8e8; background: #fff; color: #2a2a40;
-        border-radius: 999px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+        border: 1.5px solid var(--border-strong);
+        background: var(--surface);
+        color: var(--text-secondary);
+        border-radius: 999px; padding: 9px 16px; font-size: 13.5px; font-weight: 500;
+        cursor: pointer;
+        transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
       }
-      .opt[aria-pressed="true"] { background: #6d5efc; color: #fff; border-color: #6d5efc; }
-      .metric { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px dashed #e6e6f0; }
-      .metric .v { font-weight: 700; font-size: 18px; }
-      .why { background: none; border: none; color: #5a4bdc; font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
-      .why-box { font-size: 12px; color: #555; background: #f3f3fa; border-radius: 8px; padding: 8px 10px; margin: 6px 0 2px; }
-      .muted { color: #8a8aa0; font-size: 12.5px; }
+      .opt:hover { border-color: var(--violet); color: var(--violet-text); background: var(--surface-2); }
+      .opt[aria-pressed="true"] {
+        background: var(--brand-gradient); color: #FFFFFF; border-color: transparent;
+        box-shadow: 0 2px 8px rgba(124, 58, 237, 0.28);
+      }
+
+      /* ── Result metrics ── */
+      .metric { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--border); }
+      .metric .v { font-family: var(--font-heading); font-weight: 700; font-size: 19px; color: var(--text-primary); }
+      .why { background: none; border: none; color: var(--violet-text); font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
+      .why-box { font-size: 12px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 6px 0 2px; }
+
+      .muted { color: var(--text-muted); font-size: 13px; }
+      footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+      a { color: var(--violet-text); }
+
+      /* ── Accessibility: visible focus rings everywhere ── */
+      .opt:focus-visible,
+      .cta:focus-visible,
+      .why:focus-visible,
+      a:focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+      }
+
       [hidden] { display: none !important; }
+
+      /* ── Mobile: full-width CTAs, tighter rhythm, clean chip wrap ── */
+      @media (max-width: 600px) {
+        .cta { width: 100%; }
+        .opts { gap: 7px; }
+        .opt { padding: 10px 15px; }
+        .metric { flex-direction: column; align-items: flex-start; gap: 2px; }
+        .metric .v { font-size: 18px; }
+      }
+
+      /* ── Respect reduced-motion preference ── */
+      @media (prefers-reduced-motion: reduce) {
+        .cta, .opt { transition: none; }
+        .cta:hover, .cta:active { transform: none; }
+      }
     </style>
   </head>
   <body>
