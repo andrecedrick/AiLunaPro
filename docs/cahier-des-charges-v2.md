@@ -2654,6 +2654,30 @@ Petite passe perf (hors J). Hints only — aucun changement de comportement.
 - **Suite perf différée** : P3-b font delivery (render-blocking @import → `<link>`/
   self-host, revue visuelle), P3-c `INEFFECTIVE_DYNAMIC_IMPORT` track.ts (cosmétique).
 
+**✅ SEC — "Content-Security-Policy (Report-Only, measurement)"** — **CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-03.
+Hygiène sécu (hors J). CSP **Report-Only** — ne bloque rien, mesure uniquement.
+- **Commit** `07a3303` : `public/_headers` uniquement. En-tête
+  `Content-Security-Policy-Report-Only` sur les 3 blocs HTML (`/`, `/index.html`,
+  `/audit-express/*`). Allowlist : `api.ailunapro.com` · `*.googleapis.com`
+  (Firebase Auth/Firestore) · `*.i.posthog.com` (post-consent) · `js.stripe.com`
+  + `api.stripe.com` · `challenges.cloudflare.com` (Turnstile) · `www.google.com`
+  + `www.gstatic.com` (App Check reCAPTCHA) · `fonts.googleapis.com` +
+  `fonts.gstatic.com` · `res.cloudinary.com`. `'unsafe-inline'` conservé pour
+  script/style (cette passe mesure l'allowlist EXTERNE ; les scripts inline +
+  onclick injecté seront noncé/hashés/refactorés à l'étape *enforce*).
+- **Pas de report-uri** (aucun collecteur) → violations lues manuellement dans la
+  console DevTools (messages `[Report Only]`).
+- **Contraintes** : aucune politique de cache modifiée (no-cache HTML / immutable
+  assets intacts) ; analytics semantics inchangés ; auth/billing/Stripe/Audit
+  Express/Help non impactés (report-only ne peut rien casser).
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean (3 blocs CSP-RO
+  présents dans `dist/_headers`) · worker `tsc` PASS · worktree clean. **0 must-fix.**
+  Prod vérifié (en-tête présent, aucune feature cassée, violations en console only).
+- **Suite différée (étape *enforce* dédiée, gatée)** : collecter les violations sur
+  toutes les surfaces → durcir l'allowlist → remplacer `'unsafe-inline'` par
+  nonces/hashes (+ refactor onclick watchdog) → basculer en `Content-Security-Policy`
+  enforcé ; envisager des politiques par-surface (app shell vs audit-express).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
