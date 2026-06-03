@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap');
+/* Google Fonts (Inter/Sora) are loaded via <link rel="stylesheet"> in index.html
+   (P3-b) — discovered during initial HTML parse instead of being chained behind
+   this bundled CSS via @import (which was render-blocking). display=swap there
+   prevents FOIT. */
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════

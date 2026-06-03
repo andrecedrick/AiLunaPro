@@ -10,14 +10,20 @@
       anonymous CORS fetch. (preconnect has no wildcard, so *.googleapis.com is
       expanded to the boot-critical Firebase hosts.)
     -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://api.ailunapro.com" crossorigin />
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="dns-prefetch" href="https://api.ailunapro.com" />
     <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
     <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
     <link rel="dns-prefetch" href="https://securetoken.googleapis.com" />
+    <!-- Google Fonts (P3-b): loaded here (not via CSS @import) so it's discovered
+         during initial HTML parse and fetched in parallel with the bundle.
+         display=swap → text paints immediately in fallback, then swaps (no FOIT). -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" />
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--
