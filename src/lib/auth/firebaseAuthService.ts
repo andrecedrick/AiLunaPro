@@ -59,7 +59,7 @@ async function fs(): Promise<{ api: typeof import('firebase/firestore'); db: Fir
   } catch (err) {
     // code only — never log uid/email/url.
     const code = (err as Error)?.message || 'FIRESTORE_LAZY_FAILED';
-    console.warn('[auth] firestore lazy-load failed code:', code);
+    if (import.meta.env.DEV) console.warn('[auth] firestore lazy-load failed code:', code);
     throw new Error('FIRESTORE_UNAVAILABLE');
   }
 }
@@ -273,7 +273,7 @@ export function subscribeAuthState(
       // connecting" card (Reload + Help); a reload re-runs this callback once
       // the network recovers. Log the code only — never PII.
       const code = (err as Error)?.message ?? 'UNKNOWN';
-      console.warn('[auth] session resolve failed code:', code);
+      if (import.meta.env.DEV) console.warn('[auth] session resolve failed code:', code);
     }
   });
 }
@@ -418,6 +418,17 @@ export async function firebaseSwitchOrg(
   orgId: string,
 ): Promise<{ session: AuthSession; members: OrgMember[]; orgs: Organization[] } | null> {
   setOrgPref(orgId);
+  return buildSession(firebaseUser);
+}
+
+/**
+ * Re-run session resolution for the current user — used by the "retry" action
+ * on the connecting card. Does NOT sign the user out; just rebuilds the session
+ * (e.g. after a transient network failure / firestore-load timeout recovered).
+ */
+export async function firebaseRebuildSession(
+  firebaseUser: FirebaseUser,
+): Promise<{ session: AuthSession; members: OrgMember[]; orgs: Organization[] } | null> {
   return buildSession(firebaseUser);
 }
 

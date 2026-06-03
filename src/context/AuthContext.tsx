@@ -34,6 +34,7 @@ import {
   firebaseSendPasswordReset,
   firebaseUpdateProfile,
   firebaseUpdateOrgName,
+  firebaseRebuildSession,
 } from '../lib/auth/firebaseAuthService';
 
 const LAYER = resolveLayer('auth');
@@ -56,6 +57,9 @@ interface AuthContextValue {
   signup:        (name: string, email: string, password: string, orgName?: string) => Promise<{ success: boolean; error?: string }>;
   logout:        () => void;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  /** Retry session resolution for the current user (no sign-out). Used by the
+   *  "Still connecting" card to recover from a transient connectivity stall. */
+  retryAuth:     () => void;
   /* ── Team ──────────────────────────────────────────────── */
   inviteMember:     (email: string, name: string, role: UserRole) => void;
   updateMemberRole: (userId: string, role: UserRole) => void;
@@ -486,6 +490,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [session, orgs, members],
   );
 
+  /* Retry session resolution without signing out — re-runs buildSession for the
+     current Firebase user (e.g. after a firestore-load timeout recovered). On
+     failure it leaves the app in the loading state (the watchdog card stays);
+     it never calls signOut, so a transient blip can't log the user out. */
+  const retryAuth = useCallback(() => {
+    if (LAYER !== 'firebase') return;
+    const fbUser = getCurrentFirebaseUser();
+    if (!fbUser) return; // no signed-in user → onAuthStateChanged owns the state
+    setIsLoading(true);
+    firebaseRebuildSession(fbUser)
+      .then(result => {
+        if (!mountedRef.current) return;
+        if (result) {
+          setSession(result.session);
+          setMembers(result.members);
+          setOrgs(result.orgs);
+          setIsLoading(false);
+        } else {
+          // No docs yet (e.g. needs org-create) — let normal routing handle it.
+          setIsLoading(false);
+        }
+      })
+      .catch(err => {
+        if (import.meta.env.DEV) console.warn('[auth] retry failed code:', (err as Error)?.message ?? 'UNKNOWN');
+        // Keep isLoading true → the actionable card stays; no sign-out.
+      });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
@@ -498,6 +530,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signup,
       logout,
       resetPassword,
+      retryAuth,
       inviteMember,
       updateMemberRole,
       removeMember,
@@ -508,7 +541,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       session, members, orgs, isLoading, currentMember,
-      login, signup, logout, resetPassword,
+      login, signup, logout, resetPassword, retryAuth,
       inviteMember, updateMemberRole, removeMember,
       updateProfile, createOrg, switchOrg, updateOrgName,
     ],

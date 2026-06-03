@@ -138,7 +138,7 @@ function useMediaQuery(query: string): boolean {
 
 function AppShell() {
   const { route, navigate } = useRoute();
-  const { isAuthenticated, isLoading, session } = useAuth();
+  const { isAuthenticated, isLoading, session, retryAuth } = useAuth();
 
   /* Sidebar collapse/expand state.
      - Desktop (>=768px): collapsible rail (240px ↔ 72px), persisted.
@@ -172,6 +172,16 @@ function AppShell() {
     const t = window.setTimeout(() => setBootSlow(true), 8000);
     return () => window.clearTimeout(t);
   }, [isLoading]);
+
+  /* Tell the index.html boot watchdog that React produced usable UI — anything
+     except the bare initial spinner (the app, login, or the actionable
+     "Still connecting" card). Once set, the bundle-independent fallback in
+     index.html stands down. */
+  useEffect(() => {
+    if (!isLoading || bootSlow) {
+      (window as Window & { __APP_INTERACTIVE__?: boolean }).__APP_INTERACTIVE__ = true;
+    }
+  }, [isLoading, bootSlow]);
 
   /* J13 Batch 2: analytics page_view on route change. route.name is the
      id-free template (ids live in separate fields) → no PII. track() is a
@@ -315,8 +325,15 @@ function AppShell() {
           </p>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={retryAuth}
             style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient, var(--violet))', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong, #CBD5E1)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', marginTop: 8 }}
           >
             Reload
           </button>
