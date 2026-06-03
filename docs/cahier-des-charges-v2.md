@@ -2601,6 +2601,28 @@ Passe dédiée (hors J). Plainte : crash boot prod `Firebase: No Firebase App '[
 - **Différé** : protobufjs npm audit advisory (high) ; CSP report-only ; résolution
   de session côté serveur (réduire la dépendance Firebase au boot) ; cleanup test rot (PERF).
 
+**✅ UI — "Back to top button"** — **CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-03.
+Petite tâche UI (hors J). Bouton flottant discret « Back to top ».
+- **Commit** `e83e8e7` : nouveau `src/components/ui/BackToTop.tsx` (listener scroll
+  coalescé rAF, visible à `scrollY > 600`, `scrollTo({top:0})` respectant
+  `prefers-reduced-motion`, `<button>` + `aria-label`, `tabIndex`/`aria-hidden`
+  basculés → hors tab-order quand caché) ; styles `App.css` (`.back-to-top` fixed
+  bottom-right, tokens `--brand-gradient`/`--card-shadow-glow`, hover/active/
+  `:focus-visible`, `.is-visible` fade+slide, breakpoint mobile `bottom:84px` pour
+  dégager le consent banner, bloc `prefers-reduced-motion`, ajouté au `@media print`
+  hide-list) ; monté `<BackToTop />` dans le shell dashboard complet uniquement
+  (pas sur pages chromeless/auth/`/audit-express`).
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean (seul warning =
+  `INEFFECTIVE_DYNAMIC_IMPORT` analytics pré-existant, documenté PERF) · worker
+  `tsc --noEmit` PASS · worktree clean. **0 must-fix.**
+- **Contraintes respectées** : aucune dépendance ajoutée ; auth/billing/Stripe/
+  analytics/worker routes/cache policy/`_headers` intacts ; z-index 900 (sous
+  consent banner 1000, jamais de recouvrement).
+- **Vérif prod** : checklist 5 points (appear-on-scroll, scroll-to-top, clavier+a11y,
+  responsive/no-overlap, scoping pages) — déployé Pages, validé opérateur.
+- **Différé / non-fait** : bouton sur `/audit-express` statique (jugé non nécessaire,
+  page marketing courte — à activer sur demande).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
