@@ -1,9 +1,13 @@
 /**
- * ConsentBanner — J13 (analytics consent-first).
+ * ConsentBanner — analytics consent-first (discreet, enterprise-friendly).
  *
- * Renders ONLY when consent is unset AND Do-Not-Track is not signalled.
- * Accept → store 'granted' + init analytics. Decline → store 'denied'.
- * No tracking happens before an explicit accept.
+ * Renders ONLY when consent is unset (under the current consent version) AND
+ * Do-Not-Track is not signalled. Allow → store 'granted' + init analytics.
+ * No thanks → store 'denied'. No tracking happens before an explicit allow.
+ * Once a choice is made it persists (versioned key) and never reappears.
+ *
+ * Stance: consent-first everywhere (the strictest default), so no geo lookup is
+ * needed at boot. No hostnames or legal claims in the copy.
  */
 
 import { useState } from 'react';
@@ -24,56 +28,52 @@ export function ConsentBanner() {
     setVisible(false);
   };
 
+  const btnBase: React.CSSProperties = {
+    padding: '7px 14px', borderRadius: 8, fontSize: 12.5, cursor: 'pointer',
+    fontWeight: 600, fontFamily: 'var(--font-body)',
+  };
+
   return (
     <div
       role="dialog"
-      aria-label="Analytics consent"
+      aria-label="Optional analytics"
       style={{
         position: 'fixed',
         bottom: 16,
         left: 16,
         right: 16,
-        maxWidth: 520,
+        maxWidth: 440,
         margin: '0 auto',
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--card-radius)',
-        boxShadow: 'var(--card-shadow-glow, 0 8px 30px rgba(0,0,0,0.18))',
-        padding: '16px 18px',
+        boxShadow: 'var(--card-shadow, 0 6px 24px rgba(0,0,0,0.10))',
+        padding: '14px 16px',
         zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        flexWrap: 'wrap',
       }}
     >
-      <div style={{ flex: 1, minWidth: 220, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-        We use privacy-friendly product analytics (page views + reliability events) to
-        improve AiLunaPro. <strong style={{ color: 'var(--text-primary)' }}>No personal
-        data, no session recording, no ad tracking.</strong> You can decline.
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+        Optional analytics
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
+        We use privacy-friendly analytics to improve reliability. No personal data is
+        collected. You can opt in or out.{' '}
+        <a href="#/help" style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn more</a>
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button
           type="button"
           onClick={decline}
-          style={{
-            padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)',
-            background: 'transparent', color: 'var(--text-muted)', fontWeight: 600,
-            fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)',
-          }}
+          style={{ ...btnBase, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)' }}
         >
-          Decline
+          No thanks
         </button>
         <button
           type="button"
           onClick={accept}
-          style={{
-            padding: '8px 16px', borderRadius: 8, border: '1.5px solid var(--violet)',
-            background: 'var(--violet)', color: '#fff', fontWeight: 700,
-            fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)',
-          }}
+          style={{ ...btnBase, border: '1.5px solid var(--violet)', background: 'var(--violet)', color: '#fff', fontWeight: 700 }}
         >
-          Accept
+          Allow
         </button>
       </div>
     </div>

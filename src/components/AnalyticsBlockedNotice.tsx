@@ -62,9 +62,9 @@ export function AnalyticsBlockedNotice() {
       }}
     >
       <div style={{ flex: 1, minWidth: 220, fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-        Analytics blocked by your browser or network privacy protection. To enable product
-        analytics, allow <strong style={{ color: 'var(--text-primary)' }}>us.i.posthog.com</strong>.
-        This is optional — the app works normally either way.
+        Analytics requests are being blocked by your browser or network privacy settings.
+        The app works normally either way.{' '}
+        <a href="#/help" style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn how to enable</a>
       </div>
       <button
         type="button"

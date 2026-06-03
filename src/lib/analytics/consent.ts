@@ -7,7 +7,11 @@
  * 'granted'|'denied' string).
  */
 
-const KEY = 'ailunapro-analytics-consent';
+// Versioned key: bump the version to re-prompt with new wording/policy. A stored
+// choice under the CURRENT version is honored forever (banner never reappears);
+// older versions are ignored → treated as 'unset' so the user is asked once more.
+export const CONSENT_VERSION = 'v2';
+const KEY = `ailunapro-analytics-consent-${CONSENT_VERSION}`;
 
 export type ConsentState = 'granted' | 'denied' | 'unset';
 
