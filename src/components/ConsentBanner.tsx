@@ -13,9 +13,21 @@
 import { useState } from 'react';
 import { shouldShowConsentBanner, setConsent } from '../lib/analytics/consent';
 import { initAnalyticsIfConsented } from '../lib/analytics/track';
+import { useRoute } from '../context/RouteContext';
 
 export function ConsentBanner() {
+  const { navigate } = useRoute();
   const [visible, setVisible] = useState<boolean>(() => shouldShowConsentBanner());
+
+  // Deep-link to the Help Center section. The app's hash parser is mount-only
+  // (no hashchange listener), so set the section hash THEN navigate via the
+  // router — this reliably mounts HelpPage, which reads ?section= on mount.
+  const openHelp = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try { window.location.hash = '#/help?section=getting-started'; } catch { /* ignore */ }
+    navigate({ name: 'help' });
+  };
+
   if (!visible) return null;
 
   const accept = () => {
@@ -58,7 +70,7 @@ export function ConsentBanner() {
       <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
         We use privacy-friendly analytics to improve reliability. No personal data is
         collected. You can opt in or out.{' '}
-        <a href="/#/help?section=getting-started" style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn more</a>
+        <a href="#/help?section=getting-started" onClick={openHelp} style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn more</a>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button

@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { isAnalyticsBlocked } from '../lib/analytics/track';
+import { useRoute } from '../context/RouteContext';
 
 const DEV = import.meta.env.DEV; // false in production builds → notice never renders
 const DISMISS_KEY = 'ailunapro-analytics-blocked-dismissed';
@@ -22,7 +23,14 @@ function alreadyDismissed(): boolean {
 }
 
 export function AnalyticsBlockedNotice() {
+  const { navigate } = useRoute();
   const [visible, setVisible] = useState<boolean>(() => DEV && isAnalyticsBlocked() && !alreadyDismissed());
+
+  const openHelp = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try { window.location.hash = '#/help?section=settings-analytics'; } catch { /* ignore */ }
+    navigate({ name: 'help' });
+  };
 
   useEffect(() => {
     if (!DEV || alreadyDismissed()) return;
@@ -66,7 +74,7 @@ export function AnalyticsBlockedNotice() {
       <div style={{ flex: 1, minWidth: 220, fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
         Analytics requests are being blocked by your browser or network privacy settings.
         The app works normally either way.{' '}
-        <a href="/#/help?section=getting-started" style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn how to enable</a>
+        <a href="#/help?section=settings-analytics" onClick={openHelp} style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn how to enable</a>
       </div>
       <button
         type="button"

@@ -423,6 +423,42 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
 
   {
+    id: 'settings-analytics',
+    title: 'Analytics & Cookies (Optional)',
+    body: (
+      <>
+        <p style={p}>
+          AiLunaPro uses optional, privacy-friendly product analytics to help us improve
+          reliability and fix issues faster. It is entirely optional and stays off until you
+          allow it.
+        </p>
+        <h3 style={h3}>What is collected</h3>
+        <p style={p}>
+          Only anonymous usage signals such as page views and reliability events. No personal
+          data is collected, there is no session recording, and there is no advertising tracking.
+        </p>
+        <h3 style={h3}>Opt in or out anytime</h3>
+        <p style={p}>
+          On your first visit, a small banner lets you choose <strong>Allow</strong> or{' '}
+          <strong>No thanks</strong>. Your choice is remembered on this device. To change it
+          later, clear this site&rsquo;s browser storage (site data) and reload — the banner
+          will appear again so you can choose afresh.
+        </p>
+        <h3 style={h3}>Do Not Track</h3>
+        <p style={p}>
+          If your browser sends a &ldquo;Do Not Track&rdquo; signal, analytics stay off
+          automatically and no banner is shown.
+        </p>
+        <h3 style={h3}>If analytics are blocked</h3>
+        <p style={p}>
+          Some browsers, extensions, or networks block analytics requests. That is completely
+          fine — the application works normally either way, and no action is needed.
+        </p>
+      </>
+    ),
+  },
+
+  {
     id: 'troubleshooting',
     title: 'Troubleshooting',
     body: (
