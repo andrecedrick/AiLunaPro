@@ -2623,6 +2623,21 @@ Petite tâche UI (hors J). Bouton flottant discret « Back to top ».
 - **Différé / non-fait** : bouton sur `/audit-express` statique (jugé non nécessaire,
   page marketing courte — à activer sur demande).
 
+**✅ SEC — "protobufjs transitive bump (lockfile-only)"** — **CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-03.
+Hygiène sécu (hors J). npm audit advisory protobufjs (high, GHSA × 8) + `@protobufjs/utf8`
+(moderate) + brace-expansion (moderate, dev).
+- **Commit** `845c011` : bump transitif **in-range** `protobufjs` 7.5.5 → 7.6.2
+  (`@grpc/proto-loader` autorise `^7.2.5` ; advisory corrigée en 7.5.8+) + sous-paquets
+  `@protobufjs/*` patchés + brace-expansion 5.0.5→5.0.6. **package-lock.json only**
+  (`package.json` intact, aucun bump firebase/firestore/posthog, pas de major).
+- **Reachability** : transitive via `firebase → @firebase/firestore → @grpc/proto-loader`
+  + `posthog-js → @opentelemetry/...otlp` (deduped). **Exploitabilité ≈ nulle** (SPA
+  client : Firestore browser = WebChannel/REST pas gRPC ; posthog-js browser ne bundle
+  pas l'exporter OTLP protobuf ; worker n'utilise pas le paquet npm firebase). Hygiène.
+- **Audit** : avant 2 (prod) / 3 (full) → **après 0 / 0**.
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS ·
+  worktree clean (stray `7.6.2` purgé). **0 must-fix.** Prod deploy + smoke OK (opérateur).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
