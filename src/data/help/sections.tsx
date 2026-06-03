@@ -62,6 +62,43 @@ const StepFlow = ({ steps }: { steps: string[] }) => (
   </div>
 );
 
+/* Inline icon set (16px, currentColor — no images, no libs). */
+const svgProps: React.SVGProps<SVGSVGElement> = {
+  width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+  strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true,
+};
+const IconRocket = () => (<svg {...svgProps}><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /></svg>);
+const IconAgent = () => (<svg {...svgProps}><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /></svg>);
+const IconBilling = () => (<svg {...svgProps}><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>);
+const IconSettings = () => (<svg {...svgProps}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>);
+const IconAlert = () => (<svg {...svgProps}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>);
+
+/* Section header lede: icon badge + one-line summary. */
+const iconBadge: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'var(--brand-tint-bg, #EDE9FE)', color: 'var(--violet-text, #7C3AED)', flexShrink: 0 };
+const SectionLede = ({ icon, children }: { icon: ReactNode; children: ReactNode }) => (
+  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, margin: '0 0 14px' }}>
+    <span style={iconBadge}>{icon}</span>
+    <p style={{ ...p, margin: 0 }}>{children}</p>
+  </div>
+);
+
+/* "Key takeaways" callout: 2–3 short bullets. */
+const Takeaways = ({ items }: { items: ReactNode[] }) => (
+  <div style={{ background: 'var(--brand-tint-bg, #EDE9FE)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', margin: '4px 0 16px' }}>
+    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text, #7C3AED)', marginBottom: 6 }}>Key takeaways</div>
+    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+      {items.map((it, i) => (<li key={i} style={{ marginBottom: 3 }}>{it}</li>))}
+    </ul>
+  </div>
+);
+
+/* Responsive chip row. */
+const Chips = ({ items }: { items: string[] }) => (
+  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0 14px' }}>
+    {items.map((c, i) => (<span key={i} style={chip}>{c}</span>))}
+  </div>
+);
+
 /* ── Sections ───────────────────────────────────────────── */
 
 export const HELP_SECTIONS: readonly HelpSection[] = [
@@ -70,11 +107,16 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     title: 'Getting Started',
     body: (
       <>
-        <p style={p}>
-          AiLunaPro is a compliance and AI-transformation suite for organizations adopting AI.
-          It combines audits, an AI registry, agent recommendations, ROI estimates, and a
-          token-based usage model in one workspace.
-        </p>
+        <SectionLede icon={<IconRocket />}>
+          AiLunaPro is a compliance and AI-transformation suite for organizations adopting AI —
+          audits, an AI registry, agent recommendations, ROI estimates, and a token-based usage
+          model in one workspace.
+        </SectionLede>
+        <Takeaways items={[
+          'Start from the dashboard, then run a New Audit from the sidebar.',
+          'Two public tools need no login: Diagnostic Express and the ROI Calculator.',
+          'Owners and admins invite teammates with 7-day links.',
+        ]} />
         <h3 style={h3}>Your first three actions</h3>
         <ul style={ul}>
           <li style={li}>Open the dashboard and review your current AI maturity score.</li>
@@ -195,11 +237,17 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     title: 'AI Agents',
     body: (
       <>
-        <p style={p}>
-          The AiLunaPro Agents catalog lists ten ready-to-use AI agents covering common
-          business workflows. Each agent has a description, expected ROI, recommended
-          minimum plan, and a direct link to get started.
-        </p>
+        <SectionLede icon={<IconAgent />}>
+          The Agents catalog lists ten ready-to-use AI agents for common business workflows.
+          Each card shows a description, expected ROI, a recommended minimum plan, and a link
+          to get started.
+        </SectionLede>
+        <Takeaways items={[
+          'Ten first-party agents, each tagged AiLunaPro.',
+          'A plan badge (Starter+ / Professional+ / Enterprise+) suggests the typical tier.',
+          '“Get this agent” starts the standard sign-up flow — no in-app purchase yet.',
+        ]} />
+        <Chips items={['Support', 'Sales', 'Finance', 'HR', 'Compliance', 'Marketing', 'Reporting', 'Audit', 'Document', 'Admin']} />
         <h3 style={h3}>Catalog (10 agents)</h3>
         <ul style={ul}>
           <li style={li}><strong>Support Agent</strong> — automate customer responses and reduce support workload.</li>
@@ -274,10 +322,17 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     title: 'Billing',
     body: (
       <>
-        <p style={p}>
-          AiLunaPro offers Free, Starter, Professional, and Enterprise subscription plans.
-          Plans differ by token allocation, audit volume, and team capabilities.
-        </p>
+        <SectionLede icon={<IconBilling />}>
+          AiLunaPro offers Free, Starter, Professional, and Enterprise plans, differing by token
+          allocation, audit volume, and team capabilities. Checkout and management run through
+          Stripe.
+        </SectionLede>
+        <Takeaways items={[
+          'Billing and token packs are in USD; the currency selector is display-only for now.',
+          'Owners/admins subscribe and manage plans from the Billing page (Stripe Customer Portal).',
+          'The Free plan includes limited audits and 100 tokens per month.',
+        ]} />
+        <Chips items={['Free', 'Starter', 'Professional', 'Enterprise']} />
         <h3 style={h3}>Currency</h3>
         <p style={p}>
           Billing and token packs are currently in USD. The sidebar currency selector is
@@ -426,6 +481,15 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     title: 'Settings',
     body: (
       <>
+        <SectionLede icon={<IconSettings />}>
+          Manage your profile, organization, appearance, and notification preferences. Language
+          and currency selectors are display preferences for now.
+        </SectionLede>
+        <Takeaways items={[
+          'Profile & organization details live under Settings.',
+          'Theme (light/dark) persists across sessions.',
+          'Language and currency are display-only until those features ship.',
+        ]} />
         <h3 style={h3}>Profile</h3>
         <p style={p}>Update your display name and email address from Settings → Profile.</p>
         <h3 style={h3}>Organization</h3>
@@ -511,6 +575,15 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     title: 'Troubleshooting',
     body: (
       <>
+        <SectionLede icon={<IconAlert />}>
+          Quick fixes for the most common issues. Most are resolved by a refresh; if not,
+          your workspace owner or AiLunaPro support can help.
+        </SectionLede>
+        <Takeaways items={[
+          'Refresh first — it resolves most load, balance, and session hiccups.',
+          'Token credits arrive within a few seconds of a successful payment.',
+          'A blank screen is usually a browser extension or network filter.',
+        ]} />
         <h3 style={h3}>The page won't load</h3>
         <p style={p}>
           The service may be temporarily unavailable. Refresh the page. If the issue
