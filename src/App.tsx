@@ -9,6 +9,7 @@ import { RouteProvider, useRoute } from './context/RouteContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConsentBanner } from './components/ConsentBanner';
 import { AnalyticsBlockedNotice } from './components/AnalyticsBlockedNotice';
+import { BackToTop } from './components/ui/BackToTop';
 
 /* ── Lazy-loaded pages: split bundle, faster initial load ── */
 const DashboardPage        = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -478,6 +479,7 @@ function AppShell() {
           <PageOutlet />
         </main>
       </div>
+      <BackToTop />
     </div>,
   );
 }
