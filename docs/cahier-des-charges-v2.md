@@ -2638,6 +2638,22 @@ Hygiène sécu (hors J). npm audit advisory protobufjs (high, GHSA × 8) + `@pro
 - **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS ·
   worktree clean (stray `7.6.2` purgé). **0 must-fix.** Prod deploy + smoke OK (opérateur).
 
+**✅ PERF P3-a — "Resource hints (preconnect/dns-prefetch)"** — **CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-03.
+Petite passe perf (hors J). Hints only — aucun changement de comportement.
+- **Commit** `f8dc5fc` : `index.html` uniquement, 8 liens hints en tête de `<head>`.
+  preconnect (DNS+TCP+TLS) `fonts.gstatic.com` + `api.ailunapro.com` +
+  `firestore.googleapis.com` (chacun avec `crossorigin` → match fetch CORS anonyme,
+  évite "preconnected but not used") ; dns-prefetch fallback pour ces 3 + hosts auth
+  `identitytoolkit`/`securetoken.googleapis.com` (`*.googleapis.com` = pas de wildcard
+  preconnect → hosts concrets boot-critiques).
+- **Contraintes** : auth/billing/Stripe/analytics/worker routes/cache policy intacts ;
+  aucune dépendance ; meta `noindex` SEO conservé (vérifié dans `dist/index.html`).
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean (hints présents dans
+  `dist/index.html`) · worker `tsc` PASS · worktree clean. **0 must-fix.** Prod vérifié
+  (hints présents, app boot OK, sockets réutilisés).
+- **Suite perf différée** : P3-b font delivery (render-blocking @import → `<link>`/
+  self-host, revue visuelle), P3-c `INEFFECTIVE_DYNAMIC_IMPORT` track.ts (cosmétique).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
