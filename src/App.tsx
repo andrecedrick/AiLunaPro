@@ -112,9 +112,51 @@ function PageOutlet() {
   );
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'ailunapro-sidebar-collapsed-v1';
+
+/** Reactive media-query match (SSR-safe, no deps). */
+function useMediaQuery(query: string): boolean {
+  const [match, setMatch] = useState<boolean>(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(query).matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const m = window.matchMedia(query);
+    const onChange = () => setMatch(m.matches);
+    onChange();
+    m.addEventListener('change', onChange);
+    return () => m.removeEventListener('change', onChange);
+  }, [query]);
+  return match;
+}
+
 function AppShell() {
   const { route, navigate } = useRoute();
   const { isAuthenticated, isLoading, session } = useAuth();
+
+  /* Sidebar collapse/expand state.
+     - Desktop (>=768px): collapsible rail (240px ↔ 72px), persisted.
+     - Mobile  (<768px):  off-canvas drawer with overlay (transient). */
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'; } catch { return false; }
+  });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? '1' : '0'); } catch { /* ignore */ }
+  }, [sidebarCollapsed]);
+  // Close the mobile drawer on navigation.
+  useEffect(() => { setMobileNavOpen(false); }, [route.name]);
+  // Esc closes the mobile drawer.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileNavOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileNavOpen]);
+  const toggleSidebar = () => { if (isMobile) setMobileNavOpen(o => !o); else setSidebarCollapsed(c => !c); };
 
   /* Perf P1: boot watchdog. If auth/session is still loading after ~8s (e.g.
      Firestore blocked by an ad-blocker → SDK retries for minutes), stop
@@ -328,11 +370,29 @@ function AppShell() {
   }
 
   /* ── Full dashboard shell ───────────────────────────────── */
+  const mainMarginLeft = isMobile ? 0 : (sidebarCollapsed ? 72 : 240);
   return (
     <div className="dashboard-layout">
-      <Sidebar />
-      <div className="dashboard-main">
-        <Topbar />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        isMobile={isMobile}
+        mobileOpen={mobileNavOpen}
+        onNavigate={() => setMobileNavOpen(false)}
+      />
+      {isMobile && mobileNavOpen && (
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileNavOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.40)', zIndex: 45 }}
+        />
+      )}
+      <div className="dashboard-main" style={{ marginLeft: mainMarginLeft, transition: 'margin-left 0.2s ease' }}>
+        <Topbar
+          onToggleSidebar={toggleSidebar}
+          sidebarCollapsed={sidebarCollapsed}
+          isMobile={isMobile}
+          mobileOpen={mobileNavOpen}
+        />
         <main className="dashboard-content">
           <PageOutlet />
         </main>

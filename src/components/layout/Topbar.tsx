@@ -14,7 +14,14 @@ const DATE_PRESETS: { id: string; label: string }[] = [
   { id: 'lastmonth', label: 'Last month' },
 ];
 
-export function Topbar() {
+interface TopbarProps {
+  onToggleSidebar: () => void;
+  sidebarCollapsed: boolean;
+  isMobile: boolean;
+  mobileOpen: boolean;
+}
+
+export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen }: TopbarProps) {
   const { navigate } = useRoute();
   const { session }  = useAuth();
   const { showToast } = useToast();
@@ -105,6 +112,30 @@ export function Topbar() {
         transition: 'background 0.2s ease, border-color 0.2s ease',
       }}
     >
+      {/* Sidebar collapse/expand (desktop) · drawer open/close (mobile) */}
+      <button
+        type="button"
+        onClick={onToggleSidebar}
+        aria-controls="app-sidebar"
+        aria-expanded={isMobile ? mobileOpen : !sidebarCollapsed}
+        aria-label={
+          isMobile
+            ? (mobileOpen ? 'Close navigation menu' : 'Open navigation menu')
+            : (sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar')
+        }
+        title={isMobile ? 'Menu' : (sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+        style={{
+          width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+          background: 'var(--input-bg)', border: '1px solid var(--input-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', color: 'var(--text-secondary)',
+        }}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
       <div style={{ flex: 1 }}>
         <h1 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 18, color: 'var(--text-primary)', letterSpacing: -0.3 }}>
           Dashboard

@@ -369,28 +369,43 @@ function OrgSwitcher() {
 }
 
 /* ── Component ─────────────────────────────────────────────── */
-export function Sidebar() {
+interface SidebarProps {
+  collapsed?: boolean;   // desktop rail collapsed (icons-only)
+  isMobile?: boolean;    // <768px → off-canvas drawer
+  mobileOpen?: boolean;  // drawer visible (mobile only)
+  onNavigate?: () => void; // called after a nav click (closes the drawer)
+}
+
+export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = false, onNavigate }: SidebarProps) {
   const { route, navigate } = useRoute();
   const { session, logout } = useAuth();
   const activeId = routeToActiveId(route.name);
 
   const user = session?.user;
+  // Icons-only rail applies on desktop only; on mobile the drawer shows full width.
+  const iconsOnly = collapsed && !isMobile;
+  const width = isMobile ? 264 : (iconsOnly ? 72 : 240);
 
   return (
     <aside
+      id="app-sidebar"
+      role="navigation"
+      aria-label="Primary"
+      aria-hidden={isMobile && !mobileOpen}
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
-        width: 240,
+        width,
         height: '100vh',
         background: 'var(--sidebar-bg)',
         borderRight: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 100,
-        boxShadow: '2px 0 10px rgba(0,0,0,0.04)',
-        transition: 'background 0.2s ease, border-color 0.2s ease',
+        boxShadow: isMobile ? '2px 0 18px rgba(0,0,0,0.18)' : '2px 0 10px rgba(0,0,0,0.04)',
+        transform: isMobile ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'none',
+        transition: 'width 0.2s ease, transform 0.2s ease, background 0.2s ease, border-color 0.2s ease',
       }}
     >
       {/* Logo header */}
@@ -416,36 +431,42 @@ export function Sidebar() {
           />
         </div>
 
-        <div
-          style={{
-            fontSize: 10,
-            color: 'var(--text-muted)',
-            letterSpacing: 1.2,
-            textTransform: 'uppercase',
-            marginTop: 12,
-            fontWeight: 600,
-            textAlign: 'center',
-          }}
-        >
-          Compliance Suite
+        {!iconsOnly && (
+          <>
+            <div
+              style={{
+                fontSize: 10,
+                color: 'var(--text-muted)',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                marginTop: 12,
+                fontWeight: 600,
+                textAlign: 'center',
+              }}
+            >
+              Compliance Suite
+            </div>
+
+            <div
+              style={{
+                height: 3,
+                width: 24,
+                borderRadius: 2,
+                background: 'var(--brand-gradient)',
+                margin: '10px auto 0',
+                opacity: 0.7,
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Org switcher — hidden in the collapsed rail (expand to switch workspace) */}
+      {!iconsOnly && (
+        <div style={{ padding: '10px 16px 8px' }}>
+          <OrgSwitcher />
         </div>
-
-        <div
-          style={{
-            height: 3,
-            width: 24,
-            borderRadius: 2,
-            background: 'var(--brand-gradient)',
-            margin: '10px auto 0',
-            opacity: 0.7,
-          }}
-        />
-      </div>
-
-      {/* Org switcher */}
-      <div style={{ padding: '10px 16px 8px' }}>
-        <OrgSwitcher />
-      </div>
+      )}
 
       {/* Nav — RBAC filtered (J1.3F) */}
       <nav style={{ flex: 1, padding: '2px 12px', overflowY: 'auto' }}>
@@ -465,16 +486,18 @@ export function Sidebar() {
               key={item.id}
               {...item}
               active={item.id === activeId}
+              iconsOnly={iconsOnly}
               onClick={() => {
                 const target = NAV_ROUTES[item.id];
                 if (target) navigate(target);
+                onNavigate?.();
               }}
             />
           ))}
       </nav>
 
-      {/* Language + Currency preferences (visible to all auth roles) */}
-      <SidebarPreferences />
+      {/* Language + Currency preferences (hidden in the collapsed rail) */}
+      {!iconsOnly && <SidebarPreferences />}
 
       {/* User footer */}
       <div
@@ -483,6 +506,7 @@ export function Sidebar() {
           borderTop: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: iconsOnly ? 'center' : 'flex-start',
           gap: 10,
         }}
       >
@@ -504,23 +528,25 @@ export function Sidebar() {
         >
           {user?.initials ?? '??'}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {user?.displayName ?? 'User'}
+        {!iconsOnly && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {user?.displayName ?? 'User'}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+              {session?.role ?? 'member'}
+            </div>
           </div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-            {session?.role ?? 'member'}
-          </div>
-        </div>
+        )}
         {/* Sign out */}
         <button
           type="button"
@@ -557,20 +583,31 @@ function NavItem({
   icon,
   active,
   onClick,
+  iconsOnly = false,
 }: {
   id: string;
   label: string;
   icon: string;
   active: boolean;
   onClick?: () => void;
+  iconsOnly?: boolean;
 }) {
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); }
+  };
   return (
     <div
       onClick={onClick}
+      onKeyDown={onKeyDown}
       role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-current={active ? 'page' : undefined}
+      title={iconsOnly ? label : undefined}
+      aria-label={iconsOnly ? label : undefined}
       style={{
         display: 'flex',
         alignItems: 'center',
+        justifyContent: iconsOnly ? 'center' : 'flex-start',
         gap: 10,
         padding: '9px 12px',
         borderRadius: 10,
@@ -598,7 +635,7 @@ function NavItem({
         />
       )}
       <NavIcon id={icon} />
-      {label}
+      {!iconsOnly && label}
     </div>
   );
 }
