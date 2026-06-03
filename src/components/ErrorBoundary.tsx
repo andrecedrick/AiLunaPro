@@ -62,19 +62,41 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
       const chunkFail = this.isChunkLoadError();
 
+      // Inline styles ONLY — must render visibly even if the bundled CSS
+      // (Tailwind/tokens) failed to load. Never rely on utility classes here.
+      const wrap: React.CSSProperties = {
+        position: 'fixed', inset: 0, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: 16, background: '#F4F6FB',
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+      };
+      const card: React.CSSProperties = {
+        maxWidth: 460, width: '100%', background: '#FFFFFF', borderRadius: 14,
+        boxShadow: '0 6px 24px rgba(0,0,0,0.10)', padding: 24, color: '#0F172A',
+      };
+      const btnPrimary: React.CSSProperties = {
+        width: '100%', padding: '10px 16px', borderRadius: 10, border: 'none',
+        background: '#7C3AED', color: '#fff', fontWeight: 700, fontSize: 14,
+        cursor: 'pointer', marginTop: 8,
+      };
+      const btnSecondary: React.CSSProperties = {
+        width: '100%', padding: '10px 16px', borderRadius: 10,
+        border: '1px solid #CBD5E1', background: 'transparent', color: '#334155',
+        fontWeight: 600, fontSize: 14, cursor: 'pointer', marginTop: 8,
+      };
+
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">
-              {chunkFail ? 'Couldn’t load the page' : 'Oops!'}
+        <div style={wrap} role="alert">
+          <div style={card}>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: '#B91C1C', margin: '0 0 10px' }}>
+              {chunkFail ? 'Couldn’t load the page' : 'Something went wrong'}
             </h1>
-            <p className="text-gray-700 mb-4">
+            <p style={{ fontSize: 14, color: '#334155', lineHeight: 1.55, margin: '0 0 12px' }}>
               {chunkFail
                 ? 'Part of the app failed to load. This is usually a network issue or a browser ad-blocker / privacy extension blocking the app.'
-                : 'Something went wrong. Please try again.'}
+                : 'An unexpected error occurred. Reloading usually fixes it.'}
             </p>
             {chunkFail && (
-              <ul className="text-gray-700 text-sm mb-4 list-disc list-inside">
+              <ul style={{ fontSize: 13, color: '#334155', lineHeight: 1.6, margin: '0 0 12px', paddingLeft: 18 }}>
                 <li>Reload the page (often fixes a transient network failure).</li>
                 <li>Allow <strong>audit.ailunapro.com</strong> in your ad-blocker.</li>
                 <li>Allow <strong>*.googleapis.com</strong> (Firebase / Firestore).</li>
@@ -82,40 +104,23 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </ul>
             )}
             {import.meta.env.DEV && (
-              <details className="mb-4 text-sm bg-gray-100 p-2 rounded">
-                <summary className="font-mono text-red-600 cursor-pointer">
+              <details style={{ margin: '0 0 12px', fontSize: 12, background: '#F1F5F9', padding: 8, borderRadius: 8 }}>
+                <summary style={{ fontFamily: 'monospace', color: '#B91C1C', cursor: 'pointer' }}>
                   Error details
                 </summary>
-                <pre className="mt-2 whitespace-pre-wrap break-words text-xs">
+                <pre style={{ marginTop: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 11 }}>
                   {this.state.error?.toString()}
                 </pre>
               </details>
             )}
-            {chunkFail ? (
-              <div className="flex flex-col gap-2">
-                {/* Retry the lazy import without a full reload (reset → Suspense
-                    re-attempts via lazyWithRetry). Lighter than a full reload. */}
-                <button
-                  onClick={this.reset}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
-                >
-                  Retry loading
-                </button>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="w-full border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded"
-                >
-                  Reload page
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={this.reset}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
-              >
-                Try Again
-              </button>
-            )}
+            {/* Retry re-attempts the lazy import (reset → Suspense via lazyWithRetry);
+                Reload is the hard fallback. Both always visible. */}
+            <button onClick={this.reset} style={btnPrimary}>
+              {chunkFail ? 'Retry loading' : 'Try again'}
+            </button>
+            <button onClick={() => window.location.reload()} style={btnSecondary}>
+              Reload page
+            </button>
           </div>
         </div>
       );

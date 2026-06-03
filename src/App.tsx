@@ -291,8 +291,17 @@ function AppShell() {
 
   /* ── Firebase: wait for onAuthStateChanged before rendering ── */
   if (isLoading) {
-    // Perf P1: fail-fast notice after watchdog timeout instead of blank.
-    if (!bootSlow) return null;
+    // NEVER render null here — that produced a white screen while the session
+    // resolved (esp. when the lazy firestore chunk is slow/blocked). Show a
+    // visible spinner immediately; escalate to an actionable notice after the
+    // watchdog timeout. Spinner classes live in index.html (CSS-independent).
+    if (!bootSlow) {
+      return (
+        <div className="app-boot-loader" role="status" aria-label="Loading">
+          <div className="app-boot-spinner" />
+        </div>
+      );
+    }
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--page-bg)' }}>
         <div style={{ maxWidth: 460, width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 24, textAlign: 'center' }}>

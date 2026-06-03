@@ -25,9 +25,29 @@
         }
       })();
     </script>
+    <style>
+      /* Boot loader — literal colors (no dependency on the bundled CSS), so a
+         spinner is visible even if the JS/CSS chunks are slow or blocked. Shown
+         in #root before React mounts and reused by the in-app loading state. */
+      .app-boot-loader {
+        position: fixed; inset: 0; display: flex; align-items: center;
+        justify-content: center; background: #F4F6FB;
+      }
+      [data-theme="dark"] .app-boot-loader { background: #0B0E14; }
+      .app-boot-spinner {
+        width: 34px; height: 34px; border-radius: 50%;
+        border: 3px solid rgba(124, 58, 237, 0.25); border-top-color: #7C3AED;
+        animation: app-boot-spin 0.8s linear infinite;
+      }
+      @keyframes app-boot-spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-boot-loader" role="status" aria-label="Loading">
+        <div class="app-boot-spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
