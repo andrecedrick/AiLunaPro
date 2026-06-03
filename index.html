@@ -25,6 +25,39 @@
         }
       })();
     </script>
+    <script>
+      // Self-heal a stale-deploy chunk mismatch: if a static/preloaded app
+      // chunk (/assets/*.js|css) or a dynamic import fails to load, the served
+      // index.html is referencing asset hashes that no longer exist. index.html
+      // is no-cache, so a SINGLE hard reload re-resolves to the current hashes
+      // and the app boots. Guarded by sessionStorage to prevent reload loops; if
+      // it still fails after one reload, the boot watchdog shows the card.
+      (function () {
+        var KEY = 'ailunapro-chunk-recover';
+        function recoverOnce() {
+          try {
+            if (sessionStorage.getItem(KEY)) return;
+            sessionStorage.setItem(KEY, '1');
+            window.location.reload();
+          } catch (e) { /* ignore */ }
+        }
+        window.addEventListener('vite:preloadError', function (e) { if (e && e.preventDefault) e.preventDefault(); recoverOnce(); });
+        window.addEventListener('error', function (e) {
+          var t = e && e.target;
+          if (!t || !t.tagName) return;
+          var tag = String(t.tagName).toUpperCase();
+          var url = (t.src || t.href || '') + '';
+          if ((tag === 'SCRIPT' || tag === 'LINK') && url.indexOf('/assets/') !== -1) recoverOnce();
+        }, true);
+        // Clear the guard after a confirmed successful boot so a FUTURE deploy
+        // mismatch can self-heal again.
+        window.addEventListener('load', function () {
+          window.setTimeout(function () {
+            if (window.__APP_BOOTED__) { try { sessionStorage.removeItem(KEY); } catch (e) {} }
+          }, 3000);
+        });
+      })();
+    </script>
     <style>
       /* Boot loader — literal colors (no dependency on the bundled CSS), so a
          spinner is visible even if the JS/CSS chunks are slow or blocked. Shown
