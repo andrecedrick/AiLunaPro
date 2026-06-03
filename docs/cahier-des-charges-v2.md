@@ -2678,6 +2678,23 @@ Hygiène sécu (hors J). CSP **Report-Only** — ne bloque rien, mesure uniqueme
   nonces/hashes (+ refactor onclick watchdog) → basculer en `Content-Security-Policy`
   enforcé ; envisager des politiques par-surface (app shell vs audit-express).
 
+**✅ PERF P3-b — "Font delivery (remove CSS @import)"** — **CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-04.
+Petite passe perf (hors J). Même typographie (Inter/Sora), même URL, `display=swap`.
+- **Commit** `3743425` : 2 fichiers. `src/index.css` — suppression de l'`@import`
+  Google Fonts render-blocking (chaîne : index.css → parse → @import → fetch CSS).
+  `index.html` — `<link rel="stylesheet" href="…css2?family=Inter…&Sora…&display=swap">`
+  découvert au parse HTML initial → fetch en parallèle du bundle ; + preconnect/
+  dns-prefetch `fonts.googleapis.com` (P3-a avait déjà `fonts.gstatic.com`).
+  `display=swap` → pas de FOIT (texte en fallback puis swap).
+- **Contraintes** : typographie identique, vars `font-family` intactes ; auth/billing/
+  Stripe/worker routes/analytics/cache policy inchangés ; `noindex` conservé ; CSP-RO
+  autorise déjà `fonts.googleapis.com` (style-src) + `fonts.gstatic.com` (font-src).
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean (`@import` absent de
+  `dist/assets/*.css`, `<link>` présent dans `dist/index.html`) · worker `tsc` PASS ·
+  worktree clean. Dev preview : body→Inter, headings→Sora, `fonts.check('Inter')`=true.
+  **0 must-fix.** Prod vérifié (fonts chargées, typo inchangée, no FOIT/layout break).
+- **Suite perf différée** : P3-c `INEFFECTIVE_DYNAMIC_IMPORT` track.ts (cosmétique).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
