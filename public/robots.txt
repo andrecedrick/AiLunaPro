@@ -3,5 +3,10 @@
 # The authenticated SPA app shell (served from /) is excluded from indexing
 # via a `noindex` meta + X-Robots-Tag header, not via Disallow (the app is
 # hash-routed, so path-based Disallow cannot target app views).
+# LLM guidance: https://audit.ailunapro.com/llms.txt
 User-agent: *
 Allow: /
+# Forward-looking: no /app/ path exists today (the SPA lives at /), but reserve it.
+Disallow: /app/
+
+Sitemap: https://audit.ailunapro.com/sitemap.xml
