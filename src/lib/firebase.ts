@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getAuth, connectAuthEmulator, type Auth } from "firebase/auth";
 // firebase/app-check is lazy-loaded (see initAppCheckLazy below) to keep it
 // out of the main bundle — it's monitor-only, never blocks any request.
 // NOTE: Firebase Analytics is intentionally NOT used — product analytics are
@@ -16,6 +17,27 @@ const firebaseConfig = {
 
 export const app: FirebaseApp =
   getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+/**
+ * Auth is created in THIS module, immediately after the app — same module, same
+ * chunk, sequential evaluation. This guarantees initializeApp() always runs
+ * before getAuth(), regardless of how the bundler code-splits/orders chunks.
+ * (Splitting init and getAuth across two modules caused the prod
+ * "No Firebase App '[DEFAULT]' (app/no-app)" boot crash.)
+ */
+export const auth: Auth = getAuth(app);
+
+/**
+ * Connect to the local Auth emulator when VITE_AUTH_EMULATOR_URL is set (dev).
+ * The try/catch tolerates Vite HMR re-evaluation after the connection exists.
+ */
+if (import.meta.env.DEV && import.meta.env.VITE_AUTH_EMULATOR_URL) {
+  try {
+    connectAuthEmulator(auth, import.meta.env.VITE_AUTH_EMULATOR_URL, { disableWarnings: false });
+  } catch {
+    // Already connected — safe to ignore on HMR re-evaluation.
+  }
+}
 
 /**
  * Firebase App Check — MONITOR MODE.
