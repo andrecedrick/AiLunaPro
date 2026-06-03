@@ -1,7 +1,8 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
 // firebase/app-check is lazy-loaded (see initAppCheckLazy below) to keep it
 // out of the main bundle — it's monitor-only, never blocks any request.
+// NOTE: Firebase Analytics is intentionally NOT used — product analytics are
+// PostHog, consent-first (see src/lib/analytics/*).
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -50,22 +51,3 @@ if (typeof window !== "undefined") {
   const schedule = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1000));
   schedule(() => { void initAppCheckLazy(); });
 }
-
-/**
- * Analytics is optional.
- * Only initialize it in the browser and only if supported.
- */
-let analyticsInstance: Analytics | null = null;
-
-export const getFirebaseAnalytics = async (): Promise<Analytics | null> => {
-  if (typeof window === "undefined") return null;
-
-  const supported = await isSupported();
-  if (!supported) return null;
-
-  if (!analyticsInstance) {
-    analyticsInstance = getAnalytics(app);
-  }
-
-  return analyticsInstance;
-};
