@@ -31,6 +31,37 @@ const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px s
 
 const Code = ({ children }: { children: ReactNode }) => <code style={codeStyle}>{children}</code>;
 
+/* ── Lightweight visual aids (inline SVG / CSS only — no images, no libs) ── */
+
+const flowWrap: React.CSSProperties = { display: 'flex', gap: 8, flexWrap: 'wrap', margin: '4px 0 14px' };
+const stepBox: React.CSSProperties = { flex: '1 1 150px', minWidth: 0, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px' };
+const stepNum: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 999, background: 'var(--violet)', color: '#fff', fontSize: 11, fontWeight: 700, marginBottom: 6 };
+const stepText: React.CSSProperties = { fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.45 };
+const chip: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--brand-tint-bg, #EDE9FE)', color: 'var(--violet-text, #7C3AED)', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 600 };
+const schemeRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', margin: '4px 0 14px', flexWrap: 'wrap' };
+
+const LockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+const ToggleOff = () => (
+  <svg width="40" height="22" viewBox="0 0 40 22" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <rect x="0.5" y="0.5" width="39" height="21" rx="10.5" fill="var(--surface)" stroke="var(--border-strong, #CBD5E1)" />
+    <circle cx="11" cy="11" r="7" fill="var(--text-muted, #64748B)" />
+  </svg>
+);
+const StepFlow = ({ steps }: { steps: string[] }) => (
+  <div style={flowWrap}>
+    {steps.map((s, i) => (
+      <div key={i} style={stepBox}>
+        <div style={stepNum}>{i + 1}</div>
+        <div style={stepText}>{s}</div>
+      </div>
+    ))}
+  </div>
+);
+
 /* ── Sections ───────────────────────────────────────────── */
 
 export const HELP_SECTIONS: readonly HelpSection[] = [
@@ -432,23 +463,40 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
           reliability and fix issues faster. It is entirely optional and stays off until you
           allow it.
         </p>
+        <div style={schemeRow}>
+          <ToggleOff />
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: 'var(--text-primary)' }}>Off by default</strong> — nothing
+            is collected until you choose <strong>Allow</strong>.
+          </span>
+        </div>
+
         <h3 style={h3}>What is collected</h3>
+        <div style={schemeRow}>
+          <span style={{ color: 'var(--violet-text, #7C3AED)', display: 'inline-flex' }}><LockIcon /></span>
+          <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <span style={chip}>No personal data</span>
+            <span style={chip}>No session recording</span>
+            <span style={chip}>No ad tracking</span>
+          </span>
+        </div>
         <p style={p}>
-          Only anonymous usage signals such as page views and reliability events. No personal
-          data is collected, there is no session recording, and there is no advertising tracking.
+          Only anonymous usage signals such as page views and reliability events.
         </p>
+
         <h3 style={h3}>Opt in or out anytime</h3>
-        <p style={p}>
-          On your first visit, a small banner lets you choose <strong>Allow</strong> or{' '}
-          <strong>No thanks</strong>. Your choice is remembered on this device. To change it
-          later, clear this site&rsquo;s browser storage (site data) and reload — the banner
-          will appear again so you can choose afresh.
-        </p>
+        <StepFlow steps={[
+          'On your first visit, choose Allow or No thanks in the small banner.',
+          'Your choice is saved on this device — the banner will not ask again.',
+          'To change it, clear this site’s browser storage (site data) and reload.',
+        ]} />
+
         <h3 style={h3}>Do Not Track</h3>
         <p style={p}>
           If your browser sends a &ldquo;Do Not Track&rdquo; signal, analytics stay off
           automatically and no banner is shown.
         </p>
+
         <h3 style={h3}>If analytics are blocked</h3>
         <p style={p}>
           Some browsers, extensions, or networks block analytics requests. That is completely
@@ -522,13 +570,13 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
         </p>
         <h3 style={h3}>Didn't get the verification or password reset email?</h3>
         <p style={p}>
-          Verification and password reset emails are sent by Firebase from{' '}
-          <strong>noreply@audit-ai-cc9e2.firebaseapp.com</strong>. Check your{' '}
-          <strong>spam / promotions</strong> folder first. You can resend the verification
-          email from <strong>Settings → Profile</strong>, or request a new reset link from
-          the <strong>Forgot password</strong> page. After verifying, sign out and back in
-          so your account reflects the verified status. (Team invitations are separate and
-          sent via AiLunaPro's email provider.)
+          Verification and password reset emails are sent by Firebase from your project&rsquo;s
+          configured no-reply address (the default Firebase sender until a custom sender domain
+          is verified). Check your <strong>spam / promotions</strong> folder first. You can
+          resend the verification email from <strong>Settings → Profile</strong>, or request a
+          new reset link from the <strong>Forgot password</strong> page. After verifying, sign
+          out and back in so your account reflects the verified status. (Team invitations are
+          separate and sent via AiLunaPro&rsquo;s email provider.)
         </p>
       </>
     ),

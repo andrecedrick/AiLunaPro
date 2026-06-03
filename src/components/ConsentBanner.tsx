@@ -24,7 +24,7 @@ export function ConsentBanner() {
   // router — this reliably mounts HelpPage, which reads ?section= on mount.
   const openHelp = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    try { window.location.hash = '#/help?section=getting-started'; } catch { /* ignore */ }
+    try { window.location.hash = '#/help?section=settings-analytics'; } catch { /* ignore */ }
     navigate({ name: 'help' });
   };
 
@@ -70,7 +70,7 @@ export function ConsentBanner() {
       <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
         We use privacy-friendly analytics to improve reliability. No personal data is
         collected. You can opt in or out.{' '}
-        <a href="#/help?section=getting-started" onClick={openHelp} style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn more</a>
+        <a href="#/help?section=settings-analytics" onClick={openHelp} style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn more</a>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button
