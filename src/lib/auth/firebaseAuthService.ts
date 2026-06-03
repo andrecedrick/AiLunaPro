@@ -60,6 +60,8 @@ async function fs(): Promise<{ api: typeof import('firebase/firestore'); db: Fir
     // code only — never log uid/email/url.
     const code = (err as Error)?.message || 'FIRESTORE_LAZY_FAILED';
     if (import.meta.env.DEV) console.warn('[auth] firestore lazy-load failed code:', code);
+    // Non-PII boot diagnostic for the "Still connecting" card.
+    try { (window as Window & { __BOOT_REASON__?: string }).__BOOT_REASON__ = 'FIRESTORE_CHUNK_BLOCKED'; } catch { /* ignore */ }
     throw new Error('FIRESTORE_UNAVAILABLE');
   }
 }

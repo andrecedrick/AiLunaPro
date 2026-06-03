@@ -56,9 +56,13 @@
       // ONLY escape when React never mounts (the in-app watchdog can't run).
       // If React boots later, it re-renders #root and reclaims the UI.
       (function () {
-        var BOOT_TIMEOUT_MS = 20000;
+        var BOOT_TIMEOUT_MS = 15000;
         window.setTimeout(function () {
-          if (window.__APP_INTERACTIVE__) return;
+          // Only fire when the JS bundle never executed (blocked / 404 / fatal
+          // parse error). If it executed (__APP_BOOTED__), React owns the UI and
+          // its in-app card handles "loaded but can't connect" — this avoids a
+          // false-positive on a legitimately slow 3G download.
+          if (window.__APP_INTERACTIVE__ || window.__APP_BOOTED__) return;
           var root = document.getElementById('root');
           if (!root) return;
           root.innerHTML =

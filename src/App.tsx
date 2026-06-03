@@ -183,6 +183,23 @@ function AppShell() {
     }
   }, [isLoading, bootSlow]);
 
+  /* Diagnostics for the "Still connecting" card — a deterministic, non-PII
+     reason code. Prefer a captured lazy-firestore-chunk failure; otherwise
+     probe Google/Firebase reachability (no-cors: resolves opaque if reachable,
+     rejects if blocked client-side). Runs only once the watchdog trips. */
+  const [bootReason, setBootReason] = useState<'FIRESTORE_CHUNK_BLOCKED' | 'GOOGLEAPIS_BLOCKED' | 'TIMEOUT'>('TIMEOUT');
+  const [retryCount, setRetryCount] = useState(0);
+  useEffect(() => {
+    if (!bootSlow) return;
+    const captured = (window as Window & { __BOOT_REASON__?: string }).__BOOT_REASON__;
+    if (captured === 'FIRESTORE_CHUNK_BLOCKED') { setBootReason('FIRESTORE_CHUNK_BLOCKED'); return; }
+    let cancelled = false;
+    fetch('https://firestore.googleapis.com/v1/projects/-/databases/(default)/documents', { mode: 'no-cors' })
+      .then(() => { if (!cancelled) setBootReason('TIMEOUT'); })
+      .catch(() => { if (!cancelled) setBootReason('GOOGLEAPIS_BLOCKED'); });
+    return () => { cancelled = true; };
+  }, [bootSlow, retryCount]);
+
   /* J13 Batch 2: analytics page_view on route change. route.name is the
      id-free template (ids live in separate fields) → no PII. track() is a
      no-op unless consent granted, so this is safe pre-consent. */
@@ -312,35 +329,58 @@ function AppShell() {
         </div>
       );
     }
+    const reasonText: Record<typeof bootReason, string> = {
+      FIRESTORE_CHUNK_BLOCKED: 'A required app module was blocked from loading.',
+      GOOGLEAPIS_BLOCKED:      'Google / Firebase endpoints appear to be blocked.',
+      TIMEOUT:                 'The connection is taking longer than expected.',
+    };
+    const secondaryBtn: React.CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong, #CBD5E1)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', marginTop: 8 };
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--page-bg)' }}>
         <div style={{ maxWidth: 460, width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 24, textAlign: 'center' }}>
           <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: 'var(--font-heading)' }}>
             Still connecting…
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55, margin: '0 0 16px' }}>
-            A browser ad-blocker / privacy extension or your network may be blocking{' '}
-            <strong>audit.ailunapro.com</strong> or <strong>*.googleapis.com</strong> (Firebase).
-            Allow these domains, or reload. The app will continue automatically once it connects.
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55, margin: '0 0 10px' }}>
+            {reasonText[bootReason]} The app will continue automatically once it connects.
           </p>
+          <div style={{ fontSize: 11, fontFamily: 'ui-monospace, Consolas, monospace', color: 'var(--text-muted)', background: 'var(--surface-2)', borderRadius: 8, padding: '6px 10px', margin: '0 0 14px' }}>
+            Reason: {bootReason}
+          </div>
           <button
             type="button"
-            onClick={retryAuth}
+            onClick={() => { setRetryCount(c => c + 1); retryAuth(); }}
             style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient, var(--violet))', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
           >
-            Retry
+            Retry now
           </button>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong, #CBD5E1)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', marginTop: 8 }}
-          >
+          <button type="button" onClick={() => window.location.reload()} style={secondaryBtn}>
             Reload
           </button>
+          {retryCount >= 2 && (
+            <>
+              <a href="/audit-express" style={{ ...secondaryBtn, display: 'block', textDecoration: 'none', borderColor: 'var(--violet)', color: 'var(--violet-text, var(--violet))' }}>
+                Open Audit Express (no sign-in needed)
+              </a>
+              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5, margin: '8px 0 0' }}>
+                Account &amp; data features require connectivity to Google / Firebase.
+              </p>
+            </>
+          )}
+          <details style={{ marginTop: 12, textAlign: 'left' }}>
+            <summary style={{ cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--violet-text, var(--violet))' }}>
+              Network requirements
+            </summary>
+            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, margin: '8px 0 0' }}>
+              On a corporate network, VPN, or with a privacy/ad-block extension, please allow:
+              Google / Firebase endpoints, our API domain (<strong>api.ailunapro.com</strong>),
+              and Cloudflare Turnstile. The app loads normally once these are reachable.
+            </p>
+          </details>
           <button
             type="button"
             onClick={() => { window.location.hash = '#/help?section=troubleshooting'; window.location.reload(); }}
-            style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong, #CBD5E1)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', marginTop: 8 }}
+            style={secondaryBtn}
           >
             Troubleshooting help
           </button>
