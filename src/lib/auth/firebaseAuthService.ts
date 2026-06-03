@@ -38,15 +38,30 @@ import type { AuthSession, OrgMember, Organization, User, UserRole } from '../..
 // Dynamically imports firebase/firestore + the db instance on first use, then
 // caches. Keeps the firestore chunk off the eager boot/login path.
 let _fs: { api: typeof import('firebase/firestore'); db: Firestore } | null = null;
+
+// Deterministic fast-fail: a slow/blocked network (3G, ad-blocker, DNS filter)
+// can make the lazy firestore chunk hang, which would stall session resolution
+// and pin the app on the loading spinner. Bound the load so the promise ALWAYS
+// settles; a coded rejection lets the auth flow surface an actionable state
+// instead of hanging forever. No PII in logs (code only).
+const FIRESTORE_LAZY_TIMEOUT_MS = 10_000;
+
 async function fs(): Promise<{ api: typeof import('firebase/firestore'); db: Firestore }> {
-  if (!_fs) {
-    const [api, mod] = await Promise.all([
-      import('firebase/firestore'),
-      import('../firestore'),
-    ]);
+  if (_fs) return _fs;
+  const load = Promise.all([import('firebase/firestore'), import('../firestore')]);
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('FIRESTORE_LAZY_TIMEOUT')), FIRESTORE_LAZY_TIMEOUT_MS),
+  );
+  try {
+    const [api, mod] = await Promise.race([load, timeout]);
     _fs = { api, db: mod.db };
+    return _fs;
+  } catch (err) {
+    // code only — never log uid/email/url.
+    const code = (err as Error)?.message || 'FIRESTORE_LAZY_FAILED';
+    console.warn('[auth] firestore lazy-load failed code:', code);
+    throw new Error('FIRESTORE_UNAVAILABLE');
   }
-  return _fs;
 }
 
 // ─── localStorage key for current-org preference ─────────────────────────────
@@ -250,8 +265,15 @@ export function subscribeAuthState(
         onSignedOut();
       }
     } catch (err) {
-      console.error('[firebaseAuthService] buildSession failed:', err);
-      onSignedOut();
+      // A THROWN error here is a connectivity / lazy-load failure (e.g. the
+      // firestore chunk was blocked or timed out) — the user's Firebase auth is
+      // still valid, so do NOT sign them out (that would bounce a logged-in user
+      // to the login page on a transient network blip). Leave the app in its
+      // loading state so AppShell's watchdog shows the actionable "Still
+      // connecting" card (Reload + Help); a reload re-runs this callback once
+      // the network recovers. Log the code only — never PII.
+      const code = (err as Error)?.message ?? 'UNKNOWN';
+      console.warn('[auth] session resolve failed code:', code);
     }
   });
 }

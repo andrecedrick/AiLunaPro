@@ -320,6 +320,13 @@ function AppShell() {
           >
             Reload
           </button>
+          <button
+            type="button"
+            onClick={() => { window.location.hash = '#/help?section=troubleshooting'; window.location.reload(); }}
+            style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong, #CBD5E1)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', marginTop: 8 }}
+          >
+            Troubleshooting help
+          </button>
         </div>
       </div>
     );
