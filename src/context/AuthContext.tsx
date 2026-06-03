@@ -108,6 +108,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (LAYER !== 'firebase') return;
 
+    // DEV guard: prove the Firebase app was initialized before we subscribe to
+    // auth state. If this ever fires, a chunk ran getAuth() before
+    // initializeApp() — see the entry-first import in main.tsx. (No PII.)
+    if (import.meta.env.DEV) {
+      void import('firebase/app').then(({ getApps }) => {
+        if (getApps().length === 0) {
+          console.error('[auth] ASSERT FAILED: Firebase app not initialized before AuthContext subscribe (app/no-app risk).');
+        }
+      }).catch(() => { /* ignore */ });
+    }
+
     const unsub = subscribeAuthState(
       (fbSession, fbMembers, fbOrgs) => {
         if (!mountedRef.current) return;

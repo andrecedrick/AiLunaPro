@@ -1,3 +1,9 @@
+// Initialize Firebase FIRST — before any module that uses firebase/auth.
+// firebase.ts calls initializeApp() at evaluation time; importing it as the very
+// first entry dependency guarantees the default app exists before getAuth() runs
+// in any (possibly reordered / code-split) chunk. Prevents the
+// "No Firebase App '[DEFAULT]' (app/no-app)" boot crash.
+import './lib/firebase'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
