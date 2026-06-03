@@ -1,17 +1,19 @@
 /**
- * AnalyticsBlockedNotice — J13.
+ * AnalyticsBlockedNotice — DEV-ONLY diagnostic.
  *
- * Non-intrusive hint shown ONLY when product analytics ingestion is blocked by
- * the environment (browser tracking-prevention, antivirus web-shield, corporate
- * firewall, or DNS sinkhole) — detected by a one-shot probe in lib/analytics/track.
+ * Hidden in normal/production usage: the app must just work whether or not
+ * analytics ingestion is blocked, with NO user-facing message. We keep this
+ * as a developer-only hint (import.meta.env.DEV) so engineers can still spot a
+ * blocked environment locally. In production builds it never renders.
  *
- * This is informational only. It changes NO privacy behaviour: consent-first,
- * DNT respected, no PII, no autocapture/replay. Dismiss persists locally.
+ * Changes NO privacy behaviour: consent-first, DNT respected, no PII, no
+ * autocapture/replay. Dismiss persists locally (dev only).
  */
 
 import { useEffect, useState } from 'react';
 import { isAnalyticsBlocked } from '../lib/analytics/track';
 
+const DEV = import.meta.env.DEV; // false in production builds → notice never renders
 const DISMISS_KEY = 'ailunapro-analytics-blocked-dismissed';
 const BLOCKED_EVENT = 'ailunapro:analytics-blocked';
 
@@ -20,10 +22,10 @@ function alreadyDismissed(): boolean {
 }
 
 export function AnalyticsBlockedNotice() {
-  const [visible, setVisible] = useState<boolean>(() => isAnalyticsBlocked() && !alreadyDismissed());
+  const [visible, setVisible] = useState<boolean>(() => DEV && isAnalyticsBlocked() && !alreadyDismissed());
 
   useEffect(() => {
-    if (alreadyDismissed()) return;
+    if (!DEV || alreadyDismissed()) return;
     const onBlocked = () => setVisible(true);
     window.addEventListener(BLOCKED_EVENT, onBlocked);
     // Catch the case where the probe resolved before this mounted.
@@ -64,7 +66,7 @@ export function AnalyticsBlockedNotice() {
       <div style={{ flex: 1, minWidth: 220, fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
         Analytics requests are being blocked by your browser or network privacy settings.
         The app works normally either way.{' '}
-        <a href="#/help" style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn how to enable</a>
+        <a href="/#/help?section=getting-started" style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn how to enable</a>
       </div>
       <button
         type="button"

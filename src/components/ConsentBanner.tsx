@@ -58,7 +58,7 @@ export function ConsentBanner() {
       <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
         We use privacy-friendly analytics to improve reliability. No personal data is
         collected. You can opt in or out.{' '}
-        <a href="#/help" style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn more</a>
+        <a href="/#/help?section=getting-started" style={{ color: 'var(--violet-text, var(--violet))', whiteSpace: 'nowrap' }}>Learn more</a>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button
