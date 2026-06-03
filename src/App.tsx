@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, lazy as reactLazy, type ReactNode } from 'react';
 import { lazyWithRetry as lazy } from './lib/routing/lazyWithRetry';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -7,13 +7,6 @@ import { PreferencesProvider } from './context/PreferencesContext';
 import { ToastProvider } from './context/ToastContext';
 import { RouteProvider, useRoute } from './context/RouteContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { AuditProvider } from './context/AuditContext';
-import { ReportsProvider } from './context/ReportsContext';
-import { RegistryProvider } from './context/RegistryContext';
-import { BillingProvider } from './context/BillingContext';
-import { TokensProvider } from './context/TokensContext';
-import { Sidebar } from './components/layout/Sidebar';
-import { Topbar } from './components/layout/Topbar';
 import { ConsentBanner } from './components/ConsentBanner';
 import { AnalyticsBlockedNotice } from './components/AnalyticsBlockedNotice';
 
@@ -47,6 +40,17 @@ const DiagnosticPage       = lazy(() => import('./pages/DiagnosticPage').then(m 
 const RoiCalculatorPage    = lazy(() => import('./pages/RoiCalculatorPage').then(m => ({ default: m.RoiCalculatorPage })));
 const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
+
+/* Data-layer providers (Firestore-backed) — lazy so the firestore chunk stays
+   off the eager boot/login path; mounted only around authenticated content. */
+const AuthedProviders      = reactLazy(() => import('./context/AuthedProviders'));
+
+/* Authenticated-shell chrome — lazy so their transitive Firestore imports
+   (Topbar → TokenBadge → TokensContext) stay off the eager boot/login path.
+   reactLazy preserves their prop types; they load under the same Suspense as
+   AuthedProviders (no extra fallback). */
+const Sidebar              = reactLazy(() => import('./components/layout/Sidebar').then(m => ({ default: m.Sidebar })));
+const Topbar               = reactLazy(() => import('./components/layout/Topbar').then(m => ({ default: m.Topbar })));
 
 const PageFallback = () => (
   <div style={{ padding: 24, opacity: 0.6 }}>Loading…</div>
@@ -348,30 +352,34 @@ function AppShell() {
     return <Suspense fallback={<PageFallback />}>{authPage}</Suspense>;
   }
 
+  /* Wrap authenticated content with the lazy Firestore-backed providers.
+     Suspense covers both the providers' lazy chunk and lazy page chunks. */
+  const authed = (node: ReactNode) => (
+    <Suspense fallback={<PageFallback />}>
+      <AuthedProviders>{node}</AuthedProviders>
+    </Suspense>
+  );
+
   /* ── Authenticated: org-creation wizard (no chrome) ────── */
   /* J1.3C: also force org-create when user has no workspace yet. */
   if (route.name === 'org/create' || (isAuthenticated && !session?.orgId)) {
-    return (
-      <Suspense fallback={<PageFallback />}>
-        <OrgCreatePage />
-      </Suspense>
-    );
+    return authed(<OrgCreatePage />);
   }
 
   /* ── Shared-report view (chromeless) ───────────────────── */
   if (route.name === 'reports/share') {
-    return (
+    return authed(
       <div className="dashboard-layout shared-layout">
         <main className="dashboard-content shared-content">
           <PageOutlet />
         </main>
-      </div>
+      </div>,
     );
   }
 
   /* ── Full dashboard shell ───────────────────────────────── */
   const mainMarginLeft = isMobile ? 0 : (sidebarCollapsed ? 72 : 240);
-  return (
+  return authed(
     <div className="dashboard-layout">
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -397,7 +405,7 @@ function AppShell() {
           <PageOutlet />
         </main>
       </div>
-    </div>
+    </div>,
   );
 }
 
@@ -409,19 +417,12 @@ function App() {
         <ToastProvider>
           <RouteProvider>
             <AuthProvider>
-              <AuditProvider>
-                <ReportsProvider>
-                  <RegistryProvider>
-                    <BillingProvider>
-                      <TokensProvider>
-                        <AppShell />
-                        <ConsentBanner />
-                        <AnalyticsBlockedNotice />
-                      </TokensProvider>
-                    </BillingProvider>
-                  </RegistryProvider>
-                </ReportsProvider>
-              </AuditProvider>
+              {/* Data-layer providers are lazy-mounted inside AppShell around
+                  authenticated content (see AuthedProviders) so Firestore stays
+                  off the eager boot/login path. */}
+              <AppShell />
+              <ConsentBanner />
+              <AnalyticsBlockedNotice />
             </AuthProvider>
           </RouteProvider>
         </ToastProvider>

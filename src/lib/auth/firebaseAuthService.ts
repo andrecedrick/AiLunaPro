@@ -7,6 +7,10 @@
  * Consumed only by AuthContext when resolveLayer('auth') === 'firebase'.
  * Nothing in the UI tree imports this file directly.
  *
+ * PERF: firebase/firestore (~73 kB gz) and the db instance are loaded LAZILY
+ * (dynamic import via fs()) so they stay OUT of the eager boot bundle. The auth
+ * SDK stays static (it is needed on boot for login). Behavior is unchanged.
+ *
  * Firestore paths used:
  *   /users/{uid}
  *   /organizations/{orgId}
@@ -25,21 +29,25 @@ import {
   type User as FirebaseUser,
   type Unsubscribe,
 } from 'firebase/auth';
-import {
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  collection,
-  serverTimestamp,
-  arrayUnion,
-} from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
 import { auth } from '../firebase-auth';
-import { db } from '../firestore';
 import { makeInitials } from './storage';
 import type { AuthSession, OrgMember, Organization, User, UserRole } from '../../types/auth';
+
+// ─── Lazy Firestore accessor ────────────────────────────────────────────────
+// Dynamically imports firebase/firestore + the db instance on first use, then
+// caches. Keeps the firestore chunk off the eager boot/login path.
+let _fs: { api: typeof import('firebase/firestore'); db: Firestore } | null = null;
+async function fs(): Promise<{ api: typeof import('firebase/firestore'); db: Firestore }> {
+  if (!_fs) {
+    const [api, mod] = await Promise.all([
+      import('firebase/firestore'),
+      import('../firestore'),
+    ]);
+    _fs = { api, db: mod.db };
+  }
+  return _fs;
+}
 
 // ─── localStorage key for current-org preference ─────────────────────────────
 const CURRENT_ORG_KEY = 'ailunapro-fb-current-org';
@@ -53,6 +61,7 @@ function setOrgPref(orgId: string): void {
 
 // ─── Firestore document shapes ────────────────────────────────────────────────
 // We store a superset of the app's UI types so round-trips are lossless.
+// Timestamps are written as ISO strings at runtime (serverTimestamp is unused).
 
 interface FsUser {
   id: string;
@@ -61,8 +70,8 @@ interface FsUser {
   initials: string;
   /** All org IDs this user belongs to. Updated on createOrg / invite. */
   orgIds: string[];
-  createdAt: ReturnType<typeof serverTimestamp> | string;
-  updatedAt: ReturnType<typeof serverTimestamp> | string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface FsOrg {
@@ -71,8 +80,8 @@ interface FsOrg {
   plan: Organization['plan'];
   initials: string;
   ownerId: string;
-  createdAt: ReturnType<typeof serverTimestamp> | string;
-  updatedAt: ReturnType<typeof serverTimestamp> | string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface FsMember {
@@ -83,24 +92,27 @@ interface FsMember {
   displayName: string;
   email: string;
   initials: string;
-  joinedAt?: ReturnType<typeof serverTimestamp> | string;
-  invitedAt?: ReturnType<typeof serverTimestamp> | string;
+  joinedAt?: string;
+  invitedAt?: string;
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 async function readUser(uid: string): Promise<FsUser | null> {
-  const snap = await getDoc(doc(db, 'users', uid));
+  const { api, db } = await fs();
+  const snap = await api.getDoc(api.doc(db, 'users', uid));
   return snap.exists() ? (snap.data() as FsUser) : null;
 }
 
 async function readOrg(orgId: string): Promise<FsOrg | null> {
-  const snap = await getDoc(doc(db, 'organizations', orgId));
+  const { api, db } = await fs();
+  const snap = await api.getDoc(api.doc(db, 'organizations', orgId));
   return snap.exists() ? (snap.data() as FsOrg) : null;
 }
 
 async function readMembers(orgId: string): Promise<OrgMember[]> {
-  const snap = await getDocs(collection(db, 'organizations', orgId, 'members'));
+  const { api, db } = await fs();
+  const snap = await api.getDocs(api.collection(db, 'organizations', orgId, 'members'));
   return snap.docs.map(d => {
     const m = d.data() as FsMember;
     return {
@@ -288,6 +300,7 @@ export async function firebaseSignup(
     const uid     = cred.user.uid;
     const now     = new Date().toISOString();
     const initials = makeInitials(name);
+    const { api, db } = await fs();
 
     // J6: send the verification email immediately on signup. Best-effort and
     // NON-FATAL — a delivery/quota error must never block account creation.
@@ -304,7 +317,7 @@ export async function firebaseSignup(
       const orgId   = `org_${uid.slice(0, 8)}`;
       const orgInit = makeInitials(orgName);
 
-      await setDoc(doc(db, 'organizations', orgId), {
+      await api.setDoc(api.doc(db, 'organizations', orgId), {
         id:        orgId,
         name:      orgName.trim(),
         plan:      'Free',
@@ -315,7 +328,7 @@ export async function firebaseSignup(
       } satisfies FsOrg);
 
       await Promise.all([
-        setDoc(doc(db, 'users', uid), {
+        api.setDoc(api.doc(db, 'users', uid), {
           id: uid,
           displayName: name.trim(),
           email: email.toLowerCase().trim(),
@@ -324,7 +337,7 @@ export async function firebaseSignup(
           createdAt: now,
           updatedAt: now,
         } satisfies FsUser),
-        setDoc(doc(db, 'organizations', orgId, 'members', uid), {
+        api.setDoc(api.doc(db, 'organizations', orgId, 'members', uid), {
           userId:      uid,
           orgId,
           role:        'owner',
@@ -340,7 +353,7 @@ export async function firebaseSignup(
     } else {
       // Default path: user account only — no workspace, no role.
       // User will land on OrgCreatePage / accept-invite flow.
-      await setDoc(doc(db, 'users', uid), {
+      await api.setDoc(api.doc(db, 'users', uid), {
         id: uid,
         displayName: name.trim(),
         email: email.toLowerCase().trim(),
@@ -398,6 +411,7 @@ export async function firebaseCreateOrg(
   orgName: string,
   plan: Organization['plan'],
 ): Promise<{ org: Organization; member: OrgMember }> {
+  const { api, db } = await fs();
   const now    = new Date().toISOString();
   // Random suffix prevents orgId collision when two workspaces are created
   // within the same millisecond (rapid succession / double-fire). Without it,
@@ -429,17 +443,17 @@ export async function firebaseCreateOrg(
   // rule does get(/organizations/{orgId}).data.ownerId == uid(). Running these
   // concurrently races — the rule can evaluate before the org doc exists,
   // rejecting the member write with permission-denied.
-  await setDoc(doc(db, 'organizations', orgId), {
+  await api.setDoc(api.doc(db, 'organizations', orgId), {
     ...org,
     ownerId:   uid,
     updatedAt: now,
   });
   await Promise.all([
-    setDoc(doc(db, 'organizations', orgId, 'members', uid), { ...member }),
+    api.setDoc(api.doc(db, 'organizations', orgId, 'members', uid), { ...member }),
     // arrayUnion is atomic server-side; concurrent createOrg calls no longer
     // clobber each other (the old read-modify-write .concat() lost updates).
-    updateDoc(doc(db, 'users', uid), {
-      orgIds: arrayUnion(orgId),
+    api.updateDoc(api.doc(db, 'users', uid), {
+      orgIds: api.arrayUnion(orgId),
       updatedAt: now,
     }),
   ]);
@@ -452,8 +466,9 @@ export async function firebaseInviteMember(
   orgId: string,
   member: OrgMember,
 ): Promise<void> {
-  await setDoc(
-    doc(db, 'organizations', orgId, 'members', member.userId),
+  const { api, db } = await fs();
+  await api.setDoc(
+    api.doc(db, 'organizations', orgId, 'members', member.userId),
     { ...member },
   );
 }
@@ -464,8 +479,9 @@ export async function firebaseUpdateMemberRole(
   userId: string,
   role: UserRole,
 ): Promise<void> {
-  await updateDoc(
-    doc(db, 'organizations', orgId, 'members', userId),
+  const { api, db } = await fs();
+  await api.updateDoc(
+    api.doc(db, 'organizations', orgId, 'members', userId),
     { role },
   );
 }
@@ -475,7 +491,8 @@ export async function firebaseRemoveMember(
   orgId: string,
   userId: string,
 ): Promise<void> {
-  await deleteDoc(doc(db, 'organizations', orgId, 'members', userId));
+  const { api, db } = await fs();
+  await api.deleteDoc(api.doc(db, 'organizations', orgId, 'members', userId));
 }
 
 /** Expose the current Firebase Auth user for switchOrg calls. */
@@ -497,18 +514,19 @@ export async function firebaseUpdateProfile(
   email: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const { api, db } = await fs();
     const initials = makeInitials(name);
     const now = new Date().toISOString();
 
     const fbUser = auth.currentUser;
     const ops: Promise<unknown>[] = [
-      updateDoc(doc(db, 'users', uid), {
+      api.updateDoc(api.doc(db, 'users', uid), {
         displayName: name,
         email,
         initials,
         updatedAt: now,
       }),
-      updateDoc(doc(db, 'organizations', orgId, 'members', uid), {
+      api.updateDoc(api.doc(db, 'organizations', orgId, 'members', uid), {
         displayName: name,
         email,
         initials,
@@ -537,7 +555,8 @@ export async function firebaseUpdateOrgName(
   name: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await updateDoc(doc(db, 'organizations', orgId), {
+    const { api, db } = await fs();
+    await api.updateDoc(api.doc(db, 'organizations', orgId), {
       name,
       initials: makeInitials(name),
       updatedAt: new Date().toISOString(),
