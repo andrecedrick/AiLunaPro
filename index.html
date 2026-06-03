@@ -2,6 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Resource hints (P3-a) — warm up critical first-paint / first-data origins.
+      Hints only: no behavior change, no new requests. preconnect opens DNS+TCP+TLS
+      early; dns-prefetch is the cheaper fallback. crossorigin is set on the CORS
+      origins (fonts + our API + Firestore) so the warmed socket matches the
+      anonymous CORS fetch. (preconnect has no wildcard, so *.googleapis.com is
+      expanded to the boot-critical Firebase hosts.)
+    -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://api.ailunapro.com" crossorigin />
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://api.ailunapro.com" />
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+    <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+    <link rel="dns-prefetch" href="https://securetoken.googleapis.com" />
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--
