@@ -2765,6 +2765,34 @@ Pages publiques path-based `/eu-ai-act/` + `/faq/` (+ polish contenu/design + co
 - **Différé (Batch 4+, gaté)** : autres pages piliers (pricing public, use-cases…) ; schema
   Organization/WebSite ; OG image ; CSP enforce (étape dédiée).
 
+**✅ J14 SEO/GEO Minimal Pack — Batch 4 (Conversion + Trust Pack)** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-04 (§7ter).
+3 pages publiques path-based : `/pricing/` + `/use-cases/pme/` + `/use-cases/independant/`.
+- **Commit** `ef614b1` : `public/pricing/index.html` (tiers Free/Starter/Professional/
+  Enterprise, **features only, AUCUN prix payant hardcodé** — "live multi-currency prices
+  shown in-app at checkout" ; Free=$0 ; 2 Q/A visibles) ; `public/use-cases/pme/` (SME) +
+  `public/use-cases/independant/` (freelancers) — situation/how-it-helps/get-started + 2-Q FAQ.
+  Statiques self-contained, tokens audit-express, fonts `<link>`, `index,follow`, disclaimer
+  standard, CTA `/#/signup` + `/audit-express`.
+- **schema.org** : pricing = **Organization + WebSite** (no SearchAction) + **SoftwareApplication**
+  (Offer Free price=0 uniquement) ; use-cases = **Organization + WebSite + WebPage** + **FAQPage**
+  (2 Q chacun, verbatim). OG image **différée** (pas d'asset 1200×630).
+- **SEO** : canonical/og:url/twitter:url = trailing-slash ; sitemap → **8 URLs** (audit-express
+  no-slash inchangé) ; llms.txt +3 liens.
+- **_headers** : blocs additifs `/pricing/*` + `/use-cases/*` (no-cache + CSP-RO, indexables).
+  Règles existantes inchangées.
+- **Garde-fous** : informational only + disclaimers ; no legal/compliance/cert claims ; **no
+  price drift** (prix live in-app via Stripe) ; no PII ; auth/billing/Stripe/analytics/worker
+  intacts ; CSP toujours Report-Only ; cache policy inchangée.
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS · worktree
+  clean · JSON-LD tous valides, FAQPage parité **2/2** ×2. **0 must-fix.**
+- **Vérif prod (opérateur)** : `/pricing/` + `/use-cases/{pme,independant}/` 308 → slash → 200 ;
+  canonical slash ; **aucun X-Robots-Tag leak** ; sitemap 8 locs ; llms.txt à jour ; CTA OK ;
+  no price drift.
+- **Surface publique SEO/GEO totale** : 8 pages (audit-express, eu-ai-act, faq, shadow-ai,
+  methodologie, pricing, use-cases/pme, use-cases/independant).
+- **Différé (gaté)** : OG image partagée 1200×630 ; backfill Organization/WebSite sur les 5 pages
+  antérieures ; CSP enforce (étape dédiée) ; autres use-cases.
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
