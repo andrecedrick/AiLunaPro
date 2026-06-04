@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Indexable public surface (J14). Explicitly index,follow. -->
+    <meta name="robots" content="index, follow" />
+
+    <title>EU AI Act Readiness — Preparation Support | AiLunaPro</title>
+    <meta
+      name="description"
+      content="Understand the EU AI Act at a high level and how AiLunaPro helps you prepare: AI registry, Shadow AI signals, an indicative risk level, and a prioritized action plan. Preparation support, not a certification or legal advice."
+    />
+    <link rel="canonical" href="https://audit.ailunapro.com/eu-ai-act" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="EU AI Act Readiness — Preparation Support | AiLunaPro" />
+    <meta
+      property="og:description"
+      content="A plain-language overview of the EU AI Act and how AiLunaPro helps you prepare. Indicative guidance — not a certification or legal advice."
+    />
+    <meta property="og:url" content="https://audit.ailunapro.com/eu-ai-act" />
+    <meta property="og:site_name" content="AiLunaPro" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EU AI Act Readiness — Preparation Support | AiLunaPro" />
+    <meta
+      name="twitter:description"
+      content="A plain-language overview of the EU AI Act and how AiLunaPro helps you prepare. Indicative guidance — not a certification or legal advice."
+    />
+
+    <!-- Fonts via <link> (P3-b): discovered at HTML parse, display=swap → no FOIT. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" />
+
+    <style>
+      /* ── Design tokens — mirror src/index.css (light surface only) ── */
+      :root {
+        color-scheme: light;
+        --page-bg:        #F4F6FB;
+        --surface:        #FFFFFF;
+        --surface-2:      #F8F9FD;
+        --border:         rgba(0, 0, 0, 0.07);
+        --border-strong:  rgba(0, 0, 0, 0.12);
+        --card-shadow:    0 2px 10px rgba(0, 0, 0, 0.06);
+        --card-radius:    20px;
+        --text-primary:   #0F172A;
+        --text-secondary: #334155;
+        --text-muted:     #64748B;
+        --violet:         #7C3AED;
+        --violet-text:    #7C3AED;
+        --cyan:           #22D3EE;
+        --brand-gradient: linear-gradient(135deg, #7C3AED, #22D3EE);
+        --brand-tint-bg:  #EDE9FE;
+        --amber-bg:       #FEF3C7;
+        --amber-border:   #FDE68A;
+        --amber-text:     #92400E;
+        --font-body:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        --font-heading: 'Sora', 'Inter', system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+        color: var(--text-secondary); background: var(--page-bg);
+        -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      }
+      .wrap { max-width: 720px; margin: 0 auto; padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 24px) 72px; }
+      header { margin-bottom: 24px; }
+      .brand { font-family: var(--font-heading); font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--violet-text); font-weight: 700; }
+      h1 {
+        font-family: var(--font-heading); font-size: clamp(30px, 6vw, 40px); line-height: 1.15; font-weight: 800;
+        margin: 12px 0 14px; letter-spacing: -0.5px;
+        background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: var(--violet-text);
+      }
+      .lede { font-size: clamp(16px, 2.4vw, 18px); color: var(--text-secondary); margin: 0 0 8px; }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: clamp(20px, 4vw, 28px); margin: 18px 0; box-shadow: var(--card-shadow); }
+      h2 { font-family: var(--font-heading); font-size: 19px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
+      ul { margin: 8px 0 0; padding-left: 20px; }
+      li { margin: 7px 0; }
+      .disclaimer { background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; color: var(--amber-text); margin: 22px 0; }
+      .cta {
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--brand-gradient); color: #FFFFFF; text-decoration: none;
+        font-family: var(--font-body); font-weight: 600; font-size: 15px; padding: 13px 26px;
+        border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+        transition: transform 0.1s ease, box-shadow 0.15s ease;
+      }
+      .cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.32); }
+      .cta.secondary { background: transparent; color: var(--violet-text); border: 1.5px solid var(--border-strong); box-shadow: none; margin-left: 8px; }
+      .cta-row { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+      nav.crumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+      nav.crumbs a { color: var(--violet-text); text-decoration: none; }
+      footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+      footer a { color: var(--violet-text); text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <div class="brand">AiLunaPro · Compliance Suite</div>
+        <h1>EU AI Act readiness</h1>
+        <p class="lede">A plain-language overview of the EU AI Act — and how AiLunaPro helps your team prepare. This page is informational only.</p>
+      </header>
+
+      <section class="card">
+        <h2>What the EU AI Act is</h2>
+        <p>
+          The EU AI Act is a European Union regulation that introduces risk-based rules for
+          artificial-intelligence systems placed on the EU market. It groups AI uses into
+          tiers (for example: prohibited, high-risk, limited-risk, and minimal-risk) and
+          attaches different expectations to each. Obligations are being phased in over time.
+        </p>
+        <p>
+          Which obligations may apply depends on what an AI system does and how it is used.
+          This page does not determine your obligations — it explains the landscape so you can
+          prepare and seek qualified advice where needed.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>How AiLunaPro helps you prepare</h2>
+        <ul>
+          <li><strong>AI registry</strong> — keep an inventory of the AI tools and systems your organization uses.</li>
+          <li><strong>Shadow AI signals</strong> — surface unmanaged or unsanctioned AI usage to review.</li>
+          <li><strong>Indicative risk level</strong> — a non-binding, rule-based estimate to help you triage, not a legal classification.</li>
+          <li><strong>Prioritized action plan</strong> — suggested preparation steps ordered by impact and effort.</li>
+          <li><strong>Audit &amp; reports</strong> — structured assessments you can revisit and share inside your workspace.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Start in minutes</h2>
+        <p>
+          Try <strong>Audit Express</strong> for a fast, estimate-only readiness snapshot — no
+          account required — or create an account for the full registry, audits, and action plan.
+        </p>
+        <div class="cta-row">
+          <a class="cta" href="/audit-express">Try Audit Express</a>
+          <a class="cta secondary" href="/#/signup">Create an account</a>
+        </div>
+      </section>
+
+      <p class="disclaimer">
+        Preparation support, NOT a compliance certification, attestation, or legal advice.
+        Risk levels shown in AiLunaPro are indicative estimates, not legal classifications.
+      </p>
+
+      <footer>
+        AiLunaPro helps teams prepare for AI governance and the EU AI Act.
+        See also <a href="/audit-express">Audit Express</a> and the <a href="/faq">FAQ</a>.
+      </footer>
+    </main>
+  </body>
+</html>

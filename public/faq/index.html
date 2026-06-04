@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Indexable public surface (J14). Explicitly index,follow. -->
+    <meta name="robots" content="index, follow" />
+
+    <title>FAQ — Frequently Asked Questions | AiLunaPro</title>
+    <meta
+      name="description"
+      content="Answers to common questions about AiLunaPro: what it is, whether you need an account, how readiness estimates work, data security, and support. Preparation support, not a certification or legal advice."
+    />
+    <link rel="canonical" href="https://audit.ailunapro.com/faq" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="FAQ — Frequently Asked Questions | AiLunaPro" />
+    <meta
+      property="og:description"
+      content="Common questions about AiLunaPro — what it is, accounts, how estimates work, data security, and support."
+    />
+    <meta property="og:url" content="https://audit.ailunapro.com/faq" />
+    <meta property="og:site_name" content="AiLunaPro" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FAQ — Frequently Asked Questions | AiLunaPro" />
+    <meta
+      name="twitter:description"
+      content="Common questions about AiLunaPro — what it is, accounts, how estimates work, data security, and support."
+    />
+
+    <!-- Fonts via <link> (P3-b): discovered at HTML parse, display=swap → no FOIT. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" />
+
+    <!-- FAQPage structured data — mirrors the visible Q/A below verbatim. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is AiLunaPro?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AiLunaPro is an AI governance preparation platform. It helps organizations inventory their AI tools, surface Shadow AI, estimate readiness, and plan next steps. It provides preparation support, not a certification, attestation, or legal advice."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need an account to try it?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Audit Express gives a fast, estimate-only readiness snapshot with no account required. An account unlocks the full registry, audits, reports, and prioritized action plan."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does AiLunaPro certify EU AI Act compliance?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. AiLunaPro offers preparation support and indicative, rule-based estimates to help you get ready. It does not issue certifications or attestations and does not provide legal advice."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does the AI readiness estimate work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is rule-based and deterministic: your structured answers drive a transparent score and findings, and the same inputs always produce the same result. Estimates are indicative only."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is my data secure?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AiLunaPro uses authenticated access, role-based permissions, security rules, and server-side writes for sensitive operations such as billing and team changes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I delete my data?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Contact your workspace owner or AiLunaPro support to request deletion of your account or your workspace data."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What languages and currencies are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Subscriptions support multiple currencies via Stripe, and a display currency selector is available. Additional language and currency coverage is rolling out in stages."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I contact support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For account, billing, or technical questions, contact your workspace owner first. For issues that need our help, contact AiLunaPro support."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <style>
+      /* ── Design tokens — mirror src/index.css (light surface only) ── */
+      :root {
+        color-scheme: light;
+        --page-bg:        #F4F6FB;
+        --surface:        #FFFFFF;
+        --surface-2:      #F8F9FD;
+        --border:         rgba(0, 0, 0, 0.07);
+        --border-strong:  rgba(0, 0, 0, 0.12);
+        --card-shadow:    0 2px 10px rgba(0, 0, 0, 0.06);
+        --card-radius:    20px;
+        --text-primary:   #0F172A;
+        --text-secondary: #334155;
+        --text-muted:     #64748B;
+        --violet:         #7C3AED;
+        --violet-text:    #7C3AED;
+        --cyan:           #22D3EE;
+        --brand-gradient: linear-gradient(135deg, #7C3AED, #22D3EE);
+        --brand-tint-bg:  #EDE9FE;
+        --amber-bg:       #FEF3C7;
+        --amber-border:   #FDE68A;
+        --amber-text:     #92400E;
+        --font-body:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        --font-heading: 'Sora', 'Inter', system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+        color: var(--text-secondary); background: var(--page-bg);
+        -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      }
+      .wrap { max-width: 720px; margin: 0 auto; padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 24px) 72px; }
+      header { margin-bottom: 24px; }
+      .brand { font-family: var(--font-heading); font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--violet-text); font-weight: 700; }
+      h1 {
+        font-family: var(--font-heading); font-size: clamp(30px, 6vw, 40px); line-height: 1.15; font-weight: 800;
+        margin: 12px 0 14px; letter-spacing: -0.5px;
+        background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: var(--violet-text);
+      }
+      .lede { font-size: clamp(16px, 2.4vw, 18px); color: var(--text-secondary); margin: 0 0 8px; }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: clamp(20px, 4vw, 28px); margin: 18px 0; box-shadow: var(--card-shadow); }
+      h2 { font-family: var(--font-heading); font-size: 17px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
+      .qa + .qa { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 18px; }
+      .qa p { margin: 0; }
+      .disclaimer { background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; color: var(--amber-text); margin: 22px 0; }
+      .cta {
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--brand-gradient); color: #FFFFFF; text-decoration: none;
+        font-family: var(--font-body); font-weight: 600; font-size: 15px; padding: 13px 26px;
+        border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+        transition: transform 0.1s ease, box-shadow 0.15s ease;
+      }
+      .cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.32); }
+      .cta-row { margin-top: 16px; }
+      footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+      footer a { color: var(--violet-text); text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <div class="brand">AiLunaPro · Compliance Suite</div>
+        <h1>Frequently asked questions</h1>
+        <p class="lede">Quick answers about AiLunaPro — what it is, how it works, and how to get started.</p>
+      </header>
+
+      <section class="card">
+        <div class="qa">
+          <h2>What is AiLunaPro?</h2>
+          <p>AiLunaPro is an AI governance preparation platform. It helps organizations inventory their AI tools, surface Shadow AI, estimate readiness, and plan next steps. It provides preparation support, not a certification, attestation, or legal advice.</p>
+        </div>
+        <div class="qa">
+          <h2>Do I need an account to try it?</h2>
+          <p>No. Audit Express gives a fast, estimate-only readiness snapshot with no account required. An account unlocks the full registry, audits, reports, and prioritized action plan.</p>
+        </div>
+        <div class="qa">
+          <h2>Does AiLunaPro certify EU AI Act compliance?</h2>
+          <p>No. AiLunaPro offers preparation support and indicative, rule-based estimates to help you get ready. It does not issue certifications or attestations and does not provide legal advice.</p>
+        </div>
+        <div class="qa">
+          <h2>How does the AI readiness estimate work?</h2>
+          <p>It is rule-based and deterministic: your structured answers drive a transparent score and findings, and the same inputs always produce the same result. Estimates are indicative only.</p>
+        </div>
+        <div class="qa">
+          <h2>Is my data secure?</h2>
+          <p>AiLunaPro uses authenticated access, role-based permissions, security rules, and server-side writes for sensitive operations such as billing and team changes.</p>
+        </div>
+        <div class="qa">
+          <h2>Can I delete my data?</h2>
+          <p>Yes. Contact your workspace owner or AiLunaPro support to request deletion of your account or your workspace data.</p>
+        </div>
+        <div class="qa">
+          <h2>What languages and currencies are supported?</h2>
+          <p>Subscriptions support multiple currencies via Stripe, and a display currency selector is available. Additional language and currency coverage is rolling out in stages.</p>
+        </div>
+        <div class="qa">
+          <h2>How do I contact support?</h2>
+          <p>For account, billing, or technical questions, contact your workspace owner first. For issues that need our help, contact AiLunaPro support.</p>
+        </div>
+      </section>
+
+      <p class="disclaimer">
+        Preparation support, NOT a compliance certification, attestation, or legal advice.
+      </p>
+
+      <p class="cta-row"><a class="cta" href="/audit-express">Try Audit Express — no account needed</a></p>
+
+      <footer>
+        AiLunaPro helps teams prepare for AI governance and the EU AI Act.
+        See also <a href="/audit-express">Audit Express</a> and <a href="/eu-ai-act">EU AI Act readiness</a>.
+      </footer>
+    </main>
+  </body>
+</html>

@@ -6,6 +6,8 @@
 ## Public pages
 
 - [Audit Express](https://audit.ailunapro.com/audit-express): Free, estimate-only AI readiness snapshot — automatable tasks, Shadow AI signals, an indicative EU AI Act level, and a rough ROI. No account required.
+- [EU AI Act readiness](https://audit.ailunapro.com/eu-ai-act): Plain-language overview of the EU AI Act and how AiLunaPro helps you prepare (registry, Shadow AI signals, indicative risk level, action plan). Informational only.
+- [FAQ](https://audit.ailunapro.com/faq): Common questions about AiLunaPro — what it is, accounts, how readiness estimates work, data security, and support.
 
 ## Disclaimer
 
