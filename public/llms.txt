@@ -10,6 +10,9 @@
 - [FAQ](https://audit.ailunapro.com/faq/): Common questions about AiLunaPro — what it is, accounts, how readiness estimates work, data security, and support.
 - [Shadow AI](https://audit.ailunapro.com/shadow-ai/): What Shadow AI is, why it matters, common signs, and practical governance hygiene to reduce it — plus how AiLunaPro helps. Informational only, not legal advice.
 - [Our methodology](https://audit.ailunapro.com/methodologie/): How AiLunaPro estimates AI readiness — a transparent, rule-based, deterministic five-step method. Informational only, not legal advice.
+- [Pricing](https://audit.ailunapro.com/pricing/): Plans (Free, Starter, Professional, Enterprise) with features; live multi-currency prices are shown in the app at checkout.
+- [For SMEs](https://audit.ailunapro.com/use-cases/pme/): How small and medium businesses use AiLunaPro to inventory AI, surface Shadow AI, and prepare for governance.
+- [For independent professionals](https://audit.ailunapro.com/use-cases/independant/): Lightweight AI governance preparation for freelancers and solo professionals.
 
 ## Disclaimer
 
