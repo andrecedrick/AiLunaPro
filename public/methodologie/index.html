@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Indexable public surface (J14). Explicitly index,follow. -->
+    <meta name="robots" content="index, follow" />
+
+    <title>Our Methodology — How AiLunaPro Estimates AI Readiness | AiLunaPro</title>
+    <meta
+      name="description"
+      content="How AiLunaPro estimates AI readiness: a transparent, rule-based, deterministic method in five steps — inventory, signals, scoring, indicative findings, and a prioritized action plan. Preparation support, not a certification or legal advice."
+    />
+    <link rel="canonical" href="https://audit.ailunapro.com/methodologie/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Our Methodology — How AiLunaPro Estimates AI Readiness | AiLunaPro" />
+    <meta
+      property="og:description"
+      content="A transparent, rule-based, deterministic method in five steps. Indicative guidance — not a certification or legal advice."
+    />
+    <meta property="og:url" content="https://audit.ailunapro.com/methodologie/" />
+    <meta property="og:site_name" content="AiLunaPro" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Our Methodology — How AiLunaPro Estimates AI Readiness | AiLunaPro" />
+    <meta
+      name="twitter:description"
+      content="A transparent, rule-based, deterministic method in five steps. Indicative guidance — not a certification or legal advice."
+    />
+    <meta name="twitter:url" content="https://audit.ailunapro.com/methodologie/" />
+
+    <!-- Fonts via <link> (P3-b): discovered at HTML parse, display=swap → no FOIT. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" />
+
+    <!-- HowTo structured data — mirrors the visible steps below verbatim.
+         Note: Google retired HowTo rich results in 2023; this is for semantic/GEO clarity. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How AiLunaPro estimates AI readiness",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Capture inputs and inventory",
+          "text": "You provide structured inputs about your AI use, and AiLunaPro builds an inventory of the tools and systems involved."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Detect signals",
+          "text": "The engine identifies signals from your inputs, including Shadow AI usage and governance gaps."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Apply rule-based scoring",
+          "text": "A transparent, deterministic rule set converts your inputs into a readiness score and findings. The same inputs always produce the same result."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Produce findings and an indicative risk level",
+          "text": "You receive clear findings and a non-binding, indicative risk level to help you triage. It is not a legal classification."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Prioritize an action plan",
+          "text": "Suggested next steps are ordered by impact and effort so you know what to address first."
+        }
+      ]
+    }
+    </script>
+
+    <style>
+      /* ── Design tokens — mirror src/index.css (light surface only) ── */
+      :root {
+        color-scheme: light;
+        --page-bg:        #F4F6FB;
+        --surface:        #FFFFFF;
+        --surface-2:      #F8F9FD;
+        --border:         rgba(0, 0, 0, 0.07);
+        --border-strong:  rgba(0, 0, 0, 0.12);
+        --card-shadow:    0 2px 10px rgba(0, 0, 0, 0.06);
+        --card-radius:    20px;
+        --text-primary:   #0F172A;
+        --text-secondary: #334155;
+        --text-muted:     #64748B;
+        --violet:         #7C3AED;
+        --violet-text:    #7C3AED;
+        --cyan:           #22D3EE;
+        --brand-gradient: linear-gradient(135deg, #7C3AED, #22D3EE);
+        --brand-tint-bg:  #EDE9FE;
+        --amber-bg:       #FEF3C7;
+        --amber-border:   #FDE68A;
+        --amber-text:     #92400E;
+        --font-body:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        --font-heading: 'Sora', 'Inter', system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+        color: var(--text-secondary); background: var(--page-bg);
+        -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      }
+      .wrap { max-width: 720px; margin: 0 auto; padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 24px) 72px; }
+      header { margin-bottom: 20px; }
+      .brand { font-family: var(--font-heading); font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--violet-text); font-weight: 700; }
+      h1 {
+        font-family: var(--font-heading); font-size: clamp(28px, 5.5vw, 40px); line-height: 1.15; font-weight: 800;
+        margin: 12px 0 14px; letter-spacing: -0.5px;
+        background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: var(--violet-text);
+      }
+      .lede { font-size: clamp(16px, 2.4vw, 18px); color: var(--text-secondary); margin: 0 0 8px; }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: clamp(20px, 4vw, 28px); margin: 18px 0; box-shadow: var(--card-shadow); }
+      h2 { font-family: var(--font-heading); font-size: 19px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
+      ul { margin: 8px 0 0; padding-left: 20px; }
+      li { margin: 7px 0; }
+      p { margin: 0 0 10px; }
+      p:last-child { margin-bottom: 0; }
+
+      /* Steps */
+      .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+      .steps > li { position: relative; padding: 0 0 18px 52px; margin: 0; }
+      .steps > li:not(:last-child) { border-left: 2px solid var(--border); margin-left: 17px; padding-left: 35px; }
+      .steps > li::before {
+        counter-increment: step; content: counter(step);
+        position: absolute; left: -19px; top: -2px; width: 36px; height: 36px; border-radius: 999px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--brand-gradient); color: #fff; font-family: var(--font-heading); font-weight: 800; font-size: 15px;
+        box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+      }
+      .steps h3 { font-family: var(--font-heading); font-size: 15.5px; font-weight: 700; color: var(--text-primary); margin: 4px 0 4px; }
+      .steps p { margin: 0; font-size: 14.5px; color: var(--text-secondary); }
+
+      .disclaimer { background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; color: var(--amber-text); margin: 22px 0; }
+      .cta {
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--brand-gradient); color: #FFFFFF; text-decoration: none;
+        font-family: var(--font-body); font-weight: 600; font-size: 15px; padding: 13px 26px;
+        border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+        transition: transform 0.1s ease, box-shadow 0.15s ease;
+      }
+      .cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.32); }
+      .cta.secondary { background: transparent; color: var(--violet-text); border: 1.5px solid var(--border-strong); box-shadow: none; }
+      .cta-row { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+      footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+      footer a { color: var(--violet-text); text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <div class="brand">AiLunaPro · Compliance Suite</div>
+        <h1>Our methodology</h1>
+        <p class="lede">How AiLunaPro estimates AI readiness — a transparent, rule-based, deterministic method. This page is informational only.</p>
+      </header>
+
+      <p class="disclaimer">
+        Informational overview only — not legal advice. Estimates are indicative.
+        Preparation support, NOT a certification, attestation, or legal advice.
+      </p>
+
+      <section class="card">
+        <h2>Principles</h2>
+        <ul>
+          <li><strong>Rule-based</strong> — outputs come from an explicit, documented rule set, not opaque models.</li>
+          <li><strong>Deterministic</strong> — the same inputs always produce the same result.</li>
+          <li><strong>Transparent</strong> — findings reference the rules and inputs behind them.</li>
+          <li><strong>Indicative</strong> — results help you prepare and prioritize; they are not binding determinations.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>The steps</h2>
+        <ol class="steps">
+          <li>
+            <h3>Capture inputs and inventory</h3>
+            <p>You provide structured inputs about your AI use, and AiLunaPro builds an inventory of the tools and systems involved.</p>
+          </li>
+          <li>
+            <h3>Detect signals</h3>
+            <p>The engine identifies signals from your inputs, including Shadow AI usage and governance gaps.</p>
+          </li>
+          <li>
+            <h3>Apply rule-based scoring</h3>
+            <p>A transparent, deterministic rule set converts your inputs into a readiness score and findings. The same inputs always produce the same result.</p>
+          </li>
+          <li>
+            <h3>Produce findings and an indicative risk level</h3>
+            <p>You receive clear findings and a non-binding, indicative risk level to help you triage. It is not a legal classification.</p>
+          </li>
+          <li>
+            <h3>Prioritize an action plan</h3>
+            <p>Suggested next steps are ordered by impact and effort so you know what to address first.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="card">
+        <h2>What this is not</h2>
+        <p>
+          AiLunaPro does not provide legal advice and does not issue certifications or attestations.
+          The indicative risk level is a planning aid, not a legal classification of your AI systems.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>See it in action</h2>
+        <p>Try <strong>Audit Express</strong> for a fast, estimate-only readiness snapshot — no account required — or create an account for the full audit and action plan.</p>
+        <div class="cta-row">
+          <a class="cta" href="/audit-express">Try Audit Express</a>
+          <a class="cta secondary" href="/#/signup">Create an account</a>
+        </div>
+      </section>
+
+      <footer>
+        AiLunaPro helps teams prepare for AI governance worldwide.
+        See also <a href="/eu-ai-act/">Global AI regulation landscape</a>, <a href="/shadow-ai/">Shadow AI</a>, and the <a href="/faq/">FAQ</a>.
+      </footer>
+    </main>
+  </body>
+</html>

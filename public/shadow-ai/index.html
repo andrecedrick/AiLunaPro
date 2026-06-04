@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Indexable public surface (J14). Explicitly index,follow. -->
+    <meta name="robots" content="index, follow" />
+
+    <title>Shadow AI — What It Is and How to Get It Under Control | AiLunaPro</title>
+    <meta
+      name="description"
+      content="A plain-language overview of Shadow AI: unmanaged AI tools used without oversight, why it matters, common signs, and practical governance hygiene to reduce it. Preparation support, not a certification or legal advice."
+    />
+    <link rel="canonical" href="https://audit.ailunapro.com/shadow-ai/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Shadow AI — What It Is and How to Get It Under Control | AiLunaPro" />
+    <meta
+      property="og:description"
+      content="What Shadow AI is, why it matters, common signs, and practical steps to reduce it. Informational only — not legal advice."
+    />
+    <meta property="og:url" content="https://audit.ailunapro.com/shadow-ai/" />
+    <meta property="og:site_name" content="AiLunaPro" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Shadow AI — What It Is and How to Get It Under Control | AiLunaPro" />
+    <meta
+      name="twitter:description"
+      content="What Shadow AI is, why it matters, common signs, and practical steps to reduce it. Informational only — not legal advice."
+    />
+    <meta name="twitter:url" content="https://audit.ailunapro.com/shadow-ai/" />
+
+    <!-- Fonts via <link> (P3-b): discovered at HTML parse, display=swap → no FOIT. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" />
+
+    <!-- FAQPage structured data — mirrors the visible Q/A below verbatim. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Shadow AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Shadow AI is the use of AI tools and services without the organization's knowledge, review, or oversight — for example, employees pasting work into public chatbots or adopting AI features that were never assessed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is Shadow AI a concern?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Unmanaged AI use can lead to data exposure, inconsistent quality, and governance blind spots, because the organization cannot review or document tools it does not know about. Risk depends on context."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How can we reduce Shadow AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Build an inventory of AI tools in use, set a clear usage policy, provide an approved path for new tools, monitor for new signals, and educate teams. AiLunaPro supports these preparation steps."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <style>
+      /* ── Design tokens — mirror src/index.css (light surface only) ── */
+      :root {
+        color-scheme: light;
+        --page-bg:        #F4F6FB;
+        --surface:        #FFFFFF;
+        --surface-2:      #F8F9FD;
+        --border:         rgba(0, 0, 0, 0.07);
+        --border-strong:  rgba(0, 0, 0, 0.12);
+        --card-shadow:    0 2px 10px rgba(0, 0, 0, 0.06);
+        --card-radius:    20px;
+        --text-primary:   #0F172A;
+        --text-secondary: #334155;
+        --text-muted:     #64748B;
+        --violet:         #7C3AED;
+        --violet-text:    #7C3AED;
+        --cyan:           #22D3EE;
+        --brand-gradient: linear-gradient(135deg, #7C3AED, #22D3EE);
+        --brand-tint-bg:  #EDE9FE;
+        --amber-bg:       #FEF3C7;
+        --amber-border:   #FDE68A;
+        --amber-text:     #92400E;
+        --font-body:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        --font-heading: 'Sora', 'Inter', system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+        color: var(--text-secondary); background: var(--page-bg);
+        -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      }
+      .wrap { max-width: 720px; margin: 0 auto; padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 24px) 72px; }
+      header { margin-bottom: 20px; }
+      .brand { font-family: var(--font-heading); font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--violet-text); font-weight: 700; }
+      h1 {
+        font-family: var(--font-heading); font-size: clamp(28px, 5.5vw, 40px); line-height: 1.15; font-weight: 800;
+        margin: 12px 0 14px; letter-spacing: -0.5px;
+        background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: var(--violet-text);
+      }
+      .lede { font-size: clamp(16px, 2.4vw, 18px); color: var(--text-secondary); margin: 0 0 8px; }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: clamp(20px, 4vw, 28px); margin: 18px 0; box-shadow: var(--card-shadow); }
+      h2 { font-family: var(--font-heading); font-size: 19px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
+      h3 { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 16px 0 4px; }
+      ul { margin: 8px 0 0; padding-left: 20px; }
+      li { margin: 7px 0; }
+      p { margin: 0 0 10px; }
+      p:last-child { margin-bottom: 0; }
+      .disclaimer { background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; color: var(--amber-text); margin: 22px 0; }
+      .cta {
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--brand-gradient); color: #FFFFFF; text-decoration: none;
+        font-family: var(--font-body); font-weight: 600; font-size: 15px; padding: 13px 26px;
+        border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+        transition: transform 0.1s ease, box-shadow 0.15s ease;
+      }
+      .cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.32); }
+      .cta.secondary { background: transparent; color: var(--violet-text); border: 1.5px solid var(--border-strong); box-shadow: none; }
+      .cta-row { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+      footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+      footer a { color: var(--violet-text); text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <div class="brand">AiLunaPro · Compliance Suite</div>
+        <h1>Shadow AI</h1>
+        <p class="lede">What Shadow AI is, why it matters, and practical steps to get it under control. This page is informational only.</p>
+      </header>
+
+      <p class="disclaimer">
+        Informational overview only — not legal advice. Risk depends on how AI is used in your
+        context. Preparation support, NOT a certification, attestation, or legal advice.
+      </p>
+
+      <section class="card">
+        <h2>What is Shadow AI?</h2>
+        <p>
+          Shadow AI is the use of AI tools and services without the organization's knowledge,
+          review, or oversight. It often appears quietly — an employee pastes work into a public
+          chatbot, or a familiar app quietly adds an AI feature that was never assessed.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Why it matters</h2>
+        <p>
+          You cannot review, document, or improve what you cannot see. Unmanaged AI use can lead to:
+        </p>
+        <ul>
+          <li><strong>Data exposure</strong> — sensitive content entered into tools with unclear handling.</li>
+          <li><strong>Inconsistent quality</strong> — outputs no one has checked or standardized.</li>
+          <li><strong>Governance blind spots</strong> — tools missing from any inventory or policy.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Common signs</h2>
+        <ul>
+          <li>AI tools showing up in everyday workflows that IT never approved.</li>
+          <li>Copy-pasting into public chatbots as a routine habit.</li>
+          <li>No inventory of which AI tools are actually in use.</li>
+          <li>No usage policy, or a policy nobody references.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>How to reduce it (governance hygiene)</h2>
+        <ul>
+          <li><strong>Inventory</strong> — list the AI tools in use across teams.</li>
+          <li><strong>Set a usage policy</strong> — make expectations clear and easy to find.</li>
+          <li><strong>Offer an approved path</strong> — give people a sanctioned way to request tools.</li>
+          <li><strong>Monitor signals</strong> — watch for new or unmanaged usage over time.</li>
+          <li><strong>Educate</strong> — short, practical guidance beats long policies.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>How AiLunaPro helps</h2>
+        <p>AiLunaPro is preparation support — it helps you get organized, not a substitute for legal advice:</p>
+        <ul>
+          <li><strong>AI registry</strong> — a single inventory of the tools you use.</li>
+          <li><strong>Shadow AI signals</strong> — surface unmanaged usage to review.</li>
+          <li><strong>Indicative risk triage</strong> — a non-binding, rule-based estimate to help you prioritize.</li>
+          <li><strong>Prioritized action plan</strong> — suggested steps ordered by impact and effort.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Common questions</h2>
+        <h3>What is Shadow AI?</h3>
+        <p>Shadow AI is the use of AI tools and services without the organization's knowledge, review, or oversight — for example, employees pasting work into public chatbots or adopting AI features that were never assessed.</p>
+        <h3>Why is Shadow AI a concern?</h3>
+        <p>Unmanaged AI use can lead to data exposure, inconsistent quality, and governance blind spots, because the organization cannot review or document tools it does not know about. Risk depends on context.</p>
+        <h3>How can we reduce Shadow AI?</h3>
+        <p>Build an inventory of AI tools in use, set a clear usage policy, provide an approved path for new tools, monitor for new signals, and educate teams. AiLunaPro supports these preparation steps.</p>
+      </section>
+
+      <section class="card">
+        <h2>Get started</h2>
+        <p>Try <strong>Audit Express</strong> for a fast, estimate-only readiness snapshot — no account required — or create an account for the full registry and action plan.</p>
+        <div class="cta-row">
+          <a class="cta" href="/audit-express">Try Audit Express</a>
+          <a class="cta secondary" href="/#/signup">Create an account</a>
+        </div>
+      </section>
+
+      <footer>
+        AiLunaPro helps teams prepare for AI governance worldwide.
+        See also <a href="/eu-ai-act/">Global AI regulation landscape</a>, <a href="/methodologie/">our methodology</a>, and the <a href="/faq/">FAQ</a>.
+      </footer>
+    </main>
+  </body>
+</html>

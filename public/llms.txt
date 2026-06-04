@@ -8,6 +8,8 @@
 - [Audit Express](https://audit.ailunapro.com/audit-express): Free, estimate-only AI readiness snapshot — automatable tasks, Shadow AI signals, an indicative EU AI Act level, and a rough ROI. No account required.
 - [Global AI regulation landscape](https://audit.ailunapro.com/eu-ai-act/): Plain-language, non-exhaustive overview of AI regulation worldwide (EU AI Act plus UK, US, Canada, Brazil, China, Japan, South Korea, India, Singapore, Australia/NZ and more) and how AiLunaPro helps you prepare. Informational only, not legal advice.
 - [FAQ](https://audit.ailunapro.com/faq/): Common questions about AiLunaPro — what it is, accounts, how readiness estimates work, data security, and support.
+- [Shadow AI](https://audit.ailunapro.com/shadow-ai/): What Shadow AI is, why it matters, common signs, and practical governance hygiene to reduce it — plus how AiLunaPro helps. Informational only, not legal advice.
+- [Our methodology](https://audit.ailunapro.com/methodologie/): How AiLunaPro estimates AI readiness — a transparent, rule-based, deterministic five-step method. Informational only, not legal advice.
 
 ## Disclaimer
 
