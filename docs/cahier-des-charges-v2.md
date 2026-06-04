@@ -2743,6 +2743,28 @@ Pages publiques path-based `/eu-ai-act/` + `/faq/` (+ polish contenu/design + co
 - **Différé (Batch 3, gaté)** : autres pages path-based (méthodologie, shadow-ai, pricing
   public…) ; schema.org additionnel (Organization/WebSite) ; OG image ; CSP enforce (dédié).
 
+**✅ J14 SEO/GEO Minimal Pack — Batch 3** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-04 (§7ter).
+2 pages piliers publiques path-based `/shadow-ai/` + `/methodologie/` (+ sitemap/llms/_headers).
+- **Commit** `0ffbb01` : `public/shadow-ai/index.html` (What is/Why/Signs/How to reduce/How
+  AiLunaPro helps/Common questions ; **FAQPage JSON-LD 3 Q/A** verbatim) + `public/methodologie/
+  index.html` (slug FR conservé ; Principles/5 étapes numérotées/What this is not ; **HowTo
+  JSON-LD 5 steps** verbatim — note : Google a retiré le rich result HowTo en 2023, valeur
+  sémantique/GEO seulement). Statiques self-contained, tokens audit-express, fonts `<link>`,
+  `index,follow`, disclaimer standard, CTA `/audit-express` + `/#/signup`.
+- **SEO** : canonical/og:url/twitter:url = **trailing-slash** (forme finale Pages 308) ;
+  sitemap → **5 URLs** (audit-express no-slash inchangé ; eu-ai-act/, faq/, shadow-ai/,
+  methodologie/ slash) ; llms.txt mis à jour.
+- **_headers** : blocs additifs `/shadow-ai/*` + `/methodologie/*` (no-cache + CSP-RO identique
+  audit-express, indexables — pas de X-Robots-Tag). Règles existantes inchangées.
+- **Garde-fous** : informational only + disclaimers ; no legal/compliance/cert claims ; no PII ;
+  auth/billing/Stripe/analytics/worker intacts ; CSP toujours Report-Only ; cache policy inchangée.
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS · worktree
+  clean · JSON-LD parité FAQPage **3/3** + HowTo **5/5** exact. **0 must-fix.**
+- **Vérif prod (opérateur)** : `/shadow-ai/` + `/methodologie/` 308 → slash → 200 ; canonical =
+  slash ; **aucun X-Robots-Tag leak** ; sitemap 5 locs ; llms.txt à jour.
+- **Différé (Batch 4+, gaté)** : autres pages piliers (pricing public, use-cases…) ; schema
+  Organization/WebSite ; OG image ; CSP enforce (étape dédiée).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
