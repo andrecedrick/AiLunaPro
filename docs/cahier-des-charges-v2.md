@@ -2718,6 +2718,31 @@ Pack SEO/GEO minimal — aucune nouvelle page marketing, fichiers racine only.
 - **Différé (Batch 2, gaté)** : vraies pages path-based (`/eu-ai-act`, `/faq`, …) → puis
   ajout sitemap + llms.txt ; schema.org JSON-LD ; OG image ; CSP enforce (étape dédiée).
 
+**✅ J14 SEO/GEO Minimal Pack — Batch 2** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-04 (§7ter).
+Pages publiques path-based `/eu-ai-act/` + `/faq/` (+ polish contenu/design + cohérence SEO).
+- **Commit init** `050b472` : `public/eu-ai-act/index.html` + `public/faq/index.html`
+  (statiques, self-contained, tokens audit-express, fonts via `<link>`, `index,follow`,
+  disclaimer standard, CTA `/audit-express` + `/#/signup`) ; `faq` = `FAQPage` JSON-LD
+  (8 Q/A, neutralisées depuis Help in-app) ; sitemap + llms.txt mis à jour.
+- **Commit polish** `5e89253` : `/eu-ai-act/` reframé **"Global AI regulation landscape"**
+  (EU AI Act = 1 section + grille 11 juridictions UK/US/CA/BR/CN/JP/KR/IN/SG/AU·NZ/other,
+  non-exhaustif, disclaimer "Informational overview only — not legal advice") ; `/faq/`
+  accordéon natif `<details>/<summary>` (no dep, chevron, focus-visible, Key takeaways) ;
+  **fix cohérence SEO** : Pages 308 (no-slash → slash) → canonical/og:url/twitter:url +
+  sitemap alignés sur la **forme finale trailing-slash** (`/eu-ai-act/`, `/faq/`) ;
+  `/audit-express` (no-slash) inchangé.
+- **_headers** : blocs additifs `/eu-ai-act/*` + `/faq/*` (no-cache HTML + CSP-RO identique
+  audit-express, indexables — pas de X-Robots-Tag). Règles existantes inchangées.
+- **Garde-fous** : pas de legal advice / claims "compliant·certified·attested" ; no PII ;
+  no new deps/routes ; auth/billing/Stripe/analytics/worker intacts ; CSP toujours Report-Only.
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS ·
+  worktree clean · JSON-LD ↔ Q/A visible **8/8 exact**. **0 must-fix.**
+- **Vérif prod (opérateur)** : `/eu-ai-act/` + `/faq/` : 308 → trailing slash → 200 ;
+  canonical/og:url = forme slash ; **aucun X-Robots-Tag leak** ; accordéon FAQ OK ; FAQPage
+  JSON-LD présent et conforme au visible.
+- **Différé (Batch 3, gaté)** : autres pages path-based (méthodologie, shadow-ai, pricing
+  public…) ; schema.org additionnel (Organization/WebSite) ; OG image ; CSP enforce (dédié).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
