@@ -2793,6 +2793,27 @@ Pages publiques path-based `/eu-ai-act/` + `/faq/` (+ polish contenu/design + co
 - **Différé (gaté)** : OG image partagée 1200×630 ; backfill Organization/WebSite sur les 5 pages
   antérieures ; CSP enforce (étape dédiée) ; autres use-cases.
 
+**✅ SEO Polish — "OG image + Organization/WebSite schema backfill"** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-04 (§7ter).
+Polish SEO/GEO sur les 8 pages publiques (pas de nouvelle route).
+- **Commit** `477fcb2` : `og:image` (+ width 1200 / height 630 / alt) + `twitter:image` sur
+  **les 8 pages** ; **Organization + WebSite JSON-LD** backfillé sur les 5 pages antérieures
+  (audit-express, eu-ai-act, faq, shadow-ai, methodologie) → désormais uniforme sur les 8.
+  audit-express : ajout `twitter:url` manquant (= canonical no-slash existant) ; **canonical/
+  og:url audit-express inchangés** (pas de churn SEO, décision opérateur).
+- **OG image (option B, placeholder)** : URL Cloudinary text-overlay générée (canvas dark
+  `#0F172A` + "AiLunaPro" + sous-titre), **vérifiée 200 image/png 1200×630** avant câblage ;
+  à remplacer par un asset designé plus tard (simple swap d'URL).
+- **Non touché** : sitemap.xml, llms.txt, _headers, app/worker ; blocs FAQPage/HowTo/
+  SoftwareApplication existants intacts. CSP toujours Report-Only ; cache inchangé ; pages
+  indexables (no X-Robots-Tag).
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS ·
+  worktree clean (artefact shell purgé) · validation : 8/8 pages og:image+twitter:image +
+  JSON-LD parse + Org+WebSite présents. **0 must-fix.**
+- **Vérif prod (opérateur)** : OG image 200 image/png ; og:image+twitter:image présents
+  (audit-express, eu-ai-act/, use-cases) ; Organization/WebSite JSON-LD validé (schema
+  validator) ; aucun X-Robots-Tag leak sur pages indexables.
+- **Différé (gaté)** : asset OG designé (remplacer placeholder) ; CSP enforce (étape dédiée).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
