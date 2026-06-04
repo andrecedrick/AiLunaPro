@@ -48,6 +48,7 @@ import publicGeoRoutes       from './routes/public-geo';
 import publicFxRoutes        from './routes/public-fx';
 import auditExpressRoutes    from './routes/audit-express';
 import auditExpressExtractRoutes from './routes/audit-express-extract';
+import auditExpressPdfRoutes from './routes/audit-express-pdf';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -160,6 +161,7 @@ app.route('/', publicGeoRoutes);
 app.route('/', publicFxRoutes);
 app.route('/', auditExpressRoutes);
 app.route('/', auditExpressExtractRoutes);
+app.route('/', auditExpressPdfRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

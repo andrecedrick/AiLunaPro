@@ -366,6 +366,10 @@
             Preparation support — not a certification, attestation, or legal advice.
             All values are indicative estimates from deterministic, rule-based logic.
           </p>
+          <div style="margin-top:8px;">
+            <button class="cta" id="ax-pdf" type="button">Download PDF report</button>
+            <p id="ax-pdf-msg" class="muted" hidden style="margin-top:6px;"></p>
+          </div>
         </div>
         <noscript><p class="muted">Enable JavaScript to try the interactive preview.</p></noscript>
       </section>
@@ -423,6 +427,8 @@
         var TS_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
         var taps = {};
         var tsToken = '';
+        var lastPreview = null;   // last successful preview payload (for PDF)
+        var lastSnapshot = null;  // last successful extract snapshot (optional, for PDF)
         var run = document.getElementById('ax-run');
         var tsMsg = document.getElementById('ax-ts-msg');
 
@@ -624,7 +630,7 @@
             .then(function (res) { return res.json().then(function (j) { return { status: res.status, json: j }; }); })
             .then(function (r) {
               var p = r.json;
-              if (r.status === 200 && p && p.k2a && p.k1a) { render(p); return; }
+              if (r.status === 200 && p && p.k2a && p.k1a) { lastPreview = p; render(p); return; }
               if (p && typeof p.code === 'string' && p.code.indexOf('TURNSTILE') === 0) {
                 // Reset the widget so the user can re-verify, then retry.
                 tsToken = '';
@@ -846,7 +852,7 @@
             .then(function (res) { return res.json().then(function (j) { return { status: res.status, json: j }; }); })
             .then(function (r) {
               var p = r.json;
-              if (r.status === 200 && p && p.inputsHash) { renderSnapshot(p); return; }
+              if (r.status === 200 && p && p.inputsHash) { lastSnapshot = p; renderSnapshot(p); return; }
               if (p && typeof p.code === 'string') {
                 if (p.code.indexOf('TURNSTILE') === 0) {
                   tsToken = '';
@@ -861,6 +867,52 @@
             })
             .catch(function () { setExMessage('Analysis unavailable right now. Please try again later.'); })
             .finally(function () { analyze.disabled = false; analyze.textContent = 'Analyze site'; });
+        });
+
+        /* ── PDF report (J15 P1) — deterministic server-rendered PDF.
+         * Sends { turnstileToken, taps, extractSnapshot?, createdAt } and
+         * downloads the application/pdf response. No new library on page load. */
+        var PDF_API = BASE + '/api/public/audit-express/pdf';
+        var pdfBtn = document.getElementById('ax-pdf');
+        var pdfMsg = document.getElementById('ax-pdf-msg');
+        function setPdfMessage(text) {
+          if (!text) { pdfMsg.hidden = true; pdfMsg.textContent = ''; return; }
+          pdfMsg.hidden = false; pdfMsg.textContent = text;
+        }
+        if (pdfBtn) pdfBtn.addEventListener('click', function () {
+          if (!lastPreview || Object.keys(taps).length < 5) { setPdfMessage('Get your preview first.'); return; }
+          if (!tsToken) { setPdfMessage('Please complete the verification check above first.'); return; }
+          pdfBtn.disabled = true; pdfBtn.textContent = 'Preparing…'; setPdfMessage('');
+          var payload = { turnstileToken: tsToken, taps: taps, createdAt: new Date().toISOString() };
+          if (lastSnapshot) payload.extractSnapshot = lastSnapshot;
+          fetch(PDF_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+            .then(function (res) {
+              var ct = res.headers.get('Content-Type') || '';
+              if (res.status === 200 && ct.indexOf('application/pdf') !== -1) {
+                return res.blob().then(function (blob) {
+                  var url = URL.createObjectURL(blob);
+                  var a = document.createElement('a');
+                  a.href = url; a.download = 'audit-express-readiness.pdf';
+                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+                });
+              }
+              return res.json().then(function (j) {
+                if (j && typeof j.code === 'string' && j.code.indexOf('TURNSTILE') === 0) {
+                  tsToken = '';
+                  if (window.turnstile && window.turnstile.reset) { try { window.turnstile.reset('#ax-ts'); } catch (e) {} }
+                  setPdfMessage('Verification expired. Please complete the check above and click Download again.');
+                  return;
+                }
+                setPdfMessage('Could not generate the PDF right now. Please try again.');
+              });
+            })
+            .catch(function () { setPdfMessage('Could not generate the PDF right now. Please try again.'); })
+            .finally(function () { pdfBtn.disabled = false; pdfBtn.textContent = 'Download PDF report'; });
         });
       })();
     </script>
