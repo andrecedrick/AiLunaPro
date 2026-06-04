@@ -7,30 +7,31 @@
     <!-- Indexable public surface (J14). Explicitly index,follow. -->
     <meta name="robots" content="index, follow" />
 
-    <title>EU AI Act Readiness — Preparation Support | AiLunaPro</title>
+    <title>Global AI Regulation Landscape — Overview | AiLunaPro</title>
     <meta
       name="description"
-      content="Understand the EU AI Act at a high level and how AiLunaPro helps you prepare: AI registry, Shadow AI signals, an indicative risk level, and a prioritized action plan. Preparation support, not a certification or legal advice."
+      content="A plain-language, non-exhaustive overview of AI regulation around the world — the EU AI Act and approaches across the UK, US, Canada, Brazil, China, Japan, South Korea, India, Singapore, Australia/NZ and more — plus how AiLunaPro helps you prepare. Informational only, not legal advice."
     />
-    <link rel="canonical" href="https://audit.ailunapro.com/eu-ai-act" />
+    <link rel="canonical" href="https://audit.ailunapro.com/eu-ai-act/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="EU AI Act Readiness — Preparation Support | AiLunaPro" />
+    <meta property="og:title" content="Global AI Regulation Landscape — Overview | AiLunaPro" />
     <meta
       property="og:description"
-      content="A plain-language overview of the EU AI Act and how AiLunaPro helps you prepare. Indicative guidance — not a certification or legal advice."
+      content="A plain-language, non-exhaustive overview of AI regulation worldwide — and how AiLunaPro helps you prepare. Informational only, not legal advice."
     />
-    <meta property="og:url" content="https://audit.ailunapro.com/eu-ai-act" />
+    <meta property="og:url" content="https://audit.ailunapro.com/eu-ai-act/" />
     <meta property="og:site_name" content="AiLunaPro" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="EU AI Act Readiness — Preparation Support | AiLunaPro" />
+    <meta name="twitter:title" content="Global AI Regulation Landscape — Overview | AiLunaPro" />
     <meta
       name="twitter:description"
-      content="A plain-language overview of the EU AI Act and how AiLunaPro helps you prepare. Indicative guidance — not a certification or legal advice."
+      content="A plain-language, non-exhaustive overview of AI regulation worldwide — and how AiLunaPro helps you prepare. Informational only, not legal advice."
     />
+    <meta name="twitter:url" content="https://audit.ailunapro.com/eu-ai-act/" />
 
     <!-- Fonts via <link> (P3-b): discovered at HTML parse, display=swap → no FOIT. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -68,11 +69,11 @@
         color: var(--text-secondary); background: var(--page-bg);
         -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
       }
-      .wrap { max-width: 720px; margin: 0 auto; padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 24px) 72px; }
+      .wrap { max-width: 760px; margin: 0 auto; padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 24px) 72px; }
       header { margin-bottom: 24px; }
       .brand { font-family: var(--font-heading); font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--violet-text); font-weight: 700; }
       h1 {
-        font-family: var(--font-heading); font-size: clamp(30px, 6vw, 40px); line-height: 1.15; font-weight: 800;
+        font-family: var(--font-heading); font-size: clamp(28px, 5.5vw, 40px); line-height: 1.15; font-weight: 800;
         margin: 12px 0 14px; letter-spacing: -0.5px;
         background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent; color: var(--violet-text);
@@ -82,6 +83,16 @@
       h2 { font-family: var(--font-heading); font-size: 19px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
       ul { margin: 8px 0 0; padding-left: 20px; }
       li { margin: 7px 0; }
+      p { margin: 0 0 10px; }
+      p:last-child { margin-bottom: 0; }
+
+      /* Jurisdiction grid */
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 6px; }
+      .region { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+      .region h3 { font-family: var(--font-heading); font-size: 14.5px; font-weight: 700; color: var(--text-primary); margin: 0 0 6px; }
+      .region p { font-size: 13.5px; color: var(--text-muted); margin: 0; }
+      .pill { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; color: var(--violet-text); background: var(--brand-tint-bg); border-radius: 999px; padding: 2px 9px; margin-bottom: 8px; }
+
       .disclaimer { background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; color: var(--amber-text); margin: 22px 0; }
       .cta {
         display: inline-flex; align-items: center; justify-content: center;
@@ -91,10 +102,8 @@
         transition: transform 0.1s ease, box-shadow 0.15s ease;
       }
       .cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.32); }
-      .cta.secondary { background: transparent; color: var(--violet-text); border: 1.5px solid var(--border-strong); box-shadow: none; margin-left: 8px; }
+      .cta.secondary { background: transparent; color: var(--violet-text); border: 1.5px solid var(--border-strong); box-shadow: none; }
       .cta-row { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
-      nav.crumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
-      nav.crumbs a { color: var(--violet-text); text-decoration: none; }
       footer { margin-top: 40px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
       footer a { color: var(--violet-text); text-decoration: none; }
     </style>
@@ -103,33 +112,70 @@
     <main class="wrap">
       <header>
         <div class="brand">AiLunaPro · Compliance Suite</div>
-        <h1>EU AI Act readiness</h1>
-        <p class="lede">A plain-language overview of the EU AI Act — and how AiLunaPro helps your team prepare. This page is informational only.</p>
+        <h1>Global AI regulation landscape</h1>
+        <p class="lede">A plain-language, non-exhaustive overview of how AI is being regulated around the world — and how AiLunaPro helps your team prepare. This page is informational only.</p>
       </header>
 
+      <p class="disclaimer">
+        Informational overview only — not legal advice. Requirements vary by jurisdiction,
+        change over time, and depend on how an AI system is built and used. This summary is
+        high-level and non-exhaustive; consult qualified counsel for your situation.
+      </p>
+
       <section class="card">
-        <h2>What the EU AI Act is</h2>
+        <h2>Why it matters</h2>
         <p>
-          The EU AI Act is a European Union regulation that introduces risk-based rules for
-          artificial-intelligence systems placed on the EU market. It groups AI uses into
-          tiers (for example: prohibited, high-risk, limited-risk, and minimal-risk) and
-          attaches different expectations to each. Obligations are being phased in over time.
+          AI regulation is moving quickly and unevenly across the world. Some regions are
+          adopting broad, risk-based laws; others rely on existing sector regulators, voluntary
+          frameworks, or guidance. Organizations that operate across borders may need to account
+          for several approaches at once.
         </p>
         <p>
-          Which obligations may apply depends on what an AI system does and how it is used.
-          This page does not determine your obligations — it explains the landscape so you can
-          prepare and seek qualified advice where needed.
+          The sections below outline major approaches at a high level to help you orient. They
+          are summaries, not determinations of what applies to you.
         </p>
       </section>
 
       <section class="card">
-        <h2>How AiLunaPro helps you prepare</h2>
+        <h2>The EU AI Act</h2>
+        <p>
+          The European Union's AI Act is a risk-based regulation for AI systems placed on the EU
+          market. It groups uses into tiers (for example: prohibited, high-risk, limited-risk and
+          minimal-risk) with different expectations for each, and its obligations are being phased
+          in over time. Because of its scope, it is often used as a reference point in other
+          regions.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Approaches in other major jurisdictions</h2>
+        <div class="grid">
+          <div class="region"><span class="pill">UK</span><h3>United Kingdom</h3><p>A principles-based, pro-innovation approach that relies largely on existing sector regulators rather than a single AI law.</p></div>
+          <div class="region"><span class="pill">US</span><h3>United States</h3><p>A mix of federal executive action, sector-specific rules, and a growing patchwork of state-level AI and privacy laws.</p></div>
+          <div class="region"><span class="pill">CA</span><h3>Canada</h3><p>Has been developing dedicated AI legislation (the proposed AIDA) alongside existing privacy law.</p></div>
+          <div class="region"><span class="pill">BR</span><h3>Brazil</h3><p>AI legislation has been under active discussion, building on the country's data-protection framework.</p></div>
+          <div class="region"><span class="pill">CN</span><h3>China</h3><p>Has issued targeted rules covering areas such as algorithmic recommendation, deep synthesis, and generative AI.</p></div>
+          <div class="region"><span class="pill">JP</span><h3>Japan</h3><p>Has generally favored a lighter-touch, guideline-based approach emphasizing voluntary governance.</p></div>
+          <div class="region"><span class="pill">KR</span><h3>South Korea</h3><p>Has advanced framework legislation aimed at promoting AI while addressing trustworthiness.</p></div>
+          <div class="region"><span class="pill">IN</span><h3>India</h3><p>An evolving, largely advisory and sector-driven approach, with policy still taking shape.</p></div>
+          <div class="region"><span class="pill">SG</span><h3>Singapore</h3><p>Known for voluntary frameworks and toolkits, such as its Model AI Governance Framework.</p></div>
+          <div class="region"><span class="pill">AU·NZ</span><h3>Australia &amp; New Zealand</h3><p>Largely standards- and guidance-based to date, with consultations on possible further measures.</p></div>
+          <div class="region"><span class="pill">+</span><h3>Other jurisdictions</h3><p>Many other countries and regions are developing AI rules or guidance. Coverage and timing vary widely.</p></div>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:14px;">
+          The above is a high-level snapshot and may not reflect the latest developments. Treat it as a starting point, not a compliance checklist.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>What AiLunaPro helps with</h2>
+        <p>Regardless of jurisdiction, good governance hygiene tends to look similar. AiLunaPro is preparation support — it helps you get organized, not a substitute for legal advice:</p>
         <ul>
-          <li><strong>AI registry</strong> — keep an inventory of the AI tools and systems your organization uses.</li>
+          <li><strong>AI inventory &amp; registry</strong> — keep track of the AI tools and systems you use.</li>
           <li><strong>Shadow AI signals</strong> — surface unmanaged or unsanctioned AI usage to review.</li>
-          <li><strong>Indicative risk level</strong> — a non-binding, rule-based estimate to help you triage, not a legal classification.</li>
+          <li><strong>Indicative risk triage</strong> — a non-binding, rule-based estimate to help you prioritize, not a legal classification.</li>
+          <li><strong>Documentation readiness</strong> — structure the information you may need to explain how your AI is used.</li>
           <li><strong>Prioritized action plan</strong> — suggested preparation steps ordered by impact and effort.</li>
-          <li><strong>Audit &amp; reports</strong> — structured assessments you can revisit and share inside your workspace.</li>
         </ul>
       </section>
 
@@ -151,8 +197,8 @@
       </p>
 
       <footer>
-        AiLunaPro helps teams prepare for AI governance and the EU AI Act.
-        See also <a href="/audit-express">Audit Express</a> and the <a href="/faq">FAQ</a>.
+        AiLunaPro helps teams prepare for AI governance worldwide.
+        See also <a href="/audit-express">Audit Express</a> and the <a href="/faq/">FAQ</a>.
       </footer>
     </main>
   </body>
