@@ -20,6 +20,7 @@ import { understand } from '../lib/audit-express-understanding';
 import type { ExtractSnapshot } from '../lib/audit-express-extract';
 import type { Understanding } from '../lib/audit-express-understanding';
 import { buildAuditExpressPdf } from '../lib/audit-express-pdf';
+import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
 const pdf = new Hono<AppEnv>();
@@ -74,13 +75,11 @@ pdf.post('/api/public/audit-express/pdf', async c => {
   // 3. Optional extract snapshot -> recompute understanding (pure). Reject a
   //    present-but-malformed snapshot rather than silently dropping it.
   let extractSnapshot: ExtractSnapshot | undefined;
-  let understanding: Understanding | undefined;
   if (obj.extractSnapshot !== undefined && obj.extractSnapshot !== null) {
     if (!isExtractSnapshot(obj.extractSnapshot)) {
       return c.json({ error: 'Malformed extract snapshot', code: 'INVALID_SNAPSHOT' }, 400);
     }
     extractSnapshot = obj.extractSnapshot;
-    understanding = understand(extractSnapshot);
   }
 
   // 4. createdAt: accept a client-provided ISO (makes determinism observable);
@@ -90,16 +89,28 @@ pdf.post('/api/public/audit-express/pdf', async c => {
     createdAt = new Date(obj.createdAt).toISOString();
   }
 
-  // 5. Render deterministic PDF bytes.
-  const bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding });
+  // 5. Render deterministic PDF bytes. Understanding is recomputed (pure) from the
+  //    supplied snapshot. Any failure becomes a clean, non-PII error code.
+  let bytes: Uint8Array;
+  try {
+    const understanding: Understanding | undefined = extractSnapshot ? understand(extractSnapshot) : undefined;
+    bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding });
+  } catch (err) {
+    const reqId = c.req.header('CF-Ray') ?? 'n/a';
+    // DEBUG-gated: log only an error code + request id. No PII, no payload.
+    dlog(c.env as Record<string, unknown>, '[audit-express-pdf] PDF_RENDER_FAILED', reqId, err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not render the report.', code: 'PDF_RENDER_FAILED' }, 500);
+  }
 
-  return new Response(bytes, {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="audit-express-readiness.pdf"',
-      'Cache-Control': 'no-store',
-    },
+  // Return via c.body so the CORS headers queued by the cors() middleware
+  // (Access-Control-Allow-Origin, etc.) are applied — a raw `new Response` would
+  // drop them and the browser would block the cross-origin download.
+  // Cast: builder returns Uint8Array<ArrayBufferLike>; c.body expects
+  // Uint8Array<ArrayBuffer>. Runtime is a valid BodyInit either way.
+  return c.body(bytes as unknown as Uint8Array<ArrayBuffer>, 200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': 'attachment; filename="audit-express-readiness.pdf"',
+    'Cache-Control': 'no-store',
   });
 });
 
