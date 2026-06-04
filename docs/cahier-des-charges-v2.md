@@ -2695,6 +2695,29 @@ Petite passe perf (hors J). Même typographie (Inter/Sora), même URL, `display=
   **0 must-fix.** Prod vérifié (fonts chargées, typo inchangée, no FOIT/layout break).
 - **Suite perf différée** : P3-c `INEFFECTIVE_DYNAMIC_IMPORT` track.ts (cosmétique).
 
+**✅ J14 SEO/GEO Minimal Pack — Batch 1** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-04 (§7ter).
+Pack SEO/GEO minimal — aucune nouvelle page marketing, fichiers racine only.
+- **Commit** `d0d5597` : `public/llms.txt` (nouveau — phrase de positionnement neutre,
+  1 lien réel `/audit-express`, disclaimer exact "Preparation support, NOT a compliance
+  certification, attestation, or legal advice." ; no claims/PII) · `public/sitemap.xml`
+  (nouveau — 1 URL `https://audit.ailunapro.com/audit-express`, **canonical-matching**
+  sans trailing slash, lastmod 2026-06-04) · `public/robots.txt` (ajout `Disallow: /app/`
+  forward-looking, `Sitemap:` line, commentaire `# LLM guidance: …/llms.txt` ; `Allow: /`
+  + mécanisme noindex SPA inchangés).
+- **Inventaire pré-flight** : seule page publique path-based existante = `/audit-express`.
+  Pages optionnelles `/eu-ai-act` `/shadow-ai` `/methodologie` `/faq` `/pricing` =
+  **inexistantes** (hash routes SPA) → omises (Batch 2 futur). App shell `/` = hash-routed,
+  noindex (meta + X-Robots-Tag), pas de `/app/` réel aujourd'hui.
+- **Non touché** : head `/audit-express` (canonical/OG/Twitter/`index,follow` vérifiés
+  intacts dans `dist`) · `public/_headers` (caching inchangé) · auth/billing/analytics.
+- **Gates** : vitest **220 pass / 60 skip / 0 fail** · build clean (`dist/{llms.txt,
+  sitemap.xml,robots.txt}` présents) · worker `tsc` PASS · worktree clean. **0 must-fix.**
+- **Vérif prod (opérateur, curl)** : `/llms.txt` `/sitemap.xml` `/robots.txt` → **200** +
+  Content-Type correct (text/plain, application/xml) ; **X-Robots-Tag ABSENT** sur les 3
+  (no noindex leak) ; `/` reste `X-Robots-Tag: noindex` ; CSP toujours Report-Only.
+- **Différé (Batch 2, gaté)** : vraies pages path-based (`/eu-ai-act`, `/faq`, …) → puis
+  ajout sitemap + llms.txt ; schema.org JSON-LD ; OG image ; CSP enforce (étape dédiée).
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
