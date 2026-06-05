@@ -61,12 +61,19 @@ export function AuditExpressSavedPage() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-        Saved Audit Express
-      </h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 18px' }}>
-        Your saved Audit Express snapshots. Download the PDF or remove a saved result.
-      </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+            Saved Audit Express
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 18px' }}>
+            Your saved Audit Express snapshots. Download the PDF or remove a saved result.
+          </p>
+        </div>
+        <button type="button" style={{ ...btn('primary'), padding: '10px 18px' }} onClick={() => navigate({ name: 'audit-express/run' })}>
+          Run Audit Express
+        </button>
+      </div>
 
       {error && (
         <div style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', color: 'var(--amber-text)', borderRadius: 12, padding: '10px 14px', fontSize: 13.5, marginBottom: 14 }}>
@@ -79,7 +86,7 @@ export function AuditExpressSavedPage() {
       ) : items.length === 0 ? (
         <div style={{ ...card, justifyContent: 'flex-start' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-            No saved audits yet. Run <a href="/audit-express" style={{ color: 'var(--violet-text, var(--violet))' }}>Audit Express</a>, then save your result.
+            No saved audits yet. Use <button type="button" onClick={() => navigate({ name: 'audit-express/run' })} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--violet-text, var(--violet))', font: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>Run Audit Express</button> to create one.
           </span>
         </div>
       ) : (

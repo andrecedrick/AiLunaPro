@@ -56,6 +56,34 @@ export async function listSavedAudits(orgId: string): Promise<SavedAuditItem[]> 
   return Array.isArray(j.items) ? j.items : [];
 }
 
+/** Authenticated in-app preview (no Turnstile). Same deterministic engine. */
+export async function runPreview(orgId: string, taps: unknown): Promise<unknown> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, taps }),
+  });
+  if (!res.ok) {
+    const code = await res.json().then((j: { code?: string }) => j.code).catch(() => undefined);
+    throw new SavedAuditError(code ?? `HTTP_${res.status}`);
+  }
+  return res.json();
+}
+
+/** Authenticated in-app website extraction (no Turnstile; capped + robots-safe). */
+export async function runExtract(orgId: string, url: string, depth: 'quick' | 'deep' = 'quick'): Promise<unknown> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/extract`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, url, depth }),
+  });
+  const j = await res.json().catch(() => null) as ({ code?: string } & Record<string, unknown>) | null;
+  if (!res.ok) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
+  return j;
+}
+
 export async function deleteSavedAudit(orgId: string, auditId: string): Promise<void> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/audit-express/${encodeURIComponent(auditId)}?${q(orgId)}`, {

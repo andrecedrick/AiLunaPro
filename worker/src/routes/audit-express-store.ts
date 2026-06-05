@@ -19,7 +19,8 @@ import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '
 import { computePreview, validateTaps, type PreviewTaps } from '../lib/audit-express-preview';
 import { understand } from '../lib/audit-express-understanding';
 import { buildAuditExpressPdf } from '../lib/audit-express-pdf';
-import { stableHash, type ExtractSnapshot } from '../lib/audit-express-extract';
+import { stableHash, type ExtractSnapshot, type ExtractErrorCode, type ExtractDepth } from '../lib/audit-express-extract';
+import { runExtraction } from '../lib/audit-express-extract-fetch';
 import type { Understanding } from '../lib/audit-express-understanding';
 import { enforcePdfQuota } from '../lib/audit-express-quota';
 import { dlog } from '../lib/log';
@@ -121,6 +122,44 @@ store.post('/api/audit-express/save', async c => {
   await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${auditId}`, doc);
 
   return c.json({ auditId });
+});
+
+/* ── Authenticated in-app capture (Strategy Step 1) ─────────────────────────
+ * Twins of the public preview/extract — auth + org-membership gated (no Turnstile;
+ * auth is the gate). Same deterministic engine => identical snapshot/PDF. */
+
+const EXTRACT_HTTP: Record<ExtractErrorCode, 400 | 403> = {
+  INVALID_URL: 400, PRIVATE_HOST_BLOCKED: 400, ROBOTS_DISALLOWED: 403, UNREACHABLE: 400, NOT_HTML: 400,
+};
+const EXTRACT_MSG: Record<ExtractErrorCode, string> = {
+  INVALID_URL: 'Provide a valid public https URL.',
+  PRIVATE_HOST_BLOCKED: 'That address is not allowed.',
+  ROBOTS_DISALLOWED: 'This site asks crawlers not to read it (robots.txt).',
+  UNREACHABLE: 'The site could not be reached.',
+  NOT_HTML: 'The URL did not return a readable web page.',
+};
+
+store.post('/api/audit-express/preview', async c => {
+  let body: Record<string, unknown>;
+  try { body = (await c.req.json()) as Record<string, unknown>; } catch { c.header('Cache-Control', 'no-store'); return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+  const g = await gate(c, safeId(body.orgId));
+  if (g instanceof Response) return g;
+  const err = validateTaps(body.taps);
+  if (err) return c.json({ error: err, code: 'INVALID_TAPS' }, 400);
+  return c.json(computePreview(body.taps as PreviewTaps));
+});
+
+store.post('/api/audit-express/extract', async c => {
+  let body: Record<string, unknown>;
+  try { body = (await c.req.json()) as Record<string, unknown>; } catch { c.header('Cache-Control', 'no-store'); return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+  const g = await gate(c, safeId(body.orgId));
+  if (g instanceof Response) return g;
+  const url = typeof body.url === 'string' ? body.url : '';
+  if (!url) return c.json({ error: EXTRACT_MSG.INVALID_URL, code: 'INVALID_URL' }, 400);
+  const depth: ExtractDepth = body.depth === 'deep' ? 'deep' : 'quick';
+  const result = await runExtraction(url, depth);
+  if (!result.ok) return c.json({ error: EXTRACT_MSG[result.code], code: result.code }, EXTRACT_HTTP[result.code]);
+  return c.json({ ...result.snapshot, createdAt: new Date().toISOString() });
 });
 
 store.get('/api/audit-express/list', async c => {

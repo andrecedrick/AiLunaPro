@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Shared in-memory state (hoisted so the vi.mock factories can close over it).
 const state = vi.hoisted(() => ({
@@ -63,6 +63,7 @@ beforeEach(() => {
   state.tokenResult = { ok: true, balanceAfter: 100, tokensConsumed: 10 };
   vi.clearAllMocks();
 });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 async function save(orgId: string, token = 'valid-token') {
   const res = await req('POST', '/api/audit-express/save', { token, body: { orgId, taps: TAPS, extractSnapshot: snapshot(), createdAt: '2026-06-05T00:00:00.000Z' } });
@@ -169,5 +170,50 @@ describe('store route — PDF fair-usage quota (3 free, then tokens)', () => {
     const paid = await dl(id, true);
     expect(paid.status).toBe(402);
     expect((await paid.json()).code).toBe('TOKENS_INSUFFICIENT');
+  });
+});
+
+describe('store route — authenticated in-app capture (preview / extract)', () => {
+  it('preview: anonymous -> AUTH_REQUIRED; non-member -> FORBIDDEN; member -> 200', async () => {
+    const anon = await req('POST', '/api/audit-express/preview', { body: { orgId: 'orgA', taps: TAPS } });
+    expect(anon.status).toBe(401);
+    expect((await anon.json()).code).toBe('AUTH_REQUIRED');
+
+    const other = await req('POST', '/api/audit-express/preview', { token: 'valid-token', body: { orgId: 'orgB', taps: TAPS } });
+    expect(other.status).toBe(403);
+
+    const ok = await req('POST', '/api/audit-express/preview', { token: 'valid-token', body: { orgId: 'orgA', taps: TAPS } });
+    expect(ok.status).toBe(200);
+    const j = await ok.json();
+    expect(j.k1a).toBeTruthy();
+    expect(j.k2a?.result?.estimatedMonthlyCostSaved).toBeGreaterThanOrEqual(0);
+  });
+
+  it('preview: invalid taps -> INVALID_TAPS', async () => {
+    const res = await req('POST', '/api/audit-express/preview', { token: 'valid-token', body: { orgId: 'orgA', taps: { workflow: 'support' } } });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('INVALID_TAPS');
+  });
+
+  it('extract: member + public site -> 200 snapshot (no Turnstile)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (String(url).endsWith('/robots.txt')) return new Response('User-agent: *\nAllow: /', { status: 200, headers: { 'content-type': 'text/plain' } });
+      return new Response('<!doctype html><html lang="en"><head><title>Acme Store</title></head><body><a href="/about">About</a></body></html>', { status: 200, headers: { 'content-type': 'text/html' } });
+    }));
+    const res = await req('POST', '/api/audit-express/extract', { token: 'valid-token', body: { orgId: 'orgA', url: 'https://acme.example/' } });
+    expect(res.status).toBe(200);
+    const j = await res.json();
+    expect(typeof j.inputsHash).toBe('string');
+    expect(j.understanding).toBeTruthy();
+  });
+
+  it('extract: missing url -> INVALID_URL; anonymous -> AUTH_REQUIRED', async () => {
+    const noUrl = await req('POST', '/api/audit-express/extract', { token: 'valid-token', body: { orgId: 'orgA' } });
+    expect(noUrl.status).toBe(400);
+    expect((await noUrl.json()).code).toBe('INVALID_URL');
+
+    const anon = await req('POST', '/api/audit-express/extract', { body: { orgId: 'orgA', url: 'https://acme.example/' } });
+    expect(anon.status).toBe(401);
+    expect((await anon.json()).code).toBe('AUTH_REQUIRED');
   });
 });

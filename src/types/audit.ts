@@ -88,6 +88,7 @@ export type Route =
   | { name: 'help' }
   | { name: 'system-builder' }
   | { name: 'audit-express/saved' }
+  | { name: 'audit-express/run' }
   | { name: 'accept-invite' };
 
 export type RouteName = Route['name'];
