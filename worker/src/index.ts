@@ -49,6 +49,7 @@ import publicFxRoutes        from './routes/public-fx';
 import auditExpressRoutes    from './routes/audit-express';
 import auditExpressExtractRoutes from './routes/audit-express-extract';
 import auditExpressPdfRoutes from './routes/audit-express-pdf';
+import auditExpressStoreRoutes from './routes/audit-express-store';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -82,6 +83,8 @@ export type AppEnv = {
     // Set via `wrangler secret put PLATFORM_ADMIN_EMAILS --env production`.
     // Platform admins are NOT org members; this gates operator-only surfaces.
     PLATFORM_ADMIN_EMAILS?:        string;
+    // J15 P1.1 — R2 bucket for saved Audit Express PDFs (org-scoped keys).
+    AUDIT_PDFS?:                   R2Bucket;
   };
   Variables: {
     uid:    string;
@@ -162,6 +165,7 @@ app.route('/', publicFxRoutes);
 app.route('/', auditExpressRoutes);
 app.route('/', auditExpressExtractRoutes);
 app.route('/', auditExpressPdfRoutes);
+app.route('/', auditExpressStoreRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

@@ -331,6 +331,18 @@ export async function firestoreGet(
  * results. Used by platform-level aggregations (J8 metrics). The query body is
  * trusted (built server-side, not from user input).
  */
+/** Delete a document by path. Treats 404 as success (idempotent delete). */
+export async function firestoreDelete(saJson: string, path: string): Promise<void> {
+  const sa = JSON.parse(saJson) as ServiceAccount;
+  const token = await getAccessToken(sa);
+  const url = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/${path}`;
+  const res = await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok && res.status !== 404) {
+    const text = await res.text();
+    throw new Error(`Firestore DELETE failed: ${text}`);
+  }
+}
+
 export async function firestoreRunQuery(
   saJson: string,
   structuredQuery: Record<string, unknown>,

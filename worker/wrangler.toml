@@ -11,6 +11,11 @@ FIREBASE_PROJECT_ID = "audit-ai-cc9e2"
 # Comma-separated list of allowed CORS origins (local dev defaults).
 ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174"
 
+# J15 P1.1 — R2 bucket for saved Audit Express PDFs (default/dev binding).
+[[r2_buckets]]
+binding = "AUDIT_PDFS"
+bucket_name = "ailunapro-audit-pdfs"
+
 # ── Environments ─────────────────────────────────────────────────────────────
 # J2: production environment. Worker name preserved to reuse existing script
 # (no new worker created). Custom domain api.ailunapro.com bound via Cloudflare
@@ -24,3 +29,7 @@ FIREBASE_PROJECT_ID = "audit-ai-cc9e2"
 ALLOWED_ORIGINS     = "https://audit.ailunapro.com"
 APP_BASE_URL        = "https://audit.ailunapro.com"
 APP_ENV             = "production"
+
+[[env.production.r2_buckets]]
+binding = "AUDIT_PDFS"
+bucket_name = "ailunapro-audit-pdfs"

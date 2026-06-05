@@ -29,14 +29,14 @@ platformOps.get('/api/platform/ops-status', requireAuth(), requirePlatformAdmin(
   const e = c.env;
   return c.json({
     appEnv: (e.APP_ENV ?? '').toLowerCase() || 'development(default)',
-    stripeMode: detectMode((e as Record<string, string | undefined>).STRIPE_PUBLISHABLE_KEY),
+    stripeMode: detectMode((e as unknown as Record<string, string | undefined>).STRIPE_PUBLISHABLE_KEY),
     secrets: {
       // Booleans only — never the value, never last4 of secret material.
       stripeSecretKey:        configured(e.STRIPE_SECRET_KEY),
       stripeWebhookSecret:    configured(e.STRIPE_WEBHOOK_SECRET),
       firebaseServiceAccount: configured(e.FIREBASE_SERVICE_ACCOUNT_JSON),
       turnstileSecret:        configured(e.TURNSTILE_SECRET_KEY),
-      sequenzyApiKey:         configured((e as Record<string, string | undefined>).SEQUENZY_API_KEY),
+      sequenzyApiKey:         configured((e as unknown as Record<string, string | undefined>).SEQUENZY_API_KEY),
       platformAdminEmails:    configured(e.PLATFORM_ADMIN_EMAILS),
       tokenPriceStarter:      configured(e.STRIPE_TOKEN_PRICE_STARTER),
       tokenPricePro:          configured(e.STRIPE_TOKEN_PRICE_PRO),

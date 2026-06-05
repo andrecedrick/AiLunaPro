@@ -194,6 +194,17 @@ service cloud.firestore {
       // Prefer soft-delete (set deletedAt) over hard-delete.
       allow delete: if isAuth() && getMemberRole(orgId) == 'owner';
 
+      // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/auditExpress/{auditId}  (J15 P1.1)
+      // Saved Audit Express snapshots + PDF metadata (no PII). Written ONLY by
+      // the worker (service account bypasses rules). Clients may read their own
+      // org's saved audits; direct client writes are denied (defense-in-depth).
+      // ───────────────────────────────────────────────────────────────────
+      match /auditExpress/{auditId} {
+        allow read:  if isAnyMember(orgId);
+        allow write: if false;
+      }
+
 
       // ───────────────────────────────────────────────────────────────────
       // /organizations/{orgId}/members/{memberId}
