@@ -1,18 +1,20 @@
 /**
- * Audit Express PDF report builder (J15 P1). PURE + DETERMINISTIC:
+ * Audit Express PDF report builder (J15 P1 + visual upgrade). PURE + DETERMINISTIC:
  * identical { preview, extractSnapshot?, understanding?, createdAt } always
  * produces byte-identical PDF output (see pdf-doc.ts for the byte-level guards).
  *
- * Traceability: every scored figure carries [n] markers that link to a
- * stable-ordered "Sources & reasons" appendix built from the engines' traces
- * (rule/benchmark ReasonRefs) and item-level ruleRefs.
+ * Visuals are vector-only (rectangles/lines/text) and placed by fixed functions
+ * of the inputs — no images, no randomness, no time — so determinism holds.
  *
- * Privacy: renders only non-PII fields. Extract identity free-text
- * (title/description) is intentionally NOT rendered; only the canonical URL,
- * page list, and detections are shown.
+ * Traceability: every scored figure carries [n] markers that link to a
+ * stable-ordered "Sources & reasons" appendix; each appendix entry shows a plain
+ * human label plus the raw rule/benchmark id in monospace.
+ *
+ * Privacy: renders only non-PII fields. Extract identity free-text is NOT shown.
  */
 
 import { PdfBuilder } from './pdf/pdf-doc';
+import { drawReadinessBar, drawKpiTiles, drawBarChart, drawOpportunityMatrix, drawSchematic } from './pdf/pdf-charts';
 import type { Trace } from './determinism';
 import type { AuditExpressPreview } from './audit-express-preview';
 import type { ExtractSnapshot } from './audit-express-extract';
@@ -47,49 +49,95 @@ function moneyUsd(n: number): string {
   return '$' + Math.round(n).toLocaleString('en-US');
 }
 
+/* ── Human-friendly labels for rule/benchmark ids (prefix match + fallback) ── */
+const SOURCE_LABELS: Array<[string, string]> = [
+  ['diagnostic.normalizedScore', 'Readiness score — weighted sum of answers'],
+  ['diagnostic.maxRawScore', 'Maximum possible raw score'],
+  ['diagnostic.bucket.cutoffs', 'Readiness band cutoffs (low / medium / high)'],
+  ['diagnostic.recommendations', 'Recommended starting agents for this readiness band'],
+  ['roi.savingsRate', 'Assumed savings rate for the chosen workflow'],
+  ['roi.formula.timeSaved', 'Time-saved estimate formula'],
+  ['roi.formula.monthlyCost', 'Monthly cost-saved formula'],
+  ['roi.formula.yearlyCost', 'Yearly cost-saved (monthly x 12)'],
+  ['roi.formula.payback', 'Payback-period formula'],
+  ['roi.benchmark.agentDefaultMonthlyUsd', 'Default agent monthly price'],
+  ['roi.workflowToAgents', 'Workflow-to-agents mapping'],
+  ['extract.crawl', 'Deterministic public-page selection during analysis'],
+  ['extract.identity', 'Site identity from public meta tags'],
+  ['extract.privacy', 'Personal data scrubbed from captured text'],
+  ['extract.detections', 'Technology detections (signature set)'],
+  ['understanding.businessType', 'Business type inferred from public signals'],
+  ['understanding.audience', 'Audience inferred from public signals'],
+  ['understanding.shadowAi', 'Shadow-AI governance signal'],
+  ['understanding.opportunity', 'Automation opportunity selection rule'],
+  ['understanding.deeperAudit', 'Indicative EU AI Act band reasoning'],
+];
+
+/** Derive a readable label from a raw id (strip params/version, de-camel). */
+function deriveLabel(ref: string): string {
+  const core = ref.split(/[(@]/)[0].replace(/[._]/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim();
+  return core.charAt(0).toUpperCase() + core.slice(1);
+}
+
+/** Plain label for an appendix id (`${kind}:${ref}`). */
+function humanLabel(ref: string): string {
+  for (const [prefix, label] of SOURCE_LABELS) if (ref.startsWith(prefix)) return label;
+  return deriveLabel(ref);
+}
+
 export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
   const { preview, extractSnapshot: ex, understanding: un, createdAt } = input;
   const doc = new PdfBuilder();
 
-  // ── Header ──
-  doc.h1('Audit Express - Readiness Snapshot');
-  doc.muted(`Generated ${createdAt}`);
-  doc.spacer(6);
+  // ── Cover header (brand gradient band) ──
+  doc.coverHeader('Audit Express - Readiness Snapshot', `Generated ${createdAt}`);
+
+  // ── Version & integrity (boxed, monospace stamp) ──
+  const stamp: Array<[string, string]> = [
+    ['Engine', preview.engineVersion],
+    ['Diagnostic ruleset', preview.k1a.rulesetVersion],
+    ['ROI ruleset', preview.k2a.rulesetVersion],
+  ];
+  if (un) stamp.push(['Understanding', un.understandingRulesetVersion]);
+  if (ex) {
+    stamp.push(['Extractor', ex.extractorVersion]);
+    stamp.push(['Model', ex.modelId]);
+    stamp.push(['Inputs hash', ex.inputsHash]);
+    if (ex.canonicalUrl) stamp.push(['Analyzed URL', ex.canonicalUrl]);
+  }
+  stamp.push(['Created at', createdAt]);
+  doc.monoStamp('Version & integrity', stamp);
+
+  // ── Disclaimer (amber callout, text unchanged) ──
   doc.callout(`${PDF_DISCLAIMER} Indicative estimates only; not a legal classification.`, 'amber');
 
-  // ── Version & integrity ──
-  doc.h2('Version & integrity');
-  doc.kv('Engine version', preview.engineVersion);
-  doc.kv('Diagnostic ruleset', preview.k1a.rulesetVersion);
-  doc.kv('ROI ruleset', preview.k2a.rulesetVersion);
-  doc.kv('Created at', createdAt);
-  if (ex) {
-    doc.kv('Extractor version', ex.extractorVersion);
-    doc.kv('Extract ruleset', ex.rulesetVersion);
-    doc.kv('Model', ex.modelId);
-    doc.kv('Inputs hash', ex.inputsHash);
-    if (ex.canonicalUrl) doc.kv('Analyzed URL', ex.canonicalUrl);
-  }
-  if (un) doc.kv('Understanding ruleset', un.understandingRulesetVersion);
+  // ── How it works (4-step schematic) ──
+  doc.h2('How it works');
+  drawSchematic(doc, ['Inputs (your taps)', 'Capture public signals', 'Rule-based scoring', 'Prioritized action plan']);
 
-  // ── Readiness (K1A-lite) ──
+  // ── Readiness (K1A-lite) with progress bar ──
   doc.h2('Readiness (indicative)');
   const k1Refs = traceRefIds(preview.k1a.trace);
-  doc.row('Readiness score (0-100)', String(preview.k1a.normalizedScore), k1Refs);
-  doc.row('Readiness band', preview.k1a.bucket, []);
+  drawReadinessBar(doc, preview.k1a.normalizedScore, preview.k1a.bucket);
+  doc.row('Readiness band', preview.k1a.bucket, k1Refs);
   if (preview.k1a.partial) doc.muted('Derived from a short preview (a subset of factors), not the full diagnostic.');
   if (preview.k1a.recommendedAgentIds.length) {
     doc.bullet(`Suggested starting points: ${preview.k1a.recommendedAgentIds.join(', ')}`, []);
   }
 
-  // ── ROI estimate (K2A-lite) ──
+  // ── ROI estimate (K2A-lite): KPI tiles + same-unit bar chart ──
   doc.h2('ROI estimate (indicative, USD)');
   const r = preview.k2a.result;
   const k2Refs = traceRefIds(preview.k2a.trace);
-  doc.row('Time saved per month (hours)', String(r.estimatedTimeSavedHoursPerMonth), k2Refs);
-  doc.row('Estimated monthly cost saved', moneyUsd(r.estimatedMonthlyCostSaved), []);
-  doc.row('Estimated yearly cost saved', moneyUsd(r.estimatedYearlyCostSaved), []);
-  doc.row('Estimated payback (months)', r.estimatedPaybackMonths === null ? 'n/a' : String(r.estimatedPaybackMonths), []);
+  drawKpiTiles(doc, [
+    { value: `${r.estimatedTimeSavedHoursPerMonth} h`, label: 'Time saved / month' },
+    { value: r.estimatedPaybackMonths === null ? 'n/a' : `${r.estimatedPaybackMonths} mo`, label: 'Estimated payback' },
+  ]);
+  drawBarChart(doc, [
+    { label: 'Monthly cost saved', value: r.estimatedMonthlyCostSaved, display: moneyUsd(r.estimatedMonthlyCostSaved) },
+    { label: 'Yearly cost saved', value: r.estimatedYearlyCostSaved, display: moneyUsd(r.estimatedYearlyCostSaved) },
+  ]);
+  doc.row('Basis', 'rule-based ROI engine', k2Refs);
 
   // ── Site understanding (optional) ──
   if (un) {
@@ -97,30 +145,24 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
     const unRefs = traceRefIds(un.trace);
     doc.row('Business type', un.businessProfile.businessType, unRefs);
     doc.row('Audience', un.businessProfile.audience, []);
-    if (un.businessProfile.offers.length) {
-      doc.bullet(`Offers: ${un.businessProfile.offers.map(o => o.tag).join(', ')}`, []);
-    }
-    doc.row('Confidence', un.businessProfile.confidence, []);
+    if (un.businessProfile.offers.length) doc.bullet(`Offers: ${un.businessProfile.offers.map(o => o.tag).join(', ')}`, []);
 
-    if (un.aiUsageSignals.length) {
-      doc.h2('AI usage signals');
-      for (const s of un.aiUsageSignals) doc.bullet(s.label, []);
-    }
     if (un.shadowAiFlags.length) {
       doc.h2('Shadow AI flags');
       for (const f of un.shadowAiFlags) doc.bullet(`(${f.severity}) ${f.rationale}`, [ruleId(f.ruleRef)]);
     }
     if (un.automationOpportunities.length) {
-      doc.h2('Automation opportunities');
+      doc.h2('Automation opportunities (impact vs effort)');
       doc.muted(un.automationHeadline);
-      for (const o of un.automationOpportunities) {
-        doc.row(o.title, `${o.impact} impact / ${o.effort} effort`, [ruleId(o.ruleRef)]);
+      const pts = un.automationOpportunities.slice(0, 5);
+      drawOpportunityMatrix(doc, pts.map(o => ({ impact: o.impact, effort: o.effort, label: o.title })));
+      for (let i = 0; i < pts.length; i++) {
+        doc.bullet(`${i + 1}. ${pts[i].title} — ${pts[i].impact} impact / ${pts[i].effort} effort`, [ruleId(pts[i].ruleRef)]);
       }
     }
     doc.h2('Deeper audit (indicative)');
     doc.row('EU AI Act level (indicative)', un.deeperAudit.euAiActLevelIndicative, []);
     if (un.deeperAudit.euAiActRationale) doc.para(un.deeperAudit.euAiActRationale);
-    if (un.deeperAudit.shadowAiSummary) doc.para(un.deeperAudit.shadowAiSummary);
     if (un.deeperAudit.quickWins.length) {
       doc.muted('Quick wins:');
       for (const q of un.deeperAudit.quickWins) doc.bullet(q.text, [ruleId(q.ruleRef)]);
@@ -144,15 +186,16 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
     }
   }
 
-  // ── Appendix: Sources & reasons ──
+  // ── Appendix: Sources & reasons (human label + raw id) ──
   doc.h2('Sources & reasons');
-  doc.muted('Each [n] above links here. References are rule/benchmark identifiers behind every figure.');
+  doc.muted('Each [n] above links here. References are the rules/benchmarks behind every figure.');
   doc.spacer(4);
   for (const id of doc.orderedRefIds()) {
     const sep = id.indexOf(':');
     const kind = id.slice(0, sep);
     const ref = id.slice(sep + 1);
-    doc.appendixEntry(id, `[${kind}] ${ref}`);
+    doc.appendixEntry(id, humanLabel(ref));
+    doc.monoNote(`[${kind}] ${ref}`);
   }
 
   const footerVersion = `AiLunaPro - engine ${preview.engineVersion}${ex ? ` - inputs ${ex.inputsHash.slice(0, 12)}` : ''}`;

@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!-- Indexable public surface (Phase 2). Explicitly index,follow. -->
     <meta name="robots" content="index, follow" />
@@ -295,6 +296,37 @@
         Preparation support — not a certification, attestation, or legal advice.
       </div>
 
+      <section class="card" id="ax-verify">
+        <h2>Verify you're human</h2>
+        <p class="muted">A quick anti-bot check — no account, no personal data.</p>
+        <div id="ax-ts" style="margin-top:12px;"></div>
+        <p id="ax-ts-msg" class="muted" hidden></p>
+      </section>
+
+      <section class="card" id="ax-extract">
+        <h2>Analyze a public website (optional)</h2>
+        <p class="muted">
+          Enter a public website address. We read only public pages and respect
+          robots.txt — no account, no personal data, nothing saved.
+        </p>
+        <div class="ax-url-row">
+          <input id="ax-url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+                 placeholder="https://example.com" aria-label="Public website URL" />
+          <button class="cta" id="ax-analyze" type="button">Analyze site</button>
+        </div>
+        <p id="ax-extract-msg" class="muted" hidden></p>
+        <p class="muted" style="margin-top:6px;">Complete the verification check above before analyzing.</p>
+
+        <div id="ax-extract-results" hidden>
+          <div id="ax-extract-body"></div>
+          <p class="disclaimer" style="margin-top:14px;">
+            Preparation support — not a certification, attestation, or legal advice.
+            Detections are indicative and based only on public pages we could read.
+          </p>
+        </div>
+        <noscript><p class="muted">Enable JavaScript to analyze a website.</p></noscript>
+      </section>
+
       <section class="card" id="ax-preview">
         <h2>Try the preview</h2>
         <p class="muted">Tap your answers — no account, no personal data, nothing saved.</p>
@@ -352,9 +384,6 @@
           </div>
         </div>
 
-        <div id="ax-ts" style="margin-top:16px;"></div>
-        <p id="ax-ts-msg" class="muted" hidden></p>
-
         <p style="margin-top:14px;">
           <button class="cta" id="ax-run" type="button" disabled>Get preview</button>
         </p>
@@ -373,30 +402,6 @@
           </div>
         </div>
         <noscript><p class="muted">Enable JavaScript to try the interactive preview.</p></noscript>
-      </section>
-
-      <section class="card" id="ax-extract">
-        <h2>Analyze a public website (optional)</h2>
-        <p class="muted">
-          Enter a public website address. We read only public pages and respect
-          robots.txt — no account, no personal data, nothing saved.
-        </p>
-        <div class="ax-url-row">
-          <input id="ax-url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
-                 placeholder="https://example.com" aria-label="Public website URL" />
-          <button class="cta" id="ax-analyze" type="button">Analyze site</button>
-        </div>
-        <p id="ax-extract-msg" class="muted" hidden></p>
-        <p class="muted" style="margin-top:6px;">Complete the verification check above before analyzing.</p>
-
-        <div id="ax-extract-results" hidden>
-          <div id="ax-extract-body"></div>
-          <p class="disclaimer" style="margin-top:14px;">
-            Preparation support — not a certification, attestation, or legal advice.
-            Detections are indicative and based only on public pages we could read.
-          </p>
-        </div>
-        <noscript><p class="muted">Enable JavaScript to analyze a website.</p></noscript>
       </section>
 
       <section class="card">

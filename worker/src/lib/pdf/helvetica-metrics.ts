@@ -26,7 +26,10 @@ const HELVETICA_BOLD: readonly number[] = [
   611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584,       // 112-126
 ];
 
-export type PdfFont = 'regular' | 'bold';
+export type PdfFont = 'regular' | 'bold' | 'mono';
+
+// Courier (base-14) is fixed-width: every glyph is 600/1000 em.
+const MONO_WIDTH = 600;
 
 /**
  * Replace common non-ASCII typography with ASCII equivalents so every character
@@ -49,6 +52,7 @@ export function asciiSanitize(text: string): string {
 /** Width of a single already-sanitized char at the given font size (points). */
 function charWidth(code: number, font: PdfFont, size: number): number {
   if (code < 32 || code > 126) return 0;
+  if (font === 'mono') return (MONO_WIDTH / 1000) * size;
   const table = font === 'bold' ? HELVETICA_BOLD : HELVETICA;
   return (table[code - 32] / 1000) * size;
 }

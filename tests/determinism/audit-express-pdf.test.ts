@@ -95,6 +95,50 @@ describe('audit-express PDF — structure & content', () => {
   });
 });
 
+describe('audit-express PDF — visuals & charts', () => {
+  const s = latin1(buildFull());
+
+  it('emits vector primitives (filled rects + lines)', () => {
+    expect(s).toContain(' re f');   // filled rectangle operator
+    expect(s).toContain(' l S');    // stroked line operator
+  });
+  it('renders the readiness bar, KPI tiles and ROI bar chart', () => {
+    expect(s).toContain('Readiness ');
+    expect(s).toContain('Time saved / month');
+    expect(s).toContain('Estimated payback');
+    expect(s).toContain('Monthly cost saved');
+  });
+  it('renders the how-it-works schematic steps', () => {
+    // PDF escapes parentheses, and labels may wrap across lines, so assert on
+    // contiguous paren-free tokens.
+    expect(s).toContain('Inputs');
+    expect(s).toContain('Capture');
+    expect(s).toContain('Rule-based');
+  });
+  it('renders the opportunity matrix axes', () => {
+    expect(s).toContain('Effort');
+    expect(s).toContain('Impact');
+  });
+  it('uses the Courier (mono) font for the version stamp', () => {
+    expect(s).toContain('/F3');   // Courier font resource referenced
+    expect(s).toContain('/BaseFont /Courier');
+  });
+});
+
+describe('audit-express PDF — sources appendix', () => {
+  const s = latin1(buildFull());
+  it('shows a human label plus the raw rule id', () => {
+    expect(s).toContain('Readiness score');          // human label
+    expect(s).toContain('diagnostic.normalizedScore'); // raw id (mono note)
+  });
+  it('has a stable, deduped appendix count across runs', () => {
+    const count = (x: string) => (x.match(/\[(rule|benchmark)\]/g) || []).length;
+    const a = count(s);
+    expect(a).toBeGreaterThanOrEqual(8);
+    expect(count(latin1(buildFull()))).toBe(a); // stable
+  });
+});
+
 describe('audit-express PDF — privacy', () => {
   const s = latin1(buildFull());
   it('never renders scrubbed email or phone', () => {

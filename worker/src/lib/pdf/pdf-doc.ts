@@ -27,10 +27,21 @@ type Op = TextOp | RectOp | LineOp;
 interface PendingAnnot { pageIndex: number; rect: [number, number, number, number]; targetId: string }
 
 const VIOLET: [number, number, number] = [0.486, 0.227, 0.929];
+const CYAN: [number, number, number] = [0.133, 0.827, 0.933];
 const INK: [number, number, number] = [0.06, 0.09, 0.16];
 const MUTED: [number, number, number] = [0.39, 0.45, 0.55];
 const AMBER_BG: [number, number, number] = [0.996, 0.953, 0.78];
 const TINT_BG: [number, number, number] = [0.93, 0.91, 0.996];
+
+export type Rgb = [number, number, number];
+/** Shared deterministic palette for chart/composite drawing (pdf-charts.ts). */
+export const PDF_COLORS = {
+  violet: VIOLET, cyan: CYAN, ink: INK, muted: MUTED,
+  amberBg: AMBER_BG, tintBg: TINT_BG,
+  white: [1, 1, 1] as Rgb,
+  border: [0.85, 0.87, 0.9] as Rgb,
+  surface2: [0.97, 0.975, 0.99] as Rgb,
+};
 
 export class PdfBuilder {
   private pages: Op[][] = [[]];
@@ -49,6 +60,75 @@ export class PdfBuilder {
 
   private ensure(h: number): void {
     if (this.y - h < BOTTOM) this.newPage();
+  }
+
+  /* ── Public vector primitives + block reservation (used by pdf-charts.ts) ── */
+
+  get metrics(): { pageW: number; pageH: number; margin: number; contentW: number } {
+    return { pageW: PAGE_W, pageH: PAGE_H, margin: MARGIN, contentW: CONTENT_W };
+  }
+
+  /** Ensure `h` points of vertical space; returns the block's top-left + width.
+   *  Does NOT advance the cursor — call advance(h) after drawing. */
+  reserve(h: number): { top: number; left: number; width: number } {
+    this.ensure(h);
+    return { top: this.y, left: MARGIN, width: CONTENT_W };
+  }
+  advance(h: number): void { this.y -= h; }
+
+  rectAbs(x: number, y: number, w: number, h: number, color: [number, number, number]): void {
+    this.cur().push({ kind: 'rect', x, y, w, h, color });
+  }
+  lineAbs(x1: number, y1: number, x2: number, y2: number, color: [number, number, number]): void {
+    this.cur().push({ kind: 'line', x1, y1, x2, y2, color });
+  }
+  textAbs(x: number, y: number, size: number, font: PdfFont, color: [number, number, number], text: string): void {
+    this.cur().push({ kind: 'text', x, y, size, font, color, text });
+  }
+
+  /** Deterministic horizontal brand gradient (violet -> cyan) as N stacked rects. */
+  gradientBar(x: number, y: number, w: number, h: number, steps = 48): void {
+    const from = VIOLET, to = CYAN;
+    for (let i = 0; i < steps; i++) {
+      const t = steps <= 1 ? 0 : i / (steps - 1);
+      const c: [number, number, number] = [
+        from[0] + (to[0] - from[0]) * t,
+        from[1] + (to[1] - from[1]) * t,
+        from[2] + (to[2] - from[2]) * t,
+      ];
+      this.rectAbs(x + (w * i) / steps, y, w / steps + 0.6, h, c);
+    }
+  }
+
+  /** Full-bleed cover header (gradient band + white title/subtitle) at page top. */
+  coverHeader(title: string, subtitle: string): void {
+    const bandH = 92;
+    const top = PAGE_H; // page 1 starts here
+    this.gradientBar(0, top - bandH, PAGE_W, bandH);
+    this.cur().push({ kind: 'text', x: MARGIN, y: top - 44, size: 22, font: 'bold', color: [1, 1, 1], text: title });
+    this.cur().push({ kind: 'text', x: MARGIN, y: top - 66, size: 10, font: 'regular', color: [1, 1, 1], text: subtitle });
+    this.y = top - bandH - 16;
+  }
+
+  /** Boxed "Version & integrity" card: label (bold) + value (monospace). */
+  monoStamp(title: string, rows: Array<[string, string]>): void {
+    const size = 9, lineGap = 5, pad = 12, titleH = 16;
+    const boxH = pad * 2 + titleH + rows.length * (size + lineGap);
+    this.ensure(boxH + 8);
+    const top = this.y;
+    this.rectAbs(MARGIN, top - boxH, CONTENT_W, boxH, PDF_COLORS.surface2);
+    this.rectAbs(MARGIN, top - boxH, 3, boxH, VIOLET); // accent rail
+    let ty = top - pad;
+    ty -= 12;
+    this.cur().push({ kind: 'text', x: MARGIN + pad, y: ty, size: 12, font: 'bold', color: INK, text: title });
+    ty -= 8;
+    for (const [label, value] of rows) {
+      ty -= size;
+      this.cur().push({ kind: 'text', x: MARGIN + pad, y: ty, size, font: 'bold', color: MUTED, text: label });
+      this.cur().push({ kind: 'text', x: MARGIN + pad + 120, y: ty, size, font: 'mono', color: INK, text: value });
+      ty -= lineGap;
+    }
+    this.y = top - boxH - 12;
   }
 
   spacer(h: number): void { this.y -= h; }
@@ -181,6 +261,15 @@ export class PdfBuilder {
     }
   }
 
+  /** Small monospaced muted note (e.g. the raw rule id under an appendix entry). */
+  monoNote(text: string): void {
+    const size = 7.5;
+    this.ensure(size + 4);
+    this.y -= size;
+    this.cur().push({ kind: 'text', x: MARGIN + 14, y: this.y, size, font: 'mono', color: MUTED, text });
+    this.y -= 5;
+  }
+
   /** Footer on every page: disclaimer + page number. Call once before serialize. */
   private footers(versionLine: string): void {
     for (let p = 0; p < this.pages.length; p++) {
@@ -194,7 +283,8 @@ export class PdfBuilder {
 
   serialize(opts: { createdAt: string; footerVersion: string }): Uint8Array {
     this.footers(opts.footerVersion);
-    const pageObjNum = (i: number) => 6 + i * 2;
+    // Objects 1..6 fixed; pages start at 7. F1=Helvetica, F2=Helvetica-Bold, F3=Courier.
+    const pageObjNum = (i: number) => 7 + i * 2;
 
     const objects: string[] = [];
     objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
@@ -202,8 +292,9 @@ export class PdfBuilder {
     objects[2] = `<< /Type /Pages /Kids [ ${kids} ] /Count ${this.pages.length} >>`;
     objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
     objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+    objects[5] = '<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>';
     const d = pdfDate(opts.createdAt);
-    objects[5] = `<< /Producer (AiLunaPro PDF v1) /Creator (AiLunaPro) /CreationDate (${d}) /ModDate (${d}) >>`;
+    objects[6] = `<< /Producer (AiLunaPro PDF v1) /Creator (AiLunaPro) /CreationDate (${d}) /ModDate (${d}) >>`;
 
     for (let i = 0; i < this.pages.length; i++) {
       const content = renderContent(this.pages[i]);
@@ -217,7 +308,7 @@ export class PdfBuilder {
           return `<< /Type /Annot /Subtype /Link /Rect [ ${r} ] /Border [0 0 0] /Dest [ ${destPage} 0 R /XYZ ${fmt(MARGIN)} ${destY} null ] >>`;
         });
       const annotStr = annots.length ? ` /Annots [ ${annots.join(' ')} ]` : '';
-      objects[pageObjNum(i)] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${fmt(PAGE_W)} ${fmt(PAGE_H)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >>${annotStr} /Contents ${pageObjNum(i) + 1} 0 R >>`;
+      objects[pageObjNum(i)] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${fmt(PAGE_W)} ${fmt(PAGE_H)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >>${annotStr} /Contents ${pageObjNum(i) + 1} 0 R >>`;
       objects[pageObjNum(i) + 1] = `<< /Length ${byteLen(content)} >>\nstream\n${content}\nendstream`;
     }
 
@@ -248,7 +339,7 @@ function renderContent(ops: Op[]): string {
       out.push(`${fmt(op.color[0])} ${fmt(op.color[1])} ${fmt(op.color[2])} RG 0.7 w`);
       out.push(`${fmt(op.x1)} ${fmt(op.y1)} m ${fmt(op.x2)} ${fmt(op.y2)} l S`);
     } else {
-      const f = op.font === 'bold' ? '/F2' : '/F1';
+      const f = op.font === 'bold' ? '/F2' : op.font === 'mono' ? '/F3' : '/F1';
       out.push('BT');
       out.push(`${fmt(op.color[0])} ${fmt(op.color[1])} ${fmt(op.color[2])} rg`);
       out.push(`${f} ${fmt(op.size)} Tf`);
@@ -297,7 +388,7 @@ function assemble(objects: string[]): Uint8Array {
   for (let n = 1; n < count; n++) {
     pushStr(`${String(offsets[n]).padStart(10, '0')} 00000 n \n`);
   }
-  pushStr(`trailer\n<< /Size ${count} /Root 1 0 R /Info 5 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`);
+  pushStr(`trailer\n<< /Size ${count} /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`);
 
   return Uint8Array.from(bytes);
 }
