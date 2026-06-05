@@ -70,3 +70,22 @@ export function requireAuth() {
     }
   };
 }
+
+/**
+ * Verify a Firebase ID token and return the uid, or null if missing/invalid.
+ * Reusable by routes that want to gate on auth with their own error code
+ * (e.g. the PDF export route → AUTH_REQUIRED). Never throws.
+ */
+export async function verifyIdToken(token: string | undefined, projectId: string | undefined): Promise<string | null> {
+  if (!token || !projectId) return null;
+  try {
+    const { payload } = await jwtVerify(token, getJwks(), {
+      issuer:   `https://securetoken.google.com/${projectId}`,
+      audience: projectId,
+      algorithms: ['RS256'],
+    });
+    return typeof payload.sub === 'string' && payload.sub ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}

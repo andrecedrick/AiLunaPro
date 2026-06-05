@@ -245,6 +245,15 @@
       .ax-drivers { margin-top: 10px; }
       .ax-drivers > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--violet-text); }
       .ax-drivers > p { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin: 8px 0 0; }
+      /* ROI scenario tiles (Task 2) — indicative band around the same base */
+      .ax-scen { margin-top: 14px; }
+      .ax-scen-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
+      .ax-scen-tile { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+      .ax-scen-tile.is-typical { border: 1.5px solid var(--violet); box-shadow: var(--card-shadow); }
+      .ax-scen-name { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); font-weight: 700; }
+      .ax-scen-val { font-family: var(--font-heading); font-weight: 800; font-size: 17px; color: var(--text-primary); margin-top: 4px; }
+      .ax-scen-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+      @media (max-width: 520px) { .ax-scen-grid { grid-template-columns: 1fr; } }
       .ax-subcat { margin-top: 8px; }
       .ax-subcat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
       .ax-chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -461,10 +470,23 @@
     <div id="ax-human-modal" class="ax-modal" hidden role="dialog" aria-modal="true" aria-labelledby="ax-human-title" aria-describedby="ax-human-body">
       <div class="ax-modal-card" role="document">
         <h2 id="ax-human-title">Please confirm you're human</h2>
-        <p id="ax-human-body">For security, we need a quick human verification before generating the report.</p>
+        <p id="ax-human-body">For security, please complete the quick verification below. Then try again.</p>
         <div class="ax-modal-actions">
           <button class="cta" id="ax-human-verify" type="button">Verify now</button>
           <button class="cta secondary" id="ax-human-cancel" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account gate (Task 1) — PDF export requires an account. -->
+    <div id="ax-account-modal" class="ax-modal" hidden role="dialog" aria-modal="true" aria-labelledby="ax-account-title" aria-describedby="ax-account-body">
+      <div class="ax-modal-card" role="document">
+        <h2 id="ax-account-title">Create an account to download your report</h2>
+        <p id="ax-account-body">Save your results and export a PDF in one click.</p>
+        <div class="ax-modal-actions">
+          <a class="cta" id="ax-account-signup" href="/#/signup">Create account</a>
+          <a class="cta secondary" id="ax-account-signin" href="/#/login">Sign in</a>
+          <button class="cta secondary" id="ax-account-cancel" type="button">Cancel</button>
         </div>
       </div>
     </div>
@@ -653,15 +675,34 @@
           var out = document.getElementById('ax-metrics');
           out.textContent = '';
           var k2 = p.k2a, t2 = k2.trace || {}, r = k2.result;
-          out.appendChild(metric('Estimated time saved', r.estimatedTimeSavedHoursPerMonth + ' hours/month', t2.estimatedTimeSavedHoursPerMonth));
           var usd = function (n) { return '$' + Math.round(Number(n) || 0).toLocaleString('en-US'); };
-          out.appendChild(metric('Estimated cost saved', '≈ ' + usd(r.estimatedMonthlyCostSaved) + '/mo  (~' + usd(r.estimatedYearlyCostSaved) + '/yr)', t2.estimatedMonthlyCostSaved));
+          var hpm = Number(r.estimatedTimeSavedHoursPerMonth) || 0;
+          var baseMonthly = Number(r.estimatedMonthlyCostSaved) || 0;
+          out.appendChild(metric('Estimated time saved', hpm + ' hours/month  (~' + (hpm * 12) + ' hours/year)', t2.estimatedTimeSavedHoursPerMonth));
+          out.appendChild(metric('Estimated cost saved', '≈ ' + usd(baseMonthly) + '/mo  (~' + usd(r.estimatedYearlyCostSaved) + '/yr)', t2.estimatedMonthlyCostSaved));
           if (r.estimatedPaybackMonths != null) {
             out.appendChild(metric('Estimated payback', '≈ ' + r.estimatedPaybackMonths + ' months', t2.estimatedPaybackMonths));
           }
           var k1 = p.k1a, t1 = k1.trace || {};
           out.appendChild(metric('AI readiness level (indicative)', k1.bucket + ' (' + k1.normalizedScore + '/100)', t1.bucket));
           out.appendChild(metric('Suggested starting points', (k1.recommendedAgentIds || []).map(prettyAgent).join(', '), t1.recommendedAgentIds));
+
+          // Scenario view (indicative) — fixed multipliers around the SAME base
+          // estimate (Typical = 1.0x = the actual figure). Deterministic; clearly
+          // labeled as not guaranteed. No inflation of the underlying number.
+          var scen = el('div', 'ax-scen');
+          scen.appendChild(el('div', 'ax-subcat-label', 'Scenario view (indicative) — not guaranteed'));
+          var scenGrid = el('div', 'ax-scen-grid');
+          [['Conservative', 0.8], ['Typical', 1.0], ['Ambitious', 1.2]].forEach(function (sc) {
+            var m = Math.round(baseMonthly * sc[1]);
+            var tile = el('div', 'ax-scen-tile' + (sc[1] === 1.0 ? ' is-typical' : ''));
+            tile.appendChild(el('div', 'ax-scen-name', sc[0]));
+            tile.appendChild(el('div', 'ax-scen-val', usd(m) + '/mo'));
+            tile.appendChild(el('div', 'ax-scen-sub', '~' + usd(m * 12) + '/yr'));
+            scenGrid.appendChild(tile);
+          });
+          scen.appendChild(scenGrid);
+          out.appendChild(scen);
 
           // Assumptions behind the ROI (the taps you chose) — explicit + deterministic.
           var cap = function (s) { s = String(s || '').replace(/_/g, ' '); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -705,7 +746,7 @@
           var ctaLink = document.createElement('a');
           ctaLink.className = 'cta';
           ctaLink.href = '/#/signup';
-          ctaLink.textContent = 'Want a tailored plan? Create account to save/export PDF';
+          ctaLink.textContent = 'Create account to save, compare scenarios, and export PDF';
           cta.appendChild(ctaLink);
           out.appendChild(cta);
 
@@ -1033,44 +1074,22 @@
           resetTurnstile();
           setPdfMessage('Complete the verification check above, then click Download PDF report again.', false);
         });
+        // PDF export REQUIRES an account (server enforces AUTH_REQUIRED). The public
+        // demo page has no authenticated session, so Download PDF opens the account
+        // gate (Create account / Sign in) rather than attempting an anonymous export.
+        var accountModal = document.getElementById('ax-account-modal');
+        function openAccountGate() { if (accountModal) { accountModal.hidden = false; var b = document.getElementById('ax-account-signup'); if (b && b.focus) b.focus(); } }
+        function closeAccountGate() { if (accountModal) accountModal.hidden = true; }
+        (function () {
+          var cancel = document.getElementById('ax-account-cancel');
+          if (cancel) cancel.addEventListener('click', closeAccountGate);
+          if (accountModal) accountModal.addEventListener('click', function (e) { if (e.target === accountModal) closeAccountGate(); });
+          document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && accountModal && !accountModal.hidden) closeAccountGate(); });
+        })();
         if (pdfBtn) pdfBtn.addEventListener('click', function () {
           if (!lastPreview || Object.keys(taps).length < 5) { setPdfMessage('Get your preview first.', false); return; }
-          if (!tsToken) { setPdfMessage('Please complete the verification check above first.', false); return; }
-          pdfBtn.disabled = true; pdfBtn.textContent = 'Preparing…'; setPdfMessage('', false);
-          var payload = { turnstileToken: tsToken, taps: taps, createdAt: new Date().toISOString() };
-          if (lastSnapshot) payload.extractSnapshot = lastSnapshot;
-          fetch(PDF_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          })
-            .then(function (res) {
-              var ct = res.headers.get('Content-Type') || '';
-              if (res.status === 200 && ct.indexOf('application/pdf') !== -1) {
-                return res.blob().then(function (blob) {
-                  var url = URL.createObjectURL(blob);
-                  var a = document.createElement('a');
-                  a.href = url; a.download = 'audit-express-readiness.pdf';
-                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-                  setPdfMessage('', false);
-                });
-              }
-              // Non-200: parse the non-PII error code defensively (may be non-JSON).
-              return res.json().then(function (j) { return j; }).catch(function () { return null; })
-                .then(function (j) {
-                  var code = (j && typeof j.code === 'string') ? j.code : ('HTTP_' + res.status);
-                  if (code.indexOf('TURNSTILE') === 0) {
-                    resetTurnstile(); setPdfMessage('', false); openHumanCheck(); return;
-                  }
-                  setPdfMessage('Could not generate the PDF (' + code + '). Please try again.', true);
-                });
-            })
-            .catch(function () {
-              // Network/CORS/abort — offer re-verify + retry.
-              setPdfMessage('Could not reach the report service (NETWORK). Please re-verify and try again.', true);
-            })
-            .finally(function () { pdfBtn.disabled = false; pdfBtn.textContent = 'Download PDF report'; });
+          setPdfMessage('', false);
+          openAccountGate();
         });
       })();
     </script>

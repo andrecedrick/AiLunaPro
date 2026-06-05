@@ -4,17 +4,19 @@
  *   POST /api/public/audit-express/pdf  -> application/pdf (download)
  *
  * Contract (NON-NEGOTIABLE):
- *   - Public, NO auth. Body: { turnstileToken, taps, extractSnapshot?, createdAt? }.
- *   - Turnstile verified server-side (deny-by-default in production).
+ *   - AUTH REQUIRED. A valid Firebase ID token (Authorization: Bearer) is the
+ *     real gate — anonymous requests are rejected 401 AUTH_REQUIRED. Turnstile is
+ *     NOT used here (auth controls abuse); preview/extract stay public + Turnstile.
+ *   - Body: { taps, extractSnapshot?, createdAt? }.
  *   - Preview is RECOMPUTED from taps (authoritative); understanding is
  *     RECOMPUTED from the supplied extract snapshot (pure). Only the raw extract
  *     capture is client-supplied (informational; self-described by inputsHash).
- *   - No PII rendered. NO persistence. Cache-Control: no-store.
+ *   - No PII rendered/logged. NO persistence. Cache-Control: no-store.
  *   - Deterministic: identical { taps, extractSnapshot?, createdAt } -> identical bytes.
  */
 
 import { Hono } from 'hono';
-import { verifyTurnstile } from '../lib/turnstile';
+import { verifyIdToken } from '../middleware/auth';
 import { computePreview, validateTaps, type PreviewTaps } from '../lib/audit-express-preview';
 import { understand } from '../lib/audit-express-understanding';
 import type { ExtractSnapshot } from '../lib/audit-express-extract';
@@ -26,8 +28,8 @@ import type { AppEnv } from '../index';
 const pdf = new Hono<AppEnv>();
 
 type PdfBindings = AppEnv['Bindings'] & {
-  APP_ENV?:              string;
-  TURNSTILE_SECRET_KEY?: string;
+  APP_ENV?:           string;
+  FIREBASE_PROJECT_ID?: string;
 };
 
 /** Light structural guard so understand() receives a usable snapshot. */
@@ -48,6 +50,15 @@ function isExtractSnapshot(v: unknown): v is ExtractSnapshot {
 
 pdf.post('/api/public/audit-express/pdf', async c => {
   const env = c.env as PdfBindings;
+  c.header('Cache-Control', 'no-store');
+
+  // 1. AUTH is the gate. Verify the Firebase ID token; anonymous/invalid -> 401.
+  const authHeader = c.req.header('Authorization') ?? '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+  const uid = await verifyIdToken(bearer, env.FIREBASE_PROJECT_ID);
+  if (!uid) {
+    return c.json({ error: 'Sign in to export your report.', code: 'AUTH_REQUIRED' }, 401);
+  }
 
   let body: unknown;
   try {
@@ -56,14 +67,6 @@ pdf.post('/api/public/audit-express/pdf', async c => {
     return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400);
   }
   const obj = (body && typeof body === 'object') ? (body as Record<string, unknown>) : {};
-
-  // 1. Turnstile (no IP forwarded to siteverify).
-  const token = typeof obj.turnstileToken === 'string' ? obj.turnstileToken : undefined;
-  const ts = await verifyTurnstile(env, token);
-  c.header('Cache-Control', 'no-store');
-  if (!ts.ok) {
-    return c.json({ error: 'Bot/abuse check failed', code: ts.code ?? 'TURNSTILE_FAILED' }, 400);
-  }
 
   // 2. Validate + recompute preview from taps (authoritative).
   const tapErr = validateTaps(obj.taps);
