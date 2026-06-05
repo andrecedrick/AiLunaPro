@@ -155,6 +155,7 @@ store.post('/api/audit-express/save', async c => {
   };
   await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${auditId}`, doc);
 
+  c.header('Cache-Control', 'no-store');
   return c.json({ auditId });
 });
 
@@ -180,6 +181,7 @@ store.post('/api/audit-express/preview', async c => {
   if (g instanceof Response) return g;
   const err = validateTaps(body.taps);
   if (err) return c.json({ error: err, code: 'INVALID_TAPS' }, 400);
+  c.header('Cache-Control', 'no-store');
   return c.json(computePreview(body.taps as PreviewTaps));
 });
 
@@ -192,6 +194,7 @@ store.post('/api/audit-express/extract', async c => {
   if (!url) return c.json({ error: EXTRACT_MSG.INVALID_URL, code: 'INVALID_URL' }, 400);
   const depth: ExtractDepth = body.depth === 'deep' ? 'deep' : 'quick';
   const result = await runExtraction(url, depth);
+  c.header('Cache-Control', 'no-store');
   if (!result.ok) return c.json({ error: EXTRACT_MSG[result.code], code: result.code }, EXTRACT_HTTP[result.code]);
   return c.json({ ...result.snapshot, createdAt: new Date().toISOString() });
 });
@@ -222,6 +225,7 @@ store.get('/api/audit-express/list', async c => {
       canonicalUrl: String(f.canonicalUrl ?? ''),
     };
   });
+  c.header('Cache-Control', 'no-store');
   return c.json({ items });
 });
 
@@ -287,6 +291,7 @@ store.post('/api/audit-express/:auditId/title', async c => {
   }
 
   await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path, { title, updatedAt: new Date().toISOString() }, { merge: true });
+  c.header('Cache-Control', 'no-store');
   return c.json({ title });
 });
 

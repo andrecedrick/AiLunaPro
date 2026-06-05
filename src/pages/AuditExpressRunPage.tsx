@@ -1,8 +1,8 @@
-import { useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import { AX_QUESTIONS } from '../lib/auditExpress/questions';
-import { runPreview, runExtract, saveAudit, SavedAuditError } from '../lib/auditExpress/savedClient';
+import { runPreview, runExtract, saveAudit, deleteSavedAudit, SavedAuditError } from '../lib/auditExpress/savedClient';
 import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 
@@ -31,41 +31,50 @@ export function AuditExpressRunPage() {
   const [phase, setPhase] = useState<'form' | 'results'>('form');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [createdAt, setCreatedAt] = useState<string>('');
   const [auditId, setAuditId] = useState<string>('');
   const [busy, setBusy] = useState<string>(''); // 'preview' | 'analyze' | ''
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState('');
   const [depth, setDepth] = useState<'quick' | 'deep'>('quick');
 
-  const pdf = usePdfDownload(orgId);
-  const complete = Object.keys(taps).length >= AX_QUESTIONS.length;
+  const auditIdRef = useRef('');     // latest saved id (ref => no stale closure on supersede)
+  const createdAtRef = useRef('');   // fixed stamp for the run (determinism)
 
-  async function autoSave(snap: Snapshot | null, when: string) {
-    try { setAuditId(await saveAudit(orgId, { taps, extractSnapshot: snap ?? undefined, createdAt: when })); }
-    catch { /* non-fatal: results still render; user can retry from Saved Audits */ }
+  const pdf = usePdfDownload(orgId);
+  const complete = AX_QUESTIONS.every(q => Boolean(taps[q.key]));
+
+  /** Save (auto), then supersede the earlier preview-only record so Saved Audits
+   *  shows exactly one entry per run (enriched replaces preview-only). */
+  async function persist(snap: Snapshot | null) {
+    try {
+      const prev = auditIdRef.current;
+      const id = await saveAudit(orgId, { taps, extractSnapshot: snap ?? undefined, createdAt: createdAtRef.current });
+      auditIdRef.current = id; setAuditId(id);
+      if (prev && prev !== id) deleteSavedAudit(orgId, prev).catch(() => { /* non-fatal */ });
+    } catch { /* non-fatal: results still render; user can retry from Saved Audits */ }
   }
 
   async function onRun() {
-    if (!complete || !orgId) return;
+    if (!complete || !orgId || busy) return;
     setBusy('preview'); setError(null);
     const when = new Date().toISOString();
     try {
       const p = await runPreview(orgId, taps) as Preview;
-      setPreview(p); setCreatedAt(when); setPhase('results');
-      void autoSave(null, when);
+      setPreview(p); setPhase('results'); setSnapshot(null);
+      createdAtRef.current = when; auditIdRef.current = ''; setAuditId('');
+      void persist(null);
     } catch (e) {
       setError(e instanceof SavedAuditError ? 'Could not run the preview (' + e.code + ').' : 'Could not run the preview.');
     } finally { setBusy(''); }
   }
 
   async function onAnalyze() {
-    if (!url || !orgId) return;
+    if (!url || !orgId || busy) return;
     setBusy('analyze'); setError(null);
     try {
       const snap = await runExtract(orgId, url, depth) as Snapshot;
       setSnapshot(snap);
-      void autoSave(snap, createdAt);
+      void persist(snap);
     } catch (e) {
       setError(e instanceof SavedAuditError ? 'Analysis unavailable (' + e.code + ').' : 'Analysis unavailable. Please try again.');
     } finally { setBusy(''); }

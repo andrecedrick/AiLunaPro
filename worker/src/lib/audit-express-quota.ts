@@ -44,9 +44,10 @@ export async function enforcePdfQuota(
 
   if (!useTokens) return { ok: false, status: 402, code: 'PDF_LIMIT_REACHED' };
 
-  // Idempotent per (download index): a retry of the same Nth download reuses the
-  // eventId and is not double-charged; once committed, the next download differs.
-  const eventId = `audit_express_pdf:${uid}:${chargeKey}:${count}`;
+  // Idempotent per (user, audit): the first paid export of a given audit is
+  // charged; re-downloading the SAME audit reuses the eventId and is NOT
+  // double-charged (protects against accidental re-clicks / flaky downloads).
+  const eventId = `audit_express_pdf:${uid}:${chargeKey}`;
   const r = await consumeTokens(saJson, orgId, PDF_TOKEN_ACTION, uid, eventId, { kind: 'audit_express_pdf' });
   if (!r.ok) return { ok: false, status: 402, code: 'TOKENS_INSUFFICIENT', balance: r.balance, required: r.required };
 

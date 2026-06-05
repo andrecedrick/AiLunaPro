@@ -34,6 +34,7 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
 }));
 
 import store from '../../worker/src/routes/audit-express-store';
+import { consumeTokens } from '../../worker/src/lib/tokens';
 import { assembleSnapshot, extractPageSignals, type PageCapture } from '../../worker/src/lib/audit-express-extract';
 
 const TAPS = { workflow: 'support', monthlyHours: 'high', hourlyCost: 'medium', aiUsage: 'team', shadowAi: 'no_visibility' };
@@ -163,6 +164,17 @@ describe('store route — PDF fair-usage quota (3 free, then tokens)', () => {
     expect(paid.headers.get('content-type')).toContain('application/pdf');
   });
 
+  it('paid re-download of the SAME audit is idempotent (one charge id, not per-count)', async () => {
+    const id = await setupOneSavedAudit();
+    for (let i = 0; i < 3; i++) await dl(id);
+    expect((await dl(id, true)).status).toBe(200);
+    expect((await dl(id, true)).status).toBe(200);
+    const calls = vi.mocked(consumeTokens).mock.calls;
+    expect(calls.length).toBe(2);
+    expect(calls[0][4]).toBe(calls[1][4]);     // same eventId => no double-charge
+    expect(String(calls[0][4])).toContain(id); // idempotency keyed per audit
+  });
+
   it('returns TOKENS_INSUFFICIENT when the balance is too low', async () => {
     const id = await setupOneSavedAudit();
     for (let i = 0; i < 3; i++) await dl(id);
@@ -184,6 +196,7 @@ describe('store route — authenticated in-app capture (preview / extract)', () 
 
     const ok = await req('POST', '/api/audit-express/preview', { token: 'valid-token', body: { orgId: 'orgA', taps: TAPS } });
     expect(ok.status).toBe(200);
+    expect(ok.headers.get('cache-control')).toBe('no-store'); // APIs must not be cached
     const j = await ok.json();
     expect(j.k1a).toBeTruthy();
     expect(j.k2a?.result?.estimatedMonthlyCostSaved).toBeGreaterThanOrEqual(0);
