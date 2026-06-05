@@ -8,6 +8,7 @@ import { getIdToken } from '../team/teamApiClient';
 
 export interface SavedAuditItem {
   auditId:       string;
+  title:         string;
   createdAt:     string;
   businessType:  string;
   audience:      string;
@@ -91,6 +92,20 @@ export async function deleteSavedAudit(orgId: string, auditId: string): Promise<
     headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) throw new Error('DELETE_FAILED');
+}
+
+/** Rename an audit (metadata only). Server sanitizes + regenerates the PDF header.
+ *  Returns the stored (sanitized) title. */
+export async function renameAudit(orgId: string, auditId: string, title: string): Promise<string> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/${encodeURIComponent(auditId)}/title`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, title }),
+  });
+  const j = await res.json().catch(() => null) as ({ code?: string; title?: string }) | null;
+  if (!res.ok) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
+  return (j && j.title) ?? title;
 }
 
 /** Fetch the PDF (auth-gated) and trigger a browser download.

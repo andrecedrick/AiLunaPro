@@ -43,7 +43,7 @@ export function asciiSanitize(text: string): string {
     .replace(/[…]/g, '...')                     // ellipsis
     .replace(/[≈]/g, '~')                       // approx
     .replace(/[ ]/g, ' ')                       // nbsp
-    .replace(/[•]/g, '-')                       // bullet
+    .replace(/[•·]/g, '-')                      // bullet / middle dot
     .replace(/[€]/g, 'EUR')                     // euro
     // Drop anything still outside printable ASCII.
     .replace(/[^\x20-\x7E]/g, '');

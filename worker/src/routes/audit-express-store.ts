@@ -19,7 +19,7 @@ import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '
 import { computePreview, validateTaps, type PreviewTaps } from '../lib/audit-express-preview';
 import { understand } from '../lib/audit-express-understanding';
 import { buildAuditExpressPdf } from '../lib/audit-express-pdf';
-import { stableHash, type ExtractSnapshot, type ExtractErrorCode, type ExtractDepth } from '../lib/audit-express-extract';
+import { stableHash, scrubPii, type ExtractSnapshot, type ExtractErrorCode, type ExtractDepth } from '../lib/audit-express-extract';
 import { runExtraction } from '../lib/audit-express-extract-fetch';
 import type { Understanding } from '../lib/audit-express-understanding';
 import { enforcePdfQuota } from '../lib/audit-express-quota';
@@ -32,6 +32,31 @@ type StoreBindings = AppEnv['Bindings'];
 
 const COLLECTION = (orgId: string) => `organizations/${orgId}/auditExpress`;
 const r2Key = (orgId: string, auditId: string) => `pdf/${orgId}/${auditId}.pdf`;
+
+const WORKFLOW_LABELS: Record<string, string> = {
+  support: 'Customer support', sales: 'Sales', finance: 'Finance', documents: 'Documents',
+  reporting: 'Reporting', admin: 'Admin', compliance: 'Compliance', marketing: 'Marketing', hr: 'HR',
+};
+const capWords = (s: string): string => { const t = String(s || '').replace(/_/g, ' ').trim(); return t ? t.charAt(0).toUpperCase() + t.slice(1) : ''; };
+
+/** Deterministic, non-PII default title. Never "Unknown · Unknown". */
+function deriveAuditTitle(businessType: string, audience: string, canonicalUrl: string, workflow: string): string {
+  const bt = businessType && businessType !== 'unknown' ? capWords(businessType) : '';
+  const au = audience && audience !== 'unknown' ? capWords(audience) : '';
+  if (bt && au) return `${bt} · ${au}`;
+  if (canonicalUrl) { try { const h = new URL(canonicalUrl).hostname.replace(/^www\./, ''); if (h) return h; } catch { /* ignore */ } }
+  if (WORKFLOW_LABELS[workflow]) return `${WORKFLOW_LABELS[workflow]} audit`;
+  if (bt) return bt;
+  return 'Audit Express';
+}
+
+/** Sanitize a user-supplied title: scrub PII, strip markup/control chars, cap length. */
+function sanitizeTitle(raw: unknown, fallback: string): string {
+  let t = typeof raw === 'string' ? raw : '';
+  t = scrubPii(t) ?? '';
+  t = t.replace(/<[^>]*>/g, ' ').replace(/[^\x20-\x7E·À-ſ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return t || fallback;
+}
 
 /** Sanitize an id segment: lowercase alnum + dash, bounded. Prevents path tricks. */
 function safeId(v: unknown): string {
@@ -84,12 +109,20 @@ store.post('/api/audit-express/save', async c => {
 
   if (!env.AUDIT_PDFS) return c.json({ error: 'Storage unavailable.', code: 'STORAGE_UNAVAILABLE' }, 500);
 
+  const workflow = (body.taps as { workflow?: string }).workflow ?? '';
   let bytes: Uint8Array;
   let understanding: Understanding | undefined;
+  let title = 'Audit Express';
   try {
     const preview = computePreview(body.taps as PreviewTaps);
     understanding = extractSnapshot ? understand(extractSnapshot) : undefined;
-    bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding });
+    title = deriveAuditTitle(
+      understanding?.businessProfile.businessType ?? 'unknown',
+      understanding?.businessProfile.audience ?? 'unknown',
+      extractSnapshot?.canonicalUrl ?? '',
+      workflow,
+    );
+    bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding, title });
   } catch (err) {
     dlog(env as Record<string, unknown>, '[audit-express-store] RENDER_FAILED', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
     return c.json({ error: 'Could not render the report.', code: 'PDF_RENDER_FAILED' }, 500);
@@ -107,6 +140,7 @@ store.post('/api/audit-express/save', async c => {
   // regenerate deterministically. snapshotJson is a flat string field.
   const doc: Record<string, string> = {
     auditId,
+    title,
     pdfKey: key,
     createdByUid: g.uid,
     createdAt,
@@ -179,6 +213,7 @@ store.get('/api/audit-express/list', async c => {
     const f = r.fields;
     return {
       auditId: String(f.auditId ?? ''),
+      title: String(f.title ?? deriveAuditTitle(String(f.businessType ?? 'unknown'), String(f.audience ?? 'unknown'), String(f.canonicalUrl ?? ''), '')),
       createdAt: String(f.createdAt ?? ''),
       businessType: String(f.businessType ?? 'unknown'),
       audience: String(f.audience ?? 'unknown'),
@@ -216,6 +251,43 @@ store.get('/api/audit-express/file/:auditId', async c => {
     'Content-Disposition': 'attachment; filename="audit-express-readiness.pdf"',
     'Cache-Control': 'no-store',
   });
+});
+
+store.post('/api/audit-express/:auditId/title', async c => {
+  const env = c.env as StoreBindings;
+  let body: Record<string, unknown>;
+  try { body = (await c.req.json()) as Record<string, unknown>; } catch { c.header('Cache-Control', 'no-store'); return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+  const orgId = safeId(body.orgId);
+  const auditId = safeId(c.req.param('auditId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+
+  const path = `${COLLECTION(orgId)}/${auditId}`;
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path);
+  if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+
+  const fallback = (typeof doc.title === 'string' && doc.title) ? doc.title : 'Audit Express';
+  const title = sanitizeTitle(body.title, fallback);
+
+  // Regenerate the stored PDF with the new title so downloads stay in sync.
+  // Deterministic: same {snapshot, createdAt, title} => identical bytes. Scores unchanged.
+  try {
+    const snap = JSON.parse(typeof doc.snapshotJson === 'string' ? doc.snapshotJson : '{}') as { taps?: unknown; extractSnapshot?: ExtractSnapshot | null; createdAt?: string };
+    const createdAt = String(doc.createdAt ?? snap.createdAt ?? '');
+    const preview = computePreview(snap.taps as PreviewTaps);
+    const extractSnapshot = snap.extractSnapshot ?? undefined;
+    const understanding = extractSnapshot ? understand(extractSnapshot) : undefined;
+    const bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding, title });
+    if (!env.AUDIT_PDFS) return c.json({ error: 'Storage unavailable.', code: 'STORAGE_UNAVAILABLE' }, 500);
+    const key = typeof doc.pdfKey === 'string' ? doc.pdfKey : r2Key(orgId, auditId);
+    await env.AUDIT_PDFS.put(key, bytes, { httpMetadata: { contentType: 'application/pdf' } });
+  } catch (err) {
+    dlog(env as Record<string, unknown>, '[audit-express-store] TITLE_RERENDER_FAILED', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not update the title.', code: 'PDF_RENDER_FAILED' }, 500);
+  }
+
+  await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path, { title, updatedAt: new Date().toISOString() }, { merge: true });
+  return c.json({ title });
 });
 
 store.delete('/api/audit-express/:auditId', async c => {

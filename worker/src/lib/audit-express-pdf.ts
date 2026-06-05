@@ -28,6 +28,8 @@ export interface AuditPdfInput {
   preview:          AuditExpressPreview;
   extractSnapshot?: ExtractSnapshot;
   understanding?:   Understanding;
+  /** Optional metadata title (deterministic header input; does not change scores). */
+  title?:           string;
 }
 
 /** Unique, stable-ordered ref ids from a Trace. id = `${kind}:${ref}`. */
@@ -89,8 +91,10 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
   const { preview, extractSnapshot: ex, understanding: un, createdAt } = input;
   const doc = new PdfBuilder();
 
-  // ── Cover header (brand gradient band) ──
-  doc.coverHeader('Audit Express - Readiness Snapshot', `Generated ${createdAt}`);
+  // ── Cover header (brand gradient band). Title is metadata (deterministic
+  // input); scores below are unchanged. ──
+  const headerTitle = (input.title && input.title.trim()) ? input.title.trim() : 'Audit Express - Readiness Snapshot';
+  doc.coverHeader(headerTitle, `Audit Express - Generated ${createdAt}`);
 
   // ── Version & integrity (boxed, monospace stamp) ──
   const stamp: Array<[string, string]> = [

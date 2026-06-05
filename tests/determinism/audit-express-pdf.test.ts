@@ -66,6 +66,14 @@ describe('audit-express PDF — determinism', () => {
     const b = buildFull('2026-06-05T12:00:00.000Z');
     expect(bytesEqual(a, b)).toBe(false);
   });
+
+  it('title is a deterministic input (same title identical; different title differs)', () => {
+    const p = computePreview(TAPS);
+    const ex = snapshot(); const un = understand(ex);
+    const mk = (title?: string) => buildAuditExpressPdf({ createdAt: CREATED, preview: p, extractSnapshot: ex, understanding: un, title });
+    expect(bytesEqual(mk('Acme readiness'), mk('Acme readiness'))).toBe(true);
+    expect(bytesEqual(mk('Acme readiness'), mk('Different title'))).toBe(false);
+  });
 });
 
 describe('audit-express PDF — structure & content', () => {

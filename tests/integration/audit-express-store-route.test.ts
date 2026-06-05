@@ -217,3 +217,39 @@ describe('store route — authenticated in-app capture (preview / extract)', () 
     expect((await anon.json()).code).toBe('AUTH_REQUIRED');
   });
 });
+
+describe('store route — titles + rename', () => {
+  it('save assigns a meaningful default title (never "Unknown · Unknown")', async () => {
+    const { auditId } = await (await save('orgA')).json();
+    const list = await req('GET', '/api/audit-express/list?orgId=orgA', { token: 'valid-token' });
+    const item = (await list.json()).items.find((i: { auditId: string }) => i.auditId === auditId);
+    expect(item.title).toBeTruthy();
+    expect(item.title).not.toBe('Unknown · Unknown');
+    expect(item.title).not.toMatch(/unknown/i);
+  });
+
+  it('rename: sanitizes (PII + markup), regenerates the PDF, updates the list', async () => {
+    const { auditId } = await (await save('orgA')).json();
+    const before = state.r2.get(`pdf/orgA/${auditId}.pdf`);
+    const res = await req('POST', `/api/audit-express/${auditId}/title`, { token: 'valid-token', body: { orgId: 'orgA', title: '  My Custom Audit <b>x</b> me@example.com  ' } });
+    expect(res.status).toBe(200);
+    const { title } = await res.json();
+    expect(title).toContain('My Custom Audit');
+    expect(title).not.toContain('me@example.com'); // PII scrubbed
+    expect(title).not.toContain('<b>');            // markup stripped
+    expect(state.r2.size).toBe(1);                 // same object, regenerated
+    expect(state.r2.get(`pdf/orgA/${auditId}.pdf`)).not.toEqual(before);
+    const list = await req('GET', '/api/audit-express/list?orgId=orgA', { token: 'valid-token' });
+    expect((await list.json()).items[0].title).toBe(title);
+  });
+
+  it('rename: anonymous -> AUTH_REQUIRED; non-member -> FORBIDDEN; missing -> NOT_FOUND', async () => {
+    const { auditId } = await (await save('orgA')).json();
+    const anon = await req('POST', `/api/audit-express/${auditId}/title`, { body: { orgId: 'orgA', title: 'X' } });
+    expect(anon.status).toBe(401);
+    const other = await req('POST', `/api/audit-express/${auditId}/title`, { token: 'valid-token', body: { orgId: 'orgB', title: 'X' } });
+    expect(other.status).toBe(403);
+    const missing = await req('POST', '/api/audit-express/does-not-exist/title', { token: 'valid-token', body: { orgId: 'orgA', title: 'X' } });
+    expect(missing.status).toBe(404);
+  });
+});

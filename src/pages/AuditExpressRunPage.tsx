@@ -83,23 +83,24 @@ export function AuditExpressRunPage() {
     background: variant === 'ghost' ? 'transparent' : 'var(--brand-gradient, var(--violet))',
     color: variant === 'ghost' ? 'var(--text-secondary)' : '#fff',
   });
-  const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 20, marginTop: 16 };
+  const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 22, marginTop: 14 };
+  const h2: CSSProperties = { fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.005em', color: 'var(--text-primary)' };
 
   const r = preview?.k2a.result;
   const u = snapshot?.understanding;
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>Run Audit Express</h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 8px' }}>A fast, estimate-only AI readiness snapshot — saved automatically to your workspace.</p>
+      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: '0 0 6px' }}>Run Audit Express</h1>
+      <p style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.5, margin: '0 0 4px' }}>A fast, estimate-only AI readiness snapshot — saved automatically to your workspace.</p>
 
       {error && <div style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', color: 'var(--amber-text)', borderRadius: 12, padding: '10px 14px', fontSize: 13.5, marginTop: 12 }}>{error}</div>}
 
       {phase === 'form' && (
         <div style={card}>
           {AX_QUESTIONS.map(q => (
-            <div key={q.key} style={{ margin: '14px 0' }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 8 }}>{q.label}</div>
+            <div key={q.key} style={{ margin: '18px 0' }}>
+              <div style={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.4, color: 'var(--text-secondary)', marginBottom: 10 }}>{q.label}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {q.options.map(o => (
                   <button key={o.value} type="button" style={chip(taps[q.key] === o.value)}
@@ -118,7 +119,7 @@ export function AuditExpressRunPage() {
       {phase === 'results' && r && (
         <>
           <div style={card}>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, margin: '0 0 12px' }}>ROI estimate (indicative)</h2>
+            <h2 style={{ ...h2, margin: '0 0 12px' }}>ROI estimate (indicative)</h2>
             <Metric label="Estimated time saved" value={`${r.estimatedTimeSavedHoursPerMonth} hours/month  (~${r.estimatedTimeSavedHoursPerMonth * 12} hours/year)`} />
             <Metric label="Estimated cost saved" value={`≈ ${usd(r.estimatedMonthlyCostSaved)}/mo  (~${usd(r.estimatedYearlyCostSaved)}/yr)`} />
             {r.estimatedPaybackMonths != null && <Metric label="Estimated payback" value={`≈ ${r.estimatedPaybackMonths} months`} />}
@@ -126,7 +127,7 @@ export function AuditExpressRunPage() {
           </div>
 
           <div style={card}>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, margin: '0 0 8px' }}>Analyze a public website (optional)</h2>
+            <h2 style={{ ...h2, margin: '0 0 8px' }}>Analyze a public website (optional)</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 10px' }}>Reads only public pages, respects robots.txt. Enriches “What this business does”.</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <input type="url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com"
@@ -140,7 +141,7 @@ export function AuditExpressRunPage() {
 
           {u && (
             <div style={card}>
-              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, margin: '0 0 10px' }}>What this business does</h2>
+              <h2 style={{ ...h2, margin: '0 0 10px' }}>What this business does</h2>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
                 <div><strong>Type:</strong> {u.businessProfile.businessType.replace(/_/g, ' ')} · <strong>Audience:</strong> {u.businessProfile.audience} · confidence {u.businessProfile.confidence}</div>
                 {u.businessProfile.offers.length > 0 && <div style={{ marginTop: 6 }}>Offers: {u.businessProfile.offers.map(o => o.tag).join(', ')}</div>}

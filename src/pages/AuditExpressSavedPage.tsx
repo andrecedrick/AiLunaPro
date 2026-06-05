@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import {
-  listSavedAudits, deleteSavedAudit, downloadSavedAudit, SavedAuditError, type SavedAuditItem,
+  listSavedAudits, deleteSavedAudit, downloadSavedAudit, renameAudit, SavedAuditError, type SavedAuditItem,
 } from '../lib/auditExpress/savedClient';
 
 /**
@@ -18,6 +18,8 @@ export function AuditExpressSavedPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // auditId currently acting on
   const [limitFor, setLimitFor] = useState<string | null>(null); // auditId hitting the free-PDF limit
+  const [editing, setEditing] = useState<string | null>(null);    // auditId being renamed
+  const [draft, setDraft] = useState('');
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -44,6 +46,16 @@ export function AuditExpressSavedPage() {
     setBusy(id); setError(null);
     try { await deleteSavedAudit(orgId, id); setItems(prev => (prev ?? []).filter(i => i.auditId !== id)); }
     catch { setError('Delete failed. Please try again.'); }
+    finally { setBusy(null); }
+  };
+  const startEdit = (it: SavedAuditItem) => { setEditing(it.auditId); setDraft(it.title); setError(null); };
+  const onRename = async (id: string) => {
+    setBusy(id); setError(null);
+    try {
+      const saved = await renameAudit(orgId, id, draft.trim());
+      setItems(prev => (prev ?? []).map(i => (i.auditId === id ? { ...i, title: saved } : i)));
+      setEditing(null);
+    } catch { setError('Could not rename. Please try again.'); }
     finally { setBusy(null); }
   };
 
@@ -93,22 +105,38 @@ export function AuditExpressSavedPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {items.map(it => (
             <div key={it.auditId} style={card}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, textTransform: 'capitalize' }}>
-                  {it.businessType.replace(/_/g, ' ')} · {it.audience}
-                </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {it.canonicalUrl ? it.canonicalUrl + ' · ' : ''}{new Date(it.createdAt).toLocaleString()} · engine {it.engineVersion || 'n/a'} · confidence {it.confidence}
-                </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                {editing === it.auditId ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input value={draft} maxLength={80} autoFocus onChange={e => setDraft(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') void onRename(it.auditId); if (e.key === 'Escape') setEditing(null); }}
+                      aria-label="Audit title"
+                      style={{ flex: '1 1 auto', minWidth: 0, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-strong)', fontSize: 14, fontFamily: 'var(--font-body)' }} />
+                    <button type="button" style={btn('primary')} disabled={busy === it.auditId} onClick={() => onRename(it.auditId)}>{busy === it.auditId ? '…' : 'Save'}</button>
+                    <button type="button" style={btn('ghost')} onClick={() => setEditing(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {it.title || `${it.businessType.replace(/_/g, ' ')} · ${it.audience}`}
+                    </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {it.canonicalUrl ? it.canonicalUrl + ' · ' : ''}{new Date(it.createdAt).toLocaleString()} · engine {it.engineVersion || 'n/a'} · confidence {it.confidence}
+                    </div>
+                  </>
+                )}
               </div>
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <button type="button" style={btn('primary')} disabled={busy === it.auditId} onClick={() => onDownload(it.auditId)}>
-                  {busy === it.auditId ? '…' : 'Download PDF'}
-                </button>
-                <button type="button" style={btn('ghost')} disabled={busy === it.auditId} onClick={() => onDelete(it.auditId)}>
-                  Delete
-                </button>
-              </div>
+              {editing !== it.auditId && (
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button type="button" style={btn('ghost')} disabled={busy === it.auditId} onClick={() => startEdit(it)}>Rename</button>
+                  <button type="button" style={btn('primary')} disabled={busy === it.auditId} onClick={() => onDownload(it.auditId)}>
+                    {busy === it.auditId ? '…' : 'Download PDF'}
+                  </button>
+                  <button type="button" style={btn('ghost')} disabled={busy === it.auditId} onClick={() => onDelete(it.auditId)}>
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

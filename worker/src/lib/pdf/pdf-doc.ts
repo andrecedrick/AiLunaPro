@@ -108,7 +108,8 @@ export class PdfBuilder {
     const bandH = 92;
     const top = PAGE_H; // page 1 starts here
     this.gradientBar(0, top - bandH, PAGE_W, bandH);
-    this.cur().push({ kind: 'text', x: MARGIN, y: top - 44, size: 22, font: 'bold', color: [1, 1, 1], text: title });
+    const titleFit = truncateToWidth(title, 'bold', 22, PAGE_W - MARGIN * 2);
+    this.cur().push({ kind: 'text', x: MARGIN, y: top - 44, size: 22, font: 'bold', color: [1, 1, 1], text: titleFit });
     this.cur().push({ kind: 'text', x: MARGIN, y: top - 66, size: 10, font: 'regular', color: [1, 1, 1], text: subtitle });
     this.y = top - bandH - 16;
   }
