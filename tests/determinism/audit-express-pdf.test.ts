@@ -139,6 +139,20 @@ describe('audit-express PDF — sources appendix', () => {
   });
 });
 
+describe('audit-express PDF — layout stability', () => {
+  const pageCount = (b: Uint8Array) => (latin1(b).match(/\/Type \/Page[^s]/g) || []).length;
+  it('page count is stable across identical builds', () => {
+    const a = pageCount(buildFull());
+    expect(a).toBeGreaterThanOrEqual(1);
+    expect(pageCount(buildFull())).toBe(a);
+  });
+  it('keeps the version stamp (long values wrapped, not overflowing)', () => {
+    const s = latin1(buildFull());
+    expect(s).toContain('Inputs hash');
+    expect(s).toContain('Engine');
+  });
+});
+
 describe('audit-express PDF — privacy', () => {
   const s = latin1(buildFull());
   it('never renders scrubbed email or phone', () => {

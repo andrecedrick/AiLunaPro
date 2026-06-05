@@ -36,9 +36,13 @@ describe('audit-express — section order', () => {
 });
 
 describe('public pages — favicon consistency', () => {
+  const FAVICON = 'https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png';
   for (const p of PAGES) {
-    it(`${p} links /favicon.svg`, () => {
-      expect(read(p)).toContain('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />');
+    it(`${p} uses the shared Cloudinary favicon`, () => {
+      const h = read(p);
+      expect(h).toContain(`<link rel="icon" type="image/png" href="${FAVICON}" />`);
+      expect(h).toContain(`<link rel="apple-touch-icon" href="${FAVICON}" />`);
+      expect(h).not.toContain('favicon.svg'); // no mixed manufacturers
     });
   }
 });

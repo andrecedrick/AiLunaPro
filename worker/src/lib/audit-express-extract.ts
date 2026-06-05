@@ -26,14 +26,18 @@ export const EXTRACTOR_MODEL_ID      = 'rules:none'; // explicit: no LLM
 export const EXTRACT_USER_AGENT =
   'AiLunaProAuditExpress/1.0 (+https://ailunapro.com/audit-express)';
 
-export const MAX_PAGES         = 5;            // homepage + 4 secondary
+export const MAX_PAGES         = 5;            // homepage + 4 secondary (quick)
 export const MAX_SECONDARY     = 4;
-export const MAX_PAGE_BYTES    = 512 * 1024;   // 512 KB stream cap
+export const MAX_SECONDARY_DEEP = 11;          // homepage + 11 secondary (deep, capped)
+export const MAX_PAGE_BYTES    = 512 * 1024;   // 512 KB stream cap (both modes)
 export const MAX_ROBOTS_BYTES  = 64 * 1024;
-export const FETCH_TIMEOUT_MS  = 5_000;
-export const TOTAL_BUDGET_MS   = 15_000;
-export const MAX_REDIRECTS     = 3;
-export const MAX_CONCURRENCY   = 2;
+export const MAX_SITEMAP_BYTES = 256 * 1024;   // deep-mode sitemap.xml read cap
+export const MAX_SITEMAP_LOCS  = 60;           // bound parsed <loc> entries
+export const FETCH_TIMEOUT_MS  = 5_000;        // unchanged
+export const TOTAL_BUDGET_MS   = 15_000;       // unchanged wall-clock budget (both modes)
+export const MAX_REDIRECTS     = 3;            // unchanged
+export const MAX_CONCURRENCY   = 2;            // unchanged
+export type ExtractDepth = 'quick' | 'deep';
 export const SECONDARY_KEYWORDS = ['about', 'pricing', 'services', 'contact', 'product'] as const;
 
 export const EXTRACT_NOTE =
@@ -195,6 +199,25 @@ export function parseRobots(txt: string, ua: string): { isAllowed: (path: string
  * Ranking: keyword priority (about, pricing, services, contact, product),
  * then lexicographic by canonical URL. Fully deterministic and pure.
  */
+/**
+ * Parse same-origin page URLs from a sitemap.xml body (deep mode discovery).
+ * PURE + bounded: at most MAX_SITEMAP_LOCS entries, same-origin only, nested
+ * sitemaps (.xml) skipped. Result is fed into selectSecondaryLinks, which
+ * dedupes + sorts deterministically and applies the page cap.
+ */
+export function parseSitemapLocs(xml: string, origin: string): string[] {
+  const out: string[] = [];
+  const re = /<loc>\s*([^<\s]+)\s*<\/loc>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null && out.length < MAX_SITEMAP_LOCS) {
+    const canon = canonicalizeUrlString(m[1].trim());
+    if (!canon || canon.toLowerCase().endsWith('.xml')) continue; // skip nested sitemaps
+    try { if (new URL(canon).origin !== origin) continue; } catch { continue; }
+    out.push(canon);
+  }
+  return out;
+}
+
 export function selectSecondaryLinks(homeUrl: string, links: string[], cap: number = MAX_SECONDARY): string[] {
   const home = canonicalizeUrlString(homeUrl);
   if (!home) return [];

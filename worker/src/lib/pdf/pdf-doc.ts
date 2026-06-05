@@ -18,6 +18,9 @@ const PAGE_H = 841.89;
 const MARGIN = 56;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const BOTTOM = MARGIN;
+// Content must stop above the footer band (footer rule at BOTTOM+14, text at
+// BOTTOM+4). Reserving this keeps body content from ever overlapping the footer.
+const CONTENT_BOTTOM = MARGIN + 24;
 
 interface TextOp { kind: 'text'; x: number; y: number; size: number; font: PdfFont; color: [number, number, number]; text: string }
 interface RectOp { kind: 'rect'; x: number; y: number; w: number; h: number; color: [number, number, number] }
@@ -59,7 +62,7 @@ export class PdfBuilder {
   }
 
   private ensure(h: number): void {
-    if (this.y - h < BOTTOM) this.newPage();
+    if (this.y - h < CONTENT_BOTTOM) this.newPage();
   }
 
   /* ── Public vector primitives + block reservation (used by pdf-charts.ts) ── */
@@ -112,21 +115,26 @@ export class PdfBuilder {
 
   /** Boxed "Version & integrity" card: label (bold) + value (monospace). */
   monoStamp(title: string, rows: Array<[string, string]>): void {
-    const size = 9, lineGap = 5, pad = 12, titleH = 16;
-    const boxH = pad * 2 + titleH + rows.length * (size + lineGap);
+    const size = 9, lineGap = 5, pad = 12, titleH = 16, valX = MARGIN + pad + 120;
+    const valW = CONTENT_W - 120 - pad * 2; // mono value column width (right-padded)
+    // Pre-wrap each value so long tokens (inputsHash / URLs) never overflow.
+    const wrapped = rows.map(([label, value]) => ({ label, lines: wrapText(value, 'mono', size, valW) }));
+    const totalLines = wrapped.reduce((n, r) => n + r.lines.length, 0);
+    const boxH = pad * 2 + titleH + totalLines * (size + lineGap);
     this.ensure(boxH + 8);
     const top = this.y;
     this.rectAbs(MARGIN, top - boxH, CONTENT_W, boxH, PDF_COLORS.surface2);
     this.rectAbs(MARGIN, top - boxH, 3, boxH, VIOLET); // accent rail
-    let ty = top - pad;
-    ty -= 12;
+    let ty = top - pad - 12;
     this.cur().push({ kind: 'text', x: MARGIN + pad, y: ty, size: 12, font: 'bold', color: INK, text: title });
     ty -= 8;
-    for (const [label, value] of rows) {
-      ty -= size;
-      this.cur().push({ kind: 'text', x: MARGIN + pad, y: ty, size, font: 'bold', color: MUTED, text: label });
-      this.cur().push({ kind: 'text', x: MARGIN + pad + 120, y: ty, size, font: 'mono', color: INK, text: value });
-      ty -= lineGap;
+    for (const row of wrapped) {
+      for (let i = 0; i < row.lines.length; i++) {
+        ty -= size;
+        if (i === 0) this.cur().push({ kind: 'text', x: MARGIN + pad, y: ty, size, font: 'bold', color: MUTED, text: row.label });
+        this.cur().push({ kind: 'text', x: valX, y: ty, size, font: 'mono', color: INK, text: row.lines[i] });
+        ty -= lineGap;
+      }
     }
     this.y = top - boxH - 12;
   }
@@ -261,13 +269,16 @@ export class PdfBuilder {
     }
   }
 
-  /** Small monospaced muted note (e.g. the raw rule id under an appendix entry). */
+  /** Small monospaced muted note (e.g. the raw rule id under an appendix entry).
+   *  Wraps long ids so they never overflow the right margin. */
   monoNote(text: string): void {
-    const size = 7.5;
-    this.ensure(size + 4);
-    this.y -= size;
-    this.cur().push({ kind: 'text', x: MARGIN + 14, y: this.y, size, font: 'mono', color: MUTED, text });
-    this.y -= 5;
+    const size = 7.5, indent = 14;
+    for (const line of wrapText(text, 'mono', size, CONTENT_W - indent)) {
+      this.ensure(size + 4);
+      this.y -= size;
+      this.cur().push({ kind: 'text', x: MARGIN + indent, y: this.y, size, font: 'mono', color: MUTED, text: line });
+      this.y -= 4;
+    }
   }
 
   /** Footer on every page: disclaimer + page number. Call once before serialize. */

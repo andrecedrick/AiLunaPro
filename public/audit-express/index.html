@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png" />
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png" />
 
     <!-- Indexable public surface (Phase 2). Explicitly index,follow. -->
     <meta name="robots" content="index, follow" />
@@ -313,6 +314,11 @@
           <input id="ax-url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
                  placeholder="https://example.com" aria-label="Public website URL" />
           <button class="cta" id="ax-analyze" type="button">Analyze site</button>
+        </div>
+        <div id="ax-depth" style="margin-top:10px;font-size:13px;color:var(--text-secondary);">
+          <span class="muted">Scan depth:</span>
+          <label style="margin-left:8px;"><input type="radio" name="ax-depth" value="quick" checked /> Quick <span class="muted">(recommended)</span></label>
+          <label style="margin-left:12px;"><input type="radio" name="ax-depth" value="deep" /> Deep <span class="muted">(slower, more pages)</span></label>
         </div>
         <p id="ax-extract-msg" class="muted" hidden></p>
         <p class="muted" style="margin-top:6px;">Complete the verification check above before analyzing.</p>
@@ -848,12 +854,14 @@
           var url = (urlInput.value || '').trim();
           if (!url) { setExMessage(EXTRACT_ERRORS.INVALID_URL); return; }
           if (!tsToken) { setExMessage('Please complete the verification check above first.'); return; }
-          analyze.disabled = true; analyze.textContent = 'Analyzing…';
+          var depthEl = document.querySelector('input[name="ax-depth"]:checked');
+          var depth = depthEl && depthEl.value === 'deep' ? 'deep' : 'quick';
+          analyze.disabled = true; analyze.textContent = depth === 'deep' ? 'Analyzing (deep)…' : 'Analyzing…';
           setExMessage(''); exResults.hidden = true;
           fetch(EXTRACT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: url, turnstileToken: tsToken }),
+            body: JSON.stringify({ url: url, turnstileToken: tsToken, depth: depth }),
           })
             .then(function (res) { return res.json().then(function (j) { return { status: res.status, json: j }; }); })
             .then(function (r) {

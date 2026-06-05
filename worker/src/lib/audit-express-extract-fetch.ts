@@ -18,10 +18,14 @@ import {
   parseRobots,
   extractPageSignals,
   selectSecondaryLinks,
+  parseSitemapLocs,
   assembleSnapshot,
   EXTRACT_USER_AGENT,
   MAX_PAGE_BYTES,
   MAX_ROBOTS_BYTES,
+  MAX_SITEMAP_BYTES,
+  MAX_SECONDARY,
+  MAX_SECONDARY_DEEP,
   FETCH_TIMEOUT_MS,
   TOTAL_BUDGET_MS,
   MAX_REDIRECTS,
@@ -29,6 +33,7 @@ import {
   type PageCapture,
   type ExtractSnapshot,
   type ExtractErrorCode,
+  type ExtractDepth,
 } from './audit-express-extract';
 import { understand } from './audit-express-understanding';
 
@@ -172,11 +177,12 @@ async function runPool(urls: string[], deadline: number): Promise<PageCapture[]>
  * Orchestrate the full V1-lite extraction. Turnstile + rate limit are enforced
  * by the route BEFORE this is called.
  */
-export async function runExtraction(rawUrl: string): Promise<RunResult> {
+export async function runExtraction(rawUrl: string, depth: ExtractDepth = 'quick'): Promise<RunResult> {
   const v = validateAndCanonicalizeUrl(rawUrl);
   if (!v.ok) return { ok: false, code: v.code };
 
   const deadline = Date.now() + TOTAL_BUDGET_MS;
+  const cap = depth === 'deep' ? MAX_SECONDARY_DEEP : MAX_SECONDARY;
 
   // robots.txt (conservative: missing/5xx => allow root only).
   const robotsRes = await cappedFetch(v.origin + '/robots.txt', MAX_ROBOTS_BYTES);
@@ -193,7 +199,17 @@ export async function runExtraction(rawUrl: string): Promise<RunResult> {
 
   // Deterministic secondary selection (only if homepage parsed).
   if (homeCapture.signals) {
-    const candidates = selectSecondaryLinks(v.url, homeCapture.signals.links);
+    let candidateLinks = homeCapture.signals.links;
+    // Deep mode: also discover same-origin pages from sitemap.xml (robots-gated,
+    // byte-capped, no nested sitemaps). Merged candidates are still deduped,
+    // sorted and capped deterministically by selectSecondaryLinks.
+    if (depth === 'deep' && robots.isAllowed('/sitemap.xml') && Date.now() < deadline) {
+      const sm = await cappedFetch(v.origin + '/sitemap.xml', MAX_SITEMAP_BYTES);
+      if (sm.ok && sm.bodyText) {
+        candidateLinks = [...candidateLinks, ...parseSitemapLocs(sm.bodyText, v.origin)];
+      }
+    }
+    const candidates = selectSecondaryLinks(v.url, candidateLinks, cap);
     const allowed = candidates.filter(u => {
       try { return robots.isAllowed(new URL(u).pathname || '/'); } catch { return false; }
     });

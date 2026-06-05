@@ -27,11 +27,16 @@ function installFetch(opts: {
   homeHtml?: string;
   homeRedirectTo?: string;       // if set, homepage returns 301 to this
   big?: boolean;                 // homepage body > 512KB
+  sitemap?: string;              // if set, /sitemap.xml returns this body (deep mode)
 }) {
   fetched = [];
   const { turnstile = true, robots = '', homeHtml = HOME_HTML } = opts;
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     fetched.push(url);
+    if (String(url).endsWith('/sitemap.xml')) {
+      if (opts.sitemap == null) return new Response('not found', { status: 404 });
+      return new Response(opts.sitemap, { status: 200, headers: { 'content-type': 'application/xml' } });
+    }
     if (String(url).includes('siteverify')) {
       return new Response(JSON.stringify({ success: turnstile, 'error-codes': turnstile ? [] : ['x'] }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
@@ -147,5 +152,38 @@ describe('extract route — determinism', () => {
     delete a.createdAt; delete b.createdAt;
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     expect(a.inputsHash).toBe(b.inputsHash);
+  });
+});
+
+describe('extract route — scan depth', () => {
+  const SITEMAP = `<?xml version="1.0"?><urlset>${
+    Array.from({ length: 20 }, (_, i) => `<url><loc>https://acme.example/p${i}</loc></url>`).join('')
+  }<url><loc>https://other.example/x</loc></url><sitemap><loc>https://acme.example/nested.xml</loc></sitemap></urlset>`;
+
+  it('quick is the default and does NOT fetch sitemap.xml', async () => {
+    installFetch({ sitemap: SITEMAP, robots: 'User-agent: *\nAllow: /' });
+    const res = await post({ url: 'https://acme.example/', turnstileToken: 'good' });
+    expect(res.status).toBe(200);
+    expect(fetched.some(u => u.endsWith('/sitemap.xml'))).toBe(false);
+  });
+
+  it('deep fetches sitemap and more pages, still capped + same-origin only', async () => {
+    installFetch({ sitemap: SITEMAP, robots: 'User-agent: *\nAllow: /' });
+    const res = await post({ url: 'https://acme.example/', turnstileToken: 'good', depth: 'deep' });
+    expect(res.status).toBe(200);
+    expect(fetched.some(u => u.endsWith('/sitemap.xml'))).toBe(true);
+    const pageFetches = fetched.filter(u =>
+      !u.endsWith('/robots.txt') && !u.includes('siteverify') && !u.endsWith('/sitemap.xml'));
+    expect(pageFetches.length).toBeGreaterThan(5);          // richer than quick (1 + 4)
+    expect(pageFetches.length).toBeLessThanOrEqual(1 + 11);  // homepage + MAX_SECONDARY_DEEP
+    expect(fetched.every(u => !u.includes('other.example'))).toBe(true); // cross-origin excluded
+    expect(fetched.every(u => !u.endsWith('nested.xml'))).toBe(true);    // nested sitemaps skipped
+  });
+
+  it('invalid depth value falls back to quick (no sitemap fetch)', async () => {
+    installFetch({ sitemap: SITEMAP, robots: 'User-agent: *\nAllow: /' });
+    const res = await post({ url: 'https://acme.example/', turnstileToken: 'good', depth: 'everything' });
+    expect(res.status).toBe(200);
+    expect(fetched.some(u => u.endsWith('/sitemap.xml'))).toBe(false);
   });
 });

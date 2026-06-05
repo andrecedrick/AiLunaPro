@@ -6,6 +6,8 @@ import {
   isPrivateIpv4,
   parseRobots,
   selectSecondaryLinks,
+  parseSitemapLocs,
+  MAX_SITEMAP_LOCS,
   extractPageSignals,
   scrubPii,
   detect,
@@ -176,5 +178,28 @@ describe('extract — snapshot determinism & privacy', () => {
     expect(/@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(text)).toBe(false); // no email-like
     expect(snap.identity.title).toContain('[redacted-email]');
     expect(snap.identity.title).toContain('[redacted-phone]');
+  });
+});
+
+describe('parseSitemapLocs (deep-mode discovery) — pure + bounded', () => {
+  it('keeps same-origin page locs, skips cross-origin + nested .xml', () => {
+    const xml = `<urlset>
+      <url><loc>https://acme.example/a</loc></url>
+      <url><loc>https://acme.example/b</loc></url>
+      <url><loc>https://evil.example/x</loc></url>
+      <sitemap><loc>https://acme.example/nested.xml</loc></sitemap>
+    </urlset>`;
+    const locs = parseSitemapLocs(xml, 'https://acme.example');
+    expect(locs.some(u => u.includes('/a'))).toBe(true);
+    expect(locs.some(u => u.includes('/b'))).toBe(true);
+    expect(locs.some(u => u.includes('evil.example'))).toBe(false);
+    expect(locs.some(u => u.endsWith('.xml'))).toBe(false);
+  });
+  it('is deterministic and caps at MAX_SITEMAP_LOCS', () => {
+    const many = Array.from({ length: MAX_SITEMAP_LOCS + 25 }, (_, i) => `<url><loc>https://acme.example/p${i}</loc></url>`).join('');
+    const a = parseSitemapLocs(`<urlset>${many}</urlset>`, 'https://acme.example');
+    const b = parseSitemapLocs(`<urlset>${many}</urlset>`, 'https://acme.example');
+    expect(a.length).toBe(MAX_SITEMAP_LOCS);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });

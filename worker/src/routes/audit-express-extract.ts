@@ -80,7 +80,9 @@ extract.post('/api/public/audit-express/extract', async c => {
   }
 
   // 4. Run the capped, deterministic, compute-only extraction.
-  const result = await runExtraction(url);
+  //    depth is a strict enum; anything other than 'deep' falls back to 'quick'.
+  const depth = obj.depth === 'deep' ? 'deep' : 'quick';
+  const result = await runExtraction(url, depth);
   if (!result.ok) {
     return c.json({ error: MESSAGE[result.code], code: result.code }, HTTP_STATUS[result.code]);
   }
