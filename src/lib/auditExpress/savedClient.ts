@@ -57,6 +57,30 @@ export async function listSavedAudits(orgId: string): Promise<SavedAuditItem[]> 
   return Array.isArray(j.items) ? j.items : [];
 }
 
+export interface SavedAuditDetail {
+  auditId: string;
+  title: string;
+  createdAt: string;
+  engineVersion: string;
+  canonicalUrl: string;
+  confidence: string;
+  businessType: string;
+  audience: string;
+  preview: unknown | null;
+  understanding: unknown | null;
+}
+
+/** Full (recomputed, non-PII) view of one saved audit. */
+export async function getSavedAuditDetail(orgId: string, auditId: string): Promise<SavedAuditDetail> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/detail/${encodeURIComponent(auditId)}?${q(orgId)}`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  const j = await res.json().catch(() => null) as (SavedAuditDetail & { code?: string }) | null;
+  if (!res.ok || !j) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
+  return j;
+}
+
 /** Authenticated in-app preview (no Turnstile). Same deterministic engine. */
 export async function runPreview(orgId: string, taps: unknown): Promise<unknown> {
   const idToken = await getIdToken();

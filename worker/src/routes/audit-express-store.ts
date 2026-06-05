@@ -229,6 +229,49 @@ store.get('/api/audit-express/list', async c => {
   return c.json({ items });
 });
 
+store.get('/api/audit-express/detail/:auditId', async c => {
+  const env = c.env as StoreBindings;
+  const orgId = safeId(c.req.query('orgId'));
+  const auditId = safeId(c.req.param('auditId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${auditId}`);
+  if (!doc) { c.header('Cache-Control', 'no-store'); return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404); }
+
+  // Recompute the non-PII view from stored inputs — never return snapshotJson / pdfKey.
+  let preview: ReturnType<typeof computePreview> | null = null;
+  let understanding: Understanding | undefined;
+  let workflow = '';
+  try {
+    const snap = JSON.parse(typeof doc.snapshotJson === 'string' ? doc.snapshotJson : '{}') as { taps?: unknown; extractSnapshot?: ExtractSnapshot | null };
+    workflow = (snap.taps as { workflow?: string } | undefined)?.workflow ?? '';
+    preview = computePreview(snap.taps as PreviewTaps);
+    const extractSnapshot = snap.extractSnapshot ?? undefined;
+    understanding = extractSnapshot ? understand(extractSnapshot) : undefined;
+  } catch (err) {
+    dlog(env as Record<string, unknown>, '[audit-express-store] DETAIL_RECOMPUTE_FAILED', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
+    c.header('Cache-Control', 'no-store');
+    return c.json({ error: 'Could not load this audit.', code: 'DETAIL_UNAVAILABLE' }, 500);
+  }
+
+  const businessType = String(doc.businessType ?? 'unknown');
+  const audience = String(doc.audience ?? 'unknown');
+  c.header('Cache-Control', 'no-store');
+  return c.json({
+    auditId,
+    title: (typeof doc.title === 'string' && doc.title) ? doc.title : deriveAuditTitle(businessType, audience, String(doc.canonicalUrl ?? ''), workflow),
+    createdAt: String(doc.createdAt ?? ''),
+    engineVersion: String(doc.engineVersion ?? ''),
+    canonicalUrl: String(doc.canonicalUrl ?? ''),
+    confidence: String(doc.confidence ?? 'low'),
+    businessType,
+    audience,
+    preview,
+    understanding: understanding ?? null,
+  });
+});
+
 store.get('/api/audit-express/file/:auditId', async c => {
   const env = c.env as StoreBindings;
   const orgId = safeId(c.req.query('orgId'));

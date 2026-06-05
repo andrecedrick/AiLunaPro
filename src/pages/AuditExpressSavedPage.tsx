@@ -117,9 +117,11 @@ export function AuditExpressSavedPage() {
                   </div>
                 ) : (
                   <>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <button type="button" onClick={() => navigate({ name: 'audit-express/detail', auditId: it.auditId })}
+                      title="View details"
+                      style={{ display: 'block', maxWidth: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {it.title || `${it.businessType.replace(/_/g, ' ')} · ${it.audience}`}
-                    </div>
+                    </button>
                     <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {it.canonicalUrl ? it.canonicalUrl + ' · ' : ''}{new Date(it.createdAt).toLocaleString()} · engine {it.engineVersion || 'n/a'} · confidence {it.confidence}
                     </div>
@@ -128,6 +130,7 @@ export function AuditExpressSavedPage() {
               </div>
               {editing !== it.auditId && (
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button type="button" style={btn('ghost')} onClick={() => navigate({ name: 'audit-express/detail', auditId: it.auditId })}>View</button>
                   <button type="button" style={btn('ghost')} disabled={busy === it.auditId} onClick={() => startEdit(it)}>Rename</button>
                   <button type="button" style={btn('primary')} disabled={busy === it.auditId} onClick={() => onDownload(it.auditId)}>
                     {busy === it.auditId ? '…' : 'Download PDF'}

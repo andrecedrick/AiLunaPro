@@ -43,6 +43,7 @@ const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ 
 const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
 const AuditExpressSavedPage = lazy(() => import('./pages/AuditExpressSavedPage').then(m => ({ default: m.AuditExpressSavedPage })));
 const AuditExpressRunPage   = lazy(() => import('./pages/AuditExpressRunPage').then(m => ({ default: m.AuditExpressRunPage })));
+const AuditExpressDetailPage = lazy(() => import('./pages/AuditExpressDetailPage').then(m => ({ default: m.AuditExpressDetailPage })));
 
 /* Data-layer providers (Firestore-backed) — lazy so the firestore chunk stays
    off the eager boot/login path; mounted only around authenticated content. */
@@ -110,6 +111,8 @@ function PageOutlet() {
         return <AuditExpressSavedPage />;
       case 'audit-express/run':
         return <AuditExpressRunPage />;
+      case 'audit-express/detail':
+        return <AuditExpressDetailPage />;
       case 'dashboard':
       default:
         return <DashboardPage />;
@@ -239,6 +242,9 @@ function AppShell() {
       navigate({ name: 'operator' });
     } else if (h.startsWith('#/system-builder')) {
       navigate({ name: 'system-builder' });
+    } else if (h.startsWith('#/audit-express/detail/')) {
+      const id = decodeURIComponent(h.slice('#/audit-express/detail/'.length).split(/[?#]/)[0]);
+      navigate(id ? { name: 'audit-express/detail', auditId: id } : { name: 'audit-express/saved' });
     } else if (h.startsWith('#/audit-express/saved')) {
       navigate({ name: 'audit-express/saved' });
     } else if (h.startsWith('#/audit-express/run')) {

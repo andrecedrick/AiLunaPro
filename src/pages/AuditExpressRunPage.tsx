@@ -5,22 +5,9 @@ import { AX_QUESTIONS } from '../lib/auditExpress/questions';
 import { runPreview, runExtract, saveAudit, deleteSavedAudit, SavedAuditError } from '../lib/auditExpress/savedClient';
 import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
+import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
 
-interface RoiResult {
-  estimatedTimeSavedHoursPerMonth: number;
-  estimatedMonthlyCostSaved: number;
-  estimatedYearlyCostSaved: number;
-  estimatedPaybackMonths: number | null;
-}
-interface Preview { engineVersion: string; k1a: { normalizedScore: number; bucket: string }; k2a: { result: RoiResult } }
-interface Understanding {
-  businessProfile: { businessType: string; audience: string; confidence: string; offers: { tag: string }[] };
-  automationHeadline?: string;
-  automationOpportunities: { id: string; title: string; impact: string; effort: string }[];
-}
-interface Snapshot { understanding?: Understanding; canonicalUrl?: string }
-
-const usd = (n: number) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
+interface Snapshot { understanding?: AuditUnderstanding; canonicalUrl?: string }
 
 export function AuditExpressRunPage() {
   const { session } = useAuth();
@@ -29,7 +16,7 @@ export function AuditExpressRunPage() {
 
   const [taps, setTaps] = useState<Record<string, string>>({});
   const [phase, setPhase] = useState<'form' | 'results'>('form');
-  const [preview, setPreview] = useState<Preview | null>(null);
+  const [preview, setPreview] = useState<AuditPreview | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [auditId, setAuditId] = useState<string>('');
   const [busy, setBusy] = useState<string>(''); // 'preview' | 'analyze' | ''
@@ -59,7 +46,7 @@ export function AuditExpressRunPage() {
     setBusy('preview'); setError(null);
     const when = new Date().toISOString();
     try {
-      const p = await runPreview(orgId, taps) as Preview;
+      const p = await runPreview(orgId, taps) as AuditPreview;
       setPreview(p); setPhase('results'); setSnapshot(null);
       createdAtRef.current = when; auditIdRef.current = ''; setAuditId('');
       void persist(null);
@@ -95,9 +82,6 @@ export function AuditExpressRunPage() {
   const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 22, marginTop: 14 };
   const h2: CSSProperties = { fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.005em', color: 'var(--text-primary)' };
 
-  const r = preview?.k2a.result;
-  const u = snapshot?.understanding;
-
   return (
     <div style={{ maxWidth: 760 }}>
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: '0 0 6px' }}>Run Audit Express</h1>
@@ -125,15 +109,9 @@ export function AuditExpressRunPage() {
         </div>
       )}
 
-      {phase === 'results' && r && (
+      {phase === 'results' && preview && (
         <>
-          <div style={card}>
-            <h2 style={{ ...h2, margin: '0 0 12px' }}>ROI estimate (indicative)</h2>
-            <Metric label="Estimated time saved" value={`${r.estimatedTimeSavedHoursPerMonth} hours/month  (~${r.estimatedTimeSavedHoursPerMonth * 12} hours/year)`} />
-            <Metric label="Estimated cost saved" value={`≈ ${usd(r.estimatedMonthlyCostSaved)}/mo  (~${usd(r.estimatedYearlyCostSaved)}/yr)`} />
-            {r.estimatedPaybackMonths != null && <Metric label="Estimated payback" value={`≈ ${r.estimatedPaybackMonths} months`} />}
-            {preview && <Metric label="AI readiness (indicative)" value={`${preview.k1a.bucket} (${preview.k1a.normalizedScore}/100)`} />}
-          </div>
+          <AuditResultView preview={preview} understanding={snapshot?.understanding ?? null} />
 
           <div style={card}>
             <h2 style={{ ...h2, margin: '0 0 8px' }}>Analyze a public website (optional)</h2>
@@ -147,27 +125,6 @@ export function AuditExpressRunPage() {
               <input type="checkbox" checked={depth === 'deep'} onChange={e => setDepth(e.target.checked ? 'deep' : 'quick')} /> Deep scan (slower, more pages)
             </label>
           </div>
-
-          {u && (
-            <div style={card}>
-              <h2 style={{ ...h2, margin: '0 0 10px' }}>What this business does</h2>
-              <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-                <div><strong>Type:</strong> {u.businessProfile.businessType.replace(/_/g, ' ')} · <strong>Audience:</strong> {u.businessProfile.audience} · confidence {u.businessProfile.confidence}</div>
-                {u.businessProfile.offers.length > 0 && <div style={{ marginTop: 6 }}>Offers: {u.businessProfile.offers.map(o => o.tag).join(', ')}</div>}
-              </div>
-              {u.automationOpportunities.length > 0 && (
-                <>
-                  <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 15, fontWeight: 700, margin: '14px 0 6px' }}>Automation opportunities</h3>
-                  {u.automationHeadline && <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginBottom: 6 }}>{u.automationHeadline}</div>}
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {u.automationOpportunities.map(o => (
-                      <li key={o.id} style={{ fontSize: 13.5, margin: '5px 0', color: 'var(--text-secondary)' }}>{o.title} — {o.impact} impact / {o.effort} effort</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </div>
-          )}
 
           <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button type="button" style={cta('primary')} disabled={!auditId || pdf.busy === auditId} onClick={() => pdf.download(auditId)}>
@@ -187,15 +144,6 @@ export function AuditExpressRunPage() {
         onBuyTokens={() => { pdf.setLimitFor(null); navigate({ name: 'billing/tokens' }); }}
         onCancel={() => pdf.setLimitFor(null)}
       />
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{label}</span>
-      <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: 14 }}>{value}</span>
     </div>
   );
 }

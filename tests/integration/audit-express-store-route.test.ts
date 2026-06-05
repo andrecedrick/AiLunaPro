@@ -266,3 +266,29 @@ describe('store route — titles + rename', () => {
     expect(missing.status).toBe(404);
   });
 });
+
+describe('store route — detail view (recomputed, no leak)', () => {
+  it('member -> 200 with preview + understanding; never leaks snapshotJson/pdfKey', async () => {
+    const { auditId } = await (await save('orgA')).json();
+    const res = await req('GET', `/api/audit-express/detail/${auditId}?orgId=orgA`, { token: 'valid-token' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const j = await res.json();
+    expect(j.preview?.k2a?.result?.estimatedMonthlyCostSaved).toBeGreaterThanOrEqual(0);
+    expect(j.understanding).toBeTruthy();
+    expect(j.title).toBeTruthy();
+    const raw = JSON.stringify(j);
+    expect(raw).not.toContain('snapshotJson');
+    expect(raw).not.toContain('pdfKey');
+  });
+
+  it('anonymous -> AUTH_REQUIRED; non-member -> FORBIDDEN; missing -> NOT_FOUND', async () => {
+    const { auditId } = await (await save('orgA')).json();
+    const anon = await req('GET', `/api/audit-express/detail/${auditId}?orgId=orgA`);
+    expect(anon.status).toBe(401);
+    const other = await req('GET', `/api/audit-express/detail/${auditId}?orgId=orgB`, { token: 'valid-token' });
+    expect(other.status).toBe(403);
+    const missing = await req('GET', '/api/audit-express/detail/nope?orgId=orgA', { token: 'valid-token' });
+    expect(missing.status).toBe(404);
+  });
+});
