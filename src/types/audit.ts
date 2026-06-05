@@ -87,6 +87,7 @@ export type Route =
   | { name: 'roi-calculator' }
   | { name: 'help' }
   | { name: 'system-builder' }
+  | { name: 'audit-express/saved' }
   | { name: 'accept-invite' };
 
 export type RouteName = Route['name'];
