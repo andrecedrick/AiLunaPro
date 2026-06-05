@@ -2841,6 +2841,32 @@ clôture finale sur `a5ed442` (3 changements gatés).
 - **Différé (J15 P1.1, gaté)** : Save + Hosted PDF (R2) + signed download link (org-scoped,
   no IDOR) — plan à approuver.
 
+**✅ J15 P1.1 + J16.1 — "Save + Hosted PDF (R2) + continuity + PDF fair-usage"** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-05.
+- **`f08fb9a` (P1.1 backend)** : R2 bucket `ailunapro-audit-pdfs` (binding wrangler dev+prod) ;
+  `firestoreDelete` ; routes auth-gated org-scoped `POST /api/audit-express/save`, `GET …/list`,
+  `GET …/file/:auditId` (stream R2), `DELETE …/:auditId`. Auth via `verifyIdToken` → 401
+  `AUTH_REQUIRED` ; membership `organizations/{orgId}/members/{uid}` → 403 `FORBIDDEN` (no IDOR) ;
+  no-store ; clés R2 org-préfixées (`pdf/{orgId}/{auditId}.pdf`) ; list = metadata only (jamais
+  `snapshotJson`/`pdfKey`). `firestore.rules` : `auditExpress` read-membres, write-deny (worker SA).
+- **`e8c1193` (P1.1 SPA)** : page in-app "Saved Audit Express" (list/download/delete) + nav Sidebar
+  "Saved Audits" + route `audit-express/saved` + deep-link ; `savedClient` (token Firebase + orgId).
+- **`2c6fb6f` (J16.1)** : (1) **Continuité** — page statique persiste l'audit anonyme en localStorage
+  (`ailunapro.auditExpress.pending`, no PII) ; après login l'app auto-save + ouvre Saved Audits
+  (jamais perdu). (2) **Auto-save dedup** — `auditId = stableHash(inputsHash|engineVersion|createdAt)`
+  idempotent. (3) **Quota PDF** — `audit-express-quota.ts` : 3 downloads gratuits/user puis **10
+  tokens** (`audit_express.pdf`, `consumeTokens` atomique idempotent) ; over-limit → 402
+  `PDF_LIMIT_REACHED`, solde insuffisant → 402 `TOKENS_INSUFFICIENT` ; modal SPA "Use tokens &
+  download / buy tokens". (4) **Auth UX** — Download statique ouvre l'account-gate modal (déjà OK).
+- **Garde-fous** : ROI non inflaté ; no legal/cert claims ; no PII (snapshot scrubbed, uid+counts) ;
+  **Stripe = seule source billing** (tokens via ledger existant) ; déterminisme PDF (mêmes inputs+
+  createdAt → bytes identiques) ; org isolation/SSRF intacts ; CSP Report-Only ; no new deps.
+- **Gates** : vitest **279 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS · worktree
+  clean. **0 must-fix.** Prod vérifié opérateur (continuité signup/login, auto-save, quota 3-free
+  puis tokens, AUTH UX propre, no-IDOR).
+- **Prérequis opérateur** : bucket R2 créé + binding `AUDIT_PDFS` (fait).
+- **Différé (gaté)** : option HMAC signed-link partageable sans login ; quota sur route inline `/pdf`
+  (non exposée UI) ; flow capture+save in-app dédié.
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
