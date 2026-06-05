@@ -2814,6 +2814,33 @@ Polish SEO/GEO sur les 8 pages publiques (pas de nouvelle route).
   validator) ; aucun X-Robots-Tag leak sur pages indexables.
 - **Différé (gaté)** : asset OG designé (remplacer placeholder) ; CSP enforce (étape dédiée).
 
+**✅ J16 — "Auth-gated PDF + honest ROI presentation + verification UX"** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-05.
+Note : ce cycle regroupe plusieurs petits batches /audit-express prod-vérifiés (favicons
+Cloudinary, deep-scan, sector detection enrichie, back-to-top public, PDF premium) ;
+clôture finale sur `a5ed442` (3 changements gatés).
+- **Commit `a5ed442`** : (1) **PDF export auth-gated** — `worker/src/middleware/auth.ts` `verifyIdToken()`
+  réutilisable ; route `/api/public/audit-express/pdf` exige un Firebase ID token (anonyme/
+  invalide → **401 `AUTH_REQUIRED`**, no-store), Turnstile retiré de la route PDF (auth =
+  vrai gate ; preview/extract restent publics + Turnstile). Page statique : modal "account
+  gate" (Create account `/#/signup` · Sign in `/#/login`) sur Download PDF. (2) **ROI honnête
+  marketing** — temps + coût mensuel **et annualisé**, tuiles **scénarios** Conservative/
+  Typical(1.0×)/Ambitious (0.8/1.0/1.2× labellisés "indicative, not guaranteed"), drivers +
+  assumptions + CTA renforcé. **Aucune inflation** : moteur ROI inchangé, déterministe.
+  (3) **Modal "Please confirm you're human"** pour tout `TURNSTILE_*` (preview/extract) —
+  Verify now (reset+scroll widget) / Cancel ; copy non-technique.
+- **Commits antérieurs du cycle (prod-vérifiés)** : `cd6b757` (favicons Cloudinary 8 pages +
+  deep-scan sitemap), `fb876a8` (favicon app-shell, sector detection via headings/nav/keywords
+  + contentSignals, business block premium, PDF truncate), `59383f9` (human modal v1, ROI
+  annualisé v1, back-to-top public `back-to-top.js`).
+- **Garde-fous** : no PII (scrub email/phone, bounded signals) ; no legal/cert claims ;
+  déterminisme PDF (mêmes inputs+createdAt → bytes identiques) + extraction (même capture →
+  même snapshot) ; auth/billing/Stripe/analytics inchangés ; CSP Report-Only ; cache inchangé.
+- **Gates** : vitest **270 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS ·
+  worktree clean. **0 must-fix.** Prod vérifié opérateur (anonyme→AUTH_REQUIRED + gate ;
+  authed→200 pdf+CORS+no-store ; modal OK ; ROI mensuel+annuel+scénarios déterministe).
+- **Différé (J15 P1.1, gaté)** : Save + Hosted PDF (R2) + signed download link (org-scoped,
+  no IDOR) — plan à approuver.
+
 Prochaine étape : scope J14 à définir (gaté).
 
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
