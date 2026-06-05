@@ -139,6 +139,24 @@ describe('audit-express PDF — sources appendix', () => {
   });
 });
 
+describe('audit-express PDF — long-value wrapping (no overflow)', () => {
+  function longUrlPdf() {
+    const longUrl = 'https://acme.example/' + 'very-long-path-segment-'.repeat(8);
+    const caps: PageCapture[] = [
+      { url: longUrl, status: 200, contentType: 'text/html', signals: extractPageSignals(HTML) },
+    ];
+    const ex = assembleSnapshot(longUrl, caps);
+    return buildAuditExpressPdf({ createdAt: CREATED, preview: computePreview(TAPS), extractSnapshot: ex, understanding: understand(ex) });
+  }
+  it('renders a long Analyzed URL deterministically and stays a valid PDF', () => {
+    const a = longUrlPdf(), b = longUrlPdf();
+    expect(bytesEqual(a, b)).toBe(true);
+    const s = latin1(a);
+    expect(s.startsWith('%PDF-1.4')).toBe(true);
+    expect(s.trimEnd().endsWith('%%EOF')).toBe(true);
+  });
+});
+
 describe('audit-express PDF — layout stability', () => {
   const pageCount = (b: Uint8Array) => (latin1(b).match(/\/Type \/Page[^s]/g) || []).length;
   it('page count is stable across identical builds', () => {

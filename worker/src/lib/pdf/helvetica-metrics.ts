@@ -57,6 +57,16 @@ function charWidth(code: number, font: PdfFont, size: number): number {
   return (table[code - 32] / 1000) * size;
 }
 
+/** Truncate text with an ellipsis so it fits maxWidth (points). Deterministic. */
+export function truncateToWidth(text: string, font: PdfFont, size: number, maxWidth: number): string {
+  const clean = asciiSanitize(text);
+  if (measureText(clean, font, size) <= maxWidth) return clean;
+  const ell = '...';
+  let s = clean;
+  while (s.length > 1 && measureText(s + ell, font, size) > maxWidth) s = s.slice(0, -1);
+  return s + ell;
+}
+
 /** Measure an already-sanitized string at the given font size (points). */
 export function measureText(text: string, font: PdfFont, size: number): number {
   let w = 0;

@@ -267,11 +267,48 @@ export interface PageSignals {
   twitter:       Record<string, string>;
   scriptSrcs:    string[];   // deduped + sorted
   links:         string[];   // raw hrefs (for selection)
+  headings:      string[];   // H1/H2 text, decoded + PII-scrubbed, bounded (<=12, <=120 chars)
+  navLabels:     string[];   // anchor text inside <nav>, decoded + scrubbed, bounded (<=20, <=60)
+  keywords:      string[];   // top visible-text tokens (lowercased alpha, stopword-filtered), bounded (<=30)
 }
 
 function firstMatch(re: RegExp, html: string): string | null {
   const m = re.exec(html);
   return m ? (m[1] ?? '').trim() : null;
+}
+
+/** Strip script/style blocks then all tags; collapse whitespace. */
+function stripToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'you', 'your', 'our', 'are', 'this', 'that', 'from', 'have',
+  'will', 'can', 'all', 'more', 'get', 'about', 'home', 'page', 'menu', 'here', 'click',
+  'learn', 'read', 'view', 'see', 'use', 'using', 'how', 'what', 'why', 'who', 'when',
+  'their', 'them', 'they', 'has', 'was', 'were', 'been', 'into', 'out', 'now', 'new',
+  'we', 'us', 'is', 'to', 'of', 'in', 'on', 'at', 'by', 'or', 'an', 'as', 'be', 'it',
+]);
+
+/** Deterministic top visible-text tokens (lowercased alpha, stopword-filtered). */
+function topKeywords(html: string): string[] {
+  const words = stripToText(html).toLowerCase().match(/[a-z]{4,}/g) || [];
+  const freq = new Map<string, number>();
+  for (let i = 0; i < words.length && i < 5000; i++) {
+    const w = words[i];
+    if (STOPWORDS.has(w)) continue;
+    freq.set(w, (freq.get(w) || 0) + 1);
+  }
+  return [...freq.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)) // freq desc, then alpha
+    .slice(0, 30)
+    .map(e => e[0])
+    .sort();
 }
 
 function decodeEntities(s: string): string {
@@ -325,6 +362,27 @@ export function extractPageSignals(html: string): PageSignals {
     if (linkSet.size >= 500) break; // bound
   }
 
+  // Headings (H1/H2) — decoded, PII-scrubbed, bounded.
+  const headings: string[] = [];
+  const hRe = /<(h1|h2)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let hm: RegExpExecArray | null;
+  while ((hm = hRe.exec(lower)) !== null && headings.length < 12) {
+    const t = (scrubPii(decodeEntities(stripToText(hm[2] ?? ''))) ?? '').trim();
+    if (t) headings.push(t.slice(0, 120));
+  }
+
+  // Nav labels — anchor text inside <nav>…</nav>, decoded, scrubbed, bounded.
+  const navLabels: string[] = [];
+  const navBlocks = lower.match(/<nav[^>]*>[\s\S]*?<\/nav>/gi) || [];
+  for (const block of navBlocks) {
+    const aTextRe = /<a[^>]*>([\s\S]*?)<\/a>/gi;
+    let nm: RegExpExecArray | null;
+    while ((nm = aTextRe.exec(block)) !== null && navLabels.length < 20) {
+      const t = (scrubPii(decodeEntities(stripToText(nm[1] ?? ''))) ?? '').trim();
+      if (t && t.length <= 60) navLabels.push(t);
+    }
+  }
+
   return {
     title:         title ? decodeEntities(title) : null,
     description:   description ? decodeEntities(description) : null,
@@ -337,6 +395,9 @@ export function extractPageSignals(html: string): PageSignals {
     twitter,
     scriptSrcs:    Array.from(scriptSet).sort(),
     links:         Array.from(linkSet),
+    headings,
+    navLabels,
+    keywords:      topKeywords(lower),
   };
 }
 
@@ -445,6 +506,10 @@ export interface ExtractSnapshot {
   detections:      ExtractDetection[];
   trace:           Trace;
   note:            string;
+  // Bounded, deterministic, PII-scrubbed content signals aggregated across the
+  // captured pages (headings / nav labels / top keywords). Feeds the rule-only
+  // classifier so sector/audience are detected from more than the homepage meta.
+  contentSignals?: Array<{ source: string; text: string }>;
   // Phase 7 — pure rule-only interpretation, attached after assembly.
   // Pure function of the capture, so it does not change inputsHash semantics.
   understanding?:  Understanding;
@@ -518,6 +583,22 @@ export function assembleSnapshot(canonicalUrl: string, captures: PageCapture[]):
     detections: [ruleRef(`extract.detections.signatureSet@${EXTRACT_RULESET_VERSION}`)],
   };
 
+  // Aggregate bounded, scrubbed content signals across all captured pages.
+  // Deterministic: derived from pagesSorted, deduped, sorted, capped.
+  const rawSignals: Array<{ source: string; text: string }> = [];
+  for (const p of pagesSorted) {
+    if (!p.signals) continue;
+    const src = 'page:' + p.url;
+    for (const h of p.signals.headings)  rawSignals.push({ source: src + '#h',   text: h });
+    for (const n of p.signals.navLabels) rawSignals.push({ source: src + '#nav', text: n });
+    if (p.signals.keywords.length)       rawSignals.push({ source: src + '#kw',  text: p.signals.keywords.join(' ') });
+  }
+  const seenSig = new Set<string>();
+  const contentSignals = rawSignals
+    .filter(c => c.text && !seenSig.has(c.source + '|' + c.text) && seenSig.add(c.source + '|' + c.text))
+    .sort((a, b) => (a.source < b.source ? -1 : a.source > b.source ? 1 : a.text < b.text ? -1 : a.text > b.text ? 1 : 0))
+    .slice(0, 80);
+
   return {
     engineVersion:    ENGINE_VERSION,
     extractorVersion: EXTRACTOR_VERSION,
@@ -536,6 +617,7 @@ export function assembleSnapshot(canonicalUrl: string, captures: PageCapture[]):
     detections,
     trace,
     note: EXTRACT_NOTE,
+    contentSignals,
   };
 }
 

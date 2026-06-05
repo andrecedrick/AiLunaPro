@@ -11,7 +11,7 @@
  * appendix entries laid out later (forward references resolved at serialize).
  */
 
-import { type PdfFont, measureText, wrapText, asciiSanitize } from './helvetica-metrics';
+import { type PdfFont, measureText, wrapText, asciiSanitize, truncateToWidth } from './helvetica-metrics';
 
 const PAGE_W = 595.28; // A4 portrait
 const PAGE_H = 841.89;
@@ -218,10 +218,13 @@ export class PdfBuilder {
       this.cur().push({ kind: 'text', x: MARGIN, y: this.y, size, font: 'regular', color: INK, text: lLines[i] });
       this.y -= 4;
     }
-    // right value on first line
+    // right value on first line — truncated to its column so it never overlaps
+    // the [n] refs or the right margin (reserve ~36pt when refs follow).
     const ry = startY - size;
-    this.cur().push({ kind: 'text', x: MARGIN + leftW, y: ry, size, font: 'bold', color: INK, text: asciiSanitize(right) });
-    if (refIds.length) this.appendRefs(MARGIN + leftW + measureText(asciiSanitize(right), 'bold', size), ry, size, refIds);
+    const rightMax = CONTENT_W - leftW - (refIds.length ? 36 : 4);
+    const rightFit = truncateToWidth(right, 'bold', size, rightMax);
+    this.cur().push({ kind: 'text', x: MARGIN + leftW, y: ry, size, font: 'bold', color: INK, text: rightFit });
+    if (refIds.length) this.appendRefs(MARGIN + leftW + measureText(rightFit, 'bold', size), ry, size, refIds);
   }
 
   /** Append " [n]" markers as clickable links to appendix targets. */

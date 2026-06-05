@@ -216,7 +216,17 @@
       #ax-url::placeholder { color: var(--text-muted); }
       #ax-url:focus-visible { outline: none; box-shadow: var(--focus-ring); border-color: var(--violet); }
       .ax-group { margin-top: 16px; }
-      .ax-group > h3 { font-family: var(--font-heading); font-size: 14px; color: var(--text-primary); margin: 0 0 8px; }
+      .ax-group > h3 { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 10px; letter-spacing: -0.2px; }
+      /* "What this business does" — premium key/value layout */
+      .ax-bp { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+      .ax-bp-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+      .ax-bp-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); min-width: 74px; font-weight: 700; }
+      .ax-bp-value { font-family: var(--font-heading); font-weight: 700; color: var(--text-primary); font-size: 16px; text-transform: capitalize; }
+      .ax-conf { margin-left: auto; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 10px; text-transform: capitalize; }
+      .ax-conf-high { background: #DCFCE7; color: #166534; }
+      .ax-conf-medium { background: var(--amber-bg); color: var(--amber-text); }
+      .ax-conf-low { background: #EEF1F6; color: var(--text-muted); }
+      .ax-evidence { font-size: 12.5px; color: var(--text-muted); margin: 10px 0 0; line-height: 1.5; }
       .ax-subcat { margin-top: 8px; }
       .ax-subcat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
       .ax-chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -746,12 +756,44 @@
           if (u) {
             var bp = u.businessProfile || {};
             function prettyType(t) { return String(t || 'unknown').replace(/_/g, ' '); }
+            function readableSource(src) {
+              src = String(src || '');
+              if (src.indexOf('identity:') === 0) return 'homepage ' + src.split(':')[1];
+              if (src.indexOf('detection:') === 0) return 'detected ' + src.split(':')[1];
+              if (src.indexOf('path:') === 0) return 'page ' + src.slice(5);
+              if (src.indexOf('page:') === 0) {
+                var rest = src.slice(5), hi = rest.lastIndexOf('#');
+                var kind = hi > -1 ? rest.slice(hi + 1) : '', u2 = hi > -1 ? rest.slice(0, hi) : rest;
+                var path = '/'; try { path = new URL(u2).pathname || '/'; } catch (e) {}
+                var k = kind === 'h' ? 'heading' : kind === 'nav' ? 'navigation' : kind === 'kw' ? 'keywords' : '';
+                return path + (k ? ' ' + k : '');
+              }
+              return src;
+            }
+            function evidenceLine(sources) {
+              if (!sources || !sources.length) return '';
+              var seen = {}, out = [];
+              for (var i = 0; i < sources.length && out.length < 3; i++) {
+                var r = readableSource(sources[i]); if (!seen[r]) { seen[r] = 1; out.push(r); }
+              }
+              return out.length ? 'Based on: ' + out.join(', ') : '';
+            }
             var uGroup = el('div', 'ax-group');
             uGroup.appendChild(el('h3', null, 'What this business does'));
-            var bUl = el('ul', 'ax-list');
-            bUl.appendChild(el('li', null, 'Type: ' + prettyType(bp.businessType) + ' (confidence: ' + (bp.confidence || 'low') + ')'));
-            if (bp.audience) bUl.appendChild(el('li', null, 'Audience: ' + bp.audience));
-            uGroup.appendChild(bUl);
+            var conf = bp.confidence || 'low';
+            var bpBox = el('div', 'ax-bp');
+            var typeRow = el('div', 'ax-bp-row');
+            typeRow.appendChild(el('span', 'ax-bp-label', 'Type'));
+            typeRow.appendChild(el('span', 'ax-bp-value', prettyType(bp.businessType)));
+            typeRow.appendChild(el('span', 'ax-conf ax-conf-' + conf, conf + ' confidence'));
+            bpBox.appendChild(typeRow);
+            if (bp.audience) {
+              var audRow = el('div', 'ax-bp-row');
+              audRow.appendChild(el('span', 'ax-bp-label', 'Audience'));
+              audRow.appendChild(el('span', 'ax-bp-value', String(bp.audience)));
+              bpBox.appendChild(audRow);
+            }
+            uGroup.appendChild(bpBox);
             if (bp.offers && bp.offers.length) {
               var oWrap = el('div', 'ax-subcat');
               oWrap.appendChild(el('div', 'ax-subcat-label', 'Offers'));
@@ -759,6 +801,8 @@
               bp.offers.forEach(function (o) { oChips.appendChild(el('span', 'ax-chip', o.tag)); });
               oWrap.appendChild(oChips); uGroup.appendChild(oWrap);
             }
+            var evd = evidenceLine(bp.sources);
+            if (evd) uGroup.appendChild(el('p', 'ax-evidence', evd));
             exBody.appendChild(uGroup);
 
             var opps = u.automationOpportunities || [];

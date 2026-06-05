@@ -85,6 +85,11 @@ function buildFragments(s: ExtractSnapshot): Fragment[] {
     if (path) frags.push({ text: path, source: 'path:' + path });
   }
   for (const d of (s.detections || [])) frags.push({ text: d.id.toLowerCase(), source: 'detection:' + d.id });
+  // Bounded content signals (headings / nav labels / keywords) across pages —
+  // the main driver for non-unknown sector/audience detection in deep mode.
+  for (const c of (s.contentSignals || [])) {
+    if (c.text) frags.push({ text: c.text.toLowerCase(), source: c.source });
+  }
   return frags;
 }
 
@@ -103,14 +108,14 @@ function matchKeywords(frags: Fragment[], keywords: string[]): { hits: number; s
 /* ── Business type classification (deterministic) ───────────────────────── */
 
 const TYPE_KEYWORDS: Record<Exclude<BusinessType, 'unknown'>, string[]> = {
-  ecommerce:     ['shop', 'store', 'cart', 'checkout', 'add to cart', 'buy now', 'collections', 'product', '/shop', '/cart', '/checkout', '/product', '/store'],
-  saas:          ['platform', 'software', 'dashboard', 'saas', 'free trial', 'sign up', 'signup', '/pricing', '/features', '/login', 'api', 'app'],
-  marketplace:   ['marketplace', 'vendors', 'sellers', 'listings', 'browse listings'],
-  agency:        ['agency', 'studio', 'our clients', 'portfolio', 'case studies', 'we help', 'for brands'],
-  consulting:    ['consulting', 'consultant', 'consultancy', 'advisory', 'coaching', 'strategy'],
-  content:       ['blog', 'magazine', 'news', 'articles', '/blog', 'newsletter', 'podcast'],
-  nonprofit:     ['nonprofit', 'non-profit', 'ngo', 'donate', 'charity', 'foundation', 'association'],
-  local_service: ['book an appointment', 'opening hours', 'near me', 'clinic', 'salon', 'restaurant', 'plumber', 'our location', 'visit us'],
+  ecommerce:     ['shop', 'store', 'cart', 'checkout', 'add to cart', 'buy now', 'collections', 'product', 'products', 'shipping', 'ecommerce', '/shop', '/cart', '/checkout', '/product', '/store'],
+  saas:          ['platform', 'software', 'dashboard', 'saas', 'free trial', 'sign up', 'signup', 'integrations', 'workflow', 'onboarding', '/pricing', '/features', '/login', 'api', 'app'],
+  marketplace:   ['marketplace', 'vendors', 'sellers', 'buyers', 'listings', 'browse listings'],
+  agency:        ['agency', 'studio', 'our clients', 'portfolio', 'case studies', 'we help', 'for brands', 'branding', 'creative'],
+  consulting:    ['consulting', 'consultant', 'consultancy', 'advisory', 'coaching', 'strategy', 'expertise'],
+  content:       ['blog', 'magazine', 'news', 'articles', '/blog', 'newsletter', 'podcast', 'editorial'],
+  nonprofit:     ['nonprofit', 'non-profit', 'ngo', 'donate', 'charity', 'foundation', 'association', 'volunteer'],
+  local_service: ['book an appointment', 'opening hours', 'near me', 'clinic', 'salon', 'restaurant', 'plumber', 'dental', 'hotel', 'reservation', 'our location', 'visit us'],
 };
 
 // Detection-based boosts toward a type (add hits + the detection source).
@@ -143,8 +148,8 @@ function classifyBusinessType(frags: Fragment[], dets: ExtractDetection[]): { ty
   return { type: best, sources: Array.from(scores[best].sources).sort(), score: scores[best].hits };
 }
 
-const AUDIENCE_B2B = ['for teams', 'enterprise', 'businesses', 'b2b', 'for companies', 'for agencies', 'clients'];
-const AUDIENCE_B2C = ['for you', 'families', 'personal', 'shop now', 'b2c', 'for everyone', 'gift'];
+const AUDIENCE_B2B = ['for teams', 'enterprise', 'businesses', 'b2b', 'for companies', 'for agencies', 'clients', 'companies', 'organizations', 'professionals'];
+const AUDIENCE_B2C = ['for you', 'families', 'personal', 'shop now', 'b2c', 'for everyone', 'gift', 'customers', 'shoppers', 'family'];
 
 function classifyAudience(frags: Fragment[]): { audience: Audience; sources: string[] } {
   const b = matchKeywords(frags, AUDIENCE_B2B);
