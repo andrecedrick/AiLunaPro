@@ -35,6 +35,14 @@ describe('audit-express — section order', () => {
   });
 });
 
+describe('public pages — back-to-top button', () => {
+  for (const p of PAGES) {
+    it(`${p} includes the shared back-to-top script`, () => {
+      expect(read(p)).toContain('<script src="/back-to-top.js" defer></script>');
+    });
+  }
+});
+
 describe('public pages — favicon consistency', () => {
   const FAVICON = 'https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png';
   for (const p of PAGES) {

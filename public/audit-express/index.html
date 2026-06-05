@@ -166,6 +166,16 @@
         background: var(--border-strong); color: #FFFFFF;
         box-shadow: none; cursor: not-allowed; opacity: 0.65; transform: none;
       }
+      .cta.secondary { background: transparent; color: var(--violet-text); border: 1.5px solid var(--border-strong); box-shadow: none; }
+      .cta:focus-visible { outline: 2px solid var(--violet); outline-offset: 3px; }
+
+      /* Human-verification modal (Task 1) */
+      .ax-modal { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, 0.55); }
+      .ax-modal[hidden] { display: none; }
+      .ax-modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); box-shadow: 0 12px 40px rgba(0,0,0,0.22); max-width: 420px; width: 100%; padding: clamp(20px, 4vw, 28px); }
+      .ax-modal-card h2 { font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: var(--text-primary); margin: 0 0 8px; }
+      .ax-modal-card p { font-size: 14px; color: var(--text-secondary); margin: 0 0 18px; line-height: 1.55; }
+      .ax-modal-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
       /* ── Tap-flow preview (Phase 3) — chips ── */
       .q { margin: 18px 0; }
@@ -227,6 +237,14 @@
       .ax-conf-medium { background: var(--amber-bg); color: var(--amber-text); }
       .ax-conf-low { background: #EEF1F6; color: var(--text-muted); }
       .ax-evidence { font-size: 12.5px; color: var(--text-muted); margin: 10px 0 0; line-height: 1.5; }
+      /* ROI assumptions + drivers (Task 2) */
+      .ax-assume { margin-top: 12px; }
+      .ax-assume-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+      .ax-link-btn { background: none; border: none; padding: 0; color: var(--violet-text); font-weight: 600; font-size: 13px; cursor: pointer; font-family: var(--font-body); text-decoration: underline; }
+      .ax-link-btn:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
+      .ax-drivers { margin-top: 10px; }
+      .ax-drivers > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--violet-text); }
+      .ax-drivers > p { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin: 8px 0 0; }
       .ax-subcat { margin-top: 8px; }
       .ax-subcat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
       .ax-chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -439,6 +457,19 @@
       </footer>
     </main>
 
+    <!-- Human-verification modal (Task 1) — shown on any TURNSTILE_* outcome. -->
+    <div id="ax-human-modal" class="ax-modal" hidden role="dialog" aria-modal="true" aria-labelledby="ax-human-title" aria-describedby="ax-human-body">
+      <div class="ax-modal-card" role="document">
+        <h2 id="ax-human-title">Please confirm you're human</h2>
+        <p id="ax-human-body">For security, we need a quick human verification before generating the report.</p>
+        <div class="ax-modal-actions">
+          <button class="cta" id="ax-human-verify" type="button">Verify now</button>
+          <button class="cta secondary" id="ax-human-cancel" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/back-to-top.js" defer></script>
     <script>
       // Audit Express preview (Phase 3) — deterministic, no PII, nothing stored.
       // Collects controlled tap answers and calls the compute-only Worker route.
@@ -623,7 +654,8 @@
           out.textContent = '';
           var k2 = p.k2a, t2 = k2.trace || {}, r = k2.result;
           out.appendChild(metric('Estimated time saved', r.estimatedTimeSavedHoursPerMonth + ' hours/month', t2.estimatedTimeSavedHoursPerMonth));
-          out.appendChild(metric('Estimated cost saved', '≈ $' + r.estimatedMonthlyCostSaved + '/month', t2.estimatedMonthlyCostSaved));
+          var usd = function (n) { return '$' + Math.round(Number(n) || 0).toLocaleString('en-US'); };
+          out.appendChild(metric('Estimated cost saved', '≈ ' + usd(r.estimatedMonthlyCostSaved) + '/mo  (~' + usd(r.estimatedYearlyCostSaved) + '/yr)', t2.estimatedMonthlyCostSaved));
           if (r.estimatedPaybackMonths != null) {
             out.appendChild(metric('Estimated payback', '≈ ' + r.estimatedPaybackMonths + ' months', t2.estimatedPaybackMonths));
           }
@@ -631,12 +663,51 @@
           out.appendChild(metric('AI readiness level (indicative)', k1.bucket + ' (' + k1.normalizedScore + '/100)', t1.bucket));
           out.appendChild(metric('Suggested starting points', (k1.recommendedAgentIds || []).map(prettyAgent).join(', '), t1.recommendedAgentIds));
 
+          // Assumptions behind the ROI (the taps you chose) — explicit + deterministic.
+          var cap = function (s) { s = String(s || '').replace(/_/g, ' '); return s.charAt(0).toUpperCase() + s.slice(1); };
+          var asm = el('div', 'ax-assume');
+          asm.appendChild(el('div', 'ax-subcat-label', 'Assumptions'));
+          var asmList = el('div', 'ax-assume-row');
+          asmList.appendChild(el('span', 'ax-tag', 'Workflow: ' + cap(taps.workflow)));
+          asmList.appendChild(el('span', 'ax-tag', 'Monthly hours: ' + cap(taps.monthlyHours)));
+          asmList.appendChild(el('span', 'ax-tag', 'Hourly cost: ' + cap(taps.hourlyCost)));
+          asm.appendChild(asmList);
+          var changeBtn = el('button', 'ax-link-btn', 'Change assumptions');
+          changeBtn.setAttribute('type', 'button');
+          changeBtn.addEventListener('click', function () {
+            var pv = document.getElementById('ax-preview');
+            if (pv && pv.scrollIntoView) { try { pv.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { pv.scrollIntoView(); } }
+          });
+          asm.appendChild(changeBtn);
+          out.appendChild(asm);
+
+          // What drives this number (rule-based explainer; no inflation).
+          var drv = document.createElement('details');
+          drv.className = 'ax-drivers';
+          var sum = document.createElement('summary');
+          sum.textContent = 'What drives this number';
+          drv.appendChild(sum);
+          drv.appendChild(el('p', null,
+            'The estimate multiplies the hours you spend on this workflow by a typical hourly cost and a '
+            + 'conservative automation savings rate, then annualizes it (x12). It is an indicative, rule-based '
+            + 'figure — your actual result depends on your processes.'));
+          out.appendChild(drv);
+
           var note = document.createElement('p');
           note.className = 'muted';
           note.style.marginTop = '8px';
           note.textContent = 'Readiness is a short preview based on a few factors. The full audit gives a complete score. '
             + 'Engine ' + p.engineVersion + '.';
           out.appendChild(note);
+
+          var cta = document.createElement('p');
+          cta.style.marginTop = '10px';
+          var ctaLink = document.createElement('a');
+          ctaLink.className = 'cta';
+          ctaLink.href = '/#/signup';
+          ctaLink.textContent = 'Want a tailored plan? Create account to save/export PDF';
+          cta.appendChild(ctaLink);
+          out.appendChild(cta);
 
           document.getElementById('ax-results').hidden = false;
         }
@@ -654,11 +725,7 @@
               var p = r.json;
               if (r.status === 200 && p && p.k2a && p.k1a) { lastPreview = p; render(p); return; }
               if (p && typeof p.code === 'string' && p.code.indexOf('TURNSTILE') === 0) {
-                // Reset the widget so the user can re-verify, then retry.
-                tsToken = '';
-                if (window.turnstile && window.turnstile.reset) { try { window.turnstile.reset('#ax-ts'); } catch (e) {} }
-                setTsMessage('Verification failed. Please complete the check and try again.');
-                return;
+                resetTurnstile(); openHumanCheck(); return;
               }
               document.getElementById('ax-metrics').textContent = 'Preview unavailable right now.';
               document.getElementById('ax-results').hidden = false;
@@ -913,10 +980,7 @@
               if (r.status === 200 && p && p.inputsHash) { lastSnapshot = p; renderSnapshot(p); return; }
               if (p && typeof p.code === 'string') {
                 if (p.code.indexOf('TURNSTILE') === 0) {
-                  tsToken = '';
-                  if (window.turnstile && window.turnstile.reset) { try { window.turnstile.reset('#ax-ts'); } catch (e) {} }
-                  setExMessage('Verification expired. Please complete the check above and try again.');
-                  return;
+                  resetTurnstile(); openHumanCheck(); return;
                 }
                 setExMessage(EXTRACT_ERRORS[p.code] || 'Analysis unavailable right now. Please try again later.');
                 return;
@@ -945,6 +1009,26 @@
           tsToken = '';
           if (window.turnstile && window.turnstile.reset) { try { window.turnstile.reset('#ax-ts'); } catch (e) {} }
         }
+
+        /* Human-verification modal (Task 1) — shown for any TURNSTILE_* outcome on
+         * preview / extract / PDF. "Verify now" resets + re-renders the widget and
+         * brings it into view; tokens are single-use so a fresh check is required. */
+        var humanModal = document.getElementById('ax-human-modal');
+        function openHumanCheck() { if (humanModal) { humanModal.hidden = false; var v = document.getElementById('ax-human-verify'); if (v && v.focus) v.focus(); } }
+        function closeHumanCheck() { if (humanModal) humanModal.hidden = true; }
+        (function () {
+          var v = document.getElementById('ax-human-verify');
+          var c = document.getElementById('ax-human-cancel');
+          if (v) v.addEventListener('click', function () {
+            resetTurnstile();
+            closeHumanCheck();
+            var ts = document.getElementById('ax-ts');
+            if (ts && ts.scrollIntoView) { try { ts.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { ts.scrollIntoView(); } }
+          });
+          if (c) c.addEventListener('click', closeHumanCheck);
+          if (humanModal) humanModal.addEventListener('click', function (e) { if (e.target === humanModal) closeHumanCheck(); });
+          document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && humanModal && !humanModal.hidden) closeHumanCheck(); });
+        })();
         if (pdfReverify) pdfReverify.addEventListener('click', function () {
           resetTurnstile();
           setPdfMessage('Complete the verification check above, then click Download PDF report again.', false);
@@ -977,9 +1061,7 @@
                 .then(function (j) {
                   var code = (j && typeof j.code === 'string') ? j.code : ('HTTP_' + res.status);
                   if (code.indexOf('TURNSTILE') === 0) {
-                    resetTurnstile();
-                    setPdfMessage('Verification expired (' + code + '). Re-verify and click Download again.', true);
-                    return;
+                    resetTurnstile(); setPdfMessage('', false); openHumanCheck(); return;
                   }
                   setPdfMessage('Could not generate the PDF (' + code + '). Please try again.', true);
                 });
