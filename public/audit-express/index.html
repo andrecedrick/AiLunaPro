@@ -504,6 +504,22 @@
         var tsToken = '';
         var lastPreview = null;   // last successful preview payload (for PDF)
         var lastSnapshot = null;  // last successful extract snapshot (optional, for PDF)
+        var pendingCreatedAt = null; // stable createdAt for the handoff snapshot
+
+        // Continuity (J16.1): persist the latest completed audit so it survives
+        // signup/login. The SPA reads this after auth and auto-saves it. No PII
+        // (snapshot is already scrubbed); same-origin localStorage only.
+        function persistPending() {
+          if (!lastPreview || Object.keys(taps).length < 5) return;
+          if (!pendingCreatedAt) pendingCreatedAt = new Date().toISOString();
+          try {
+            localStorage.setItem('ailunapro.auditExpress.pending', JSON.stringify({
+              taps: taps,
+              extractSnapshot: lastSnapshot || null,
+              createdAt: pendingCreatedAt,
+            }));
+          } catch (e) { /* storage unavailable — non-fatal */ }
+        }
         var run = document.getElementById('ax-run');
         var tsMsg = document.getElementById('ax-ts-msg');
 
@@ -764,7 +780,7 @@
             .then(function (res) { return res.json().then(function (j) { return { status: res.status, json: j }; }); })
             .then(function (r) {
               var p = r.json;
-              if (r.status === 200 && p && p.k2a && p.k1a) { lastPreview = p; render(p); return; }
+              if (r.status === 200 && p && p.k2a && p.k1a) { lastPreview = p; render(p); persistPending(); return; }
               if (p && typeof p.code === 'string' && p.code.indexOf('TURNSTILE') === 0) {
                 resetTurnstile(); openHumanCheck(); return;
               }
@@ -1018,7 +1034,7 @@
             .then(function (res) { return res.json().then(function (j) { return { status: res.status, json: j }; }); })
             .then(function (r) {
               var p = r.json;
-              if (r.status === 200 && p && p.inputsHash) { lastSnapshot = p; renderSnapshot(p); return; }
+              if (r.status === 200 && p && p.inputsHash) { lastSnapshot = p; renderSnapshot(p); persistPending(); return; }
               if (p && typeof p.code === 'string') {
                 if (p.code.indexOf('TURNSTILE') === 0) {
                   resetTurnstile(); openHumanCheck(); return;

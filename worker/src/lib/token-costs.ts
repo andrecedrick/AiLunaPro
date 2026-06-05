@@ -10,6 +10,7 @@ export const TOKEN_COSTS = {
   'roi.calculate':       5,
   'agent.call':         20,
   'report.export.pdf':   5,
+  'audit_express.pdf':  10,   // J16.1 — PDF export beyond the 3 free downloads
 } as const;
 
 export type TokenAction = keyof typeof TOKEN_COSTS;

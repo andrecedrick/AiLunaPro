@@ -19,8 +19,9 @@ import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '
 import { computePreview, validateTaps, type PreviewTaps } from '../lib/audit-express-preview';
 import { understand } from '../lib/audit-express-understanding';
 import { buildAuditExpressPdf } from '../lib/audit-express-pdf';
-import type { ExtractSnapshot } from '../lib/audit-express-extract';
+import { stableHash, type ExtractSnapshot } from '../lib/audit-express-extract';
 import type { Understanding } from '../lib/audit-express-understanding';
+import { enforcePdfQuota } from '../lib/audit-express-quota';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
@@ -93,8 +94,11 @@ store.post('/api/audit-express/save', async c => {
     return c.json({ error: 'Could not render the report.', code: 'PDF_RENDER_FAILED' }, 500);
   }
 
-  // Deterministic id is not required, but keep it non-PII + URL-safe.
-  const auditId = crypto.randomUUID();
+  // Deterministic id => dedupe: the same audit (inputsHash + engineVersion +
+  // createdAt) maps to the same doc + R2 key, so auto-save is idempotent.
+  const engineVersion = extractSnapshot?.engineVersion ?? understanding?.engineVersion ?? '';
+  const inputsHash = extractSnapshot?.inputsHash ?? '';
+  const auditId = stableHash(`${inputsHash}|${engineVersion}|${createdAt}`);
   const key = r2Key(orgId, auditId);
   await env.AUDIT_PDFS.put(key, bytes, { httpMetadata: { contentType: 'application/pdf' } });
 
@@ -160,6 +164,13 @@ store.get('/api/audit-express/file/:auditId', async c => {
   if (!env.AUDIT_PDFS) return c.json({ error: 'Storage unavailable.', code: 'STORAGE_UNAVAILABLE' }, 500);
   const obj = await env.AUDIT_PDFS.get(key);
   if (!obj) return c.json({ error: 'File not found.', code: 'NOT_FOUND' }, 404);
+
+  // Fair-usage: 3 free PDF downloads, then token consumption (server-enforced).
+  const useTokens = c.req.query('useTokens') === '1' || c.req.query('useTokens') === 'true';
+  const quota = await enforcePdfQuota(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, g.uid, auditId, useTokens);
+  if (!quota.ok) {
+    return c.json({ error: quota.code === 'PDF_LIMIT_REACHED' ? 'Free PDF limit reached.' : 'Not enough tokens.', code: quota.code, balance: quota.balance, required: quota.required }, quota.status);
+  }
 
   return c.body(obj.body as unknown as ReadableStream, 200, {
     'Content-Type': 'application/pdf',

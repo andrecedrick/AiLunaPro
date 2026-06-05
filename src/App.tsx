@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState, lazy as reactLazy, type ReactNode } from 'react';
+import { Suspense, useEffect, useRef, useState, lazy as reactLazy, type ReactNode } from 'react';
 import { lazyWithRetry as lazy } from './lib/routing/lazyWithRetry';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -321,6 +321,28 @@ function AppShell() {
       void import('./pages/ReportsListPage').catch(() => {});
     });
   }, [isAuthenticated, session?.orgId]);
+
+  /* ── Audit Express continuity (J16.1): an anonymous run is preserved in
+     localStorage by the static /audit-express page. Once authenticated, hand it
+     off — auto-save to the org (idempotent server-side) then open Saved Audits,
+     so the result is never lost across signup/login. Runs once per session. */
+  const handoffDone = useRef(false);
+  useEffect(() => {
+    if (handoffDone.current || !isAuthenticated || !session?.orgId) return;
+    let raw: string | null = null;
+    try { raw = localStorage.getItem('ailunapro.auditExpress.pending'); } catch { /* ignore */ }
+    if (!raw) return;
+    handoffDone.current = true;
+    const clear = () => { try { localStorage.removeItem('ailunapro.auditExpress.pending'); } catch { /* ignore */ } };
+    let payload: { taps?: unknown; extractSnapshot?: unknown; createdAt?: string } | null = null;
+    try { payload = JSON.parse(raw); } catch { clear(); return; }
+    if (!payload || !payload.taps || typeof payload.createdAt !== 'string') { clear(); return; }
+    const orgId = session.orgId;
+    void import('./lib/auditExpress/savedClient')
+      .then(m => m.saveAudit(orgId, { taps: payload!.taps, extractSnapshot: payload!.extractSnapshot, createdAt: payload!.createdAt as string }))
+      .then(() => { clear(); navigate({ name: 'audit-express/saved' }); })
+      .catch(() => { /* keep pending for a later retry; never block the app */ });
+  }, [isAuthenticated, session?.orgId, navigate]);
 
   /* ── Firebase: wait for onAuthStateChanged before rendering ── */
   if (isLoading) {

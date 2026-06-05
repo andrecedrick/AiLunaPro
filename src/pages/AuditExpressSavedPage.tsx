@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useRoute } from '../context/RouteContext';
 import {
-  listSavedAudits, deleteSavedAudit, downloadSavedAudit, type SavedAuditItem,
+  listSavedAudits, deleteSavedAudit, downloadSavedAudit, SavedAuditError, type SavedAuditItem,
 } from '../lib/auditExpress/savedClient';
 
 /**
@@ -10,11 +11,13 @@ import {
  */
 export function AuditExpressSavedPage() {
   const { session } = useAuth();
+  const { navigate } = useRoute();
   const orgId = session?.orgId ?? '';
 
   const [items, setItems] = useState<SavedAuditItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // auditId currently acting on
+  const [limitFor, setLimitFor] = useState<string | null>(null); // auditId hitting the free-PDF limit
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -25,11 +28,17 @@ export function AuditExpressSavedPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const onDownload = async (id: string) => {
+  const onDownload = async (id: string, useTokens = false) => {
     setBusy(id); setError(null);
-    try { await downloadSavedAudit(orgId, id); }
-    catch { setError('Download failed. Please try again.'); }
-    finally { setBusy(null); }
+    try {
+      await downloadSavedAudit(orgId, id, useTokens);
+      setLimitFor(null);
+    } catch (e) {
+      const code = e instanceof SavedAuditError ? e.code : '';
+      if (code === 'PDF_LIMIT_REACHED') { setLimitFor(id); }
+      else if (code === 'TOKENS_INSUFFICIENT') { setLimitFor(null); setError('Not enough tokens to export. Buy tokens to continue.'); }
+      else { setError('Download failed. Please try again.'); }
+    } finally { setBusy(null); }
   };
   const onDelete = async (id: string) => {
     setBusy(id); setError(null);
@@ -95,6 +104,30 @@ export function AuditExpressSavedPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {limitFor && (
+        <div role="dialog" aria-modal="true" aria-label="PDF export limit"
+          style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(15,23,42,0.55)' }}
+          onClick={e => { if (e.target === e.currentTarget) setLimitFor(null); }}>
+          <div style={{ maxWidth: 440, width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: '0 12px 40px rgba(0,0,0,0.22)', padding: 24 }}>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
+              You’ve used your 3 free PDF exports
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 18px' }}>
+              Downloading more PDFs requires tokens (10 tokens per export).
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              <button type="button" style={btn('primary')} disabled={busy === limitFor} onClick={() => onDownload(limitFor, true)}>
+                {busy === limitFor ? '…' : 'Use tokens & download'}
+              </button>
+              <button type="button" style={btn('ghost')} onClick={() => { const id = limitFor; setLimitFor(null); void id; navigate({ name: 'billing/tokens' }); }}>
+                Upgrade or buy tokens
+              </button>
+              <button type="button" style={btn('ghost')} onClick={() => setLimitFor(null)}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

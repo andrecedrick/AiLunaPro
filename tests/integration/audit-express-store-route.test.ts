@@ -5,6 +5,12 @@ const state = vi.hoisted(() => ({
   members: new Set<string>(),                 // `${orgId}/${uid}`
   docs: new Map<string, Record<string, unknown>>(),
   r2: new Map<string, Uint8Array>(),
+  tokenResult: { ok: true, balanceAfter: 100, tokensConsumed: 10 } as Record<string, unknown>,
+}));
+
+// consumeTokens is exercised by the PDF quota helper; mock it for deterministic tests.
+vi.mock('../../worker/src/lib/tokens', () => ({
+  consumeTokens: vi.fn(async () => state.tokenResult),
 }));
 
 vi.mock('../../worker/src/middleware/auth', async (orig) => {
@@ -54,6 +60,7 @@ function req(method: string, path: string, opts: { token?: string; body?: unknow
 beforeEach(() => {
   state.members.clear(); state.docs.clear(); state.r2.clear();
   state.members.add('orgA/uid-1'); // uid-1 is a member of orgA only
+  state.tokenResult = { ok: true, balanceAfter: 100, tokensConsumed: 10 };
   vi.clearAllMocks();
 });
 
@@ -103,7 +110,7 @@ describe('store route — save/list/file/delete', () => {
     const del = await req('DELETE', `/api/audit-express/${auditId}?orgId=orgA`, { token: 'valid-token' });
     expect(del.status).toBe(200);
     expect(state.r2.has(`pdf/orgA/${auditId}.pdf`)).toBe(false);
-    expect(state.docs.size).toBe(0);
+    expect(state.docs.has(`organizations/orgA/auditExpress/${auditId}`)).toBe(false);
   });
 
   it('no IDOR: a member of A cannot download an audit under org B', async () => {
@@ -119,5 +126,48 @@ describe('store route — save/list/file/delete', () => {
     const res = await req('POST', '/api/audit-express/save', { token: 'valid-token', body: { orgId: 'orgA', taps: { workflow: 'support' } } });
     expect(res.status).toBe(400);
     expect((await res.json()).code).toBe('INVALID_TAPS');
+  });
+
+  it('dedupes: saving the same audit twice yields the same auditId (one doc)', async () => {
+    const a = await (await save('orgA')).json();
+    const b = await (await save('orgA')).json();
+    expect(a.auditId).toBe(b.auditId);
+    expect(state.docs.size).toBe(1);
+    expect(state.r2.size).toBe(1);
+  });
+});
+
+describe('store route — PDF fair-usage quota (3 free, then tokens)', () => {
+  async function setupOneSavedAudit() {
+    const { auditId } = await (await save('orgA')).json();
+    return auditId as string;
+  }
+  function dl(auditId: string, useTokens = false) {
+    return req('GET', `/api/audit-express/file/${auditId}?orgId=orgA${useTokens ? '&useTokens=1' : ''}`, { token: 'valid-token' });
+  }
+
+  it('allows 3 free downloads then returns PDF_LIMIT_REACHED', async () => {
+    const id = await setupOneSavedAudit();
+    for (let i = 0; i < 3; i++) expect((await dl(id)).status).toBe(200);
+    const over = await dl(id);
+    expect(over.status).toBe(402);
+    expect((await over.json()).code).toBe('PDF_LIMIT_REACHED');
+  });
+
+  it('spends tokens past the free tier when useTokens=1', async () => {
+    const id = await setupOneSavedAudit();
+    for (let i = 0; i < 3; i++) await dl(id);
+    const paid = await dl(id, true);
+    expect(paid.status).toBe(200);
+    expect(paid.headers.get('content-type')).toContain('application/pdf');
+  });
+
+  it('returns TOKENS_INSUFFICIENT when the balance is too low', async () => {
+    const id = await setupOneSavedAudit();
+    for (let i = 0; i < 3; i++) await dl(id);
+    state.tokenResult = { ok: false, status: 402, balance: 0, required: 10 };
+    const paid = await dl(id, true);
+    expect(paid.status).toBe(402);
+    expect((await paid.json()).code).toBe('TOKENS_INSUFFICIENT');
   });
 });

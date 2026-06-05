@@ -18,6 +18,34 @@ export interface SavedAuditItem {
 
 const q = (orgId: string) => `orgId=${encodeURIComponent(orgId)}`;
 
+/** Error carrying the server's non-PII code (e.g. PDF_LIMIT_REACHED). */
+export class SavedAuditError extends Error {
+  code: string;
+  constructor(code: string) { super(code); this.code = code; }
+}
+
+export interface SaveAuditInput {
+  taps: unknown;
+  extractSnapshot?: unknown;
+  createdAt: string;
+}
+
+/** Auto-save / save an Audit Express snapshot to the org. Idempotent server-side. */
+export async function saveAudit(orgId: string, input: SaveAuditInput): Promise<string> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, taps: input.taps, extractSnapshot: input.extractSnapshot ?? undefined, createdAt: input.createdAt }),
+  });
+  if (!res.ok) {
+    const code = await res.json().then((j: { code?: string }) => j.code).catch(() => undefined);
+    throw new SavedAuditError(code ?? `HTTP_${res.status}`);
+  }
+  const j = await res.json() as { auditId?: string };
+  return j.auditId ?? '';
+}
+
 export async function listSavedAudits(orgId: string): Promise<SavedAuditItem[]> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/audit-express/list?${q(orgId)}`, {
@@ -37,13 +65,19 @@ export async function deleteSavedAudit(orgId: string, auditId: string): Promise<
   if (!res.ok) throw new Error('DELETE_FAILED');
 }
 
-/** Fetch the PDF (auth-gated) and trigger a browser download. */
-export async function downloadSavedAudit(orgId: string, auditId: string): Promise<void> {
+/** Fetch the PDF (auth-gated) and trigger a browser download.
+ *  Past the free tier the server returns 402 PDF_LIMIT_REACHED; pass
+ *  useTokens=true to spend tokens (TOKENS_INSUFFICIENT if the balance is short). */
+export async function downloadSavedAudit(orgId: string, auditId: string, useTokens = false): Promise<void> {
   const idToken = await getIdToken();
-  const res = await fetch(`${WORKER_BASE}/api/audit-express/file/${encodeURIComponent(auditId)}?${q(orgId)}`, {
+  const extra = useTokens ? '&useTokens=1' : '';
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/file/${encodeURIComponent(auditId)}?${q(orgId)}${extra}`, {
     headers: { Authorization: `Bearer ${idToken}` },
   });
-  if (!res.ok) throw new Error('DOWNLOAD_FAILED');
+  if (!res.ok) {
+    const code = await res.json().then((j: { code?: string }) => j.code).catch(() => undefined);
+    throw new SavedAuditError(code ?? `HTTP_${res.status}`);
+  }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
