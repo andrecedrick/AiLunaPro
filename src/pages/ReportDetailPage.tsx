@@ -110,6 +110,17 @@ export function ReportDetailPage() {
       )}
       <ReportHeader report={displayReport} result={result} />
 
+      {/* Primary actions — placed at the top (by the header) so the premium PDF
+          export + rename are immediately visible, not buried in the footer. */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '12px 0 4px' }} className="report-primary-actions">
+        <Button variant="primary" size="md" disabled={pdfBusy} onClick={() => onDownload(false)}>
+          {pdfBusy ? 'Preparing…' : '⬇ Download PDF'}
+        </Button>
+        <Button variant="secondary" size="md" onClick={() => { setDraft(displayReport.title); setEditing(true); }}>
+          Rename
+        </Button>
+      </div>
+
       <div
         style={{
           display: 'grid',
@@ -153,12 +164,6 @@ export function ReportDetailPage() {
           >
             <Button variant="secondary" size="md" onClick={() => navigate({ name: 'reports' })}>
               ← Back to reports
-            </Button>
-            <Button variant="primary" size="md" disabled={pdfBusy} onClick={() => onDownload(false)}>
-              {pdfBusy ? 'Preparing…' : 'Download PDF'}
-            </Button>
-            <Button variant="ghost" size="md" onClick={() => { setDraft(displayReport.title); setEditing(true); }}>
-              Rename
             </Button>
             <Button
               variant="ghost"

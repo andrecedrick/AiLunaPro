@@ -46,6 +46,7 @@ const wrap = () => (
 describe('ReportDetailPage — render smoke', () => {
   it('renders a published report without throwing', () => {
     const { getByText } = render(wrap());
-    expect(getByText('Download PDF')).toBeTruthy();
+    // Primary action lives at the top now (by the header), not the footer.
+    expect(getByText(/Download PDF/)).toBeTruthy();
   });
 });
