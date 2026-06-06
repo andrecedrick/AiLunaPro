@@ -120,7 +120,7 @@ export function AuditExpressSavedPage() {
                     <button type="button" onClick={() => navigate({ name: 'audit-express/detail', auditId: it.auditId })}
                       title="View details"
                       style={{ display: 'block', maxWidth: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {it.title || `${it.businessType.replace(/_/g, ' ')} · ${it.audience}`}
+                      {it.title || `${(it.businessType ?? 'unknown').replace(/_/g, ' ')} · ${it.audience ?? 'unknown'}`}
                     </button>
                     <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {it.canonicalUrl ? it.canonicalUrl + ' · ' : ''}{new Date(it.createdAt).toLocaleString()} · engine {it.engineVersion || 'n/a'} · confidence {it.confidence}

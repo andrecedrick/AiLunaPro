@@ -34,31 +34,43 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 export function AuditResultView({ preview, understanding }: { preview: AuditPreview; understanding: AuditUnderstanding | null }) {
-  const r = preview.k2a.result;
-  const u = understanding;
+  // Defensive: never assume a fully-shaped server response. Missing fields render
+  // a graceful fallback instead of crashing the page (global ErrorBoundary).
+  const r = preview?.k2a?.result;
+  const bp = understanding?.businessProfile;
+  const offers = bp?.offers ?? [];
+  const opportunities = understanding?.automationOpportunities ?? [];
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
   return (
     <>
       <div style={card}>
         <h2 style={{ ...h2, margin: '0 0 12px' }}>ROI estimate (indicative)</h2>
-        <Metric label="Estimated time saved" value={`${r.estimatedTimeSavedHoursPerMonth} hours/month  (~${r.estimatedTimeSavedHoursPerMonth * 12} hours/year)`} />
-        <Metric label="Estimated cost saved" value={`≈ ${usd(r.estimatedMonthlyCostSaved)}/mo  (~${usd(r.estimatedYearlyCostSaved)}/yr)`} />
-        {r.estimatedPaybackMonths != null && <Metric label="Estimated payback" value={`≈ ${r.estimatedPaybackMonths} months`} />}
-        <Metric label="AI readiness (indicative)" value={`${preview.k1a.bucket} (${preview.k1a.normalizedScore}/100)`} />
+        {r ? (
+          <>
+            <Metric label="Estimated time saved" value={`${num(r.estimatedTimeSavedHoursPerMonth)} hours/month  (~${num(r.estimatedTimeSavedHoursPerMonth) * 12} hours/year)`} />
+            <Metric label="Estimated cost saved" value={`≈ ${usd(num(r.estimatedMonthlyCostSaved))}/mo  (~${usd(num(r.estimatedYearlyCostSaved))}/yr)`} />
+            {r.estimatedPaybackMonths != null && <Metric label="Estimated payback" value={`≈ ${num(r.estimatedPaybackMonths)} months`} />}
+          </>
+        ) : (
+          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>ROI estimate unavailable for this audit.</p>
+        )}
+        {preview?.k1a && <Metric label="AI readiness (indicative)" value={`${preview.k1a.bucket ?? 'n/a'} (${num(preview.k1a.normalizedScore)}/100)`} />}
       </div>
 
-      {u && (
+      {bp && (
         <div style={card}>
           <h2 style={{ ...h2, margin: '0 0 10px' }}>What this business does</h2>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            <div><strong>Type:</strong> {u.businessProfile.businessType.replace(/_/g, ' ')} · <strong>Audience:</strong> {u.businessProfile.audience} · confidence {u.businessProfile.confidence}</div>
-            {u.businessProfile.offers.length > 0 && <div style={{ marginTop: 6 }}>Offers: {u.businessProfile.offers.map(o => o.tag).join(', ')}</div>}
+            <div><strong>Type:</strong> {(bp.businessType ?? 'unknown').replace(/_/g, ' ')} · <strong>Audience:</strong> {bp.audience ?? 'unknown'} · confidence {bp.confidence ?? 'low'}</div>
+            {offers.length > 0 && <div style={{ marginTop: 6 }}>Offers: {offers.map(o => o.tag).join(', ')}</div>}
           </div>
-          {u.automationOpportunities.length > 0 && (
+          {opportunities.length > 0 && (
             <>
               <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 15, fontWeight: 700, margin: '14px 0 6px' }}>Automation opportunities</h3>
-              {u.automationHeadline && <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginBottom: 6 }}>{u.automationHeadline}</div>}
+              {understanding?.automationHeadline && <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginBottom: 6 }}>{understanding.automationHeadline}</div>}
               <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {u.automationOpportunities.map(o => (
+                {opportunities.map(o => (
                   <li key={o.id} style={{ fontSize: 13.5, margin: '5px 0', color: 'var(--text-secondary)' }}>{o.title} — {o.impact} impact / {o.effort} effort</li>
                 ))}
               </ul>
