@@ -2881,6 +2881,13 @@ Prochaine étape : scope J14 à définir (gaté).
 - **Prérequis opérateur** : secret `AUDIT_SHARE_SECRET` posé (`wrangler secret put … --env production`).
 - **Différé (gaté)** : analytics de partage (v1 non-goal) ; expiry de lien configurable ; quota sur route inline `/pdf` (non exposée UI) ; intégration produit profonde (Audit Express → registre/recos/record conformité) ; bascule CSP enforce (après fenêtre Report-Only + refactor inline→nonces).
 
+**✅ Intégration produit profonde — "Agents recommandés sur Audit Express"** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-06.
+- **`6192335`** : la route `GET /api/audit-express/detail/:auditId` résout désormais `preview.k1a.recommendedAgentIds` (déterministe, cap 6, `safeId`-validés) contre le catalogue global `/agents/{id}` **en parallèle** (lectures seules via service account, même pattern que `agents.ts`), ne retient que les agents **`status==='active'`**, et renvoie `recommendedAgents: [{ agentId, name, tagline, minPlan, implementationComplexity, expectedRoi }]`. IDs manquants/archivés ignorés → tableau vide gracieux.
+- **SPA** : `SavedAuditDetail` + type `RecommendedAgent` ; page detail = carte **"Recommended agents"** (lignes name · tagline · `~Nh/mo · plan · setup`), chaque carte → `agents/detail`, + CTA **"Explore all agents"** → `agents` ; masquée si vide ; note "indicatif — vérifier le fit".
+- **Garde-fous** : aucune nouvelle dépendance ; déterministe (réutilise la sortie moteur + catalogue read-only) ; **aucune nouvelle persistance/écriture** ; gate auth+org inchangé (pas d'IDOR ; catalogue = lecture globale SA) ; Stripe/CSP/cache intacts ; no PII (champs catalogue publics slim seulement, jamais `affiliateUrl`/`pricing`).
+- **Gates** : vitest **306 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS · worktree clean. **0 must-fix.** Prod vérifié opérateur.
+- **Différé (gaté)** : variante via moteur `/api/recommend` (scores + "pourquoi") ; recos aussi sur la Run page ; autres cibles d'intégration (registre, conversion full-audit).
+
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
 1. **Help Center v1** (§9.16) — frontend, ✅ inclus.
