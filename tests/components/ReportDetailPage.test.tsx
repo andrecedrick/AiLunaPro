@@ -31,6 +31,9 @@ vi.mock('../../src/context/AuthContext', () => ({
 }));
 vi.mock('../../src/lib/reports/reportApiClient', () => ({
   downloadReport: vi.fn(), renameReport: vi.fn(),
+  getReportShareState: vi.fn(async () => ({ shareVersion: 1, sharedAt: '', sharedExpiresAt: '', shareRevokedAt: '', sharingDisabled: false })),
+  createReportShareLink: vi.fn(), regenerateReportShareLink: vi.fn(),
+  revokeReportShare: vi.fn(), setReportSharingDisabled: vi.fn(),
   ReportApiError: class extends Error { code = 'X'; },
 }));
 

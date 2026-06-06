@@ -1,9 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useReports } from '../context/ReportsContext';
 import { useRoute } from '../context/RouteContext';
 import { useAuth } from '../context/AuthContext';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
-import { downloadReport, renameReport, ReportApiError } from '../lib/reports/reportApiClient';
+import {
+  downloadReport, renameReport, ReportApiError,
+  getReportShareState, createReportShareLink, regenerateReportShareLink, revokeReportShare, setReportSharingDisabled,
+  type ReportShareState,
+} from '../lib/reports/reportApiClient';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { ReportHeader } from '../components/reports/ReportHeader';
 import { ExportHistory } from '../components/reports/ExportHistory';
@@ -39,6 +43,23 @@ export function ReportDetailPage() {
   const [draft, setDraft] = useState('');
   const [titleOverride, setTitleOverride] = useState<string | null>(null);
   const [savingTitle, setSavingTitle] = useState(false);
+  const [shareState, setShareState] = useState<ReportShareState | null>(null);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareExpiry, setShareExpiry] = useState('');
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareLimit, setShareLimit] = useState(false);
+  const [pendingRegen, setPendingRegen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const canShare = session?.role === 'owner' || session?.role === 'admin';
+
+  // Load share metadata (owners/admins only) so the Sharing card shows status.
+  useEffect(() => {
+    if (!orgId || !report || !canShare) return;
+    let live = true;
+    getReportShareState(orgId, report.id).then(s => { if (live) setShareState(s); }).catch(() => { /* card simply hidden */ });
+    return () => { live = false; };
+  }, [orgId, report, canShare]);
 
   if (status === 'loading') {
     return (
@@ -93,6 +114,54 @@ export function ReportDetailPage() {
     finally { setSavingTitle(false); }
   };
 
+  // ── Share lifecycle ──
+  const mintShare = async (regen: boolean, useTokens = false) => {
+    setShareBusy(true); setPdfError(null); setPendingRegen(regen);
+    try {
+      const link = regen ? await regenerateReportShareLink(orgId, report.id, useTokens) : await createReportShareLink(orgId, report.id, useTokens);
+      setShareUrl(link.url); setShareExpiry(link.expiresAt); setShareLimit(false); setCopied(false);
+      setShareState(prev => ({ shareVersion: (prev?.shareVersion ?? 1) + (regen ? 1 : 0), sharedAt: new Date().toISOString(), sharedExpiresAt: link.expiresAt, shareRevokedAt: '', sharingDisabled: prev?.sharingDisabled ?? false }));
+    } catch (e) {
+      const code = e instanceof ReportApiError ? e.code : '';
+      if (code === 'PDF_LIMIT_REACHED') setShareLimit(true);
+      else if (code === 'TOKENS_INSUFFICIENT') { setShareLimit(false); setPdfError('Not enough tokens. Buy tokens to continue.'); }
+      else if (code === 'SHARE_DISABLED') setPdfError('Sharing is disabled for this report.');
+      else if (code === 'FORBIDDEN') setPdfError('Only owners or admins can share reports.');
+      else setPdfError('Could not create a share link. Please try again.');
+    } finally { setShareBusy(false); }
+  };
+  const onRevoke = async () => {
+    setShareBusy(true); setPdfError(null);
+    try {
+      await revokeReportShare(orgId, report.id);
+      setShareUrl(''); setShareExpiry('');
+      setShareState(prev => ({ shareVersion: (prev?.shareVersion ?? 1) + 1, sharedAt: '', sharedExpiresAt: '', shareRevokedAt: new Date().toISOString(), sharingDisabled: prev?.sharingDisabled ?? false }));
+    } catch { setPdfError('Could not revoke the link. Please try again.'); }
+    finally { setShareBusy(false); }
+  };
+  const onToggleSharing = async () => {
+    if (!shareState) return;
+    setShareBusy(true); setPdfError(null);
+    try {
+      const disabled = await setReportSharingDisabled(orgId, report.id, !shareState.sharingDisabled);
+      setShareState(prev => (prev ? { ...prev, sharingDisabled: disabled } : prev));
+      if (disabled) setShareUrl('');
+    } catch { setPdfError('Could not update sharing. Please try again.'); }
+    finally { setShareBusy(false); }
+  };
+  const copyShare = () => {
+    if (!shareUrl) return;
+    navigator.clipboard?.writeText(shareUrl).then(() => setCopied(true)).catch(() => { /* clipboard unavailable */ });
+  };
+  const shareStatus = (s: ReportShareState): 'Disabled' | 'Active' | 'Revoked' | 'Expired' | 'None' => {
+    if (s.sharingDisabled) return 'Disabled';
+    const exp = s.sharedExpiresAt ? Date.parse(s.sharedExpiresAt) : 0;
+    if (s.sharedAt && exp > Date.now()) return 'Active';
+    if (s.shareRevokedAt && !s.sharedAt) return 'Revoked';
+    if (s.sharedExpiresAt && exp <= Date.now()) return 'Expired';
+    return 'None';
+  };
+
   return (
     <div>
       {editing && (
@@ -120,6 +189,50 @@ export function ReportDetailPage() {
           Rename
         </Button>
       </div>
+
+      {canShare && shareState && (() => {
+        const st = shareStatus(shareState);
+        const isActive = st === 'Active';
+        const card: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 16, margin: '12px 0' };
+        return (
+          <div style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Shareable link</div>
+              <StatusBadge status={st} />
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 12.5, margin: '6px 0 12px' }}>
+              A signed, no-login link to this report's PDF. Creating or regenerating counts toward your PDF exports.
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {isActive ? (
+                <>
+                  <Button variant="primary" size="md" disabled={shareBusy} onClick={() => mintShare(true)}>{shareBusy ? 'Working…' : 'Generate new link'}</Button>
+                  <Button variant="ghost" size="md" disabled={shareBusy} onClick={onRevoke}>Revoke</Button>
+                </>
+              ) : (
+                <Button variant="primary" size="md" disabled={shareBusy || st === 'Disabled'} onClick={() => mintShare(false)}>{shareBusy ? 'Working…' : 'Share link'}</Button>
+              )}
+              <Button variant="ghost" size="md" disabled={shareBusy} onClick={onToggleSharing}>
+                {shareState.sharingDisabled ? 'Enable sharing' : 'Disable sharing'}
+              </Button>
+            </div>
+            {shareUrl && st !== 'Disabled' && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()}
+                    style={{ flex: '1 1 280px', minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-strong)', fontSize: 12.5, fontFamily: 'var(--font-mono, monospace)' }} />
+                  <Button variant="ghost" size="md" onClick={copyShare}>{copied ? 'Copied' : 'Copy'}</Button>
+                </div>
+                {shareExpiry && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '8px 0 0' }}>Expires {new Date(shareExpiry).toLocaleString()}.</p>}
+              </div>
+            )}
+            {!shareUrl && isActive && shareState.sharedExpiresAt && (
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>An active link exists (expires {new Date(shareState.sharedExpiresAt).toLocaleString()}). Generate a new link to view the URL again — this revokes the old one.</p>
+            )}
+            {st === 'Disabled' && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>Sharing is disabled — existing links no longer work.</p>}
+          </div>
+        );
+      })()}
 
       <div
         style={{
@@ -212,7 +325,31 @@ export function ReportDetailPage() {
         onBuyTokens={() => { setLimitOpen(false); navigate({ name: 'billing/tokens' }); }}
         onCancel={() => setLimitOpen(false)}
       />
+      <PdfLimitModal
+        open={shareLimit}
+        busy={shareBusy}
+        actionLabel="Use tokens & create link"
+        onUseTokens={() => mintShare(pendingRegen, true)}
+        onBuyTokens={() => { setShareLimit(false); navigate({ name: 'billing/tokens' }); }}
+        onCancel={() => setShareLimit(false)}
+      />
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: 'Disabled' | 'Active' | 'Revoked' | 'Expired' | 'None' }) {
+  if (status === 'None') return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Not shared</span>;
+  const palette: Record<string, { bg: string; fg: string }> = {
+    Active: { bg: '#D1FAE5', fg: '#065F46' },
+    Expired: { bg: '#FEF3C7', fg: '#92400E' },
+    Revoked: { bg: '#FEE2E2', fg: '#991B1B' },
+    Disabled: { bg: '#E5E7EB', fg: '#374151' },
+  };
+  const p = palette[status];
+  return (
+    <span style={{ background: p.bg, color: p.fg, fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 999, letterSpacing: '0.02em' }}>
+      {status}
+    </span>
   );
 }
 
