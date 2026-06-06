@@ -2869,6 +2869,18 @@ clôture finale sur `a5ed442` (3 changements gatés).
 
 Prochaine étape : scope J14 à définir (gaté).
 
+**✅ Audit Express — "In-app capture → titres → stabilisation → detail view → partage"** — **SHIPPED / CLÔTURÉ (gates PASS, 0 must-fix)** le 2026-06-06. Chaîne de 6 batches gatés (prod vérifié opérateur à chaque étape) :
+- **`f12fa3a` — Capture in-app authentifiée** : flow SPA "Run Audit Express" (questions → preview → analyze → results) réutilisant le moteur déterministe. Routes worker auth+org `POST /api/audit-express/preview` & `…/extract` (twins des publiques, **sans Turnstile** — l'auth est le gate ; caps/robots/SSRF intacts). Auto-save immédiat + dedup ; nav Sidebar "Run Audit Express". Anonyme bloqué ; quota PDF inchangé.
+- **`62afe87` — Titres significatifs + typographie** : `deriveAuditTitle` (déterministe, no PII : `{Secteur · Audience}` → domaine → workflow → jamais "Unknown · Unknown") ; **rename inline** (sanitize PII/markup, cap 80) ; titre = input déterministe du header PDF (régénéré + R2 overwrite au rename ; scores inchangés) ; polish typo Run page (échelle H1/H2/labels alignée).
+- **`3400a30` — Stabilisation/optimisation** : fix **double-save** (l'enrichi supersède le preview-only → 1 entrée/run) ; **charge tokens idempotente par audit** (anti double-débit au re-clic) ; `no-store` ajouté sur preview/extract/list/save/title ; guards anti double-submit. Politique cache Pages vérifiée (index `no-cache`, `/assets/*` immutable).
+- **`e11a665` — Saved Audit detail view** : route `GET /api/audit-express/detail/:auditId` (recompute preview+understanding depuis inputs stockés ; **jamais** `snapshotJson`/`pdfKey`) ; page detail in-app + composant partagé `AuditResultView` (DRY avec Run page) ; title cliquable + "View" dans la liste.
+- **`c0c5431` — Liens PDF partageables** : token HMAC-SHA256 signé court (`base64url(payload).base64url(sig)`, payload `{o,a,e}`, no PII) ; `POST …/share` (auth+org, **quota-compté** → pas de contournement) ; `GET …/shared/:token` **public** (lecture seule du PDF déjà scrubbed) ; `SHARE_INVALID`/`SHARE_EXPIRED` ; TTL 7 j ; secret worker `AUDIT_SHARE_SECRET`.
+- **`d3c0258` — Gestion & révocation des liens** : `shareVersion` dans le token (legacy → v1) ; **révocation instantanée** (`POST …/revoke-share` incrémente la version → `SHARE_REVOKED` 410) ; `POST …/regenerate-share` (bump + nouveau token, quota par version) ; `POST …/sharing` (toggle `sharingDisabled` → bloque create/regenerate **et** liens vivants, 403) ; detail renvoie les métadonnées ; UI carte "Sharing" avec badge Active/Expired/Revoked/Disabled + Copy/Revoke/Generate.
+- **Garde-fous (toute la chaîne)** : déterminisme PDF préservé (mêmes inputs+createdAt[+title] → bytes identiques ; scores jamais modifiés) ; **no PII** (tokens/URLs/logs/titres/PDF) ; isolation cross-tenant sur chaque route (gate auth+membership ; token lié à l'orgId signé) ; **Stripe = seule source billing** (tokens via ledger) ; APIs `no-store` ; CSP Report-Only inchangée ; **no new deps**.
+- **Gates finaux** : vitest **304 pass / 60 skip / 0 fail** · build clean · worker `tsc` PASS · worktree clean. **0 must-fix.**
+- **Prérequis opérateur** : secret `AUDIT_SHARE_SECRET` posé (`wrangler secret put … --env production`).
+- **Différé (gaté)** : analytics de partage (v1 non-goal) ; expiry de lien configurable ; quota sur route inline `/pdf` (non exposée UI) ; intégration produit profonde (Audit Express → registre/recos/record conformité) ; bascule CSP enforce (après fenêtre Report-Only + refactor inline→nonces).
+
 **📌 J3 — "Product polish & adoption"** — scope APPROUVÉ (pre-flight §17 OK), code
 pas démarré (plan gaté à venir). Items + rescopes :
 1. **Help Center v1** (§9.16) — frontend, ✅ inclus.
