@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
-import { getSavedAuditDetail, renameAudit, SavedAuditError, type SavedAuditDetail } from '../lib/auditExpress/savedClient';
+import { getSavedAuditDetail, renameAudit, createShareLink, SavedAuditError, type SavedAuditDetail } from '../lib/auditExpress/savedClient';
 import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
@@ -18,8 +18,31 @@ export function AuditExpressDetailPage() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [savingTitle, setSavingTitle] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareExpiry, setShareExpiry] = useState('');
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareLimit, setShareLimit] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const pdf = usePdfDownload(orgId);
+
+  const onShare = async (useTokens = false) => {
+    setShareBusy(true); setError(null);
+    try {
+      const link = await createShareLink(orgId, auditId, useTokens);
+      setShareUrl(link.url); setShareExpiry(link.expiresAt); setShareLimit(false); setCopied(false);
+    } catch (e) {
+      const code = e instanceof SavedAuditError ? e.code : '';
+      if (code === 'PDF_LIMIT_REACHED') setShareLimit(true);
+      else if (code === 'TOKENS_INSUFFICIENT') { setShareLimit(false); setError('Not enough tokens to create a share link. Buy tokens to continue.'); }
+      else if (code === 'SHARE_DISABLED') setError('Sharing is not enabled yet.');
+      else setError('Could not create a share link. Please try again.');
+    } finally { setShareBusy(false); }
+  };
+  const copyShare = () => {
+    if (!shareUrl) return;
+    navigator.clipboard?.writeText(shareUrl).then(() => { setCopied(true); }).catch(() => { /* clipboard unavailable */ });
+  };
 
   const load = useCallback(async () => {
     if (!orgId || !auditId) return;
@@ -92,9 +115,24 @@ export function AuditExpressDetailPage() {
             <button type="button" style={cta('primary')} disabled={pdf.busy === auditId} onClick={() => pdf.download(auditId)}>
               {pdf.busy === auditId ? 'Preparing…' : 'Download PDF'}
             </button>
+            <button type="button" style={cta('ghost')} disabled={shareBusy} onClick={() => onShare(false)}>
+              {shareBusy ? 'Creating…' : 'Share link'}
+            </button>
             <button type="button" style={cta('ghost')} onClick={() => navigate({ name: 'audit-express/saved' })}>Back to Saved Audits</button>
           </div>
           {pdf.error && <p style={{ color: 'var(--amber-text)', fontSize: 13, marginTop: 8 }}>{pdf.error}</p>}
+
+          {shareUrl && (
+            <div style={{ marginTop: 14, padding: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Shareable link (no login required)</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()}
+                  style={{ flex: '1 1 280px', minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-strong)', fontSize: 12.5, fontFamily: 'var(--font-mono, monospace)' }} />
+                <button type="button" style={cta('ghost')} onClick={copyShare}>{copied ? 'Copied' : 'Copy'}</button>
+              </div>
+              {shareExpiry && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '8px 0 0' }}>Expires {new Date(shareExpiry).toLocaleString()}.</p>}
+            </div>
+          )}
         </>
       )}
 
@@ -104,6 +142,14 @@ export function AuditExpressDetailPage() {
         onUseTokens={() => pdf.limitFor && pdf.download(pdf.limitFor, true)}
         onBuyTokens={() => { pdf.setLimitFor(null); navigate({ name: 'billing/tokens' }); }}
         onCancel={() => pdf.setLimitFor(null)}
+      />
+      <PdfLimitModal
+        open={shareLimit}
+        busy={shareBusy}
+        actionLabel="Use tokens & create link"
+        onUseTokens={() => onShare(true)}
+        onBuyTokens={() => { setShareLimit(false); navigate({ name: 'billing/tokens' }); }}
+        onCancel={() => setShareLimit(false)}
       />
     </div>
   );

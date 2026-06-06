@@ -81,6 +81,23 @@ export async function getSavedAuditDetail(orgId: string, auditId: string): Promi
   return j;
 }
 
+export interface ShareLink { url: string; expiresAt: string }
+
+/** Create a short-lived shareable PDF link. Minting counts against the PDF quota
+ *  (PDF_LIMIT_REACHED → pass useTokens to spend tokens). */
+export async function createShareLink(orgId: string, auditId: string, useTokens = false): Promise<ShareLink> {
+  const idToken = await getIdToken();
+  const url = `${WORKER_BASE}/api/audit-express/${encodeURIComponent(auditId)}/share${useTokens ? '?useTokens=1' : ''}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId }),
+  });
+  const j = await res.json().catch(() => null) as (ShareLink & { code?: string }) | null;
+  if (!res.ok || !j) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
+  return j;
+}
+
 /** Authenticated in-app preview (no Turnstile). Same deterministic engine. */
 export async function runPreview(orgId: string, taps: unknown): Promise<unknown> {
   const idToken = await getIdToken();

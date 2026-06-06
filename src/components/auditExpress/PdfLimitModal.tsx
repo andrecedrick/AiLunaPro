@@ -1,12 +1,13 @@
 import type { CSSProperties } from 'react';
 
 /** Shared "3 free PDF exports used" modal (J16.1). Token cost is fixed at 10. */
-export function PdfLimitModal({ open, busy, onUseTokens, onBuyTokens, onCancel }: {
+export function PdfLimitModal({ open, busy, onUseTokens, onBuyTokens, onCancel, actionLabel = 'Use tokens & download' }: {
   open: boolean;
   busy: boolean;
   onUseTokens: () => void;
   onBuyTokens: () => void;
   onCancel: () => void;
+  actionLabel?: string;
 }) {
   if (!open) return null;
   const btn = (variant: 'primary' | 'ghost'): CSSProperties => ({
@@ -28,7 +29,7 @@ export function PdfLimitModal({ open, busy, onUseTokens, onBuyTokens, onCancel }
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           <button type="button" style={btn('primary')} disabled={busy} onClick={onUseTokens}>
-            {busy ? '…' : 'Use tokens & download'}
+            {busy ? '…' : actionLabel}
           </button>
           <button type="button" style={btn('ghost')} onClick={onBuyTokens}>Upgrade or buy tokens</button>
           <button type="button" style={btn('ghost')} onClick={onCancel}>Cancel</button>

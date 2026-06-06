@@ -23,6 +23,7 @@ import { stableHash, scrubPii, type ExtractSnapshot, type ExtractErrorCode, type
 import { runExtraction } from '../lib/audit-express-extract-fetch';
 import type { Understanding } from '../lib/audit-express-understanding';
 import { enforcePdfQuota } from '../lib/audit-express-quota';
+import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
@@ -32,6 +33,7 @@ type StoreBindings = AppEnv['Bindings'];
 
 const COLLECTION = (orgId: string) => `organizations/${orgId}/auditExpress`;
 const r2Key = (orgId: string, auditId: string) => `pdf/${orgId}/${auditId}.pdf`;
+const SHARE_TTL_SECONDS = 7 * 24 * 3600; // shareable links live 7 days
 
 const WORKFLOW_LABELS: Record<string, string> = {
   support: 'Customer support', sales: 'Sales', finance: 'Finance', documents: 'Documents',
@@ -272,6 +274,32 @@ store.get('/api/audit-express/detail/:auditId', async c => {
   });
 });
 
+/* Public shared download — NO auth gate. Protected by the HMAC-signed,
+ * short-lived token; serves the (already PII-scrubbed) PDF from R2. */
+store.get('/api/audit-express/shared/:token', async c => {
+  const env = c.env as StoreBindings;
+  c.header('Cache-Control', 'no-store');
+  const secret = env.AUDIT_SHARE_SECRET;
+  if (!secret) return c.json({ error: 'Sharing is not enabled.', code: 'SHARE_DISABLED' }, 503);
+
+  const v = await verifyShareToken(secret, c.req.param('token'), Math.floor(Date.now() / 1000));
+  if (!v.ok) return c.json({ error: v.code === 'SHARE_EXPIRED' ? 'This link has expired.' : 'This link is invalid.', code: v.code }, v.code === 'SHARE_EXPIRED' ? 410 : 401);
+
+  const { orgId, auditId } = v.payload;
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${auditId}`);
+  if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+  const key = typeof doc.pdfKey === 'string' ? doc.pdfKey : r2Key(orgId, auditId);
+  if (!env.AUDIT_PDFS) return c.json({ error: 'Storage unavailable.', code: 'STORAGE_UNAVAILABLE' }, 500);
+  const obj = await env.AUDIT_PDFS.get(key);
+  if (!obj) return c.json({ error: 'File not found.', code: 'NOT_FOUND' }, 404);
+
+  return c.body(obj.body as unknown as ReadableStream, 200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': 'inline; filename="audit-express-readiness.pdf"',
+    'Cache-Control': 'no-store',
+  });
+});
+
 store.get('/api/audit-express/file/:auditId', async c => {
   const env = c.env as StoreBindings;
   const orgId = safeId(c.req.query('orgId'));
@@ -336,6 +364,34 @@ store.post('/api/audit-express/:auditId/title', async c => {
   await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path, { title, updatedAt: new Date().toISOString() }, { merge: true });
   c.header('Cache-Control', 'no-store');
   return c.json({ title });
+});
+
+store.post('/api/audit-express/:auditId/share', async c => {
+  const env = c.env as StoreBindings;
+  let body: Record<string, unknown>;
+  try { body = (await c.req.json()) as Record<string, unknown>; } catch { c.header('Cache-Control', 'no-store'); return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+  const orgId = safeId(body.orgId);
+  const auditId = safeId(c.req.param('auditId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+  c.header('Cache-Control', 'no-store');
+
+  const secret = env.AUDIT_SHARE_SECRET;
+  if (!secret) return c.json({ error: 'Sharing is not enabled.', code: 'SHARE_DISABLED' }, 503);
+
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${auditId}`);
+  if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+
+  // Minting a link counts against the PDF quota (same as a download) so sharing
+  // cannot be used to farm free exports. Opening the link later is free.
+  const useTokens = c.req.query('useTokens') === '1' || c.req.query('useTokens') === 'true' || body.useTokens === true;
+  const quota = await enforcePdfQuota(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, g.uid, `share:${auditId}`, useTokens);
+  if (!quota.ok) return c.json({ error: quota.code === 'PDF_LIMIT_REACHED' ? 'Free PDF limit reached.' : 'Not enough tokens.', code: quota.code, balance: quota.balance, required: quota.required }, quota.status);
+
+  const now = Math.floor(Date.now() / 1000);
+  const { token, exp } = await signShareToken(secret, orgId, auditId, SHARE_TTL_SECONDS, now);
+  const origin = new URL(c.req.url).origin;
+  return c.json({ url: `${origin}/api/audit-express/shared/${token}`, expiresAt: new Date(exp * 1000).toISOString() });
 });
 
 store.delete('/api/audit-express/:auditId', async c => {

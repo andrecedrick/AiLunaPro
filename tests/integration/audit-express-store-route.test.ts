@@ -44,7 +44,8 @@ const fakeR2 = {
   get: vi.fn(async (k: string) => (state.r2.has(k) ? { body: state.r2.get(k) } : null)),
   delete: vi.fn(async (k: string) => { state.r2.delete(k); }),
 };
-const ENV = { FIREBASE_PROJECT_ID: 'audit-ai', FIREBASE_SERVICE_ACCOUNT_JSON: '{}', AUDIT_PDFS: fakeR2 } as unknown as Record<string, unknown>;
+const ENV = { FIREBASE_PROJECT_ID: 'audit-ai', FIREBASE_SERVICE_ACCOUNT_JSON: '{}', AUDIT_PDFS: fakeR2, AUDIT_SHARE_SECRET: 'test-share-secret' } as unknown as Record<string, unknown>;
+const ENV_NO_SHARE = { FIREBASE_PROJECT_ID: 'audit-ai', FIREBASE_SERVICE_ACCOUNT_JSON: '{}', AUDIT_PDFS: fakeR2 } as unknown as Record<string, unknown>;
 
 function snapshot() {
   const html = '<!doctype html><html lang="en"><head><title>Acme Store</title></head><body><a href="/shop">Shop</a></body></html>';
@@ -290,5 +291,64 @@ describe('store route — detail view (recomputed, no leak)', () => {
     expect(other.status).toBe(403);
     const missing = await req('GET', '/api/audit-express/detail/nope?orgId=orgA', { token: 'valid-token' });
     expect(missing.status).toBe(404);
+  });
+});
+
+describe('store route — shareable PDF links', () => {
+  async function setup() {
+    const { auditId } = await (await save('orgA')).json();
+    return auditId as string;
+  }
+  const shareReq = (auditId: string, token = 'valid-token', orgId = 'orgA') =>
+    req('POST', `/api/audit-express/${auditId}/share`, { token, body: { orgId } });
+
+  it('member -> 200 { url, expiresAt }; anon -> 401; non-member -> 403; missing -> 404', async () => {
+    const id = await setup();
+    const ok = await shareReq(id);
+    expect(ok.status).toBe(200);
+    const j = await ok.json();
+    expect(j.url).toContain('/api/audit-express/shared/');
+    expect(typeof j.expiresAt).toBe('string');
+    expect(ok.headers.get('cache-control')).toBe('no-store');
+
+    expect((await req('POST', `/api/audit-express/${id}/share`, { body: { orgId: 'orgA' } })).status).toBe(401);
+    expect((await shareReq(id, 'valid-token', 'orgB')).status).toBe(403);
+    expect((await shareReq('nope')).status).toBe(404);
+  });
+
+  it('minting a link counts against the PDF quota (4th export blocked)', async () => {
+    const id = await setup();
+    for (let i = 0; i < 3; i++) await req('GET', `/api/audit-express/file/${id}?orgId=orgA`, { token: 'valid-token' });
+    const blocked = await shareReq(id);
+    expect(blocked.status).toBe(402);
+    expect((await blocked.json()).code).toBe('PDF_LIMIT_REACHED');
+  });
+
+  it('public open: valid token -> PDF; tampered -> 401', async () => {
+    const id = await setup();
+    const j = await (await shareReq(id)).json();
+    const token = j.url.split('/shared/')[1] as string;
+
+    const open = await store.request(`/api/audit-express/shared/${token}`, { method: 'GET' }, ENV);
+    expect(open.status).toBe(200);
+    expect(open.headers.get('content-type')).toContain('application/pdf');
+    expect(open.headers.get('cache-control')).toBe('no-store');
+    const buf = new Uint8Array(await open.arrayBuffer());
+    expect(String.fromCharCode(buf[0], buf[1], buf[2], buf[3])).toBe('%PDF');
+
+    const [body, sig] = token.split('.');
+    const bad = `${body.slice(0, -1)}${body.endsWith('A') ? 'B' : 'A'}.${sig}`;
+    const tampered = await store.request(`/api/audit-express/shared/${bad}`, { method: 'GET' }, ENV);
+    expect(tampered.status).toBe(401);
+    expect((await tampered.json()).code).toBe('SHARE_INVALID');
+  });
+
+  it('SHARE_DISABLED (503) when the secret is unset', async () => {
+    const id = await setup();
+    const res = await store.request(`/api/audit-express/${id}/share`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-token' }, body: JSON.stringify({ orgId: 'orgA' }),
+    }, ENV_NO_SHARE);
+    expect(res.status).toBe(503);
+    expect((await res.json()).code).toBe('SHARE_DISABLED');
   });
 });

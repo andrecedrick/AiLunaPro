@@ -85,6 +85,8 @@ export type AppEnv = {
     PLATFORM_ADMIN_EMAILS?:        string;
     // J15 P1.1 — R2 bucket for saved Audit Express PDFs (org-scoped keys).
     AUDIT_PDFS?:                   R2Bucket;
+    // Shareable PDF links — HMAC secret (operator sets via `wrangler secret put`).
+    AUDIT_SHARE_SECRET?:           string;
   };
   Variables: {
     uid:    string;
