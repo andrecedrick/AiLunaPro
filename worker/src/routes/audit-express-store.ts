@@ -271,6 +271,11 @@ store.get('/api/audit-express/detail/:auditId', async c => {
     audience,
     preview,
     understanding: understanding ?? null,
+    shareVersion: typeof doc.shareVersion === 'number' ? doc.shareVersion : 1,
+    sharedAt: String(doc.sharedAt ?? ''),
+    sharedExpiresAt: String(doc.sharedExpiresAt ?? ''),
+    shareRevokedAt: String(doc.shareRevokedAt ?? ''),
+    sharingDisabled: doc.sharingDisabled === true,
   });
 });
 
@@ -288,6 +293,13 @@ store.get('/api/audit-express/shared/:token', async c => {
   const { orgId, auditId } = v.payload;
   const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${auditId}`);
   if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+
+  // Instant revocation: a token is only valid for the audit's current shareVersion.
+  const currentVersion = typeof doc.shareVersion === 'number' ? doc.shareVersion : 1;
+  if (v.payload.shareVersion !== currentVersion) return c.json({ error: 'This link has been revoked.', code: 'SHARE_REVOKED' }, 410);
+  // Disabling sharing also blocks existing live links (immediate effect).
+  if (doc.sharingDisabled === true) return c.json({ error: 'Sharing is disabled for this audit.', code: 'SHARE_DISABLED' }, 403);
+
   const key = typeof doc.pdfKey === 'string' ? doc.pdfKey : r2Key(orgId, auditId);
   if (!env.AUDIT_PDFS) return c.json({ error: 'Storage unavailable.', code: 'STORAGE_UNAVAILABLE' }, 500);
   const obj = await env.AUDIT_PDFS.get(key);
@@ -366,32 +378,90 @@ store.post('/api/audit-express/:auditId/title', async c => {
   return c.json({ title });
 });
 
+/** Mint a share link (create or regenerate). `bump` increments shareVersion,
+ *  which instantly invalidates older tokens. Quota-counted per version. */
+async function mintShare(c: Context, env: StoreBindings, orgId: string, auditId: string, uid: string, bump: boolean): Promise<Response> {
+  const secret = env.AUDIT_SHARE_SECRET;
+  if (!secret) return c.json({ error: 'Sharing is not enabled.', code: 'SHARE_DISABLED' }, 503);
+
+  const path = `${COLLECTION(orgId)}/${auditId}`;
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path);
+  if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+  if (doc.sharingDisabled === true) return c.json({ error: 'Sharing is disabled for this audit.', code: 'SHARE_DISABLED' }, 403);
+
+  const current = typeof doc.shareVersion === 'number' ? doc.shareVersion : 1;
+  const shareVersion = bump ? current + 1 : current;
+
+  // Minting counts against the PDF quota (per version, so each regenerate counts)
+  // so sharing cannot farm free exports. Opening a valid link later is free.
+  const useTokens = c.req.query('useTokens') === '1' || c.req.query('useTokens') === 'true';
+  const quota = await enforcePdfQuota(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, uid, `share:${auditId}:v${shareVersion}`, useTokens);
+  if (!quota.ok) return c.json({ error: quota.code === 'PDF_LIMIT_REACHED' ? 'Free PDF limit reached.' : 'Not enough tokens.', code: quota.code, balance: quota.balance, required: quota.required }, quota.status);
+
+  const now = Math.floor(Date.now() / 1000);
+  const { token, exp } = await signShareToken(secret, orgId, auditId, shareVersion, SHARE_TTL_SECONDS, now);
+  const sharedAt = new Date(now * 1000).toISOString();
+  const sharedExpiresAt = new Date(exp * 1000).toISOString();
+  await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path, { shareVersion, sharedAt, sharedExpiresAt, shareRevokedAt: '' }, { merge: true });
+  const origin = new URL(c.req.url).origin;
+  return c.json({ url: `${origin}/api/audit-express/shared/${token}`, expiresAt: sharedExpiresAt, shareVersion });
+}
+
 store.post('/api/audit-express/:auditId/share', async c => {
   const env = c.env as StoreBindings;
-  let body: Record<string, unknown>;
-  try { body = (await c.req.json()) as Record<string, unknown>; } catch { c.header('Cache-Control', 'no-store'); return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  const orgId = safeId(body.orgId);
+  const auditId = safeId(c.req.param('auditId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+  c.header('Cache-Control', 'no-store');
+  return mintShare(c, env, orgId, auditId, g.uid, false);
+});
+
+store.post('/api/audit-express/:auditId/regenerate-share', async c => {
+  const env = c.env as StoreBindings;
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  const orgId = safeId(body.orgId);
+  const auditId = safeId(c.req.param('auditId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+  c.header('Cache-Control', 'no-store');
+  return mintShare(c, env, orgId, auditId, g.uid, true);
+});
+
+store.post('/api/audit-express/:auditId/revoke-share', async c => {
+  const env = c.env as StoreBindings;
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   const orgId = safeId(body.orgId);
   const auditId = safeId(c.req.param('auditId'));
   const g = await gate(c, orgId);
   if (g instanceof Response) return g;
   c.header('Cache-Control', 'no-store');
 
-  const secret = env.AUDIT_SHARE_SECRET;
-  if (!secret) return c.json({ error: 'Sharing is not enabled.', code: 'SHARE_DISABLED' }, 503);
-
-  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${auditId}`);
+  const path = `${COLLECTION(orgId)}/${auditId}`;
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path);
   if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+  const next = (typeof doc.shareVersion === 'number' ? doc.shareVersion : 1) + 1;
+  // Bumping the version invalidates every outstanding token immediately.
+  await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path, { shareVersion: next, sharedAt: '', sharedExpiresAt: '', shareRevokedAt: new Date().toISOString() }, { merge: true });
+  return c.json({ status: 'revoked', shareVersion: next });
+});
 
-  // Minting a link counts against the PDF quota (same as a download) so sharing
-  // cannot be used to farm free exports. Opening the link later is free.
-  const useTokens = c.req.query('useTokens') === '1' || c.req.query('useTokens') === 'true' || body.useTokens === true;
-  const quota = await enforcePdfQuota(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, g.uid, `share:${auditId}`, useTokens);
-  if (!quota.ok) return c.json({ error: quota.code === 'PDF_LIMIT_REACHED' ? 'Free PDF limit reached.' : 'Not enough tokens.', code: quota.code, balance: quota.balance, required: quota.required }, quota.status);
+store.post('/api/audit-express/:auditId/sharing', async c => {
+  const env = c.env as StoreBindings;
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  const orgId = safeId(body.orgId);
+  const auditId = safeId(c.req.param('auditId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+  c.header('Cache-Control', 'no-store');
 
-  const now = Math.floor(Date.now() / 1000);
-  const { token, exp } = await signShareToken(secret, orgId, auditId, SHARE_TTL_SECONDS, now);
-  const origin = new URL(c.req.url).origin;
-  return c.json({ url: `${origin}/api/audit-express/shared/${token}`, expiresAt: new Date(exp * 1000).toISOString() });
+  const path = `${COLLECTION(orgId)}/${auditId}`;
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path);
+  if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+  const disabled = body.disabled === true;
+  await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path, { sharingDisabled: disabled }, { merge: true });
+  return c.json({ sharingDisabled: disabled });
 });
 
 store.delete('/api/audit-express/:auditId', async c => {

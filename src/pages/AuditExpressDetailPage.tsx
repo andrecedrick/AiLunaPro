@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
-import { getSavedAuditDetail, renameAudit, createShareLink, SavedAuditError, type SavedAuditDetail } from '../lib/auditExpress/savedClient';
+import { getSavedAuditDetail, renameAudit, createShareLink, regenerateShareLink, revokeShare, setSharingDisabled, SavedAuditError, type SavedAuditDetail } from '../lib/auditExpress/savedClient';
 import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
@@ -22,26 +22,56 @@ export function AuditExpressDetailPage() {
   const [shareExpiry, setShareExpiry] = useState('');
   const [shareBusy, setShareBusy] = useState(false);
   const [shareLimit, setShareLimit] = useState(false);
+  const [pendingRegen, setPendingRegen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const pdf = usePdfDownload(orgId);
 
-  const onShare = async (useTokens = false) => {
-    setShareBusy(true); setError(null);
+  // Create (regen=false) or regenerate (regen=true) a share link. Both count against quota.
+  const mint = async (regen: boolean, useTokens = false) => {
+    setShareBusy(true); setError(null); setPendingRegen(regen);
     try {
-      const link = await createShareLink(orgId, auditId, useTokens);
+      const link = regen ? await regenerateShareLink(orgId, auditId, useTokens) : await createShareLink(orgId, auditId, useTokens);
       setShareUrl(link.url); setShareExpiry(link.expiresAt); setShareLimit(false); setCopied(false);
+      setDetail(prev => prev ? { ...prev, sharedAt: new Date().toISOString(), sharedExpiresAt: link.expiresAt, shareRevokedAt: '', shareVersion: prev.shareVersion + (regen ? 1 : 0) } : prev);
     } catch (e) {
       const code = e instanceof SavedAuditError ? e.code : '';
       if (code === 'PDF_LIMIT_REACHED') setShareLimit(true);
-      else if (code === 'TOKENS_INSUFFICIENT') { setShareLimit(false); setError('Not enough tokens to create a share link. Buy tokens to continue.'); }
-      else if (code === 'SHARE_DISABLED') setError('Sharing is not enabled yet.');
+      else if (code === 'TOKENS_INSUFFICIENT') { setShareLimit(false); setError('Not enough tokens. Buy tokens to continue.'); }
+      else if (code === 'SHARE_DISABLED') setError('Sharing is disabled for this audit.');
       else setError('Could not create a share link. Please try again.');
     } finally { setShareBusy(false); }
+  };
+  const onRevoke = async () => {
+    setShareBusy(true); setError(null);
+    try {
+      await revokeShare(orgId, auditId);
+      setShareUrl(''); setShareExpiry('');
+      setDetail(prev => prev ? { ...prev, sharedAt: '', sharedExpiresAt: '', shareRevokedAt: new Date().toISOString(), shareVersion: prev.shareVersion + 1 } : prev);
+    } catch { setError('Could not revoke the link. Please try again.'); }
+    finally { setShareBusy(false); }
+  };
+  const onToggleSharing = async () => {
+    if (!detail) return;
+    setShareBusy(true); setError(null);
+    try {
+      const disabled = await setSharingDisabled(orgId, auditId, !detail.sharingDisabled);
+      setDetail(prev => prev ? { ...prev, sharingDisabled: disabled } : prev);
+      if (disabled) setShareUrl(''); // existing live links stop working immediately
+    } catch { setError('Could not update sharing. Please try again.'); }
+    finally { setShareBusy(false); }
   };
   const copyShare = () => {
     if (!shareUrl) return;
     navigator.clipboard?.writeText(shareUrl).then(() => { setCopied(true); }).catch(() => { /* clipboard unavailable */ });
+  };
+  const shareStatus = (d: SavedAuditDetail): 'Disabled' | 'Active' | 'Revoked' | 'Expired' | 'None' => {
+    if (d.sharingDisabled) return 'Disabled';
+    const exp = d.sharedExpiresAt ? Date.parse(d.sharedExpiresAt) : 0;
+    if (d.sharedAt && exp > Date.now()) return 'Active';
+    if (d.shareRevokedAt && !d.sharedAt) return 'Revoked';
+    if (d.sharedExpiresAt && exp <= Date.now()) return 'Expired';
+    return 'None';
   };
 
   const load = useCallback(async () => {
@@ -115,24 +145,55 @@ export function AuditExpressDetailPage() {
             <button type="button" style={cta('primary')} disabled={pdf.busy === auditId} onClick={() => pdf.download(auditId)}>
               {pdf.busy === auditId ? 'Preparing…' : 'Download PDF'}
             </button>
-            <button type="button" style={cta('ghost')} disabled={shareBusy} onClick={() => onShare(false)}>
-              {shareBusy ? 'Creating…' : 'Share link'}
-            </button>
             <button type="button" style={cta('ghost')} onClick={() => navigate({ name: 'audit-express/saved' })}>Back to Saved Audits</button>
           </div>
           {pdf.error && <p style={{ color: 'var(--amber-text)', fontSize: 13, marginTop: 8 }}>{pdf.error}</p>}
 
-          {shareUrl && (
-            <div style={{ marginTop: 14, padding: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Shareable link (no login required)</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()}
-                  style={{ flex: '1 1 280px', minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-strong)', fontSize: 12.5, fontFamily: 'var(--font-mono, monospace)' }} />
-                <button type="button" style={cta('ghost')} onClick={copyShare}>{copied ? 'Copied' : 'Copy'}</button>
+          {(() => {
+            const status = shareStatus(detail);
+            const isActive = status === 'Active';
+            const expiryText = detail.sharedExpiresAt ? new Date(detail.sharedExpiresAt).toLocaleString() : '';
+            return (
+              <div style={{ marginTop: 16, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Shareable link</div>
+                  <StatusBadge status={status} />
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: 12.5, margin: '6px 0 12px' }}>
+                  A signed, no-login link to this audit's PDF. Creating or regenerating counts toward your PDF exports.
+                </p>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {isActive ? (
+                    <>
+                      <button type="button" style={cta('primary')} disabled={shareBusy} onClick={() => mint(true)}>{shareBusy ? 'Working…' : 'Generate new link'}</button>
+                      <button type="button" style={cta('ghost')} disabled={shareBusy} onClick={onRevoke}>Revoke</button>
+                    </>
+                  ) : (
+                    <button type="button" style={cta('primary')} disabled={shareBusy || status === 'Disabled'} onClick={() => mint(false)}>{shareBusy ? 'Working…' : 'Share link'}</button>
+                  )}
+                  <button type="button" style={cta('ghost')} disabled={shareBusy} onClick={onToggleSharing}>
+                    {detail.sharingDisabled ? 'Enable sharing' : 'Disable sharing'}
+                  </button>
+                </div>
+
+                {shareUrl && status !== 'Disabled' && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()}
+                        style={{ flex: '1 1 280px', minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-strong)', fontSize: 12.5, fontFamily: 'var(--font-mono, monospace)' }} />
+                      <button type="button" style={cta('ghost')} onClick={copyShare}>{copied ? 'Copied' : 'Copy'}</button>
+                    </div>
+                    {shareExpiry && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '8px 0 0' }}>Expires {new Date(shareExpiry).toLocaleString()}.</p>}
+                  </div>
+                )}
+                {!shareUrl && isActive && expiryText && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>An active link exists (expires {expiryText}). Generate a new link to view the URL again — this revokes the old one.</p>
+                )}
+                {status === 'Disabled' && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>Sharing is disabled — existing links no longer work.</p>}
               </div>
-              {shareExpiry && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '8px 0 0' }}>Expires {new Date(shareExpiry).toLocaleString()}.</p>}
-            </div>
-          )}
+            );
+          })()}
         </>
       )}
 
@@ -147,10 +208,26 @@ export function AuditExpressDetailPage() {
         open={shareLimit}
         busy={shareBusy}
         actionLabel="Use tokens & create link"
-        onUseTokens={() => onShare(true)}
+        onUseTokens={() => mint(pendingRegen, true)}
         onBuyTokens={() => { setShareLimit(false); navigate({ name: 'billing/tokens' }); }}
         onCancel={() => setShareLimit(false)}
       />
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: 'Disabled' | 'Active' | 'Revoked' | 'Expired' | 'None' }) {
+  if (status === 'None') return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Not shared</span>;
+  const palette: Record<string, { bg: string; fg: string }> = {
+    Active: { bg: '#D1FAE5', fg: '#065F46' },
+    Expired: { bg: '#FEF3C7', fg: '#92400E' },
+    Revoked: { bg: '#FEE2E2', fg: '#991B1B' },
+    Disabled: { bg: '#E5E7EB', fg: '#374151' },
+  };
+  const p = palette[status];
+  return (
+    <span style={{ background: p.bg, color: p.fg, fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 999, letterSpacing: '0.02em' }}>
+      {status}
+    </span>
   );
 }

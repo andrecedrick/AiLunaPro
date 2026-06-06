@@ -9,7 +9,7 @@
  * PDF; minting a link is auth-gated and quota-counted (see the route).
  */
 
-export interface SharePayload { orgId: string; auditId: string; exp: number }
+export interface SharePayload { orgId: string; auditId: string; exp: number; shareVersion: number }
 export type ShareVerify =
   | { ok: true; payload: SharePayload }
   | { ok: false; code: 'SHARE_INVALID' | 'SHARE_EXPIRED' };
@@ -39,10 +39,12 @@ function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-/** Sign a share token. `ttlSeconds` from now (default 7 days). `nowSeconds` injectable for tests. */
-export async function signShareToken(secret: string, orgId: string, auditId: string, ttlSeconds: number, nowSeconds: number): Promise<{ token: string; exp: number }> {
+/** Sign a share token. `ttlSeconds` from now. `shareVersion` enables instant
+ *  revocation (the open route rejects when it ≠ the audit's current version).
+ *  `nowSeconds` injectable for tests. */
+export async function signShareToken(secret: string, orgId: string, auditId: string, shareVersion: number, ttlSeconds: number, nowSeconds: number): Promise<{ token: string; exp: number }> {
   const exp = nowSeconds + ttlSeconds;
-  const body = b64url(new TextEncoder().encode(JSON.stringify({ o: orgId, a: auditId, e: exp })));
+  const body = b64url(new TextEncoder().encode(JSON.stringify({ o: orgId, a: auditId, e: exp, v: shareVersion })));
   const sig = b64url(await hmac(secret, body));
   return { token: `${body}.${sig}`, exp };
 }
@@ -59,13 +61,16 @@ export async function verifyShareToken(secret: string, token: string, nowSeconds
   try { provided = b64urlToBytes(sig); } catch { return { ok: false, code: 'SHARE_INVALID' }; }
   if (!timingSafeEqual(expected, provided)) return { ok: false, code: 'SHARE_INVALID' };
 
-  let parsed: { o?: unknown; a?: unknown; e?: unknown };
+  let parsed: { o?: unknown; a?: unknown; e?: unknown; v?: unknown };
   try { parsed = JSON.parse(new TextDecoder().decode(b64urlToBytes(body))); } catch { return { ok: false, code: 'SHARE_INVALID' }; }
   const orgId = typeof parsed.o === 'string' ? parsed.o : '';
   const auditId = typeof parsed.a === 'string' ? parsed.a : '';
   const exp = typeof parsed.e === 'number' ? parsed.e : 0;
+  // Legacy tokens (pre-versioning) have no `v` → treat as version 1 (the default),
+  // so links minted before this change keep working until revoked/regenerated.
+  const shareVersion = typeof parsed.v === 'number' ? parsed.v : 1;
   if (!orgId || !auditId || !exp) return { ok: false, code: 'SHARE_INVALID' };
   if (exp <= nowSeconds) return { ok: false, code: 'SHARE_EXPIRED' };
 
-  return { ok: true, payload: { orgId, auditId, exp } };
+  return { ok: true, payload: { orgId, auditId, exp, shareVersion } };
 }

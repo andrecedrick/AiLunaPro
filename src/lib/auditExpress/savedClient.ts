@@ -68,6 +68,11 @@ export interface SavedAuditDetail {
   audience: string;
   preview: unknown | null;
   understanding: unknown | null;
+  shareVersion: number;
+  sharedAt: string;
+  sharedExpiresAt: string;
+  shareRevokedAt: string;
+  sharingDisabled: boolean;
 }
 
 /** Full (recomputed, non-PII) view of one saved audit. */
@@ -96,6 +101,48 @@ export async function createShareLink(orgId: string, auditId: string, useTokens 
   const j = await res.json().catch(() => null) as (ShareLink & { code?: string }) | null;
   if (!res.ok || !j) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
   return j;
+}
+
+/** Regenerate the link (bumps shareVersion → old links die). Quota-counted. */
+export async function regenerateShareLink(orgId: string, auditId: string, useTokens = false): Promise<ShareLink> {
+  const idToken = await getIdToken();
+  const url = `${WORKER_BASE}/api/audit-express/${encodeURIComponent(auditId)}/regenerate-share${useTokens ? '?useTokens=1' : ''}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId }),
+  });
+  const j = await res.json().catch(() => null) as (ShareLink & { code?: string }) | null;
+  if (!res.ok || !j) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
+  return j;
+}
+
+/** Instantly revoke all outstanding links for an audit (bumps shareVersion). */
+export async function revokeShare(orgId: string, auditId: string): Promise<void> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/${encodeURIComponent(auditId)}/revoke-share`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId }),
+  });
+  if (!res.ok) {
+    const code = await res.json().then((x: { code?: string }) => x.code).catch(() => undefined);
+    throw new SavedAuditError(code ?? `HTTP_${res.status}`);
+  }
+}
+
+/** Enable/disable sharing for an audit. When disabled, create/regenerate and
+ *  existing live links are blocked. */
+export async function setSharingDisabled(orgId: string, auditId: string, disabled: boolean): Promise<boolean> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/${encodeURIComponent(auditId)}/sharing`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, disabled }),
+  });
+  const j = await res.json().catch(() => null) as ({ sharingDisabled?: boolean; code?: string }) | null;
+  if (!res.ok || !j) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
+  return j.sharingDisabled === true;
 }
 
 /** Authenticated in-app preview (no Turnstile). Same deterministic engine. */

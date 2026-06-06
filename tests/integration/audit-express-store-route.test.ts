@@ -24,7 +24,10 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
     if (m) return state.members.has(`${m[1]}/${m[2]}`) ? { role: 'owner' } : null;
     return state.docs.get(path) ?? null;
   }),
-  firestoreSet: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>) => { state.docs.set(path, data); }),
+  firestoreSet: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>, opts?: { merge?: boolean }) => {
+    const prev = opts?.merge ? (state.docs.get(path) ?? {}) : {};
+    state.docs.set(path, { ...prev, ...data });
+  }),
   firestoreDelete: vi.fn(async (_sa: string, path: string) => { state.docs.delete(path); }),
   firestoreRunQuery: vi.fn(async (_sa: string, _q: unknown, parent: string) => {
     const out: Array<{ name: string; fields: Record<string, unknown> }> = [];
@@ -350,5 +353,73 @@ describe('store route — shareable PDF links', () => {
     }, ENV_NO_SHARE);
     expect(res.status).toBe(503);
     expect((await res.json()).code).toBe('SHARE_DISABLED');
+  });
+});
+
+describe('store route — share management (revoke / regenerate / disable)', () => {
+  async function setup() {
+    const { auditId } = await (await save('orgA')).json();
+    return auditId as string;
+  }
+  const tokenFrom = (url: string) => url.split('/shared/')[1] as string;
+  const open = (token: string) => store.request(`/api/audit-express/shared/${token}`, { method: 'GET' }, ENV);
+  const post = (path: string, orgId = 'orgA') =>
+    store.request(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-token' }, body: JSON.stringify({ orgId }) }, ENV);
+
+  it('revoke: outstanding link stops working immediately (SHARE_REVOKED)', async () => {
+    const id = await setup();
+    const token = tokenFrom((await (await post(`/api/audit-express/${id}/share`)).json()).url);
+    expect((await open(token)).status).toBe(200);
+
+    const rev = await post(`/api/audit-express/${id}/revoke-share`);
+    expect(rev.status).toBe(200);
+    expect((await rev.json()).status).toBe('revoked');
+
+    const after = await open(token);
+    expect(after.status).toBe(410);
+    expect((await after.json()).code).toBe('SHARE_REVOKED');
+  });
+
+  it('regenerate: old token dies, new token works', async () => {
+    const id = await setup();
+    const oldTok = tokenFrom((await (await post(`/api/audit-express/${id}/share`)).json()).url);
+    const regen = await post(`/api/audit-express/${id}/regenerate-share`);
+    expect(regen.status).toBe(200);
+    const newTok = tokenFrom((await regen.json()).url);
+
+    expect((await open(oldTok)).status).toBe(410);   // old invalidated
+    expect((await open(newTok)).status).toBe(200);    // new works
+  });
+
+  it('disable sharing: blocks create/regenerate (403) and existing links (403)', async () => {
+    const id = await setup();
+    const token = tokenFrom((await (await post(`/api/audit-express/${id}/share`)).json()).url);
+
+    const toggle = await store.request(`/api/audit-express/${id}/sharing`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-token' }, body: JSON.stringify({ orgId: 'orgA', disabled: true }),
+    }, ENV);
+    expect(toggle.status).toBe(200);
+    expect((await toggle.json()).sharingDisabled).toBe(true);
+
+    const create = await post(`/api/audit-express/${id}/share`);
+    expect(create.status).toBe(403);
+    expect((await create.json()).code).toBe('SHARE_DISABLED');
+
+    const opened = await open(token);
+    expect(opened.status).toBe(403);
+    expect((await opened.json()).code).toBe('SHARE_DISABLED');
+  });
+
+  it('detail returns share metadata; cross-tenant revoke is forbidden', async () => {
+    const id = await setup();
+    await post(`/api/audit-express/${id}/share`);
+    const d = await req('GET', `/api/audit-express/detail/${id}?orgId=orgA`, { token: 'valid-token' });
+    const j = await d.json();
+    expect(typeof j.shareVersion).toBe('number');
+    expect(j.sharedAt).toBeTruthy();
+    expect(j.sharedExpiresAt).toBeTruthy();
+    expect(j.sharingDisabled).toBe(false);
+
+    expect((await post(`/api/audit-express/${id}/revoke-share`, 'orgB')).status).toBe(403);
   });
 });
