@@ -3103,6 +3103,130 @@ scope J6 verrouillé.
 
 ---
 
+## 19. OPTION B — New evolution *(Net-new scope · requirements only · GATED)*
+
+> **Status:** specification only, recorded 2026-06-07. **No code, no UI, no API.**
+> Every item below is **Option B — New evolution** and **Net-new scope** (not part of
+> the closed §18 epics: Audit Express chain, Reports A+B+C, recommended agents, render
+> hardening — all SHIPPED/CLÔTURÉS and unchanged by this section).
+> Nothing here is a roadmap commitment; each epic **requires an explicit GO** before
+> any pre-flight or implementation. Standing guardrails from the project still apply
+> (determinism, no PII, Stripe = sole billing source, no new deps unless approved,
+> CSP unchanged unless an item explicitly scopes it, org isolation).
+
+### 19.0 Already-delivered baseline (context, for separation only — do NOT re-open)
+Closed & prod-verified: Audit Express (run/save/detail/rename/recommended-agents/PDF/
+share lifecycle), Reports A+B+C (server recompute, premium deterministic PDF, rename,
+public HMAC share + revoke/regenerate/disable), stability hardening. See §18 entries.
+The items below are **additive** to that baseline.
+
+### B1 — Global navigation for non-sidebar pages *(net-new, gated)*
+**Problem:** `#/diagnostic` and `#/roi-calculator` are public **chromeless pre-auth**
+funnels (no app chrome); `#/system-builder` is authenticated but only reachable from an
+Audit-Result CTA. None are in the sidebar → poor discoverability for logged-in users.
+**Objectives:** (a) make these pages discoverable & usable by authenticated users;
+(b) keep them usable as **standalone marketing/acquisition** links; (c) always provide a
+**clear path back** to Dashboard / Reports / Audit Express.
+**To specify:** an **adaptive nav** — when a page is opened **anonymously** (campaign)
+it stays chromeless with only Login/Sign-up + minimal brand; when the **same** page is
+opened by an **authenticated** user it gains app navigation (or a "Back to app" affordance).
+Define explicitly the **chromeless-vs-navigated** rule and the public↔authenticated
+relationship per page.
+**Non-goals:** no redesign of the funnels' content; no change to their public APIs.
+
+### B2 — Systematic Login/Sign-up & lead capture *(net-new, gated)*
+**Objectives:** (a) show **Login / Sign-up** on **every** public/chromeless surface
+(`/audit-express`, `#/diagnostic`, `#/roi-calculator`, other campaign pages);
+(b) **record every lead** that interacts (Diagnostic, ROI Calculator, Audit Express,
+future campaign entry points); (c) **anonymous → authenticated continuity** (carry an
+in-progress/anonymous result into the account after auth — extend the existing Audit
+Express continuity pattern); (d) **abandoned-flow detection** (unfinished diagnostic/
+audit) and (e) **re-engagement** logic (subscription reminders, onboarding continuation).
+**Constraints (hard):** privacy-first — **no session replay, no keystroke capture**;
+**consent-based analytics only** (respect the existing consent banner / PostHog gating);
+informational tracking only (no legal/compliance claims); no PII in logs; lead storage
+org/consent-scoped.
+**Open decision:** lead storage model (existing analytics vs a new consented CRM-like
+store) — **requires GO**.
+
+### B3 — System Builder promoted to a core feature *(net-new, gated)*
+**Objective:** promote `#/system-builder` from a contextual guide to a **first-class**
+feature: discoverable via **main navigation** + clear in-app entry points; positioned as
+the central **AI system design & governance** guide and a **bridge from Audit results →
+system setup**.
+**Constraints to keep explicit (unchanged from today):** **read-only v1**, **no scoring**,
+**no LLM**, **no legal advice**, mandatory disclaimer retained.
+**Open decision:** whether v1.x adds persistence/checklists (currently in-memory only) —
+**requires GO**.
+
+### B4 — "Luna AI Copilot" *(net-new GATED EPIC)*
+**Definition:** a **visible, named in-app surface** ("Luna AI Copilot") whose role is to
+**guide users** through audits, reports, and features; improve **onboarding**; and reduce
+friction/confusion across the product.
+**Current state (factual):** **NOT implemented.** Today "Luna AI" exists only as a
+marketing tagline ("Powered by Luna AI"); there is no Copilot route/UI. Partial
+conceptual cover today: `#/audit/assistance` (static action plan), Agents + `/api/recommend`,
+`AudioExplanation` (TTS), Audit Express "understanding".
+**Pending decision (must be made before scoping):**
+- **Option A — rule-based / deterministic guidance** (contextual help, guided next-steps,
+  deep-links; no LLM) — consistent with the current no-LLM architecture.
+- **Option B — conversational / LLM-based** assistant — **explicitly OUT OF SCOPE for now**
+  (would introduce non-determinism + a model dependency; separate future decision).
+**Marked as a new gated epic.** No pre-flight until the A-vs-B decision + GO.
+
+### B5 — Document upload → audit analysis *(net-new GATED EPIC)*
+**Definition:** allow companies to **upload documents** (PDF, text, …) so the system can
+**analyze** them and **feed / pre-fill** an audit or report from the content.
+**Current state (factual):** never scoped; net-new (see the verification note — both flows
+are questionnaire-/URL-based; no file ingestion exists).
+**Constraints to record (hard):** **deterministic, rule-based analysis only**; **no LLM**;
+**no semantic interpretation** (signal/keyword/section detection only); **no raw document
+persistence** (analyze → derive non-PII signals → discard); **strict PII scrubbing**
+(reuse `scrubPii`); **phased scope** — v1 = narrow formats (e.g. plain text / PDF text-layer),
+DOCX & OCR later; org-scoped, auth-gated, size/type caps; output feeds the **existing**
+audit/report pipeline (no new PDF/report engine).
+**Recommended (for the eventual pre-flight):** client-side text extraction → send only
+scrubbed text/signals to the worker (keeps raw bytes off the server). **Requires GO.**
+
+### B6 — Internationalization & monetary support *(net-new, gated)*
+**Objectives:** (a) **language translation** for UI **and** generated content (reports/
+PDF text); (b) **online currency handling** for pricing, ROI, and reports; (c) explicit
+**fallback behavior** when a language/currency is unsupported (default locale/currency,
+graceful degradation).
+**Notes / constraints:** builds on the existing language selector (today **lang-only, no
+translation**) and the existing FX helper (`/api/public/fx`) + currency selector; **Stripe
+remains the sole billing source** (display/conversion must not change charged amounts
+semantics); determinism of generated PDFs must be preserved per (locale, inputs);
+no new deps unless approved. **Open decision:** translation approach (static dictionaries
+vs a translation service) — **requires GO** (a translation *service* may conflict with the
+no-new-deps / determinism posture).
+
+### B7 — Product hygiene & final inspection (ready-to-ship) *(net-new, gated)*
+**Objectives before any public delivery:** (a) **activate or remove inactive buttons**
+(audit every CTA/nav item → wired or removed); (b) full **UI/UX cleanup** (consistency,
+empty/error/loading states, copy like the stale "stored locally" Reports footer);
+(c) **deep functional + visual inspection** across all surfaces; (d) an explicit
+**"ready-to-ship" checklist** (gates: build/tsc, full vitest, hygiene, cross-tenant
+isolation spot-checks, deterministic-PDF spot-checks, deploy-flow verification
+Pages-from-root / Worker-from-`worker/`).
+**Non-goals:** no feature work under this item; cleanup/inspection only.
+
+### 19.x — Option B summary
+**Added (specification only, gated):** B1 global nav for non-sidebar pages · B2 systematic
+login/sign-up + lead capture · B3 System Builder as core feature · **B4 Luna AI Copilot
+(gated epic)** · **B5 Document upload → audit (gated epic)** · B6 i18n & currency ·
+B7 product hygiene / final inspection.
+**Decisions still required before any GO:**
+1. **B4** — rule-based vs LLM Copilot (LLM = out of scope for now → confirm A).
+2. **B5** — confirm deterministic/no-LLM/rule-based interpretation + v1 format scope.
+3. **B2** — lead-storage model (analytics vs new consented store).
+4. **B6** — translation approach (static dictionaries vs service; deps/determinism impact).
+5. **B3** — whether v1.x adds persistence to System Builder.
+6. **Prioritization & phasing** of B1–B7 (not yet committed).
+**Unchanged:** all §18 closed epics remain as-is; nothing above is implemented.
+
+---
+
 **Fin du cahier des charges v2.**
 
 *Document maintenu en parallèle de l'implémentation. Toute décision architecturale ou
