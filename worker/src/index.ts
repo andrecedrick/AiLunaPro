@@ -9,7 +9,7 @@
  *   GET  /healthz                   — no auth, uptime probe
  *   GET  /api/me                    — auth required, returns verified uid
  *   POST /api/audits/:id/submit     — auth required, skeleton
- *   POST /api/reports/:id/export    — auth required, skeleton
+ *   GET  /api/reports/detail|file/:id · POST /api/reports/:id/title — auth+org
  *   POST /api/team/invite           — auth required, skeleton
  *   POST /api/stripe/webhook        — no auth (Stripe-Signature), skeleton
  */

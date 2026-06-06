@@ -1,23 +1,154 @@
-import { Hono } from 'hono';
-import { requireAuth } from '../middleware/auth';
+import { Hono, type Context } from 'hono';
 import type { AppEnv } from '../index';
-
-const reports = new Hono<AppEnv>();
+import { verifyIdToken } from '../middleware/auth';
+import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { computeAuditResult, type AuditAnswers } from '../lib/audit-scoring';
+import { buildReportPdf } from '../lib/report-pdf';
+import { enforcePdfQuota } from '../lib/audit-express-quota';
+import { scrubPii } from '../lib/audit-express-extract';
+import { dlog } from '../lib/log';
 
 /**
- * POST /api/reports/:id/export
- * Auth required. Placeholder — real PDF generation goes here (Phase G+).
- * Phase G: skeleton only, no business logic.
+ * Reports — server-side lifecycle parity with Saved Audit Express.
+ *
+ * Reports are client-written to `organizations/{orgId}/reports/{id}` (with a
+ * frozen answersSnapshot). The worker reads them via the service account and:
+ *   - GET  /detail/:id  → server recompute summary (same engine as the SPA)
+ *   - GET  /file/:id    → regenerate the premium PDF on demand (quota-enforced)
+ *   - POST /:id/title   → rename (owner/admin)
+ *
+ * PDFs are regenerated on demand (NOT cached in R2): reports recompute as the
+ * scoring rules evolve, so a cached PDF would go stale. Deterministic for a
+ * given engine version. All responses are no-store; no PII leaks.
  */
-reports.post('/api/reports/:id/export', requireAuth(), c => {
-  const reportId = c.req.param('id');
-  const uid = c.get('uid');
+
+const reports = new Hono<AppEnv>();
+type Bindings = AppEnv['Bindings'];
+const COLLECTION = (orgId: string) => `organizations/${orgId}/reports`;
+
+const safeId = (raw: unknown): string => {
+  const s = typeof raw === 'string' ? raw : '';
+  return /^[A-Za-z0-9._-]{1,128}$/.test(s) ? s : '';
+};
+
+/** Sanitize a user-supplied title: scrub PII, strip markup/control chars, cap length. */
+function sanitizeTitle(raw: unknown, fallback: string): string {
+  let t = typeof raw === 'string' ? raw : '';
+  t = scrubPii(t) ?? '';
+  t = t.replace(/<[^>]*>/g, ' ').replace(/[^\x20-\x7E·À-ſ]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return t || fallback;
+}
+
+interface Gate { uid: string; role: string }
+/** Auth + org-membership gate; returns the caller's role too. */
+async function gate(c: Context<AppEnv>, orgId: string): Promise<Gate | Response> {
+  const env = c.env as Bindings;
+  c.header('Cache-Control', 'no-store');
+  const authHeader = c.req.header('Authorization') ?? '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+  const uid = await verifyIdToken(bearer, env.FIREBASE_PROJECT_ID);
+  if (!uid) return c.json({ error: 'Sign in required.', code: 'AUTH_REQUIRED' }, 401);
+  if (!orgId) return c.json({ error: 'orgId required.', code: 'ORG_REQUIRED' }, 400);
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 500);
+  const member = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/members/${uid}`);
+  if (!member) return c.json({ error: 'Not a member of this workspace.', code: 'FORBIDDEN' }, 403);
+  return { uid, role: String(member.role ?? 'member') };
+}
+
+const isPrivileged = (role: string) => role === 'owner' || role === 'admin';
+
+reports.get('/api/reports/detail/:reportId', async c => {
+  const env = c.env as Bindings;
+  const orgId = safeId(c.req.query('orgId'));
+  const reportId = safeId(c.req.param('reportId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${reportId}`);
+  // 404 (not 403) when hidden so members can't probe ids.
+  if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+  const status = String(doc.status ?? 'draft');
+  if (status !== 'published' && !isPrivileged(g.role)) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+
+  let result;
+  try {
+    result = computeAuditResult((doc.answersSnapshot ?? {}) as AuditAnswers);
+  } catch (err) {
+    dlog(env as Record<string, unknown>, '[reports] DETAIL_RECOMPUTE_FAILED', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not load this report.', code: 'DETAIL_UNAVAILABLE' }, 500);
+  }
+
   return c.json({
-    ok: true,
-    message: 'not yet implemented',
     reportId,
-    uid,
+    title: String(doc.title ?? 'AI Compliance Report'),
+    createdAt: String(doc.createdAt ?? ''),
+    status,
+    industry: String(doc.industry ?? ''),
+    globalScore: result.globalScore,
+    riskLevel: result.riskLevel,
+    maturityLevel: result.maturityLevel,
+    findingsBySeverity: result.findingsBySeverity,
+    sectionScores: result.sectionScores.map(s => ({ key: s.key, title: s.title, score: s.score })),
   });
+});
+
+reports.get('/api/reports/file/:reportId', async c => {
+  const env = c.env as Bindings;
+  const orgId = safeId(c.req.query('orgId'));
+  const reportId = safeId(c.req.param('reportId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${reportId}`);
+  if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+  const status = String(doc.status ?? 'draft');
+  if (status !== 'published' && !isPrivileged(g.role)) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+
+  // Fair-usage: 3 free report PDFs/user, then tokens (own pool, idempotent per report).
+  const useTokens = c.req.query('useTokens') === '1' || c.req.query('useTokens') === 'true';
+  const quota = await enforcePdfQuota(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, g.uid, reportId, useTokens, {
+    action: 'report.export.pdf', usageCollection: 'reportPdfUsage', eventPrefix: 'report_pdf', metadataKind: 'report_pdf',
+  });
+  if (!quota.ok) return c.json({ error: quota.code === 'PDF_LIMIT_REACHED' ? 'Free PDF limit reached.' : 'Not enough tokens.', code: quota.code, balance: quota.balance, required: quota.required }, quota.status);
+
+  let bytes: Uint8Array;
+  try {
+    const answers = (doc.answersSnapshot ?? {}) as AuditAnswers;
+    bytes = buildReportPdf({
+      title: String(doc.title ?? 'AI Compliance Report'),
+      createdAt: String(doc.createdAt ?? ''),
+      result: computeAuditResult(answers),
+      answers,
+    });
+  } catch (err) {
+    dlog(env as Record<string, unknown>, '[reports] PDF_RENDER_FAILED', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not render the report.', code: 'PDF_RENDER_FAILED' }, 500);
+  }
+
+  return c.body(bytes as unknown as Uint8Array<ArrayBuffer>, 200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': 'attachment; filename="ai-compliance-report.pdf"',
+    'Cache-Control': 'no-store',
+  });
+});
+
+reports.post('/api/reports/:reportId/title', async c => {
+  const env = c.env as Bindings;
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  const orgId = safeId(body.orgId);
+  const reportId = safeId(c.req.param('reportId'));
+  const g = await gate(c, orgId);
+  if (g instanceof Response) return g;
+  if (!isPrivileged(g.role)) return c.json({ error: 'Only owners or admins can rename reports.', code: 'FORBIDDEN' }, 403);
+
+  const path = `${COLLECTION(orgId)}/${reportId}`;
+  const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path);
+  if (!doc) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
+
+  const fallback = (typeof doc.title === 'string' && doc.title) ? doc.title : 'AI Compliance Report';
+  const title = sanitizeTitle(body.title, fallback);
+  await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, path, { title, updatedAt: new Date().toISOString() }, { merge: true });
+  return c.json({ title });
 });
 
 export default reports;

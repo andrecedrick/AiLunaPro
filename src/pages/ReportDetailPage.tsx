@@ -1,7 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useReports } from '../context/ReportsContext';
 import { useRoute } from '../context/RouteContext';
+import { useAuth } from '../context/AuthContext';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
+import { downloadReport, renameReport, ReportApiError } from '../lib/reports/reportApiClient';
+import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { ReportHeader } from '../components/reports/ReportHeader';
 import { ExportHistory } from '../components/reports/ExportHistory';
 import { Button } from '../components/ui/Button';
@@ -18,6 +21,8 @@ import { auditSections } from '../data/mockAuditQuestions';
 export function ReportDetailPage() {
   const { route, navigate } = useRoute();
   const { getReport, getExportsForReport, deleteReport, status } = useReports();
+  const { session } = useAuth();
+  const orgId = session?.orgId ?? '';
 
   const reportId = route.name === 'reports/detail' ? route.reportId : '';
   const report = getReport(reportId);
@@ -26,6 +31,14 @@ export function ReportDetailPage() {
     () => (report ? computeAuditResult(report.answersSnapshot) : null),
     [report],
   );
+
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [limitOpen, setLimitOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [titleOverride, setTitleOverride] = useState<string | null>(null);
+  const [savingTitle, setSavingTitle] = useState(false);
 
   if (status === 'loading') {
     return (
@@ -61,10 +74,41 @@ export function ReportDetailPage() {
 
   const events = getExportsForReport(report.id);
   const weakestSection = auditSections.find(s => s.key === report.weakestSection);
+  const displayReport = titleOverride ? { ...report, title: titleOverride } : report;
+
+  const onDownload = async (useTokens = false) => {
+    setPdfBusy(true); setPdfError(null);
+    try { await downloadReport(orgId, report.id, useTokens); setLimitOpen(false); }
+    catch (e) {
+      const code = e instanceof ReportApiError ? e.code : '';
+      if (code === 'PDF_LIMIT_REACHED') setLimitOpen(true);
+      else if (code === 'TOKENS_INSUFFICIENT') { setLimitOpen(false); setPdfError('Not enough tokens to export. Buy tokens to continue.'); }
+      else setPdfError('Download failed. Please try again.');
+    } finally { setPdfBusy(false); }
+  };
+  const onRename = async () => {
+    setSavingTitle(true); setPdfError(null);
+    try { setTitleOverride(await renameReport(orgId, report.id, draft.trim())); setEditing(false); }
+    catch (e) { setPdfError(e instanceof ReportApiError && e.code === 'FORBIDDEN' ? 'Only owners or admins can rename reports.' : 'Could not rename. Please try again.'); }
+    finally { setSavingTitle(false); }
+  };
 
   return (
     <div>
-      <ReportHeader report={report} result={result} />
+      {editing && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+          <input value={draft} maxLength={80} autoFocus onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') void onRename(); if (e.key === 'Escape') setEditing(false); }}
+            aria-label="Report title"
+            style={{ flex: '1 1 320px', minWidth: 0, padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-strong)', fontSize: 18, fontFamily: 'var(--font-heading)', fontWeight: 700 }} />
+          <Button variant="primary" size="md" onClick={onRename} disabled={savingTitle}>{savingTitle ? '…' : 'Save title'}</Button>
+          <Button variant="ghost" size="md" onClick={() => setEditing(false)}>Cancel</Button>
+        </div>
+      )}
+      {pdfError && (
+        <div style={{ background: 'var(--amber-bg)', border: '1px solid var(--amber-border)', color: 'var(--amber-text)', borderRadius: 12, padding: '10px 14px', fontSize: 13.5, marginBottom: 12 }}>{pdfError}</div>
+      )}
+      <ReportHeader report={displayReport} result={result} />
 
       <div
         style={{
@@ -110,6 +154,12 @@ export function ReportDetailPage() {
             <Button variant="secondary" size="md" onClick={() => navigate({ name: 'reports' })}>
               ← Back to reports
             </Button>
+            <Button variant="primary" size="md" disabled={pdfBusy} onClick={() => onDownload(false)}>
+              {pdfBusy ? 'Preparing…' : 'Download PDF'}
+            </Button>
+            <Button variant="ghost" size="md" onClick={() => { setDraft(displayReport.title); setEditing(true); }}>
+              Rename
+            </Button>
             <Button
               variant="ghost"
               size="md"
@@ -145,10 +195,18 @@ export function ReportDetailPage() {
             alignSelf: 'flex-start',
           }}
         >
-          <Metadata report={report} weakestSectionTitle={weakestSection?.title} />
+          <Metadata report={displayReport} weakestSectionTitle={weakestSection?.title} />
           <ExportHistory events={events} />
         </aside>
       </div>
+
+      <PdfLimitModal
+        open={limitOpen}
+        busy={pdfBusy}
+        onUseTokens={() => onDownload(true)}
+        onBuyTokens={() => { setLimitOpen(false); navigate({ name: 'billing/tokens' }); }}
+        onCancel={() => setLimitOpen(false)}
+      />
     </div>
   );
 }
