@@ -141,6 +141,33 @@ export function AuditExpressDetailPage() {
             <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 14 }}>This audit could not be recomputed.</p>
           )}
 
+          {detail.recommendedAgents.length > 0 && (
+            <div style={{ marginTop: 14, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Recommended agents</div>
+                <button type="button" onClick={() => navigate({ name: 'agents' })}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'var(--violet-text, var(--violet))', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                  Explore all agents →
+                </button>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12.5, margin: '6px 0 12px' }}>Indicative matches based on this audit. Review fit before adopting.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {detail.recommendedAgents.map(a => {
+                  const h = a.expectedRoi.timeSavedHoursPerMonth;
+                  const meta = [h > 0 ? `~${h} h/mo saved` : '', a.minPlan ? `${a.minPlan} plan` : '', a.implementationComplexity ? `${a.implementationComplexity} setup` : ''].filter(Boolean).join(' · ');
+                  return (
+                    <button key={a.agentId} type="button" onClick={() => navigate({ name: 'agents/detail', agentId: a.agentId })}
+                      style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--surface-subtle, var(--bg))', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 12px', fontFamily: 'var(--font-body)' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{a.name || a.agentId}</div>
+                      {a.tagline && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{a.tagline}</div>}
+                      {meta && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{meta}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button type="button" style={cta('primary')} disabled={pdf.busy === auditId} onClick={() => pdf.download(auditId)}>
               {pdf.busy === auditId ? 'Preparing…' : 'Download PDF'}

@@ -38,6 +38,7 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
 
 import store from '../../worker/src/routes/audit-express-store';
 import { consumeTokens } from '../../worker/src/lib/tokens';
+import { computePreview, type PreviewTaps } from '../../worker/src/lib/audit-express-preview';
 import { assembleSnapshot, extractPageSignals, type PageCapture } from '../../worker/src/lib/audit-express-extract';
 
 const TAPS = { workflow: 'support', monthlyHours: 'high', hourlyCost: 'medium', aiUsage: 'team', shadowAi: 'no_visibility' };
@@ -421,5 +422,42 @@ describe('store route — share management (revoke / regenerate / disable)', () 
     expect(j.sharingDisabled).toBe(false);
 
     expect((await post(`/api/audit-express/${id}/revoke-share`, 'orgB')).status).toBe(403);
+  });
+});
+
+describe('store route — detail recommended agents (deeper integration)', () => {
+  it('resolves recommendedAgentIds to active catalog cards (archived/missing skipped, no leak)', async () => {
+    const { auditId } = await (await save('orgA')).json();
+    const recIds = computePreview(TAPS as unknown as PreviewTaps).k1a.recommendedAgentIds.slice(0, 6);
+    expect(recIds.length).toBeGreaterThan(0); // bucket always maps to agents
+
+    // seed the first id as ACTIVE, the second (if any) as ARCHIVED, leave the rest missing
+    state.docs.set(`agents/${recIds[0]}`, {
+      agentId: recIds[0], name: 'Alpha Agent', tagline: 'Saves time', status: 'active',
+      minPlan: 'starter', implementationComplexity: 'low',
+      expectedRoi: { timeSavedHoursPerMonth: 12, monthlyCostSaved: 400, paybackMonths: 2 },
+    });
+    if (recIds[1]) state.docs.set(`agents/${recIds[1]}`, { agentId: recIds[1], name: 'Archived Agent', tagline: 'x', status: 'archived' });
+
+    const d = await req('GET', `/api/audit-express/detail/${auditId}?orgId=orgA`, { token: 'valid-token' });
+    expect(d.status).toBe(200);
+    const j = await d.json();
+    expect(Array.isArray(j.recommendedAgents)).toBe(true);
+
+    const alpha = j.recommendedAgents.find((a: { agentId: string }) => a.agentId === recIds[0]);
+    expect(alpha).toBeTruthy();
+    expect(alpha.name).toBe('Alpha Agent');
+    expect(alpha.expectedRoi.timeSavedHoursPerMonth).toBe(12);
+    // archived excluded; missing ids excluded
+    if (recIds[1]) expect(j.recommendedAgents.find((a: { agentId: string }) => a.agentId === recIds[1])).toBeFalsy();
+    // never leaks non-card fields
+    expect(JSON.stringify(j.recommendedAgents)).not.toContain('affiliateUrl');
+    expect(JSON.stringify(j.recommendedAgents)).not.toContain('pricing');
+  });
+
+  it('returns an empty array when no recommended agents are in the catalog', async () => {
+    const { auditId } = await (await save('orgA')).json();
+    const d = await req('GET', `/api/audit-express/detail/${auditId}?orgId=orgA`, { token: 'valid-token' });
+    expect((await d.json()).recommendedAgents).toEqual([]);
   });
 });

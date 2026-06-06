@@ -259,6 +259,29 @@ store.get('/api/audit-express/detail/:auditId', async c => {
 
   const businessType = String(doc.businessType ?? 'unknown');
   const audience = String(doc.audience ?? 'unknown');
+
+  // Deeper integration: resolve the audit's recommended agent IDs to slim, public
+  // catalog cards (active only). Read-only; non-PII; missing/archived IDs skipped.
+  const recIds = (preview?.k1a.recommendedAgentIds ?? []).map(safeId).filter(Boolean).slice(0, 6);
+  const resolved = await Promise.all(recIds.map(async id => {
+    const a = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `agents/${id}`);
+    if (!a || a.status !== 'active') return null;
+    const roi = (a.expectedRoi && typeof a.expectedRoi === 'object') ? a.expectedRoi as Record<string, unknown> : {};
+    return {
+      agentId: String(a.agentId ?? id),
+      name: String(a.name ?? ''),
+      tagline: String(a.tagline ?? ''),
+      minPlan: String(a.minPlan ?? ''),
+      implementationComplexity: String(a.implementationComplexity ?? ''),
+      expectedRoi: {
+        timeSavedHoursPerMonth: Number(roi.timeSavedHoursPerMonth) || 0,
+        monthlyCostSaved: Number(roi.monthlyCostSaved) || 0,
+        paybackMonths: Number(roi.paybackMonths) || 0,
+      },
+    };
+  }));
+  const recommendedAgents = resolved.filter((x): x is NonNullable<typeof x> => x !== null);
+
   c.header('Cache-Control', 'no-store');
   return c.json({
     auditId,
@@ -276,6 +299,7 @@ store.get('/api/audit-express/detail/:auditId', async c => {
     sharedExpiresAt: String(doc.sharedExpiresAt ?? ''),
     shareRevokedAt: String(doc.shareRevokedAt ?? ''),
     sharingDisabled: doc.sharingDisabled === true,
+    recommendedAgents,
   });
 });
 

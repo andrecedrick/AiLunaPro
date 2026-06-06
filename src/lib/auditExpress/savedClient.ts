@@ -73,6 +73,16 @@ export interface SavedAuditDetail {
   sharedExpiresAt: string;
   shareRevokedAt: string;
   sharingDisabled: boolean;
+  recommendedAgents: RecommendedAgent[];
+}
+
+export interface RecommendedAgent {
+  agentId: string;
+  name: string;
+  tagline: string;
+  minPlan: string;
+  implementationComplexity: string;
+  expectedRoi: { timeSavedHoursPerMonth: number; monthlyCostSaved: number; paybackMonths: number };
 }
 
 /** Full (recomputed, non-PII) view of one saved audit. */
