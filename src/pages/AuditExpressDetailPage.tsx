@@ -141,7 +141,7 @@ export function AuditExpressDetailPage() {
             <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 14 }}>This audit could not be recomputed.</p>
           )}
 
-          {detail.recommendedAgents.length > 0 && (
+          {(detail.recommendedAgents?.length ?? 0) > 0 && (
             <div style={{ marginTop: 14, padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                 <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Recommended agents</div>
@@ -152,7 +152,7 @@ export function AuditExpressDetailPage() {
               </div>
               <p style={{ color: 'var(--text-muted)', fontSize: 12.5, margin: '6px 0 12px' }}>Indicative matches based on this audit. Review fit before adopting.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {detail.recommendedAgents.map(a => {
+                {(detail.recommendedAgents ?? []).map(a => {
                   const h = a.expectedRoi.timeSavedHoursPerMonth;
                   const meta = [h > 0 ? `~${h} h/mo saved` : '', a.minPlan ? `${a.minPlan} plan` : '', a.implementationComplexity ? `${a.implementationComplexity} setup` : ''].filter(Boolean).join(' · ');
                   return (

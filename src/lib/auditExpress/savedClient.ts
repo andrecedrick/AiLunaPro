@@ -93,7 +93,17 @@ export async function getSavedAuditDetail(orgId: string, auditId: string): Promi
   });
   const j = await res.json().catch(() => null) as (SavedAuditDetail & { code?: string }) | null;
   if (!res.ok || !j) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
-  return j;
+  // Normalize so the SavedAuditDetail contract holds at runtime even against an
+  // older/partial worker response (missing fields must never crash consumers).
+  return {
+    ...j,
+    recommendedAgents: Array.isArray(j.recommendedAgents) ? j.recommendedAgents : [],
+    shareVersion: typeof j.shareVersion === 'number' ? j.shareVersion : 1,
+    sharedAt: typeof j.sharedAt === 'string' ? j.sharedAt : '',
+    sharedExpiresAt: typeof j.sharedExpiresAt === 'string' ? j.sharedExpiresAt : '',
+    shareRevokedAt: typeof j.shareRevokedAt === 'string' ? j.shareRevokedAt : '',
+    sharingDisabled: j.sharingDisabled === true,
+  };
 }
 
 export interface ShareLink { url: string; expiresAt: string }
