@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState, lazy as reactLazy, type ReactNod
 import { lazyWithRetry as lazy } from './lib/routing/lazyWithRetry';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CampaignChrome } from './components/layout/CampaignChrome';
 import { ThemeProvider } from './context/ThemeContext';
 import { PreferencesProvider } from './context/PreferencesContext';
 import { ToastProvider } from './context/ToastContext';
@@ -437,20 +438,21 @@ function AppShell() {
     );
   }
 
-  /* ── Diagnostic Express (K1A): public, chromeless, pre-auth ──── */
+  /* ── Diagnostic Express (K1A): public campaign page. B1: adaptive chrome —
+       anon gets Log in / Sign up, authed gets "← Back to app". ──── */
   if (route.name === 'diagnostic') {
     return (
       <Suspense fallback={<PageFallback />}>
-        <DiagnosticPage />
+        <CampaignChrome><DiagnosticPage /></CampaignChrome>
       </Suspense>
     );
   }
 
-  /* ── ROI Calculator (K2A): public, chromeless, pre-auth ──────── */
+  /* ── ROI Calculator (K2A): public campaign page (same adaptive chrome). ── */
   if (route.name === 'roi-calculator') {
     return (
       <Suspense fallback={<PageFallback />}>
-        <RoiCalculatorPage />
+        <CampaignChrome><RoiCalculatorPage /></CampaignChrome>
       </Suspense>
     );
   }

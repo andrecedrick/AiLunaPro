@@ -217,6 +217,7 @@ export const mockNavItems = [
   { id: 'audit-express-run', label: 'Run Audit Express', icon: 'plus', active: false },
   { id: 'audit-express-saved', label: 'Saved Audits', icon: 'reports', active: false },
   { id: 'registry', label: 'AI Registry', icon: 'registry', active: false },
+  { id: 'system-builder', label: 'System Builder', icon: 'registry', active: false },
   { id: 'agents', label: 'Agents', icon: 'agents', active: false },
   { id: 'team', label: 'Team', icon: 'team', active: false },
   { id: 'settings', label: 'Settings', icon: 'settings', active: false },
