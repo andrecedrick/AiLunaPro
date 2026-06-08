@@ -1,3 +1,5 @@
+> ⚠️ **OBSOLETE / SUPERSEDED — archived 2026-06-07.** The single authoritative source of truth is `docs/cahier-des-charges-v2.md` (§0bis Master Ledger). This file is reference-only and carries **no agreed scope**.
+
 # AiLunaPro — Handoff (J9 → J13 + Perf/Cache/PostHog)
 
 ## TL;DR

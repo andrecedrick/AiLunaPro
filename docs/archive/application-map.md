@@ -1,3 +1,5 @@
+> ⚠️ **OBSOLETE / SUPERSEDED — archived 2026-06-07.** The single authoritative source of truth is `docs/cahier-des-charges-v2.md` (§0bis Master Ledger). This file is reference-only and carries **no agreed scope**.
+
 # AiLunaPro — Application Map (factual inventory)
 
 *Generated 2026-06-07. Source of truth: `src/types/audit.ts` Route union, `src/data/mockDashboard.ts` nav, `public/` static pages, `worker/src/routes/*`. Factual inventory — no roadmap, no assumptions.*

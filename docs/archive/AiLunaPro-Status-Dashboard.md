@@ -1,3 +1,5 @@
+> ⚠️ **OBSOLETE / SUPERSEDED — archived 2026-06-07.** The single authoritative source of truth is `docs/cahier-des-charges-v2.md` (§0bis Master Ledger). This file is reference-only and carries **no agreed scope**.
+
 # AiLunaPro — Status Dashboard *(source de vérité, réutilisable)*
 
 > Export standalone de §0bis (`cahier-des-charges-v2.4-FINAL.md`). MAJ 31 mai 2026.

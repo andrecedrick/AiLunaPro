@@ -1,3 +1,5 @@
+> ⚠️ **OBSOLETE / SUPERSEDED — archived 2026-06-07.** The single authoritative source of truth is `docs/cahier-des-charges-v2.md` (§0bis Master Ledger). This file is reference-only and carries **no agreed scope**.
+
 # Option B — Sequential, Non-Skippable Task Plan (execution contract)
 
 *Generated 2026-06-07. Planning only — no code, no UI, no implementation. Derived strictly from §19 of `docs/cahier-des-charges-v2.md` (commit 9905f41). One task per §19 item, executed strictly in order. Each task = its own pre-flight → GO → implement → gates → prod-verify → §18 closure, before the next begins.*

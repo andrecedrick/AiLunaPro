@@ -10,6 +10,85 @@
 
 ---
 
+## 0bis. SINGLE SOURCE OF TRUTH — Governance & Master Task Ledger *(reconciled 2026-06-07)*
+
+> **THIS FILE IS THE SINGLE AUTHORITATIVE DOCUMENT.** On 2026-06-07 all `docs/` files were
+> reconciled into this one. Every valid requirement (incl. those previously only in
+> `cahier-des-charges-v2.4-FINAL.md`, status/handoff docs, the application map, the Option B
+> task plan, and the project task ledger) is now captured **here** (this §0bis ledger + the
+> detailed specs in §19 Option B and §20 Reconciled modules). All other documents are
+> **ARCHIVED / OBSOLETE** under `docs/archive/` — they are reference-only and carry no agreed scope.
+
+### 0bis.1 — PERMANENT ANTI-FORGET RULE *(non-negotiable, applies forever)*
+1. **A task marked ✅ DONE is permanently CLOSED — it must never be reopened or re-litigated.** Its commit trail + operator "prod verified" are final.
+2. **Every newly requested feature must be written into THIS document immediately** (as 🔴 NOT DONE with spec + acceptance criteria). **Nothing stays "verbal", implicit, or in another file.** If it is not in this document, it is **not agreed and not pending**.
+3. **No competing cahiers or specs.** Any future requirement edits happen here only.
+
+### 0bis.2 — MASTER TASK LEDGER (✅ DONE · 🟡 PARTIAL · 🔴 NOT DONE)
+*Status reflects code + commit trace + operator verification — not intent. 🔴 items are unbuilt.*
+
+**✅ DONE — implemented & prod-verified (permanently closed)**
+| Task | Commit / batch |
+|---|---|
+| Billing / Stripe (checkout, sub, portal, top-ups, multi-currency) | J1–J2 |
+| Payment Methods (Customer Portal) | J10 `868ef8a`/`e8cabd2` |
+| K1A Diagnostic Express (public) | `34c1fba` |
+| K2A ROI Calculator (public) | `dd15460` |
+| K3A / K3+ Recommendation + Prioritized Action Plan | `543f960`, J9-D `5c3461d` |
+| Audio Explanations (client TTS) | `3f2b84f`/`c99740f`/`2045318` |
+| Analytics PostHog **Phase A** | `eafb399`→`ed1a3ba` |
+| NFR: SPA cache / chunk resilience / Firestore resilience | `9bcb741`/`925c690`/`73ec62d` |
+| Determinism & traceability (rule-based + version stamp) | `determinism.ts` + replay tests |
+| Audit Express — run/save/list/detail/rename | J15/J16, `62afe87`, `e11a665` |
+| Audit Express — recommended agents | `6192335` |
+| Audit Express — deterministic PDF (P1) | J15/J16 |
+| Audit Express — public HMAC share + revoke/regenerate/disable | `c0c5431`, `d3c0258` |
+| Reports A — worker scoring + premium Report PDF + AI sections | `6434dfa` |
+| Reports B — server recompute / file / rename | `425e345`, `59fb537` |
+| Reports C — public HMAC share + revoke/regenerate/disable | `9240d94` |
+| Render-crash stability hardening | `2862368`, `c512891` |
+
+**🟡 PARTIAL — exists but incomplete (state what's missing)**
+| Task | What exists | What is missing |
+|---|---|---|
+| V1 — Site analysis | URL crawl (`runExtraction`) inside Audit Express | editable stack/AI "fiche"; standalone V1 surface |
+| W1 — Quick Win matrix | Impact×Effort matrix inside the Express PDF | standalone scored W1 cockpit + top-3 |
+| Smart Locale + Currency | currency **display** + FX (`/api/public/fx`) | **UI/content translation (🔴, §9.24)** |
+| SEO/GEO surfaces (§7ter) | public pages (audit-express, eu-ai-act, faq, methodologie, pricing, shadow-ai, use-cases) | sitemap.xml, schema.org, llms.txt |
+| System Builder | static read-only skeleton (J9) | promotion to core nav (B3); persistence |
+
+**🔴 NOT DONE — requested/specced but never implemented** *(see §20 for specs)*
+| Task | Spec | Note |
+|---|---|---|
+| 🔴 **U1 — Mode assisté zéro-expertise** | §20 (v2.4 U1) | wizard 1-action/screen |
+| 🔴 **K5 — Document Intelligence** | §20 (v2.4 K5) · §19.B5 | **CONFLICT:** v2.4 = RAG/Vectorize (LLM) vs §19.B5 = no-LLM/deterministic — **unresolved** |
+| 🔴 **X1 — Audit of AI-in-place / OPEX reduction** | §20 (v2.4 X1) | quantified €/mo savings |
+| 🔴 **K6 — Luna Copilot** | §20 (v2.4 K6) · §19.B4 | **CONFLICT:** v2.4 = LLM/Anthropic SSE agent vs §19.B4 = rule-based/no-LLM — **unresolved** |
+| 🔴 **L3 — Managed quote (€ calibration, SLA)** | §20 (v2.4 L3) | |
+| 🔴 **L4 — Contract generation + e-signature** | §20 (v2.4 L4) | |
+| 🔴 **Y1 — SOP generation** | §20 (v2.4 Y1) | |
+| 🔴 **R1 — Partner / White-label + credits ledger** | §20 (v2.4 R1) | |
+| 🔴 **S1 — Monthly monitoring + paid AI Expert** | §20 (v2.4 S1) | |
+| 🔴 **T1 — Revenue recovery (dunning + SMS)** | §20 (v2.4 T1) · §19.B2 | overlaps B2 re-engagement |
+| 🔴 **Q1 — Intelligence Refresh Engine** | §20 (v2.4 Q1) | |
+| 🔴 **Analytics Phase B (feature-usage)** | v2.4 0bis.2 | Phase A only is done |
+| 🔴 **Option B — B1** Global nav for non-sidebar pages | §19.B1 | gated |
+| 🔴 **Option B — B2** Login/signup + lead capture + abandoned-flow | §19.B2 | gated |
+| 🔴 **Option B — B3** System Builder → core feature | §19.B3 | gated |
+| 🔴 **Option B — B4** Luna AI Copilot (visible surface) | §19.B4 | gated; decision A/B + K6 conflict |
+| 🔴 **Option B — B5** Document upload → audit | §19.B5 | gated; K5 conflict |
+| 🔴 **Option B — B6** i18n + currency | §19.B6 | gated |
+| 🔴 **Option B — B7** Product hygiene + final inspection | §19.B7 | gated |
+
+### 0bis.3 — Unresolved governance decisions (must be settled before related GO)
+1. **K5/B5 (documents):** RAG/LLM (v2.4) **vs** deterministic/no-LLM (§19.B5).
+2. **K6/B4 (Luna Copilot):** LLM/Anthropic SSE agent (v2.4) **vs** rule-based/no-LLM (§19.B4).
+3. **i18n (B6/§9.24):** static dictionaries vs translation service.
+4. **B2/T1:** lead-storage model + dunning channel (Sequenzy/Twilio).
+> Note: the standing project guardrail today is **no-LLM / deterministic**. Items 1–2 cannot proceed until this is explicitly overridden or the deterministic re-scope is confirmed.
+
+---
+
 ## Résumé final — la vision en une ligne
 
 > **Audit AI / AiLunaPro = SaaS hybride combinant audit IA, conformité EU AI Act, détection
@@ -3224,6 +3303,32 @@ B7 product hygiene / final inspection.
 5. **B3** — whether v1.x adds persistence to System Builder.
 6. **Prioritization & phasing** of B1–B7 (not yet committed).
 **Unchanged:** all §18 closed epics remain as-is; nothing above is implemented.
+
+---
+
+## 20. Reconciled modules from v2.4-FINAL *(merged 2026-06-07 — formerly unmerged; ALL 🔴 NOT DONE unless noted)*
+
+> These specs were in `cahier-des-charges-v2.4-FINAL.md` (marked "à fusionner") but never
+> merged here and (mostly) never built. They are reconciled below so **no requirement is lost**.
+> The original verbose spec text remains in the archived file `docs/archive/cahier-des-charges-v2.4-FINAL.md` (reference only). Status is authoritative here.
+
+- **🔴 U1 — Mode assisté zéro-expertise** *(transversal)*: 1-action-per-screen wizard, "Luna does it for you". **AC:** a non-technical user completes the 9 steps alone.
+- **🟡 V1 — Analyse de site** *(high)*: lightweight crawl → company profile + detected stack/AI. **Shipped lite** via Audit Express `runExtraction`. **Missing:** editable fiche + standalone surface. **AC:** URL → editable profile + tools.
+- **🔴 K5 — Document Intelligence**: upload PDF/DOCX/XLSX/CSV → R2 + **Vectorize (namespace orgId)** → company fiche + audit quality score; at-rest encryption, PII detection, org isolation, erasure. **AC:** 3 docs → fiche + ≥5 tasks + ≥1 risk, source-traced. **⚠️ CONFLICT** with §19.B5 (no-LLM/deterministic, no raw persistence). **Unresolved.**
+- **🟡 W1 — Quick Win matrix** *(high)*: Impact×Effort scoring on detected tasks → 2×2 matrix + top-3. **Partial** (matrix inside Express PDF). **Missing:** standalone scored cockpit. **AC:** detected tasks → matrix + explained top-3.
+- **🔴 X1 — Audit of AI-in-place & OPEX reduction** *(high)*: inventory current AI tools + monthly cost → detect redundancy/oversizing/Shadow-AI → propose consolidation/model-change/renegotiation → quantify €/mo + payback; feeds ROI (K2A) + reco (K3+). **AC:** 3+ tools → before/after table + €/mo savings + 3 actions.
+- **🔴 K3+ — Recommendation Fork**: AiLunaPro-coverage score; ≥ threshold → AiLunaPro (badge) else managed agents (L3); mandatory transparency ("when external is better"). *(K3A base is ✅; the fork extension is 🔴.)*
+- **🔴 K6 — Luna Copilot** *(detailed tech spec)*: conversational agent orchestrating the 9-step journey. **Stack:** Cloudflare Worker **SSE streaming**, state in Firestore `audit_sessions/{id}`, **Anthropic API (Claude) tool-use** orchestrator, RAG via Vectorize+R2 (K5). Tools: `analyze_site`, `query_documents`, `run_diagnostic`, `audit_existing_ai`, `quick_win_matrix`, `classify_eu_ai_act`, `calculate_roi`, `recommend_agents`, `build_quote`, `draft_contract`, `generate_sop`, `save_audit_state`. APIs: `POST /api/copilot/session`, `POST /api/copilot/message` (SSE), `GET /api/copilot/session/{id}`. **AC:** one session produces profile→diagnostic→OPEX audit→Quick-Win→ROI→forked reco→decision→offer→SOP, with save/resume, no dead form, no PII leak. **⚠️ CONFLICT** with §19.B4 (rule-based/no-LLM). **Unresolved.**
+- **🔴 L3 — Managed quote** *(€ calibration, SLA)*: setup + monthly calibrated price + SLA. **AC:** full quote with specs/SLA/billing.
+- **🔴 L4 — Contract generation + e-signature**: accepted quote → signable archived contract.
+- **🔴 Y1 — SOP generation**: process → SOP with roles, triggers, fallback + agent runbook.
+- **🔴 R1 — Partner / White-label**: partner branding + isolated credits ledger (multi-tenant, anti-abuse).
+- **🔴 S1 — Monthly monitoring + paid AI Expert**: monthly report + Expert dialogue.
+- **🔴 T1 — Revenue recovery**: dunning email (Sequenzy) J0 + SMS (Twilio) J+1/J+3, traceable. *(Overlaps §19.B2 re-engagement.)*
+- **🔴 Q1 — Intelligence Refresh Engine**: model/price watch, human-in-loop (diffs → admin review queue, never auto-mutation).
+- **✅ Already delivered from v2.4** (recorded for completeness; closed): §3bis Audit Express, §3ter P1 PDF Renderer, §0.4/§3quater Determinism, §7bis NFR (cache/chunk/Firestore/PostHog). **🟡** §7ter SEO/GEO surfaces (partial).
+
+> **Sequencing note (from v2.4 roadmap, not committed):** J1.5 = K5+V1+X1+U1 · J1.6 = K6+W1 · J1.7 = L3+L4+Y1 · J1.8 = R1 · J1.9 = S1+T1 · J1.10 = Q1. Listed for traceability only — **all gated**, no GO given.
 
 ---
 
