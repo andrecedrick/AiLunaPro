@@ -47,6 +47,8 @@
 | Reports B — server recompute / file / rename | `425e345`, `59fb537` |
 | Reports C — public HMAC share + revoke/regenerate/disable | `9240d94` |
 | Render-crash stability hardening | `2862368`, `c512891` |
+| Delivery Readiness — B7 hygiene (inactive buttons removed, stale copy fixed) | `00cc9a6`, `02a9710` |
+| **Option B — B1** Global nav for non-sidebar pages (adaptive campaign chrome + System Builder sidebar item) | `0889af2` (prod-verified 2026-06-09) |
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
@@ -72,7 +74,7 @@
 | 🔴 **T1 — Revenue recovery (dunning + SMS)** | §20 (v2.4 T1) · §19.B2 | overlaps B2 re-engagement |
 | 🔴 **Q1 — Intelligence Refresh Engine** | §20 (v2.4 Q1) | |
 | 🔴 **Analytics Phase B (feature-usage)** | v2.4 0bis.2 | Phase A only is done |
-| 🔴 **Option B — B1** Global nav for non-sidebar pages | §19.B1 | gated |
+| ✅ **Option B — B1** Global nav for non-sidebar pages | §19.B1 | **DONE/CLOSED `0889af2`** (prod-verified 2026-06-09) — see ✅ table |
 | 🔴 **Option B — B2** Login/signup + lead capture + abandoned-flow | §19.B2 | gated |
 | 🔴 **Option B — B3** System Builder → core feature | §19.B3 | gated |
 | 🔴 **Option B — B4** Luna AI Copilot (visible surface) | §19.B4 | gated; decision A/B + K6 conflict |
@@ -3200,7 +3202,8 @@ share lifecycle), Reports A+B+C (server recompute, premium deterministic PDF, re
 public HMAC share + revoke/regenerate/disable), stability hardening. See §18 entries.
 The items below are **additive** to that baseline.
 
-### B1 — Global navigation for non-sidebar pages *(net-new, gated)*
+### B1 — Global navigation for non-sidebar pages *(✅ DONE / CLOSED — `0889af2`, prod-verified 2026-06-09)*
+> **Closed:** adaptive `CampaignChrome` (anon → Log in/Sign up; authed → "← Back to app") on `#/diagnostic` + `#/roi-calculator`; **System Builder added to the sidebar** (discoverability only — rich promotion remains B3); minimal Login/Sign-up affordance (tracking deferred to B2). Decisions Q1=back-bar, Q2=sidebar-item-only, Q3=minimal-affordance. Permanently closed per §0bis.1.
 **Problem:** `#/diagnostic` and `#/roi-calculator` are public **chromeless pre-auth**
 funnels (no app chrome); `#/system-builder` is authenticated but only reachable from an
 Audit-Result CTA. None are in the sidebar → poor discoverability for logged-in users.
