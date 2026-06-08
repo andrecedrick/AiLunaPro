@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import { validateOrgName } from '../utils/validators';
+import { postAuthRoute } from '../lib/journey/journeyState';
 import type { Organization } from '../types/auth';
 
 const PLANS: { value: Organization['plan']; label: string; desc: string }[] = [
@@ -32,7 +33,7 @@ export function OrgCreatePage() {
     setTimeout(() => {
       createOrg(name, plan);
       setLoading(false);
-      navigate({ name: 'dashboard' });
+      navigate({ name: postAuthRoute() });
     }, 400);
   };
 

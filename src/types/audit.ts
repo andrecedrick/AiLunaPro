@@ -90,6 +90,7 @@ export type Route =
   | { name: 'audit-express/saved' }
   | { name: 'audit-express/run' }
   | { name: 'audit-express/detail'; auditId: string }
+  | { name: 'journey/start' }
   | { name: 'accept-invite' };
 
 export type RouteName = Route['name'];

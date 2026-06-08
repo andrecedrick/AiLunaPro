@@ -1,0 +1,60 @@
+import type { CSSProperties } from 'react';
+import { useRoute } from '../context/RouteContext';
+import { markJourneyStarted } from '../lib/journey/journeyState';
+import type { Route } from '../types/audit';
+
+/**
+ * B8.1 — Guided choice (journey step 1). Deterministic, no LLM. A minimal inline
+ * "Luna" guide explains the two ways to start; choosing either (or skipping) marks
+ * the journey started so the user is never forced here again. Dashboard is always
+ * reachable (skip link + the sidebar). No dark patterns, fully reversible.
+ */
+export function GuidedStartPage() {
+  const { navigate } = useRoute();
+  const go = (route: Route) => { markJourneyStarted(); navigate(route); };
+
+  const card: CSSProperties = {
+    flex: '1 1 280px', textAlign: 'left', cursor: 'pointer', background: 'var(--surface)',
+    border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)',
+    padding: 20, fontFamily: 'var(--font-body)',
+  };
+  const cardTitle: CSSProperties = { fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' };
+  const cardBody: CSSProperties = { fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 12px' };
+  const cta: CSSProperties = { display: 'inline-block', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--brand-gradient, var(--violet))', color: '#fff' };
+
+  return (
+    <div style={{ maxWidth: 760 }}>
+      {/* Minimal inline Luna guide (placeholder for the future B4 surface) */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', padding: '14px 16px', marginBottom: 18 }}>
+        <div style={{ fontSize: 22, lineHeight: 1 }} aria-hidden>👋</div>
+        <div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--text-primary)' }}>Hi, I'm Luna — let's get you started.</div>
+          <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '4px 0 0' }}>
+            Pick how you'd like to begin. You can switch anytime, and you can always go straight to your dashboard.
+          </p>
+        </div>
+      </div>
+
+      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: '0 0 14px' }}>How do you want to start?</h1>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <button type="button" style={card} onClick={() => go({ name: 'audit-express/run' })}>
+          <div style={cardTitle}>Audit Express</div>
+          <p style={cardBody}>A fast, ~5-minute AI-readiness snapshot — a few quick questions, an optional website analysis, indicative ROI. Best for a first look.</p>
+          <span style={cta}>Start Audit Express →</span>
+        </button>
+
+        <button type="button" style={card} onClick={() => go({ name: 'audit/new' })}>
+          <div style={cardTitle}>New Audit (full)</div>
+          <p style={cardBody}>The complete structured questionnaire — deeper compliance + maturity scoring you can turn into a shareable report. Best for a thorough assessment.</p>
+          <span style={cta}>Create a New Audit →</span>
+        </button>
+      </div>
+
+      <button type="button" onClick={() => go({ name: 'dashboard' })}
+        style={{ marginTop: 18, background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
+        Skip — go straight to my dashboard
+      </button>
+    </div>
+  );
+}

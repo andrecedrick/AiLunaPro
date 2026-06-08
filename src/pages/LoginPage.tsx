@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import { loginValidate } from '../utils/validators/auth';
 import { resolveLayer } from '../lib/featureFlags';
+import { postAuthRoute } from '../lib/journey/journeyState';
 
 // Demo credentials only work in the mock auth layer. Never show them in the
 // firebase layer / production (security + credibility).
@@ -42,7 +43,7 @@ export function LoginPage() {
           }
         }
       } catch { /* ignore */ }
-      if (!resumed) navigate({ name: 'dashboard' });
+      if (!resumed) navigate({ name: postAuthRoute() });
     } else {
       setError(result.error ?? 'Login failed.');
     }
