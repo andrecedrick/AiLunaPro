@@ -108,9 +108,9 @@ export function ReportsListPage() {
             lineHeight: 1.5,
           }}
         >
-          Reports are stored locally for now. The detail view recomputes the full result from each
-          report's answer snapshot — so historical reports stay accurate even after the scoring
-          rules evolve.
+          Reports are point-in-time snapshots saved to your workspace. The detail view recomputes the
+          full result from each report's answer snapshot — so historical reports stay accurate even
+          after the scoring rules evolve.
         </p>
       )}
     </div>

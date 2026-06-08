@@ -24,7 +24,6 @@ function ReportCard({ report }: { report: { id: string; title: string; date: str
     if (report.id) navigate({ name: 'reports/detail', reportId: report.id });
     else showToast('Report not available yet.', 'info');
   };
-  const handleDownload = () => showToast('Report PDF export is coming soon.', 'info');
   const handleShare = async () => {
     const link = `${window.location.origin}/#/reports/share/${report.id}`;
     try {
@@ -84,13 +83,12 @@ function ReportCard({ report }: { report: { id: string; title: string; date: str
 
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         {[
-          { label: 'Download', svg: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></> },
           { label: 'Share',    svg: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></> },
         ].map(b => (
           <button
             key={b.label}
             type="button"
-            onClick={b.label === 'Download' ? handleDownload : () => void handleShare()}
+            onClick={() => void handleShare()}
             style={{
               flex: 1,
               background: 'transparent',
@@ -165,11 +163,7 @@ export function RecentReports() {
 
   const handleViewAll = () => navigate({ name: 'reports' });
 
-  const handleExport = (fmt: 'PDF' | 'CSV' | 'JSON') => {
-    if (fmt === 'PDF') {
-      showToast('Dashboard PDF export coming soon.', 'info');
-      return;
-    }
+  const handleExport = (fmt: 'CSV' | 'JSON') => {
     if (reports.length === 0) {
       showToast('No reports to export yet.', 'info');
       return;
@@ -249,9 +243,8 @@ export function RecentReports() {
             Export your compliance data in multiple formats for stakeholders.
           </div>
 
-          {(['PDF', 'CSV', 'JSON'] as const).map(fmt => {
+          {(['CSV', 'JSON'] as const).map(fmt => {
             const tone =
-              fmt === 'PDF' ? { bg: 'var(--red-bg)',   fg: 'var(--red-text)' } :
               fmt === 'CSV' ? { bg: 'var(--green-bg)', fg: 'var(--green-text)' } :
                               { bg: 'var(--blue-bg)',  fg: 'var(--blue-text)' };
             return (

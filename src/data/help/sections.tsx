@@ -180,7 +180,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
         <Callout variant="note">
           <strong>Submit Audit</strong> → saves audit + score. <strong>Generate report</strong> → creates a snapshot visible in <em>Reports</em>.
         </Callout>
-        <p style={p}><em>Coming soon:</em> optional auto-report on submit, and an audit history view distinct from reports.</p>
+        <p style={p}>An <strong>Audit history</strong> view (distinct from Reports) is available in the sidebar. <em>Coming soon:</em> optional auto-report on submit.</p>
       </>
     ),
   },
