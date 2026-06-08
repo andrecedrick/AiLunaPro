@@ -34,18 +34,15 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const [customFrom, setCustomFrom] = useState('');
   const [customTo,   setCustomTo]   = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const dateRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-  const exportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dateRef.current   && !dateRef.current.contains(e.target as Node))   setDateOpen(false);
       if (notifRef.current  && !notifRef.current.contains(e.target as Node))  setNotifOpen(false);
-      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -95,11 +92,6 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const onNewAudit = () => {
     if (!canCreateAudit) { showToast("Your role doesn't allow creating audits. Audits are for Owner, Admin, and Member.", 'warning'); return; }
     navigate({ name: 'audit/new' });
-  };
-
-  const onExport = (kind: 'pdf' | 'csv' | 'json') => {
-    setExportOpen(false);
-    showToast(`Export as ${kind.toUpperCase()} will be available after report export is enabled.`, 'info');
   };
 
   return (
@@ -264,23 +256,6 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
       <TokenBadge />
 
       <ThemeToggle />
-
-      {/* Export menu */}
-      <div ref={exportRef} style={{ position: 'relative' }}>
-        <Button variant="ghost" size="sm" onClick={() => setExportOpen(o => !o)}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Export
-        </Button>
-        {exportOpen && (
-          <div style={dropdownStyle({ right: 0 })}>
-            <button type="button" onClick={() => onExport('pdf')}  style={dropdownItem()}>Export dashboard as PDF</button>
-            <button type="button" onClick={() => onExport('csv')}  style={dropdownItem()}>Export reports as CSV</button>
-            <button type="button" onClick={() => onExport('json')} style={dropdownItem()}>Export raw data as JSON</button>
-          </div>
-        )}
-      </div>
 
       {/* New Audit */}
       <Button variant="primary" size="sm" onClick={onNewAudit}>
