@@ -78,7 +78,8 @@
 | 🔴 **Option B — B4** Luna AI Copilot (visible surface) | §19.B4 | gated; decision A/B + K6 conflict |
 | 🔴 **Option B — B5** Document upload → audit | §19.B5 | gated; K5 conflict |
 | 🔴 **Option B — B6** i18n + currency | §19.B6 | gated |
-| 🔴 **Option B — B7** Product hygiene + final inspection | §19.B7 | gated |
+| 🔴 **Option B — B7** Product hygiene + final inspection | §19.B7 | gated *(Delivery Readiness phase in progress — hygiene `00cc9a6`)* |
+| 🔴 **Option B — B8** Guided User Journey & Intelligent Redirection (Luna flow) | §19.B8 | gated; deterministic/no-LLM; distinct from K6 |
 
 ### 0bis.3 — Unresolved governance decisions (must be settled before related GO)
 1. **K5/B5 (documents):** RAG/LLM (v2.4) **vs** deterministic/no-LLM (§19.B5).
@@ -3290,11 +3291,37 @@ isolation spot-checks, deterministic-PDF spot-checks, deploy-flow verification
 Pages-from-root / Worker-from-`worker/`).
 **Non-goals:** no feature work under this item; cleanup/inspection only.
 
+### B8 — Guided User Journey & Intelligent Redirection (Luna AI Copilot flow) *(net-new GATED EPIC)*
+**Goal:** replace the open dashboard-first experience with a **linear, guided funnel** (e-commerce-style) that auto-advances the user from step to step toward value (audit → insights → savings → adoption), so users are never lost and never face a "blank choice" without guidance.
+
+**Relationship to B4 (Luna AI Copilot):** B8 is the **deterministic journey/redirection layer**; the **B4 "Luna AI Copilot" surface** is its visible guide. **Deterministic, rule-based only — NO LLM** (unless explicitly approved later). This is explicitly **distinct from the v2.4 K6 Luna Copilot** (LLM/SSE conversational agent, §20), which remains a separate unresolved FUTURE item.
+
+**Step-by-step flow (to specify, not build):**
+1. **Sign-up / Login →** auto-redirect to a **guided choice**: *Start Audit Express* vs *Create a New Audit*; Luna explains the difference in plain terms.
+2. **Audit execution (Express or New Audit) →** on completion, **no dead end** — automatic transition to the next step.
+3. **Understanding & value →** show what the audit means, where the risks are, indicative time/money savings; Luna summarizes + contextualizes (estimate-only; no fabricated figures).
+4. **Adoption / next action →** automatic, guided proposal toward one or more of: **Agents recommendation · Subscription/Membership · System Builder** (replaces static landing pages with a guided proposal).
+5. **Continuous guidance →** at every stage Luna explains *why you're here*, *what happens next*, and *how to proceed safely*.
+
+**Role of Luna AI Copilot in this flow:** acts as (a) a **navigation guard**, (b) a **guide**, (c) a **progress indicator** — ensuring no confusing navigation, no sudden context switch, no unexplained screens.
+
+**UX intent:** the guided flow is the **default**; it lowers confusion/drop-off and progressively moves users to value, while remaining honest and user-controlled.
+
+**Constraints (explicit, hard):**
+- **Deterministic logic only** — no LLM decisions unless explicitly approved later.
+- **No legal/compliance claims**; estimates only, no fabricated ROI.
+- **No dark patterns** — no forced/deceptive steps.
+- **Redirection logic transparent and reversible** — the user can always see why and go back.
+- **Dashboard always accessible** — the guided flow is the default, not a cage; users can exit to the dashboard at any time.
+
+**Status:** Option B — New evolution · Net-new · **GATED**. No implementation without explicit GO. Tracked in §0bis.2.
+
 ### 19.x — Option B summary
 **Added (specification only, gated):** B1 global nav for non-sidebar pages · B2 systematic
 login/sign-up + lead capture · B3 System Builder as core feature · **B4 Luna AI Copilot
 (gated epic)** · **B5 Document upload → audit (gated epic)** · B6 i18n & currency ·
-B7 product hygiene / final inspection.
+B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent Redirection
+(Luna flow — deterministic, gated epic; distinct from K6)**.
 **Decisions still required before any GO:**
 1. **B4** — rule-based vs LLM Copilot (LLM = out of scope for now → confirm A).
 2. **B5** — confirm deterministic/no-LLM/rule-based interpretation + v1 format scope.
