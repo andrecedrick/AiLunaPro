@@ -31,12 +31,27 @@ describe('JourneyNext (B8.2)', () => {
     expect(['understanding', 'adoption']).toContain(getJourneyStep());
   });
 
-  it('choosing an adoption option navigates + advances to "adoption"', () => {
+  it('emphasizes the Agents CTA with a "Recommended" tag when present', () => {
     render(<JourneyNext summary={SUMMARY} hasRecommendedAgents />);
-    expect(screen.getByText(/See recommended agents ★/)).toBeTruthy(); // emphasized when present
-    fireEvent.click(screen.getByText(/See recommended agents/));
+    expect(screen.getByText('Recommended')).toBeTruthy();
+    const agents = screen.getByRole('button', { name: /See recommended agents/i });
+    expect(agents.className).toContain('jn-cta--primary'); // button-like emphasis
+  });
+
+  it('the adoption options are clickable buttons that navigate + advance to "adoption"', () => {
+    render(<JourneyNext summary={SUMMARY} />);
+    const agents = screen.getByRole('button', { name: /See recommended agents/i });
+    expect(agents.className).toContain('jn-cta'); // CTA styling, not plain text
+    fireEvent.click(agents);
     expect(navigate).toHaveBeenCalledWith({ name: 'agents' });
     expect(getJourneyStep()).toBe('adoption');
+  });
+
+  it('every adoption option is a button (clearly actionable, not informational text)', () => {
+    render(<JourneyNext summary={SUMMARY} />);
+    for (const name of [/See recommended agents/i, /Explore membership/i, /Open System Builder/i]) {
+      expect(screen.getByRole('button', { name }).className).toContain('jn-cta');
+    }
   });
 
   it('dashboard escape is always available (reversible, no trap)', () => {
