@@ -51,7 +51,7 @@
 | **Option B — B1** Global nav for non-sidebar pages (adaptive campaign chrome + System Builder sidebar item) | `0889af2` (prod-verified 2026-06-09) |
 | **Option B — B8.1** Guided journey engine + post-auth guided-choice (deterministic, reversible, localStorage) | `cd76463` (prod-verified 2026-06-09) |
 | **Option B — B8.2** Guided completion transitions — `JourneyNext` (Understanding & value + adoption Next-action) on New Audit + Audit Express results; monotonic step model; deterministic/no-LLM | `546ebbc` (prod-verified 2026-06-09) |
-| **Option B — B8.2 UX patch** Adoption CTAs restyled as obvious clickable buttons (accent border, hover lift/tint, focus-visible, icon, animated arrow, "Recommended" pill) | `1abd0ee` (2026-06-09) |
+| **Option B — B8.2 UX patch** Adoption CTAs restyled as obvious clickable buttons (accent border, hover lift/tint, focus-visible, icon, animated arrow, "Recommended" pill) | `1abd0ee` (prod-verified 2026-06-09) |
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
