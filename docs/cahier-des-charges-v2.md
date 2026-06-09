@@ -50,6 +50,8 @@
 | Delivery Readiness — B7 hygiene (inactive buttons removed, stale copy fixed) | `00cc9a6`, `02a9710` |
 | **Option B — B1** Global nav for non-sidebar pages (adaptive campaign chrome + System Builder sidebar item) | `0889af2` (prod-verified 2026-06-09) |
 | **Option B — B8.1** Guided journey engine + post-auth guided-choice (deterministic, reversible, localStorage) | `cd76463` (prod-verified 2026-06-09) |
+| **Option B — B8.2** Guided completion transitions — `JourneyNext` (Understanding & value + adoption Next-action) on New Audit + Audit Express results; monotonic step model; deterministic/no-LLM | `546ebbc` (prod-verified 2026-06-09) |
+| **Option B — B8.2 UX patch** Adoption CTAs restyled as obvious clickable buttons (accent border, hover lift/tint, focus-visible, icon, animated arrow, "Recommended" pill) | `1abd0ee` (2026-06-09) |
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
@@ -82,7 +84,7 @@
 | 🔴 **Option B — B5** Document upload → audit | §19.B5 | gated; K5 conflict |
 | 🔴 **Option B — B6** i18n + currency | §19.B6 | gated |
 | 🔴 **Option B — B7** Product hygiene + final inspection | §19.B7 | gated *(Delivery Readiness phase in progress — hygiene `00cc9a6`)* |
-| 🟡 **Option B — B8** Guided User Journey & Intelligent Redirection (Luna flow, **phased**) | §19.B8 | **B8.1 ✅ `cd76463`** (engine + guided-choice); **B8.2 (transitions) + B8.3 (continuous guidance) 🔴 pending**; deterministic/no-LLM; distinct from K6 |
+| 🟡 **Option B — B8** Guided User Journey & Intelligent Redirection (Luna flow, **phased**) | §19.B8 | **B8.1 ✅ `cd76463`** (engine + guided-choice); **B8.2 ✅ `546ebbc`** (completion→understanding→adoption transitions + CTA-emphasis patch); **B8.3 (continuous guidance + progress indicator) 🔴 pending**; deterministic/no-LLM; distinct from K6 |
 
 ### 0bis.3 — Unresolved governance decisions (must be settled before related GO)
 1. **K5/B5 (documents):** RAG/LLM (v2.4) **vs** deterministic/no-LLM (§19.B5).
@@ -3295,8 +3297,10 @@ isolation spot-checks, deterministic-PDF spot-checks, deploy-flow verification
 Pages-from-root / Worker-from-`worker/`).
 **Non-goals:** no feature work under this item; cleanup/inspection only.
 
-### B8 — Guided User Journey & Intelligent Redirection (Luna AI Copilot flow) *(phased — B8.1 ✅ DONE `cd76463` prod-verified 2026-06-09; B8.2 + B8.3 🔴 pending, gated)*
-> **B8.1 closed (permanent):** deterministic journey engine (`journeyState.ts`, localStorage, no PII/LLM) + post-auth **guided-choice** screen (Audit Express vs New Audit, minimal inline Luna guide, reversible, dashboard-escape). Decisions 1–6 = recommended defaults. **B8.2** (audit-completion → understanding → adoption transitions over existing surfaces) and **B8.3** (continuous guidance + progress indicator) remain gated.
+### B8 — Guided User Journey & Intelligent Redirection (Luna AI Copilot flow) *(phased — B8.1 ✅ DONE `cd76463`; B8.2 ✅ DONE `546ebbc` (+ CTA-emphasis patch), both prod-verified 2026-06-09; B8.3 🔴 pending, gated)*
+> **B8.1 closed (permanent):** deterministic journey engine (`journeyState.ts`, localStorage, no PII/LLM) + post-auth **guided-choice** screen (Audit Express vs New Audit, minimal inline Luna guide, reversible, dashboard-escape). Decisions 1–6 = recommended defaults.
+> **B8.2 closed (permanent):** `JourneyNext` panel mounted after New Audit (`AuditResultPage`) + Audit Express run (`AuditExpressRunPage`) results — a deterministic **Understanding & value** summary (reuses already-computed result/preview; estimate-only) + a guided **adoption Next-action** block (See recommended agents / Explore membership / Open System Builder), Agents emphasized when `recommendedAgentIds` present; monotonic step model (`choice→audit→understanding→adoption`); always-reversible dashboard escape; replaced the old static System Builder CTA. **UX patch (same phase):** the three adoption options restyled as obvious clickable **buttons** — accent border, hover lift/tint, `:focus-visible`, leading icon, animated arrow, "Recommended" pill on the emphasized one.
+> **B8.3** (continuous guidance + progress indicator) remains gated.
 **Goal:** replace the open dashboard-first experience with a **linear, guided funnel** (e-commerce-style) that auto-advances the user from step to step toward value (audit → insights → savings → adoption), so users are never lost and never face a "blank choice" without guidance.
 
 **Relationship to B4 (Luna AI Copilot):** B8 is the **deterministic journey/redirection layer**; the **B4 "Luna AI Copilot" surface** is its visible guide. **Deterministic, rule-based only — NO LLM** (unless explicitly approved later). This is explicitly **distinct from the v2.4 K6 Luna Copilot** (LLM/SSE conversational agent, §20), which remains a separate unresolved FUTURE item.
