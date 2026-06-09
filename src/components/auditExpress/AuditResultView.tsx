@@ -10,7 +10,7 @@ export interface RoiResult {
 }
 export interface AuditPreview {
   engineVersion: string;
-  k1a: { normalizedScore: number; bucket: string };
+  k1a: { normalizedScore: number; bucket: string; recommendedAgentIds?: string[] };
   k2a: { result: RoiResult };
 }
 export interface AuditUnderstanding {

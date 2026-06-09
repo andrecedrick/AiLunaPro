@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAudit } from '../context/AuditContext';
 import { useReports } from '../context/ReportsContext';
-import { useRoute } from '../context/RouteContext';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
 
 /**
@@ -21,6 +20,7 @@ import { ActionPlan } from '../components/result/ActionPlan';
 import { Disclaimer } from '../components/result/Disclaimer';
 import { AssistanceTeaser } from '../components/result/AssistanceTeaser';
 import { ResultActions } from '../components/result/ResultActions';
+import { JourneyNext } from '../components/journey/JourneyNext';
 
 /**
  * Audit Result page.
@@ -30,7 +30,6 @@ import { ResultActions } from '../components/result/ResultActions';
 export function AuditResultPage() {
   const { draft } = useAudit();
   const { reports, createReport } = useReports();
-  const { navigate } = useRoute();
 
   const result = useMemo(() => computeAuditResult(draft.answers), [draft.answers]);
 
@@ -126,45 +125,18 @@ export function AuditResultPage() {
       {/* J9: mandatory advisory disclaimer (informational, not legal advice). */}
       <Disclaimer />
 
-      {/* J9 Batch 3: pre-deployment design CTA — links to the static System Builder. */}
-      <div
-        style={{
-          marginTop: 18,
-          padding: '14px 18px',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--card-radius)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
+      {/* B8.2: guided "Understanding & value → Next action" (replaces the static
+          System Builder CTA with a guided proposal; deterministic, reversible). */}
+      <JourneyNext
+        summary={{
+          headline: 'Here is what your audit means',
+          lines: [
+            `Overall score ${result.globalScore}/100 — ${result.riskLevel} risk.`,
+            `${result.findings.length} finding${result.findings.length === 1 ? '' : 's'} across ${result.recommendations.length} recommended action${result.recommendations.length === 1 ? '' : 's'}.`,
+            `AI maturity: level ${result.maturityLevel} of 5.`,
+          ],
         }}
-      >
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          <strong style={{ color: 'var(--text-primary)' }}>Designing a new AI system?</strong>
-          {' '}Walk through the pre-deployment design guide — purpose, data, model, oversight,
-          monitoring, documentation. Read-only.
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate({ name: 'system-builder' })}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: '1px solid var(--violet)',
-            background: 'transparent',
-            color: 'var(--violet-text)',
-            fontWeight: 700,
-            fontSize: 12,
-            cursor: 'pointer',
-            fontFamily: 'var(--font-body)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Open System Builder →
-        </button>
-      </div>
+      />
 
       {/* Actions */}
       <ResultActions />

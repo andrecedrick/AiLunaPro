@@ -24,3 +24,26 @@ export function markJourneyStarted(): void {
 export function postAuthRoute(): 'journey/start' | 'dashboard' {
   return isJourneyStarted() ? 'dashboard' : 'journey/start';
 }
+
+/* ── B8.2 — journey step progress (deterministic, monotonic) ───────────────
+ * Tracks the FURTHEST step the user has reached, so transitions never regress
+ * on revisit and B8.3 can render a progress indicator. localStorage, no PII. */
+export type JourneyStep = 'choice' | 'audit' | 'understanding' | 'adoption';
+export const JOURNEY_STEPS: readonly JourneyStep[] = ['choice', 'audit', 'understanding', 'adoption'];
+const STEP_KEY = 'ailunapro.journey.v1.step';
+
+export function getJourneyStep(): JourneyStep {
+  try {
+    const s = localStorage.getItem(STEP_KEY);
+    return (JOURNEY_STEPS as readonly string[]).includes(s ?? '') ? (s as JourneyStep) : 'choice';
+  } catch { return 'choice'; }
+}
+
+/** Advance to `step` only if it is further than the current step (monotonic). */
+export function advanceJourney(step: JourneyStep): void {
+  try {
+    if (JOURNEY_STEPS.indexOf(step) > JOURNEY_STEPS.indexOf(getJourneyStep())) {
+      localStorage.setItem(STEP_KEY, step);
+    }
+  } catch { /* storage unavailable — no-op */ }
+}

@@ -6,6 +6,7 @@ import { runPreview, runExtract, saveAudit, deleteSavedAudit, SavedAuditError } 
 import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
+import { JourneyNext } from '../components/journey/JourneyNext';
 
 interface Snapshot { understanding?: AuditUnderstanding; canonicalUrl?: string }
 
@@ -134,6 +135,18 @@ export function AuditExpressRunPage() {
           </div>
           {pdf.error && <p style={{ color: 'var(--amber-text)', fontSize: 13, marginTop: 8 }}>{pdf.error}</p>}
           {!auditId && <p style={{ color: 'var(--text-muted)', fontSize: 12.5, marginTop: 8 }}>Saving your result…</p>}
+
+          <JourneyNext
+            summary={{
+              headline: 'Here is what your snapshot means',
+              lines: [
+                `AI readiness: ${preview.k1a.bucket} (${preview.k1a.normalizedScore}/100).`,
+                `Estimated time saved ≈ ${preview.k2a.result.estimatedTimeSavedHoursPerMonth} hours/month.`,
+                `Estimated cost saved ≈ $${Math.round(Number(preview.k2a.result.estimatedMonthlyCostSaved) || 0).toLocaleString('en-US')}/month.`,
+              ],
+            }}
+            hasRecommendedAgents={(preview.k1a.recommendedAgentIds?.length ?? 0) > 0}
+          />
         </>
       )}
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { isJourneyStarted, markJourneyStarted, postAuthRoute } from '../../src/lib/journey/journeyState';
+import { isJourneyStarted, markJourneyStarted, postAuthRoute, getJourneyStep, advanceJourney } from '../../src/lib/journey/journeyState';
 
 /* B8.1 — deterministic journey state (localStorage). Default-ON first run,
  * reversible (once started, never forced again). */
@@ -22,5 +22,21 @@ describe('journeyState', () => {
     markJourneyStarted();
     expect(postAuthRoute()).toBe('dashboard');
     expect(postAuthRoute()).toBe('dashboard');
+  });
+});
+
+describe('journey step model (B8.2)', () => {
+  it('defaults to "choice"', () => {
+    expect(getJourneyStep()).toBe('choice');
+  });
+  it('advances monotonically and never regresses', () => {
+    advanceJourney('understanding');
+    expect(getJourneyStep()).toBe('understanding');
+    advanceJourney('choice');             // backward → ignored
+    expect(getJourneyStep()).toBe('understanding');
+    advanceJourney('adoption');
+    expect(getJourneyStep()).toBe('adoption');
+    advanceJourney('audit');              // backward → ignored
+    expect(getJourneyStep()).toBe('adoption');
   });
 });
