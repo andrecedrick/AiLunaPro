@@ -1,8 +1,13 @@
+import { useEffect } from 'react';
 import { AuditShell } from '../components/audit/AuditShell';
 import { useAudit } from '../context/AuditContext';
+import { advanceJourney } from '../lib/journey/journeyState';
 
 export function NewAuditPage() {
   const { status } = useAudit();
+
+  // B8.3: entering the New Audit flow = the "Audit" journey step (monotonic).
+  useEffect(() => { advanceJourney('audit'); }, []);
 
   return (
     <div>

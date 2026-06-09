@@ -3,6 +3,7 @@ import { lazyWithRetry as lazy } from './lib/routing/lazyWithRetry';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CampaignChrome } from './components/layout/CampaignChrome';
+import { JourneyProgress } from './components/journey/JourneyProgress';
 import { ThemeProvider } from './context/ThemeContext';
 import { PreferencesProvider } from './context/PreferencesContext';
 import { ToastProvider } from './context/ToastContext';
@@ -521,6 +522,7 @@ function AppShell() {
           mobileOpen={mobileNavOpen}
         />
         <main className="dashboard-content">
+          <JourneyProgress />
           <PageOutlet />
         </main>
       </div>

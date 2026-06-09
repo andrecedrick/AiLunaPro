@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import { AX_QUESTIONS } from '../lib/auditExpress/questions';
@@ -7,6 +7,7 @@ import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
 import { JourneyNext } from '../components/journey/JourneyNext';
+import { advanceJourney } from '../lib/journey/journeyState';
 
 interface Snapshot { understanding?: AuditUnderstanding; canonicalUrl?: string }
 
@@ -30,6 +31,9 @@ export function AuditExpressRunPage() {
 
   const pdf = usePdfDownload(orgId);
   const complete = AX_QUESTIONS.every(q => Boolean(taps[q.key]));
+
+  // B8.3: entering the Audit Express run = the "Audit" journey step (monotonic).
+  useEffect(() => { advanceJourney('audit'); }, []);
 
   /** Save (auto), then supersede the earlier preview-only record so Saved Audits
    *  shows exactly one entry per run (enriched replaces preview-only). */

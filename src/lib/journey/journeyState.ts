@@ -44,6 +44,34 @@ export function advanceJourney(step: JourneyStep): void {
   try {
     if (JOURNEY_STEPS.indexOf(step) > JOURNEY_STEPS.indexOf(getJourneyStep())) {
       localStorage.setItem(STEP_KEY, step);
+      // Notify the persistent progress bar (which lives in the app shell) so it
+      // reflects an advance that happened on the current page without a nav.
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new Event(JOURNEY_EVENT));
+      }
     }
   } catch { /* storage unavailable — no-op */ }
+}
+
+/* ── B8.3 — continuous guidance + progress indicator (deterministic) ───────── */
+
+/** Event fired when the journey step advances (in-page reactivity, no store). */
+export const JOURNEY_EVENT = 'ailunapro:journey';
+
+/** Short labels for the 4-stage progress indicator. */
+export const JOURNEY_LABELS: Record<JourneyStep, string> = {
+  choice: 'Choose',
+  audit: 'Audit',
+  understanding: 'Understand',
+  adoption: 'Adopt',
+};
+
+/** Per-session dismissal of the guided journey bar (user-controlled, reversible
+ *  by clearing storage). localStorage, no PII. */
+const BAR_DISMISS_KEY = 'ailunapro.journey.v1.bar_dismissed';
+export function isJourneyBarDismissed(): boolean {
+  try { return localStorage.getItem(BAR_DISMISS_KEY) === '1'; } catch { return false; }
+}
+export function dismissJourneyBar(): void {
+  try { localStorage.setItem(BAR_DISMISS_KEY, '1'); } catch { /* storage unavailable — no-op */ }
 }
