@@ -28,10 +28,12 @@ describe('JourneyProgress (B8.3)', () => {
     expect(screen.getByRole('button', { name: /Choose audit type/i })).toBeTruthy();
   });
 
-  it('is hidden on non-journey surfaces', () => {
+  it('is ON BY DEFAULT regardless of route (only Dismiss/Adopt hide it)', () => {
     mockRoute = { name: 'settings/profile' };
-    const { container } = render(<JourneyProgress />);
-    expect(container.firstChild).toBeNull();
+    render(<JourneyProgress />);
+    // Route-agnostic: still visible on any shell page while the journey is active.
+    expect(screen.getByText('Choose')).toBeTruthy();
+    expect(screen.getByText('Understand')).toBeTruthy();
   });
 
   it('is hidden once the journey reaches adoption (complete)', () => {

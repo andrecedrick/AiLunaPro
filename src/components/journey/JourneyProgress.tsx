@@ -1,6 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useRoute } from '../../context/RouteContext';
-import type { Route } from '../../types/audit';
 import {
   getJourneyStep, isJourneyBarDismissed, dismissJourneyBar,
   JOURNEY_STEPS, JOURNEY_LABELS, JOURNEY_EVENT, type JourneyStep,
@@ -8,17 +7,12 @@ import {
 
 /**
  * B8.3 — guided journey progress indicator + continuous guidance. Deterministic,
- * no LLM, localStorage-only. Mounted once in the app shell; renders only on
- * journey surfaces, only while the journey is active (step < adoption) and not
- * dismissed. Honest + reversible: the first step is revisitable, the bar is
- * dismissible, and the dashboard/sidebar stay reachable at all times.
+ * no LLM, localStorage-only. Mounted once in the app shell, the bar is ON BY
+ * DEFAULT for every user on any shell page while the journey is active
+ * (step < adoption); it disappears ONLY when the user explicitly dismisses it or
+ * reaches the Adopt step. Honest + reversible: the first step is revisitable, the
+ * bar is dismissible, and the dashboard/sidebar stay reachable at all times.
  */
-
-// Routes where the guided bar is shown (the funnel surfaces + the hub).
-const JOURNEY_SURFACES = new Set<Route['name']>([
-  'dashboard', 'journey/start', 'audit/new', 'audit/result', 'audit/assistance',
-  'audit-express/run', 'audit-express/detail',
-]);
 
 // Deterministic per-step guidance — why you're here / what happens next.
 const HINT: Record<JourneyStep, string> = {
@@ -29,7 +23,7 @@ const HINT: Record<JourneyStep, string> = {
 };
 
 export function JourneyProgress() {
-  const { route, navigate } = useRoute();
+  const { navigate } = useRoute();
   const [, force] = useState(0);
   const [dismissed, setDismissed] = useState(() => isJourneyBarDismissed());
 
@@ -41,7 +35,8 @@ export function JourneyProgress() {
   }, []);
 
   const step = getJourneyStep();
-  if (dismissed || step === 'adoption' || !JOURNEY_SURFACES.has(route.name)) return null;
+  // Default-ON: only an explicit Dismiss or reaching Adopt hides the bar.
+  if (dismissed || step === 'adoption') return null;
 
   const currentIdx = JOURNEY_STEPS.indexOf(step);
   const onDismiss = () => { dismissJourneyBar(); setDismissed(true); };
