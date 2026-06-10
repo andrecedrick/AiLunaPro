@@ -93,7 +93,7 @@
 1. **K5/B5 (documents):** RAG/LLM (v2.4) **vs** deterministic/no-LLM (§19.B5).
 2. **K6/B4 (Luna Copilot):** LLM/Anthropic SSE agent (v2.4) **vs** rule-based/no-LLM (§19.B4).
 3. **i18n (B6/§9.24):** static dictionaries vs translation service.
-4. **B2/T1:** lead-storage model + dunning channel (Sequenzy/Twilio).
+4. **B2/T1:** ~~lead-storage model~~ **RESOLVED 2026-06-10** (worker-only consented Firestore — see §19.B2); dunning/re-engagement **channel** (Sequenzy/Twilio) still open — blocks B2(e)/T1 only.
 > Note: the standing project guardrail today is **no-LLM / deterministic**. Items 1–2 cannot proceed until this is explicitly overridden or the deterministic re-scope is confirmed.
 
 ---
@@ -3235,8 +3235,18 @@ audit) and (e) **re-engagement** logic (subscription reminders, onboarding conti
 **consent-based analytics only** (respect the existing consent banner / PostHog gating);
 informational tracking only (no legal/compliance claims); no PII in logs; lead storage
 org/consent-scoped.
-**Open decision:** lead storage model (existing analytics vs a new consented CRM-like
-store) — **requires GO**.
+**Decisions RESOLVED (2026-06-10, operator-approved):**
+1. **Lead-storage model:** extend the existing **worker-only consented Firestore pattern**
+   (`public_diagnostics` / `public_roi_calculations` + new `demo_requests`); client
+   read/write denied in rules. PostHog rejected for lead PII (its own posture is no-PII);
+   a unified CRM store deferred.
+2. **Signup redirection (PERMANENT PRODUCT DECISION — do NOT "fix"):** the external
+   post-result signup URL (`dashboard.ailunapro.com/register?aff=…`) is **intentional**.
+   Product funnel = **audit platform (this app: audit, analysis, insights/value) →
+   external platform (agents/solutions layer, same ecosystem)**. External links must stay;
+   the transition must be explicit (the CTA states it continues on dashboard.ailunapro.com
+   and why). In-app `#/signup` continues to exist via campaign chrome — never forced.
+3. **B2(e) re-engagement:** deferred — gated on the T1 outbound-channel decision.
 
 ### B3 — System Builder promoted to a core feature *(net-new, gated)*
 **Objective:** promote `#/system-builder` from a contextual guide to a **first-class**
