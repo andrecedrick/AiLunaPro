@@ -309,7 +309,14 @@
   <body>
     <main class="wrap">
       <header>
-        <div class="brand">AiLunaPro · Compliance Suite</div>
+        <!-- B2.1: systematic auth affordances on every public surface -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div class="brand">AiLunaPro · Compliance Suite</div>
+          <div style="display:flex;gap:8px;">
+            <a href="/#/login" style="padding:7px 14px;border-radius:9px;border:1.5px solid var(--border-strong);color:var(--text-primary);font-size:13px;font-weight:600;text-decoration:none;">Log in</a>
+            <a href="/#/signup" style="padding:7px 14px;border-radius:9px;background:var(--brand-gradient);color:#fff;font-size:13px;font-weight:700;text-decoration:none;">Sign up</a>
+          </div>
+        </div>
         <h1>Audit Express</h1>
         <p class="lede">
           A fast, estimate-only snapshot of where your organization stands with AI —

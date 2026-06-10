@@ -17,6 +17,8 @@ import { DIAGNOSTIC_QUESTIONS } from '../data/diagnostic-questions';
 import { submitDiagnostic, friendlyDiagnosticError } from '../lib/diagnostic/diagnosticClient';
 import type { DiagnosticResult, Bucket } from '../types/diagnostic';
 import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
+import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
+import { track } from '../lib/analytics/track';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
@@ -45,8 +47,17 @@ interface FormErrors {
 export function DiagnosticPage() {
   const { navigate } = useRoute();
 
-  // Answers state — keyed by question.id
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Answers state — keyed by question.id. B2.4: an unfinished run is restored
+  // from localStorage so abandoning the flow never loses progress (client-side
+  // only; cleared on submit or reset).
+  const [resumed] = useState(() => {
+    const p = readFlowProgress('diagnostic');
+    return p && Object.keys((p.state.answers as Record<string, string>) ?? {}).length > 0;
+  });
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
+    const p = readFlowProgress('diagnostic');
+    return (p?.state.answers as Record<string, string>) ?? {};
+  });
   const [email, setEmail]           = useState('');
   const [companyName, setCompany]   = useState('');
   const [consent, setConsent]       = useState(false);
@@ -62,7 +73,13 @@ export function DiagnosticPage() {
   );
 
   const onChangeAnswer = (qid: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [qid]: value }));
+    setAnswers(prev => {
+      const next = { ...prev, [qid]: value };
+      // B2.4: persist in-progress answers locally; signal flow start once.
+      if (Object.keys(prev).length === 0) track('lead_flow_started', { flow: 'diagnostic' });
+      saveFlowProgress('diagnostic', { answers: next });
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,6 +105,11 @@ export function DiagnosticPage() {
         turnstileToken: turnstileToken ?? undefined,
       });
       setResult(r);
+      // B2.3/B2.4: completed — clear the resume state, keep a non-PII headline
+      // for post-auth continuity (guided journey start banner).
+      clearFlowProgress('diagnostic');
+      savePendingResult({ kind: 'diagnostic', headline: `AI maturity score ${r.score}/100 (${r.bucket})`, createdAt: new Date().toISOString() });
+      track('lead_flow_completed', { flow: 'diagnostic' });
       // Scroll result into view
       requestAnimationFrame(() => {
         const el = document.getElementById('diagnostic-result');
@@ -126,9 +148,18 @@ export function DiagnosticPage() {
         </div>
 
         {result ? (
-          <ResultView result={result} onReset={() => { setResult(null); setAnswers({}); }} />
+          <ResultView result={result} onReset={() => { setResult(null); setAnswers({}); clearFlowProgress('diagnostic'); }} />
         ) : (
           <form onSubmit={handleSubmit} noValidate>
+            {/* B2.4: abandoned-flow resume notice (client-side only) */}
+            {resumed && (
+              <div style={{
+                marginBottom: 14, padding: '10px 14px', borderRadius: 10, fontSize: 13,
+                background: 'var(--brand-tint-bg)', color: 'var(--text-primary)', border: '1px solid var(--violet)',
+              }}>
+                Welcome back — we restored your previous answers so you can pick up where you left off.
+              </div>
+            )}
             {/* Questions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {DIAGNOSTIC_QUESTIONS.map((q, i) => (
@@ -422,8 +453,13 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
             fontWeight: 700, fontSize: 14, textDecoration: 'none',
           }}
         >
-          Create your free account
+          Create your free account ↗
         </a>
+        {/* B2.1: the cross-platform step is deliberate — make it explicit. */}
+        <div style={{ fontSize: 11.5, opacity: 0.7, marginTop: 10 }}>
+          Continues on <strong>dashboard.ailunapro.com</strong> — the AiLuna platform for AI agents
+          and solutions, the next step after your audit.
+        </div>
       </div>
 
       <div style={{ marginTop: 18, textAlign: 'center' }}>

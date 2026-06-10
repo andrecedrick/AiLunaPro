@@ -3,10 +3,11 @@ import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
 import { useBilling } from '../../context/BillingContext';
 import { useToast } from '../../hooks/useToast';
+import { submitDemoRequest } from '../../lib/leads/demoRequestClient';
 
 export function CTABlock() {
   const { navigate } = useRoute();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, session } = useAuth();
   const { hasActiveSubscription } = useBilling();
   const { showToast } = useToast();
   const [demoOpen, setDemoOpen] = useState(false);
@@ -33,7 +34,13 @@ export function CTABlock() {
         boxShadow: 'var(--card-shadow)',
       }}
     >
-      {demoOpen && <DemoModal onClose={() => setDemoOpen(false)} onSubmit={() => { setDemoOpen(false); showToast("Demo request captured. We'll review it and get back to you.", 'success'); }} />}
+      {demoOpen && (
+        <DemoModal
+          onClose={() => setDemoOpen(false)}
+          orgId={session?.orgId ?? ''}
+          onSubmitted={() => { setDemoOpen(false); showToast("Demo request sent. We'll review it and get back to you.", 'success'); }}
+        />
+      )}
       <div
         style={{
           position: 'absolute',
@@ -147,11 +154,28 @@ export function CTABlock() {
 
 /* ── Demo modal (J1.3G) ─────────────────────────────────── */
 
-function DemoModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: () => void }) {
+function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId: string; onSubmitted: () => void }) {
   const [name, setName]       = useState('');
   const [email, setEmail]     = useState('');
   const [company, setCompany] = useState('');
   const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  // B2.2: actually persist the request (worker-only demo_requests store) —
+  // success is only reported once the server confirmed the write.
+  const onSend = async () => {
+    if (!name || !email || sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      await submitDemoRequest({ orgId, name, email, company: company || undefined, message: message || undefined });
+      onSubmitted();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send your request. Please try again.');
+      setSending(false);
+    }
+  };
 
   return (
     <div
@@ -180,10 +204,14 @@ function DemoModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: () =>
           <input value={company} onChange={e => setCompany(e.target.value)} placeholder="Company" style={inputStyle()} />
           <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="What would you like to discuss?" rows={3} style={{ ...inputStyle(), resize: 'vertical', fontFamily: 'inherit' }} />
         </div>
+        {error && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--red-text, #DC2626)' }}>{error}</p>}
+        <p style={{ margin: '12px 0 0', fontSize: 11.5, color: 'var(--text-muted)' }}>
+          We only use these details to respond to your request.
+        </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
           <button type="button" onClick={onClose} style={btnGhost()}>Cancel</button>
-          <button type="button" onClick={onSubmit} disabled={!name || !email} style={btnPrimary(!name || !email)}>
-            Request demo
+          <button type="button" onClick={onSend} disabled={!name || !email || sending} style={btnPrimary(!name || !email || sending)}>
+            {sending ? 'Sending…' : 'Request demo'}
           </button>
         </div>
       </div>

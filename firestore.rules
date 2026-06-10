@@ -147,6 +147,20 @@ service cloud.firestore {
 
 
     // ─────────────────────────────────────────────────────────────────────────
+    // /demo_requests/{id}                  ← B2.2 (dashboard demo-request CTA)
+    //
+    // Authed demo requests, written ONLY by the worker (POST /api/demo-request,
+    // service account bypasses rules). Closed to all client-side access — same
+    // discipline as the public lead collections above.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /demo_requests/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
     // /users/{userId}
     //
     // User profiles, created on first sign-in.

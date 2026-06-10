@@ -50,6 +50,7 @@ import auditExpressRoutes    from './routes/audit-express';
 import auditExpressExtractRoutes from './routes/audit-express-extract';
 import auditExpressPdfRoutes from './routes/audit-express-pdf';
 import auditExpressStoreRoutes from './routes/audit-express-store';
+import demoRequestRoutes     from './routes/demo-request';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -168,6 +169,7 @@ app.route('/', auditExpressRoutes);
 app.route('/', auditExpressExtractRoutes);
 app.route('/', auditExpressPdfRoutes);
 app.route('/', auditExpressStoreRoutes);
+app.route('/', demoRequestRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

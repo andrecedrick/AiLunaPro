@@ -9,6 +9,7 @@ vi.mock('../../src/context/RouteContext', () => ({ useRoute: () => ({ navigate }
 
 import { GuidedStartPage } from '../../src/pages/GuidedStartPage';
 import { isJourneyStarted } from '../../src/lib/journey/journeyState';
+import { savePendingResult, readPendingResult } from '../../src/lib/leads/pendingLead';
 
 beforeEach(() => { vi.clearAllMocks(); try { localStorage.clear(); } catch { /* noop */ } });
 
@@ -30,5 +31,21 @@ describe('GuidedStartPage (B8.1)', () => {
     fireEvent.click(screen.getByText(/Skip/));
     expect(isJourneyStarted()).toBe(true);
     expect(navigate).toHaveBeenCalledWith({ name: 'dashboard' });
+  });
+});
+
+describe('GuidedStartPage — anon→auth continuity (B2.3)', () => {
+  it('greets with the pending public-flow result and clears it on choice', () => {
+    savePendingResult({ kind: 'diagnostic', headline: 'AI maturity score 62/100 (medium)', createdAt: '2026-06-10T00:00:00.000Z' });
+    render(<GuidedStartPage />);
+    expect(screen.getByText(/AI maturity score 62\/100/)).toBeTruthy();
+    fireEvent.click(screen.getByText(/Start Audit Express/));
+    expect(readPendingResult('diagnostic')).toBeNull(); // one-shot: consumed
+    expect(navigate).toHaveBeenCalledWith({ name: 'audit-express/run' });
+  });
+
+  it('renders the default greeting when no pending result exists', () => {
+    render(<GuidedStartPage />);
+    expect(screen.getByText(/Pick how you'd like to begin/)).toBeTruthy();
   });
 });

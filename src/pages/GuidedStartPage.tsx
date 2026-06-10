@@ -1,6 +1,7 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useRoute } from '../context/RouteContext';
 import { markJourneyStarted } from '../lib/journey/journeyState';
+import { readLatestPendingResult, clearPendingResult } from '../lib/leads/pendingLead';
 import type { Route } from '../types/audit';
 
 /**
@@ -11,7 +12,18 @@ import type { Route } from '../types/audit';
  */
 export function GuidedStartPage() {
   const { navigate } = useRoute();
-  const go = (route: Route) => { markJourneyStarted(); navigate(route); };
+
+  // B2.3: anonymous→authenticated continuity — if the user ran the public
+  // Diagnostic or ROI Calculator before signing up (same browser), greet them
+  // with their result so the journey continues instead of restarting. Read
+  // once; cleared when they make a choice (one-shot, reversible by re-running).
+  const [pending] = useState(() => readLatestPendingResult());
+
+  const go = (route: Route) => {
+    if (pending) clearPendingResult(pending.kind);
+    markJourneyStarted();
+    navigate(route);
+  };
 
   const card: CSSProperties = {
     flex: '1 1 280px', textAlign: 'left', cursor: 'pointer', background: 'var(--surface)',
@@ -30,7 +42,9 @@ export function GuidedStartPage() {
         <div>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--text-primary)' }}>Hi, I'm Luna — let's get you started.</div>
           <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '4px 0 0' }}>
-            Pick how you'd like to begin. You can switch anytime, and you can always go straight to your dashboard.
+            {pending
+              ? <>We saved your {pending.kind === 'diagnostic' ? 'diagnostic' : 'ROI estimate'} — <strong style={{ color: 'var(--text-primary)' }}>{pending.headline}</strong>. A full audit turns it into a complete action plan. Pick how you'd like to continue.</>
+              : <>Pick how you'd like to begin. You can switch anytime, and you can always go straight to your dashboard.</>}
           </p>
         </div>
       </div>

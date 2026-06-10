@@ -13,12 +13,14 @@
  * teamSize is collected and persisted but does NOT affect the K2A formula.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
 import { WORKFLOW_LABELS, WORKFLOW_VALUES, type Workflow } from '../data/roi-config';
 import { submitRoi, friendlyRoiError } from '../lib/roi/roiClient';
 import type { RoiResult } from '../types/roi';
 import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
+import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
+import { track } from '../lib/analytics/track';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
@@ -35,10 +37,13 @@ interface FormErrors {
 export function RoiCalculatorPage() {
   const { navigate } = useRoute();
 
-  const [teamSize,    setTeamSize]    = useState<string>('');
-  const [hours,       setHours]       = useState<string>('');
-  const [cost,        setCost]        = useState<string>('50');
-  const [workflow,    setWorkflow]    = useState<Workflow | ''>('');
+  // B2.4: restore an unfinished run from localStorage (client-side only).
+  const saved = readFlowProgress('roi')?.state as { teamSize?: string; hours?: string; cost?: string; workflow?: string } | undefined;
+  const [resumed] = useState(() => Boolean(saved && (saved.teamSize || saved.hours || saved.workflow)));
+  const [teamSize,    setTeamSize]    = useState<string>(saved?.teamSize ?? '');
+  const [hours,       setHours]       = useState<string>(saved?.hours ?? '');
+  const [cost,        setCost]        = useState<string>(saved?.cost ?? '50');
+  const [workflow,    setWorkflow]    = useState<Workflow | ''>((saved?.workflow as Workflow | undefined) ?? '');
   const [email,       setEmail]       = useState('');
   const [companyName, setCompany]     = useState('');
   const [consent,     setConsent]     = useState(false);
@@ -47,6 +52,20 @@ export function RoiCalculatorPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errors,     setErrors]     = useState<FormErrors>({});
   const [result,     setResult]     = useState<RoiResult | null>(null);
+
+  // B2.4: persist in-progress inputs locally (NON-PII only — never email or
+  // company) so an abandoned run can be resumed; signal flow start once.
+  const flowStartedRef = useRef(false);
+  useEffect(() => {
+    if (result) return;
+    const dirty = teamSize !== '' || hours !== '' || workflow !== '' || cost !== '50';
+    if (!dirty) return;
+    if (!flowStartedRef.current) {
+      flowStartedRef.current = true;
+      if (!resumed) track('lead_flow_started', { flow: 'roi' });
+    }
+    saveFlowProgress('roi', { teamSize, hours, cost, workflow });
+  }, [teamSize, hours, cost, workflow, result, resumed]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +111,11 @@ export function RoiCalculatorPage() {
         turnstileToken: turnstileToken ?? undefined,
       });
       setResult(r.result);
+      // B2.3/B2.4: completed — clear resume state; keep a non-PII headline for
+      // post-auth continuity (guided journey start banner).
+      clearFlowProgress('roi');
+      savePendingResult({ kind: 'roi', headline: `estimated savings of $${Math.round(r.result.estimatedMonthlyCostSaved).toLocaleString('en-US')}/month`, createdAt: new Date().toISOString() });
+      track('lead_flow_completed', { flow: 'roi' });
       requestAnimationFrame(() => {
         const el = document.getElementById('roi-result');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -108,6 +132,7 @@ export function RoiCalculatorPage() {
     setResult(null);
     setTeamSize(''); setHours(''); setCost('50'); setWorkflow('');
     setEmail(''); setCompany(''); setConsent(false);
+    clearFlowProgress('roi');
   };
 
   return (
@@ -135,6 +160,15 @@ export function RoiCalculatorPage() {
           <ResultView result={result} onReset={reset} />
         ) : (
           <form onSubmit={handleSubmit} noValidate>
+            {/* B2.4: abandoned-flow resume notice (client-side only) */}
+            {resumed && (
+              <div style={{
+                marginBottom: 14, padding: '10px 14px', borderRadius: 10, fontSize: 13,
+                background: 'var(--brand-tint-bg)', color: 'var(--text-primary)', border: '1px solid var(--violet)',
+              }}>
+                Welcome back — we restored your previous inputs so you can pick up where you left off.
+              </div>
+            )}
             <fieldset style={fieldsetStyle()}>
               <legend style={legendStyle()}>Your team</legend>
 
@@ -381,8 +415,13 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
             fontWeight: 700, fontSize: 14, textDecoration: 'none',
           }}
         >
-          Create your free account
+          Create your free account ↗
         </a>
+        {/* B2.1: the cross-platform step is deliberate — make it explicit. */}
+        <div style={{ fontSize: 11.5, opacity: 0.7, marginTop: 10 }}>
+          Continues on <strong>dashboard.ailunapro.com</strong> — the AiLuna platform for AI agents
+          and solutions, the next step after your audit.
+        </div>
       </div>
 
       <div style={{ marginTop: 18, textAlign: 'center' }}>
