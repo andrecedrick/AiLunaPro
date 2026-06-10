@@ -24,12 +24,26 @@ function isChunkError(err: unknown): boolean {
   );
 }
 
+/**
+ * A swallowed preload error (e.g. a `vite:preloadError` listener calling
+ * preventDefault()) makes the dynamic import RESOLVE WITH UNDEFINED instead of
+ * rejecting — React.lazy would then crash on `undefined.default`. Normalize
+ * that case into a rejection so the retry/ErrorBoundary path handles it.
+ * The message matches isChunkError() so the single retry engages.
+ */
+function ensureModule<M extends { default: unknown }>(mod: M | undefined): M {
+  if (!mod || typeof mod !== 'object' || (mod as { default?: unknown }).default == null) {
+    throw new Error('Failed to fetch dynamically imported module (resolved empty)');
+  }
+  return mod;
+}
+
 export function lazyWithRetry<T extends ComponentType<unknown>>(
   factory: () => Promise<{ default: T }>,
 ): ReturnType<typeof lazy<T>> {
   return lazy(async () => {
     try {
-      return await factory();
+      return ensureModule(await factory());
     } catch (err) {
       if (!isChunkError(err)) throw err;
       // J13: reliability telemetry (no-op unless consent; no PII).
@@ -37,7 +51,7 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
       // Single retry with small backoff.
       await new Promise(res => setTimeout(res, RETRY_DELAY_MS));
       try {
-        const mod = await factory();
+        const mod = ensureModule(await factory());
         void import('../analytics/track').then(m => m.track('chunk_retry_recovered')).catch(() => {});
         return mod;
       } catch (err2) {

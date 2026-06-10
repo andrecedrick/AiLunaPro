@@ -64,7 +64,19 @@
             window.location.reload();
           } catch (e) { /* ignore */ }
         }
-        window.addEventListener('vite:preloadError', function (e) { if (e && e.preventDefault) e.preventDefault(); recoverOnce(); });
+        // IMPORTANT: preventDefault() makes the failed import RESOLVE WITH
+        // UNDEFINED (Vite contract) — only safe when we immediately reload.
+        // If the once-per-session guard is set we will NOT reload, so we must
+        // let the import REJECT: lazyWithRetry then retries it, and on a second
+        // failure the ErrorBoundary shows its chunk-aware reload card instead
+        // of crashing on `undefined.default`.
+        window.addEventListener('vite:preloadError', function (e) {
+          var canReload = false;
+          try { canReload = !sessionStorage.getItem(KEY); } catch (err) { /* ignore */ }
+          if (!canReload) return;
+          if (e && e.preventDefault) e.preventDefault();
+          recoverOnce();
+        });
         window.addEventListener('error', function (e) {
           var t = e && e.target;
           if (!t || !t.tagName) return;
