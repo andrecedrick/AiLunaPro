@@ -54,6 +54,7 @@
 | **Option B — B8.2 UX patch** Adoption CTAs restyled as obvious clickable buttons (accent border, hover lift/tint, focus-visible, icon, animated arrow, "Recommended" pill) | `1abd0ee` (prod-verified 2026-06-09) |
 | **Option B — B8.3** Journey progress bar + continuous guidance — deterministic 4-stage indicator (Choose→Audit→Understand→Adopt) in the app shell, reactive step model, per-step hints, reversible; `audit` step wired on New Audit + Express run entry | `8fa0acb` (prod-verified 2026-06-10) |
 | **Option B — B8.3 default-ON patch** Journey bar visible by default on every authed shell page; hidden ONLY by explicit Dismiss or reaching Adopt (route-surface gate removed) | `f81aa5b` (prod-verified 2026-06-10) |
+| **Option B — B7** Product hygiene & final inspection — truthful copy (demo toast, org-count claim, ROI reference cost, export label), dead `coming-soon` branches removed (org/profile editing verified working), DEV-gated `dlog` on the billing path, `alert()`→toast, KPI loading-vs-error state, a11y (aria-labels + global `:focus-visible` ring), orphaned Phase-C scoring module+test dropped; ready-to-ship checklist run (build/tsc · vitest 343/0-fail · determinism 6/6 · cross-tenant gates · prod 200/200 · deploy-flow) | `53d4987` (prod-verified 2026-06-10; earlier hygiene `00cc9a6`+`02a9710`) |
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
@@ -85,7 +86,7 @@
 | 🔴 **Option B — B4** Luna AI Copilot (visible surface) | §19.B4 | gated; decision A/B + K6 conflict |
 | 🔴 **Option B — B5** Document upload → audit | §19.B5 | gated; K5 conflict |
 | 🔴 **Option B — B6** i18n + currency | §19.B6 | gated |
-| 🔴 **Option B — B7** Product hygiene + final inspection | §19.B7 | gated *(Delivery Readiness phase in progress — hygiene `00cc9a6`)* |
+| ✅ **Option B — B7** Product hygiene + final inspection — **COMPLETE** | §19.B7 | `00cc9a6`+`02a9710` (hygiene) · `53d4987` (full inspection batch, prod-verified 2026-06-10); deferred polish recorded in §19.B7 |
 | ✅ **Option B — B8** Guided User Journey & Intelligent Redirection (Luna flow) — **EPIC COMPLETE** | §19.B8 | **B8.1 ✅ `cd76463`** (engine + guided-choice) · **B8.2 ✅ `546ebbc`+`1abd0ee`** (transitions + CTA emphasis) · **B8.3 ✅ `8fa0acb`+`f81aa5b`** (progress bar + continuous guidance, default-ON); all prod-verified; deterministic/no-LLM; distinct from K6 |
 
 ### 0bis.3 — Unresolved governance decisions (must be settled before related GO)
@@ -3289,7 +3290,7 @@ no new deps unless approved. **Open decision:** translation approach (static dic
 vs a translation service) — **requires GO** (a translation *service* may conflict with the
 no-new-deps / determinism posture).
 
-### B7 — Product hygiene & final inspection (ready-to-ship) *(net-new, gated)*
+### B7 — Product hygiene & final inspection (ready-to-ship) *(✅ COMPLETE — `00cc9a6`+`02a9710` hygiene · `53d4987` full batch, prod-verified 2026-06-10)*
 **Objectives before any public delivery:** (a) **activate or remove inactive buttons**
 (audit every CTA/nav item → wired or removed); (b) full **UI/UX cleanup** (consistency,
 empty/error/loading states, copy like the stale "stored locally" Reports footer);
@@ -3298,6 +3299,8 @@ empty/error/loading states, copy like the stale "stored locally" Reports footer)
 isolation spot-checks, deterministic-PDF spot-checks, deploy-flow verification
 Pages-from-root / Worker-from-`worker/`).
 **Non-goals:** no feature work under this item; cleanup/inspection only.
+> **B7 closed (permanent):** 7-dimension verified inspection (dead CTAs · stale copy · empty/error/loading states · debug leakage · routing integrity · repo hygiene · a11y) → batch `53d4987`: truthful copy (demo-request toast, "500+ organizations" claim removed, ROI "reference agent cost" wording, ExportHistory "Export (JSON)" label); unreachable `coming-soon` branches removed after verifying org/profile editing fully works on the firebase layer (Firestore + Auth writes); 13 billing-path `console.log` diagnostics routed through a new DEV-gated SPA `dlog` (`src/lib/log.ts`); 5 raw `alert()`→toast; KPICards distinguishes loading (`…`) from error (`— couldn't load`); a11y: AgentCard/TokenBadge aria-labels + global keyboard `:focus-visible` ring (wins over inline `outline:none`); orphaned Phase-C scoring module + its dead-engine test deleted (suite 355→343, 0 fail). Ready-to-ship checklist run: build/tsc ✅ · worker tsc ✅ · vitest 343/60-skip/0-fail ✅ · determinism 6/6 ✅ · cross-tenant route-gate spot-checks ✅ · prod front/api 200 ✅ · deploy-flow rule confirmed ✅.
+> **Deferred (recorded, non-blocking):** avatar "coming later" copy; skeleton loaders; share-state/invites loading placeholders; hardcoded decorative colors; 9 files >500 lines (post-delivery refactor); TeamPage native `confirm()`.
 
 ### B8 — Guided User Journey & Intelligent Redirection (Luna AI Copilot flow) *(✅ EPIC COMPLETE — B8.1 `cd76463` · B8.2 `546ebbc`+`1abd0ee` · B8.3 `8fa0acb`+`f81aa5b`; all prod-verified 2026-06-09/10)*
 > **B8.1 closed (permanent):** deterministic journey engine (`journeyState.ts`, localStorage, no PII/LLM) + post-auth **guided-choice** screen (Audit Express vs New Audit, minimal inline Luna guide, reversible, dashboard-escape). Decisions 1–6 = recommended defaults.
