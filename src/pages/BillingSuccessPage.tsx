@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
 import { useBilling } from '../context/BillingContext';
 import { syncSession } from '../lib/billing/stripeClient';
+import { dlog } from '../lib/log';
 
 type SyncState = 'idle' | 'syncing' | 'synced' | 'failed';
 
@@ -27,9 +28,7 @@ function extractSessionId(): string | null {
   const hash   = window.location.hash;
   const search = window.location.search;
 
-  console.log('[BillingSuccess] href=',   href);
-  console.log('[BillingSuccess] hash=',   hash);
-  console.log('[BillingSuccess] search=', search);
+  dlog('[BillingSuccess] href=', href, 'hash=', hash, 'search=', search);
 
   if (hash.includes('?')) {
     const id = new URLSearchParams(hash.slice(hash.indexOf('?'))).get('session_id');
@@ -80,12 +79,12 @@ export function BillingSuccessPage() {
       const { auth } = await import('../lib/firebase-auth');
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) throw new Error('Not authenticated');
-      console.log('[BillingSuccess] sync-session request started — sessionId=', sid);
+      dlog('[BillingSuccess] sync-session request started — sessionId=', sid);
       const result = await syncSession(sid, idToken);
-      console.log('[BillingSuccess] sync-session response — orgId=', result.orgId, 'plan=', result.subscription.plan);
+      dlog('[BillingSuccess] sync-session response — orgId=', result.orgId, 'plan=', result.subscription.plan);
       // Force BillingContext to fetch the freshly-written Firestore doc
       await refreshSubscription();
-      console.log('[BillingSuccess] refreshSubscription complete');
+      dlog('[BillingSuccess] refreshSubscription complete');
       setState('synced');
       try { window.sessionStorage.removeItem('stripe.lastSessionId'); } catch { /* ignore */ }
     } catch (err) {
@@ -107,7 +106,7 @@ export function BillingSuccessPage() {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash;
       if (hash.startsWith('#/billing/tokens') || hash.includes('topup=success') || hash.includes('topup=cancel')) {
-        console.log('[BillingSuccess] token top-up redirect detected — routing to tokens page');
+        dlog('[BillingSuccess] token top-up redirect detected — routing to tokens page');
         navigate({ name: 'billing/tokens' });
         return;
       }
@@ -115,7 +114,7 @@ export function BillingSuccessPage() {
 
     const sid = extractSessionId();
     sessionIdRef.current = sid;
-    console.log('[BillingSuccess] extracted sessionId=', sid);
+    dlog('[BillingSuccess] extracted sessionId=', sid);
     if (!sid) {
       setErrMsg('We could not detect your checkout session. Please return to Billing and try again.');
       setState('failed');

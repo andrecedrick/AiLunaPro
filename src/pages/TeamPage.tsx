@@ -155,7 +155,7 @@ export function TeamPage() {
       clearInviteLink(inviteId);
       void reloadInvites();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Cancel failed');
+      showToast(err instanceof Error ? err.message : 'Cancel failed', 'error');
     }
   };
 
@@ -177,10 +177,10 @@ export function TeamPage() {
       cacheInviteLink(r.inviteId, newLink);
       // Copy to clipboard immediately so admin doesn't lose it
       try { await navigator.clipboard.writeText(newLink); } catch { /* ignore */ }
-      alert('New invite link copied to clipboard.');
+      showToast('New invite link copied to clipboard.', 'success');
       void reloadInvites();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Regenerate failed');
+      showToast(err instanceof Error ? err.message : 'Regenerate failed', 'error');
     }
   };
 
@@ -306,7 +306,7 @@ export function TeamPage() {
                 await apiChangeRole(orgId, userId, role, idToken);
                 // Reload via window event — AuthContext listener should pick up Firestore change
               } catch (err) {
-                alert(err instanceof Error ? err.message : 'Role update failed');
+                showToast(err instanceof Error ? err.message : 'Role update failed', 'error');
               }
             } else {
               updateMemberRole(userId, role);

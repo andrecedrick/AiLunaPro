@@ -33,7 +33,7 @@ export function CTABlock() {
         boxShadow: 'var(--card-shadow)',
       }}
     >
-      {demoOpen && <DemoModal onClose={() => setDemoOpen(false)} onSubmit={() => { setDemoOpen(false); showToast('Demo request captured. Email delivery coming soon.', 'success'); }} />}
+      {demoOpen && <DemoModal onClose={() => setDemoOpen(false)} onSubmit={() => { setDemoOpen(false); showToast("Demo request captured. We'll review it and get back to you.", 'success'); }} />}
       <div
         style={{
           position: 'absolute',
@@ -97,7 +97,7 @@ export function CTABlock() {
             maxWidth: 480,
           }}
         >
-          Join 500+ organizations using AiLunaPro to automate their compliance
+          Join organizations using AiLunaPro to automate their compliance
           workflows, reduce risk, and build trust with stakeholders.
         </p>
       </div>

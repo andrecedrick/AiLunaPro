@@ -74,6 +74,7 @@ export function TokenBadge() {
     <button
       type="button"
       onClick={goto}
+      aria-label={`${bal.toLocaleString('en-US')} tokens left — manage tokens`}
       title={`${bal.toLocaleString('en-US')} tokens left · click to manage`}
       style={{
         display:        'flex',

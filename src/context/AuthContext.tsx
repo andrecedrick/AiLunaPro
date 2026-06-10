@@ -67,8 +67,8 @@ interface AuthContextValue {
   /* ── Profile ───────────────────────────────────────────── */
   /**
    * Update the current user's displayName + email.
-   * Mock layer: persisted to localStorage. Firebase layer: not yet wired —
-   * returns { success: false, error: 'coming-soon' } so the UI can surface a toast.
+   * Mock layer: persisted to localStorage. Firebase layer: writes Firestore
+   * users/{uid} + members/{uid} and Firebase Auth displayName.
    */
   updateProfile: (name: string, email: string) => Promise<{ success: boolean; error?: string }>;
   /* ── Org ───────────────────────────────────────────────── */
@@ -76,7 +76,7 @@ interface AuthContextValue {
   switchOrg:     (orgId: string) => void;
   /**
    * Rename the current organization.
-   * Mock layer: persisted to localStorage. Firebase layer: not yet wired.
+   * Mock layer: persisted to localStorage. Firebase layer: writes /organizations/{orgId}.
    */
   updateOrgName: (name: string) => Promise<{ success: boolean; error?: string }>;
 }

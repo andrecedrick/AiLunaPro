@@ -34,8 +34,6 @@ export function OrgPage() {
 
     if (res.success) {
       showToast('Organization renamed.', 'success');
-    } else if (res.error === 'coming-soon') {
-      showToast('Organization editing on Firebase coming soon.', 'info');
     } else {
       showToast(res.error ?? 'Could not update organization.', 'error');
     }
@@ -150,7 +148,7 @@ export function OrgPage() {
         </h3>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
           You are on the <strong style={{ color: 'var(--text-secondary)' }}>{org?.plan ?? '—'}</strong> plan.
-          Plan management lives in Billing (coming in a later phase).
+          Plan management lives in Billing.
         </p>
       </div>
 

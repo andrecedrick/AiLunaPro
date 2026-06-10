@@ -22,8 +22,9 @@ export function AgentCard({ agent, onOpen }: Props) {
     <div
       role="button"
       tabIndex={0}
+      aria-label={`Open agent ${agent.name}`}
       onClick={() => onOpen?.(agent.agentId)}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onOpen?.(agent.agentId); }}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen?.(agent.agentId); } }}
       style={{
         display:        'flex',
         flexDirection:  'column',

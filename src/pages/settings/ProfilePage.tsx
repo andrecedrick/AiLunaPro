@@ -58,8 +58,6 @@ export function ProfilePage() {
 
     if (res.success) {
       showToast('Profile updated.', 'success');
-    } else if (res.error === 'coming-soon') {
-      showToast('Profile editing on Firebase coming soon.', 'info');
     } else {
       showToast(res.error ?? 'Could not update profile.', 'error');
     }

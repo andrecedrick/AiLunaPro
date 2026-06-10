@@ -1,7 +1,7 @@
 import type { ExportEvent, ExportKind } from '../../types/report';
 
 const KIND_META: Record<ExportKind, { icon: string; label: string }> = {
-  pdf: { icon: '⬇', label: 'PDF download' },
+  pdf: { icon: '⬇', label: 'Export (JSON)' },
   email: { icon: '✉', label: 'Sent by email' },
   print: { icon: '🖨', label: 'Printed' },
   'share-link': { icon: '🔗', label: 'Share link copied' },

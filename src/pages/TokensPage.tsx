@@ -17,6 +17,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { dlog } from '../lib/log';
 import { useRoute } from '../context/RouteContext';
 import { useToast } from '../hooks/useToast';
 import { useTokens } from '../context/TokensContext';
@@ -178,7 +179,7 @@ export function TokensPage() {
       void refresh();
       // Strip query so reload does not re-fire
       window.history.replaceState({}, '', '#/billing/tokens');
-      console.log('[TokensPage] topup success — sessionId:', sid, 'recentlyCredited:', recentlyCredited);
+      dlog('[TokensPage] topup success — sessionId:', sid, 'recentlyCredited:', recentlyCredited);
     }
     if (topup === 'cancel') {
       showToast('Token purchase cancelled.', 'info');

@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { dlog } from '../../lib/log';
 
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__turnstileOnLoad&render=explicit';
 
@@ -61,7 +62,7 @@ export function TurnstileWidget({ onToken }: Props) {
     let cancelled = false;
     if (!sitekey) {
       // Dev bypass — emit empty token, worker accepts in non-prod.
-      console.log('[turnstile] no VITE_TURNSTILE_SITE_KEY — dev bypass');
+      dlog('[turnstile] no VITE_TURNSTILE_SITE_KEY — dev bypass');
       onToken('');
       return;
     }

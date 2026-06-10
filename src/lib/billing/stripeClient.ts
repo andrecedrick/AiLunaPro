@@ -12,6 +12,8 @@
  * No Stripe SDK on the frontend. No secret keys here.
  */
 
+import { dlog } from '../log';
+
 const RAW_BASE = (import.meta.env.VITE_WORKER_URL as string | undefined) ?? '';
 // Strip trailing slash for clean concat.
 export const WORKER_BASE = RAW_BASE.replace(/\/+$/, '');
@@ -61,7 +63,7 @@ async function workerPost<T>(
   opts: PostOptions = {},
 ): Promise<T> {
   const url = `${WORKER_BASE}${path}`;
-  console.log(`[${opts.logTag ?? 'worker'}] POST`, url, 'body=', body);
+  dlog(`[${opts.logTag ?? 'worker'}] POST`, url, 'body=', body);
 
   let res: Response;
   try {
@@ -96,7 +98,7 @@ async function workerGet<T>(
   logTag: string,
 ): Promise<T> {
   const url = `${WORKER_BASE}${path}`;
-  console.log(`[${logTag}] GET`, url);
+  dlog(`[${logTag}] GET`, url);
 
   let res: Response;
   try {

@@ -45,20 +45,23 @@ export function KPICards() {
   const isFirebase = resolveLayer('audit') === 'firebase';
 
   const [auditCount, setAuditCount] = useState<number | null>(null);
+  const [auditError, setAuditError] = useState(false);
 
   useEffect(() => {
     if (!isFirebase || !orgId) { setAuditCount(0); return; }
     let cancelled = false;
+    setAuditError(false);
     fsListAudits(orgId)
       .then(audits => { if (!cancelled) setAuditCount(audits.filter(a => a.status === 'submitted').length); })
-      .catch(() => { if (!cancelled) setAuditCount(null); });
+      .catch(() => { if (!cancelled) { setAuditCount(null); setAuditError(true); } });
     return () => { cancelled = true; };
   }, [orgId, isFirebase]);
 
+  // value === null + !error → still loading ('…'); error → '—' + explanatory note.
   const cards = [
-    { id: 'audit',  label: 'Audits submitted',  value: auditCount,    color: '#7C3AED' },
-    { id: 'report', label: 'Reports generated', value: reports.length, color: '#3B82F6' },
-    { id: 'tool',   label: 'AI tools registered', value: items.length,  color: '#10B981' },
+    { id: 'audit',  label: 'Audits submitted',  value: auditCount,    color: '#7C3AED', error: auditError },
+    { id: 'report', label: 'Reports generated', value: reports.length, color: '#3B82F6', error: false },
+    { id: 'tool',   label: 'AI tools registered', value: items.length,  color: '#10B981', error: false },
   ];
 
   return (
@@ -89,10 +92,10 @@ export function KPICards() {
           </div>
           <div>
             <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 38, color: 'var(--text-primary)', lineHeight: 1 }}>
-              {kpi.value === null ? '—' : kpi.value}
+              {kpi.value === null ? (kpi.error ? '—' : '…') : kpi.value}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, fontWeight: 500 }}>
-              {kpi.label}
+              {kpi.label}{kpi.error ? " — couldn't load" : ''}
             </div>
           </div>
         </div>

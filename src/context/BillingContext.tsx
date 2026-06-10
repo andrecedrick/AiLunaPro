@@ -27,6 +27,7 @@ import { PLAN_CONFIGS } from '../types/billing';
 import { resolveLayer } from '../lib/featureFlags';
 import { subscribeSubscription, fetchSubscription } from '../lib/billing/firestoreBillingService';
 import { useAuth } from './AuthContext';
+import { dlog } from '../lib/log';
 
 const LAYER = resolveLayer('billing');
 
@@ -136,7 +137,7 @@ export function BillingProvider({ children }: { children: ReactNode }) {
     try {
       const doc = await fetchSubscription(orgId);
       applyFsDoc(doc);
-      console.log('[BillingContext] refreshSubscription → applied doc:', doc);
+      dlog('[BillingContext] refreshSubscription → applied doc:', doc);
     } catch (err) {
       console.error('[BillingContext] refreshSubscription failed:', err);
     }

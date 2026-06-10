@@ -15,8 +15,10 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { dlog } from '../lib/log';
 import { useBilling } from '../context/BillingContext';
 import { useRoute } from '../context/RouteContext';
+import { useToast } from '../hooks/useToast';
 import { useTokens } from '../context/TokensContext';
 import { PLAN_CONFIGS, type PlanTier } from '../types/billing';
 import { createCheckoutSession, createPortalSession, CheckoutError, PortalError, WORKER_BASE, fetchInvoices, type StripeInvoice } from '../lib/billing/stripeClient';
@@ -423,13 +425,14 @@ function InvoicesView({
 /* ── Locked view ──────────────────────────────────────────── */
 
 function LockedView() {
+  const { showToast } = useToast();
   // navigate via window hash to avoid extra hook here
   const goDashboard = () => { window.location.hash = '#/'; window.location.reload(); };
   const contactOwner = () => {
     // Best-effort: try mailto with placeholder; otherwise hint
     const mailto = 'mailto:?subject=Request%20billing%20access&body=Hi%2C%20I%20need%20billing%20access%20for%20our%20workspace.';
     try { window.open(mailto, '_self'); }
-    catch { alert('Ask your workspace owner for billing access.'); }
+    catch { showToast('Ask your workspace owner for billing access.', 'info'); }
   };
   return (
     <div style={{ padding: 40, textAlign: 'center' }}>
@@ -652,7 +655,7 @@ export function BillingPage() {
   // ── Direct Stripe checkout (firebase + paid plan) ──────
   const handleSubscribe = async (planKey: 'starter' | 'professional' | 'enterprise') => {
     if (!session?.orgId) return;
-    console.log('[billing checkout] starting', { plan: planKey, orgId: session.orgId, workerBase: WORKER_BASE });
+    dlog('[billing checkout] starting', { plan: planKey, orgId: session.orgId, workerBase: WORKER_BASE });
     setLoadingPlan(planKey);
     setCheckoutError(null);
     try {
@@ -695,7 +698,7 @@ export function BillingPage() {
   const handleManagePortal = async (flow?: 'payment_method_update') => {
     if (!session?.orgId) return;
     if (!isFirebaseLayer) return;
-    console.log('[billing portal] starting', { orgId: session.orgId, flow: flow ?? 'home', workerBase: WORKER_BASE || '(proxy)' });
+    dlog('[billing portal] starting', { orgId: session.orgId, flow: flow ?? 'home', workerBase: WORKER_BASE || '(proxy)' });
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {

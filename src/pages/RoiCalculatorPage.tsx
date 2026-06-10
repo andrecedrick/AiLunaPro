@@ -313,7 +313,7 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
           This is an estimate based on the information you provided and conservative automation assumptions. Actual savings may vary.
         </div>
         <div style={{ marginTop: 4 }}>
-          Payback is estimated using a placeholder agent cost of $99/month until agent pricing is finalized.
+          Payback assumes a reference agent cost of $99/month; actual pricing varies by agent.
         </div>
       </div>
 

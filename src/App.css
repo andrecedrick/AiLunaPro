@@ -81,6 +81,18 @@
   outline-offset: 3px;
 }
 
+/* B7 a11y: guaranteed keyboard-focus ring on form controls, custom button-divs,
+   and buttons. !important so it also wins over inline `outline: none` styles —
+   :focus-visible matches keyboard focus only, so mouse clicks stay ring-free. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid var(--violet, #7C3AED) !important;
+  outline-offset: 2px;
+}
+
 /* On small screens, lift it clear of bottom UI / the consent banner. */
 @media (max-width: 767px) {
   .back-to-top {
