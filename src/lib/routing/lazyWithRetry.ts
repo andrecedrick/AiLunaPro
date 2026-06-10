@@ -1,21 +1,22 @@
 /**
- * lazyWithRetry — wraps React.lazy with a single automatic retry on dynamic
- * import failure (the typical "Loading chunk failed" / "Failed to fetch
- * dynamically imported module" caused by an ad-blocker, transient network
- * flake, or stale-bundle race after a deploy).
+ * lazyWithRetry — wraps React.lazy with automatic retries on dynamic import
+ * failure (the typical "Loading chunk failed" / "Failed to fetch dynamically
+ * imported module" caused by an ad-blocker, transient network flake, or
+ * stale-bundle race after a deploy).
  *
  * Behavior:
  *   - Tries the import once.
- *   - On rejection, waits a short backoff and tries ONCE more.
- *   - If the second attempt also fails, rejects with the original error so
- *     ErrorBoundary's chunk-aware branch shows the clear message.
+ *   - On rejection, retries with growing backoff (600ms then 1800ms) so a
+ *     short network blip has ~2.4s to clear.
+ *   - If every attempt fails, rejects so ErrorBoundary's chunk-aware branch
+ *     shows the clear message with a working Reload action.
  *
  * No code splitting changes — same React.lazy semantics + Suspense.
  */
 
 import { lazy, type ComponentType } from 'react';
 
-const RETRY_DELAY_MS = 600;
+const RETRY_DELAYS_MS = [600, 1800];
 
 function isChunkError(err: unknown): boolean {
   const msg = (err as Error | undefined)?.message ?? '';
@@ -48,16 +49,21 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
       if (!isChunkError(err)) throw err;
       // J13: reliability telemetry (no-op unless consent; no PII).
       void import('../analytics/track').then(m => m.track('chunk_load_failed')).catch(() => {});
-      // Single retry with small backoff.
-      await new Promise(res => setTimeout(res, RETRY_DELAY_MS));
-      try {
-        const mod = ensureModule(await factory());
-        void import('../analytics/track').then(m => m.track('chunk_retry_recovered')).catch(() => {});
-        return mod;
-      } catch (err2) {
-        void import('../analytics/track').then(m => m.track('chunk_retry_failed')).catch(() => {});
-        throw err2;
+      // Bounded retries with growing backoff.
+      let lastErr: unknown = err;
+      for (const delay of RETRY_DELAYS_MS) {
+        await new Promise(res => setTimeout(res, delay));
+        try {
+          const mod = ensureModule(await factory());
+          void import('../analytics/track').then(m => m.track('chunk_retry_recovered')).catch(() => {});
+          return mod;
+        } catch (err2) {
+          lastErr = err2;
+          if (!isChunkError(err2)) break;
+        }
       }
+      void import('../analytics/track').then(m => m.track('chunk_retry_failed')).catch(() => {});
+      throw lastErr;
     }
   });
 }

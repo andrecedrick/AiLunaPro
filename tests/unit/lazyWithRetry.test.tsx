@@ -24,12 +24,16 @@ describe('lazyWithRetry — undefined-module guard', () => {
         </Suspense>
       </ErrorBoundary>,
     );
-    // 600ms retry backoff + render — chunk-aware copy, not "Something went wrong".
-    expect(await screen.findByRole('heading', { name: /load the page/i }, { timeout: 4000 })).toBeTruthy();
+    // 600ms+1800ms backoff + render — chunk-aware copy, not "Something went wrong".
+    expect(await screen.findByRole('heading', { name: /load the page/i }, { timeout: 8000 })).toBeTruthy();
     expect(screen.queryByText(/Something went wrong/i)).toBeNull();
-    expect(factory).toHaveBeenCalledTimes(2); // initial + single retry
+    expect(factory).toHaveBeenCalledTimes(3); // initial + two retries
+    // For chunk failures the ONLY action is a real reload — a state-reset
+    // "retry" can never recover React.lazy's permanently-cached rejection.
+    expect(screen.getByRole('button', { name: /Reload page/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Retry loading|Try again/i })).toBeNull();
     spy.mockRestore();
-  });
+  }, 10000);
 
   it('recovers when the retry resolves a real module', async () => {
     let first = true;
@@ -43,7 +47,7 @@ describe('lazyWithRetry — undefined-module guard', () => {
         <Flaky />
       </Suspense>,
     );
-    expect(await screen.findByText('loaded-ok', {}, { timeout: 4000 })).toBeTruthy();
+    expect(await screen.findByText('loaded-ok', {}, { timeout: 8000 })).toBeTruthy();
     spy.mockRestore();
-  });
+  }, 10000);
 });

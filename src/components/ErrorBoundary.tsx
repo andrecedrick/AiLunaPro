@@ -113,14 +113,25 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 </pre>
               </details>
             )}
-            {/* Retry re-attempts the lazy import (reset → Suspense via lazyWithRetry);
-                Reload is the hard fallback. Both always visible. */}
-            <button onClick={this.reset} style={btnPrimary}>
-              {chunkFail ? 'Retry loading' : 'Try again'}
-            </button>
-            <button onClick={() => window.location.reload()} style={btnSecondary}>
-              Reload page
-            </button>
+            {/* React.lazy PERMANENTLY caches a rejected import — state reset
+                re-throws the cached rejection, so "retry" can never succeed for
+                a chunk failure. For chunk errors the only real recovery is a
+                reload (index.html is no-cache → fresh hashes). Reset stays for
+                genuine render errors only. */}
+            {chunkFail ? (
+              <button onClick={() => window.location.reload()} style={btnPrimary}>
+                Reload page
+              </button>
+            ) : (
+              <>
+                <button onClick={this.reset} style={btnPrimary}>
+                  Try again
+                </button>
+                <button onClick={() => window.location.reload()} style={btnSecondary}>
+                  Reload page
+                </button>
+              </>
+            )}
           </div>
         </div>
       );
