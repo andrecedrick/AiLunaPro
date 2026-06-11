@@ -58,6 +58,8 @@
 | **Option B — B2** Systematic login/sign-up & lead capture — demo-request persistence (authed worker route → worker-only `demo_requests` store, rules deny), explicit cross-platform signup transition copy (external funnel untouched per product decision), auth chrome on static `/audit-express`, Diagnostic/ROI anon→auth continuity (journey-start banner, non-PII headline), client-side abandoned-flow resume, consent-gated flow events; **B2.5 re-engagement deferred** (blocked on T1 channel decision) | `c84532c` + `8933726` (decisions) (prod-verified 2026-06-11) |
 | **Stability & deploy integrity** (post-B2 crash chain) — (1) `vite:preloadError` swallow fix: failed imports must reject when no reload follows (was crashing React.lazy on `undefined.default`); (2) chunk-failure recovery that works: ErrorBoundary chunk branch reloads (React.lazy caches rejections), lazyWithRetry 2 retries w/ backoff; (3) **deterministic stale-bundle recovery**: `public/404.html` (kills Pages SPA-fallback HTML-as-JS cache poisoning), per-build `BUILD_ID` + `/version.json` (no-store) + `<meta>`, `staleBundle.ts` version-mismatch ⇒ one convergent auto-reload — open tabs self-heal after every redeploy, end-to-end simulated (stale tab + redeploy + nav → auto-recovery, zero manual action) | `8b4eac9` + `5b11bd9` + `3d9fb7a` (prod-verified 2026-06-11) |
 | **Option B — B3** System Builder core promotion — localStorage step + checklist-tick persistence (device-only), per-step progress count, honest copy, Registry→design-guide bridge; nav + audit-results bridge already via B1/B8.2; Firestore persistence deferred | `55e4337` + `a42fd8a` (decision) (prod-verified 2026-06-11) |
+| **Option B — B3 UX patch** Final System Builder step shows "✓ End of the guide" marker instead of a disabled Next button; checklist confirmed non-gating (intent documented in code) | `bc4c0d3` (prod-verified 2026-06-11) |
+| **Option B — B4** Luna AI Copilot surface (Option A, rule-based) — Topbar ✨ Luna button → named route-aware slide-over: deterministic per-route guidance map (20 routes + fallback), suggested deep-link actions, journey position (reuses journeyState), Help Center section link; "no AI chat" stated honestly; always dismissible; no LLM/PII/new deps | `bdaef89` + `7a9dc54` (decision) (prod-verified 2026-06-11) |
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
@@ -86,7 +88,7 @@
 | ✅ **Option B — B1** Global nav for non-sidebar pages | §19.B1 | **DONE/CLOSED `0889af2`** (prod-verified 2026-06-09) — see ✅ table |
 | ✅ **Option B — B2** Login/signup + lead capture + abandoned-flow — **COMPLETE (a–d)** | §19.B2 | `c84532c` (prod-verified 2026-06-11); decisions resolved in §19.B2 (`8933726`); **B2(e) re-engagement 🔴 deferred** — blocked on the T1 outbound-channel decision (§0bis.3) |
 | ✅ **Option B — B3** System Builder promoted to core feature — **COMPLETE** | §19.B3 | `55e4337` (prod-verified 2026-06-11); decision resolved (`a42fd8a`): localStorage persistence + checklists; Firestore deferred |
-| 🔴 **Option B — B4** Luna AI Copilot (visible surface) | §19.B4 | gated; decision A/B + K6 conflict |
+| ✅ **Option B — B4** Luna AI Copilot (Option A, rule-based) — **COMPLETE** | §19.B4 | `bdaef89` (prod-verified 2026-06-11); decision resolved (`7a9dc54`): rule-based confirmed, LLM out of scope (K6 separate) |
 | 🔴 **Option B — B5** Document upload → audit | §19.B5 | gated; K5 conflict |
 | 🔴 **Option B — B6** i18n + currency | §19.B6 | gated |
 | ✅ **Option B — B7** Product hygiene + final inspection — **COMPLETE** | §19.B7 | `00cc9a6`+`02a9710` (hygiene) · `53d4987` (full inspection batch, prod-verified 2026-06-10); deferred polish recorded in §19.B7 |
@@ -3268,7 +3270,8 @@ delivered by B1 + B8.2.
 ~~**Open decision:** whether v1.x adds persistence/checklists (currently in-memory only) —~~
 **requires GO**.
 
-### B4 — "Luna AI Copilot" *(net-new GATED EPIC)*
+### B4 — "Luna AI Copilot" *(✅ COMPLETE — `bdaef89` prod-verified 2026-06-11; Option A rule-based)*
+> **B4 closed (permanent):** named, visible "Luna — your guide" surface — Topbar ✨ button → route-aware slide-over with a static deterministic route→guidance map (page purpose, 1–3 deep-link next actions, Help Center section link), journey position while the B8 journey is active (reuses `journeyState`), honest "Deterministic guidance · no AI chat" subtitle, dismissible via Esc/overlay/✕. **Option A (rule-based) confirmed; LLM remains out of scope** — K6 conversational copilot is a separate unresolved future item.
 **Definition:** a **visible, named in-app surface** ("Luna AI Copilot") whose role is to
 **guide users** through audits, reports, and features; improve **onboarding**; and reduce
 friction/confusion across the product.
