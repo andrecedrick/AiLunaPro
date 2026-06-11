@@ -3295,7 +3295,11 @@ persistence** (analyze → derive non-PII signals → discard); **strict PII scr
 DOCX & OCR later; org-scoped, auth-gated, size/type caps; output feeds the **existing**
 audit/report pipeline (no new PDF/report engine).
 **Recommended (for the eventual pre-flight):** client-side text extraction → send only
-scrubbed text/signals to the worker (keeps raw bytes off the server). **Requires GO.**
+scrubbed text/signals to the worker (keeps raw bytes off the server).
+**Decisions RESOLVED (2026-06-11, operator-approved):** deterministic/no-LLM confirmed
+(K5 RAG = separate future item); v1 formats = `.txt`/`.md` + paste-text (PDF text-layer
+deferred pending explicit `pdfjs-dist` dependency approval); integration = Audit Express
+run page via the existing extract/understand pipeline; caps 1 MB file / 200 KB text.
 
 ### B6 — Internationalization & monetary support *(net-new, gated)*
 **Objectives:** (a) **language translation** for UI **and** generated content (reports/
@@ -3358,7 +3362,7 @@ B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent 
 (Luna flow — deterministic, gated epic; distinct from K6)**.
 **Decisions still required before any GO:**
 1. **B4** — ~~rule-based vs LLM Copilot~~ **RESOLVED 2026-06-11: Option A (rule-based) confirmed** (LLM remains out of scope; K6 separate future item — see §19.B4).
-2. **B5** — confirm deterministic/no-LLM/rule-based interpretation + v1 format scope.
+2. **B5** — ~~confirm deterministic + v1 format scope~~ **RESOLVED 2026-06-11: deterministic/no-LLM confirmed**; v1 formats = `.txt`/`.md` + paste-text (PDF text-layer deferred pending `pdfjs-dist` dep approval); K5 RAG remains a separate future item — see §19.B5.
 3. **B2** — lead-storage model (analytics vs new consented store).
 4. **B6** — translation approach (static dictionaries vs service; deps/determinism impact).
 5. **B3** — ~~whether v1.x adds persistence to System Builder~~ **RESOLVED 2026-06-11** (localStorage-only persistence + checklists; Firestore deferred — see §19.B3).
