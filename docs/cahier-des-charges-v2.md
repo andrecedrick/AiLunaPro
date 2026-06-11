@@ -55,6 +55,8 @@
 | **Option B — B8.3** Journey progress bar + continuous guidance — deterministic 4-stage indicator (Choose→Audit→Understand→Adopt) in the app shell, reactive step model, per-step hints, reversible; `audit` step wired on New Audit + Express run entry | `8fa0acb` (prod-verified 2026-06-10) |
 | **Option B — B8.3 default-ON patch** Journey bar visible by default on every authed shell page; hidden ONLY by explicit Dismiss or reaching Adopt (route-surface gate removed) | `f81aa5b` (prod-verified 2026-06-10) |
 | **Option B — B7** Product hygiene & final inspection — truthful copy (demo toast, org-count claim, ROI reference cost, export label), dead `coming-soon` branches removed (org/profile editing verified working), DEV-gated `dlog` on the billing path, `alert()`→toast, KPI loading-vs-error state, a11y (aria-labels + global `:focus-visible` ring), orphaned Phase-C scoring module+test dropped; ready-to-ship checklist run (build/tsc · vitest 343/0-fail · determinism 6/6 · cross-tenant gates · prod 200/200 · deploy-flow) | `53d4987` (prod-verified 2026-06-10; earlier hygiene `00cc9a6`+`02a9710`) |
+| **Option B — B2** Systematic login/sign-up & lead capture — demo-request persistence (authed worker route → worker-only `demo_requests` store, rules deny), explicit cross-platform signup transition copy (external funnel untouched per product decision), auth chrome on static `/audit-express`, Diagnostic/ROI anon→auth continuity (journey-start banner, non-PII headline), client-side abandoned-flow resume, consent-gated flow events; **B2.5 re-engagement deferred** (blocked on T1 channel decision) | `c84532c` + `8933726` (decisions) (prod-verified 2026-06-11) |
+| **Stability & deploy integrity** (post-B2 crash chain) — (1) `vite:preloadError` swallow fix: failed imports must reject when no reload follows (was crashing React.lazy on `undefined.default`); (2) chunk-failure recovery that works: ErrorBoundary chunk branch reloads (React.lazy caches rejections), lazyWithRetry 2 retries w/ backoff; (3) **deterministic stale-bundle recovery**: `public/404.html` (kills Pages SPA-fallback HTML-as-JS cache poisoning), per-build `BUILD_ID` + `/version.json` (no-store) + `<meta>`, `staleBundle.ts` version-mismatch ⇒ one convergent auto-reload — open tabs self-heal after every redeploy, end-to-end simulated (stale tab + redeploy + nav → auto-recovery, zero manual action) | `8b4eac9` + `5b11bd9` + `3d9fb7a` (prod-verified 2026-06-11) |
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
@@ -81,7 +83,7 @@
 | 🔴 **Q1 — Intelligence Refresh Engine** | §20 (v2.4 Q1) | |
 | 🔴 **Analytics Phase B (feature-usage)** | v2.4 0bis.2 | Phase A only is done |
 | ✅ **Option B — B1** Global nav for non-sidebar pages | §19.B1 | **DONE/CLOSED `0889af2`** (prod-verified 2026-06-09) — see ✅ table |
-| 🔴 **Option B — B2** Login/signup + lead capture + abandoned-flow | §19.B2 | gated |
+| ✅ **Option B — B2** Login/signup + lead capture + abandoned-flow — **COMPLETE (a–d)** | §19.B2 | `c84532c` (prod-verified 2026-06-11); decisions resolved in §19.B2 (`8933726`); **B2(e) re-engagement 🔴 deferred** — blocked on the T1 outbound-channel decision (§0bis.3) |
 | 🔴 **Option B — B3** System Builder → core feature | §19.B3 | gated |
 | 🔴 **Option B — B4** Luna AI Copilot (visible surface) | §19.B4 | gated; decision A/B + K6 conflict |
 | 🔴 **Option B — B5** Document upload → audit | §19.B5 | gated; K5 conflict |
@@ -3223,7 +3225,8 @@ Define explicitly the **chromeless-vs-navigated** rule and the public↔authenti
 relationship per page.
 **Non-goals:** no redesign of the funnels' content; no change to their public APIs.
 
-### B2 — Systematic Login/Sign-up & lead capture *(net-new, gated)*
+### B2 — Systematic Login/Sign-up & lead capture *(✅ COMPLETE (a–d) — `c84532c` prod-verified 2026-06-11; (e) deferred on T1)*
+> **B2 closed (permanent):** (a) auth affordances on every public surface (Diagnostic/ROI had them via B1; the static `/audit-express` page gained the Log in / Sign up header); (b) every lead recorded — Diagnostic + ROI already persisted consented leads (`public_diagnostics`/`public_roi_calculations`); the dashboard **demo request**, previously discarded client-side, now persists via authed `POST /api/demo-request` → worker-only `demo_requests` (rules deny, boundary-validated, bounded fields); (c) anon→auth continuity extended to Diagnostic/ROI — non-PII headline kept in localStorage, surfaced on the guided journey start, one-shot; (d) abandoned-flow detection — client-side in-progress persistence (never email/company) + resume notice + consent-gated `lead_flow_*` events. The post-result **external signup CTA was made explicit** ("Continues on dashboard.ailunapro.com…") per the permanent funnel decision below — links unchanged. **(e) re-engagement remains 🔴 deferred** until the T1 outbound-channel decision.
 **Objectives:** (a) show **Login / Sign-up** on **every** public/chromeless surface
 (`/audit-express`, `#/diagnostic`, `#/roi-calculator`, other campaign pages);
 (b) **record every lead** that interacts (Diagnostic, ROI Calculator, Audit Express,
