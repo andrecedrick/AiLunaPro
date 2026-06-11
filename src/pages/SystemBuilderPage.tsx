@@ -7,8 +7,9 @@
  * incidents, documentation & transparency.
  *
  * STRICT GUARDRAILS:
- *   - No persistence v1 (state is in-memory only — currentStep).
- *   - No scoring, no validation of user input (no input fields at all).
+ *   - B3 (2026-06-11): localStorage-only persistence of current step + checklist
+ *     ticks (personal progress markers; no backend, no cross-device, no PII).
+ *   - No scoring, no validation of user input.
  *   - All content static + deterministic.
  *   - No LLM. No code generation. No legal advice.
  *   - Mandatory §9.22 disclaimer surfaces here too.
@@ -18,6 +19,9 @@
 import { useState } from 'react';
 import { Disclaimer } from '../components/result/Disclaimer';
 import type { RegulatoryRef } from '../types/scoring';
+import {
+  readBuilderStep, saveBuilderStep, readBuilderTicks, saveBuilderTicks, tickKey,
+} from '../lib/systemBuilder/builderState';
 
 interface BuilderStep {
   key: string;
@@ -243,8 +247,26 @@ function StepNavItem({
 }
 
 export function SystemBuilderPage() {
-  const [stepIdx, setStepIdx] = useState(0);
+  // B3: restore the last visited step + checklist ticks from localStorage.
+  const [stepIdx, setStepIdxRaw] = useState(() => Math.min(readBuilderStep(), BUILDER_STEPS.length - 1));
+  const [ticks, setTicks] = useState(() => readBuilderTicks());
+  const setStepIdx = (value: number | ((i: number) => number)) => {
+    setStepIdxRaw(i => {
+      const next = typeof value === 'function' ? value(i) : value;
+      saveBuilderStep(next);
+      return next;
+    });
+  };
+  const toggleTick = (key: string) => {
+    setTicks(prev => {
+      const next = { ...prev };
+      if (next[key]) delete next[key]; else next[key] = true;
+      saveBuilderTicks(next);
+      return next;
+    });
+  };
   const step = BUILDER_STEPS[stepIdx];
+  const doneCount = step.checklist.filter((_, i) => ticks[tickKey(step.key, i)]).length;
   const isFirst = stepIdx === 0;
   const isLast  = stepIdx === BUILDER_STEPS.length - 1;
 
@@ -267,7 +289,7 @@ export function SystemBuilderPage() {
         <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.55, maxWidth: 720 }}>
           A pre-deployment design guide. Walk through six dimensions — purpose &amp; risk,
           data, model, oversight, monitoring, documentation — to design an AI system
-          responsibly. Read-only checklist and key questions; nothing here is saved.
+          responsibly. Your step and checklist ticks are saved on this device only.
         </p>
       </div>
 
@@ -356,15 +378,20 @@ export function SystemBuilderPage() {
                 marginBottom: 8,
               }}
             >
-              Checklist
+              Checklist <span style={{ color: 'var(--violet-text)' }}>· {doneCount}/{step.checklist.length} done</span>
             </h3>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.65 }}>
-              {step.checklist.map((c, i) => (
-                <li key={i} style={{ marginBottom: 6 }}>
-                  {c}
-                </li>
-              ))}
-            </ul>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {step.checklist.map((c, i) => {
+                const k = tickKey(step.key, i);
+                const done = Boolean(ticks[k]);
+                return (
+                  <label key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 14, lineHeight: 1.65, cursor: 'pointer', color: done ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                    <input type="checkbox" checked={done} onChange={() => toggleTick(k)} style={{ marginTop: 4, accentColor: 'var(--violet)' }} />
+                    <span style={{ textDecoration: done ? 'line-through' : 'none' }}>{c}</span>
+                  </label>
+                );
+              })}
+            </div>
 
             {/* Key questions */}
             <h3

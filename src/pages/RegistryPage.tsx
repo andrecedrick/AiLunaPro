@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
+import { useRoute } from '../context/RouteContext';
 import { useRegistry } from '../context/RegistryContext';
 import { filterRegistry } from '../lib/registry/filterRegistry';
 import { EMPTY_FILTERS } from '../types/registry';
@@ -16,6 +17,7 @@ type ModalState =
   | { kind: 'edit'; itemId: string };
 
 export function RegistryPage() {
+  const { navigate } = useRoute();
   const { items, status, addItem, updateItem, deleteItem, getItem } = useRegistry();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [modal, setModal] = useState<ModalState>({ kind: 'closed' });
@@ -78,7 +80,15 @@ export function RegistryPage() {
             }}
           >
             Track every AI tool used across your organization — purpose, data, oversight, and
-            mitigations. The registry feeds your audits and reports.
+            mitigations. The registry feeds your audits and reports.{' '}
+            {/* B3: governance-side bridge to the design guide */}
+            <button
+              type="button"
+              onClick={() => navigate({ name: 'system-builder' })}
+              style={{ background: 'none', border: 'none', padding: 0, color: 'var(--violet-text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}
+            >
+              Designing a new system? Open the design guide →
+            </button>
           </p>
         </div>
         <Button variant="primary" size="lg" onClick={() => setModal({ kind: 'add' })}>
