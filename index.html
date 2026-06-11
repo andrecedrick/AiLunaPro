@@ -64,25 +64,45 @@
             window.location.reload();
           } catch (e) { /* ignore */ }
         }
+        // Version-aware recovery: when an asset fails, ask the server which
+        // build it currently has (/version.json, emitted every build) and
+        // compare with the build id stamped into THIS document's meta tag.
+        // Mismatch ⇒ this HTML/bundle is stale ⇒ reload converges (fresh
+        // index.html is no-cache), guarded per upgrade-pair against loops.
+        // Match or fetch failure ⇒ fall back to the once-per-session reload.
+        function recoverSmart() {
+          var meta = document.querySelector('meta[name="ailunapro-build"]');
+          var mine = meta && meta.getAttribute('content');
+          if (!mine || !window.fetch) { recoverOnce(); return; }
+          fetch('/version.json?t=' + Date.now(), { cache: 'no-store' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) {
+              var server = j && typeof j.buildId === 'string' ? j.buildId : null;
+              if (server && server !== mine) {
+                var pair = mine + '->' + server;
+                try {
+                  if (sessionStorage.getItem('ailunapro-stale-reload') === pair) return;
+                  sessionStorage.setItem('ailunapro-stale-reload', pair);
+                } catch (e) { /* ignore */ }
+                window.location.reload();
+              } else {
+                recoverOnce();
+              }
+            })
+            .catch(function () { recoverOnce(); });
+        }
         // IMPORTANT: preventDefault() makes the failed import RESOLVE WITH
         // UNDEFINED (Vite contract) — only safe when we immediately reload.
-        // If the once-per-session guard is set we will NOT reload, so we must
-        // let the import REJECT: lazyWithRetry then retries it, and on a second
-        // failure the ErrorBoundary shows its chunk-aware reload card instead
-        // of crashing on `undefined.default`.
-        window.addEventListener('vite:preloadError', function (e) {
-          var canReload = false;
-          try { canReload = !sessionStorage.getItem(KEY); } catch (err) { /* ignore */ }
-          if (!canReload) return;
-          if (e && e.preventDefault) e.preventDefault();
-          recoverOnce();
-        });
+        // recoverSmart() decides asynchronously, so we never preventDefault
+        // here: the import REJECTS (lazyWithRetry/ErrorBoundary handle the UI)
+        // while the version check runs in parallel and reloads if stale.
+        window.addEventListener('vite:preloadError', function () { recoverSmart(); });
         window.addEventListener('error', function (e) {
           var t = e && e.target;
           if (!t || !t.tagName) return;
           var tag = String(t.tagName).toUpperCase();
           var url = (t.src || t.href || '') + '';
-          if ((tag === 'SCRIPT' || tag === 'LINK') && url.indexOf('/assets/') !== -1) recoverOnce();
+          if ((tag === 'SCRIPT' || tag === 'LINK') && url.indexOf('/assets/') !== -1) recoverSmart();
         }, true);
         // Clear the guard after a confirmed successful boot so a FUTURE deploy
         // mismatch can self-heal again.

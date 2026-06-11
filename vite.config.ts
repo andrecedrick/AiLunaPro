@@ -1,11 +1,40 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
+/**
+ * Stale-bundle recovery (deploy-integrity): every build gets a unique BUILD_ID,
+ * exposed three ways so the running app can detect that a newer deployment
+ * replaced its chunks (Cloudflare Pages serves ONLY the current deployment's
+ * assets — an open tab navigating after a redeploy requests old chunk URLs):
+ *   1. `__BUILD_ID__` compile-time constant (baked into the running bundle),
+ *   2. `dist/version.json` (what the SERVER currently has),
+ *   3. `<meta name="ailunapro-build">` in index.html (for the boot watchdog).
+ * On a chunk-load failure the app compares 1 vs 2: mismatch ⇒ stale tab ⇒
+ * forced reload (converges — after reload they match). See staleBundle.ts.
+ */
+const BUILD_ID = new Date().toISOString().replace(/[:.]/g, '-')
+
+function buildIdPlugin(): Plugin {
+  return {
+    name: 'ailunapro-build-id',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace('</head>', `  <meta name="ailunapro-build" content="${BUILD_ID}" />\n  </head>`)
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ buildId: BUILD_ID }) })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), buildIdPlugin()],
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

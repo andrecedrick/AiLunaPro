@@ -35,3 +35,11 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/**
+ * Unique per-build identifier injected by vite.config.ts (`define`). Used by
+ * the stale-bundle detector (src/lib/routing/staleBundle.ts) to compare the
+ * RUNNING bundle against the server's current /version.json after a chunk-load
+ * failure. In dev (no define) it falls back via `typeof` guard.
+ */
+declare const __BUILD_ID__: string;

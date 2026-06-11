@@ -15,6 +15,7 @@
  */
 
 import { lazy, type ComponentType } from 'react';
+import { recoverIfStaleBundle } from './staleBundle';
 
 const RETRY_DELAYS_MS = [600, 1800];
 
@@ -61,6 +62,13 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
           lastErr = err2;
           if (!isChunkError(err2)) break;
         }
+      }
+      // All retries failed. If a NEWER deployment replaced this tab's chunks
+      // (verified prod failure mode: redeploy + open tab → old chunk URL →
+      // SPA-fallback HTML served as JS), auto-recover with a one-shot reload.
+      // Suspend forever while the reload happens so no error UI flashes.
+      if (await recoverIfStaleBundle()) {
+        return new Promise<never>(() => { /* page is reloading */ });
       }
       void import('../analytics/track').then(m => m.track('chunk_retry_failed')).catch(() => {});
       throw lastErr;

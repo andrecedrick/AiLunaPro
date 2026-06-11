@@ -38,6 +38,11 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Build-id manifest for stale-bundle detection (deploy integrity) — must NEVER
+# be cached: its whole purpose is comparing the live deployment to the running tab.
+/version.json
+  Cache-Control: no-store
+
 # Public Audit Express surface (Phase 2): HTML must always revalidate (same
 # stale-prevention policy as the app shell). Indexable — no X-Robots-Tag here.
 # Same report-only policy (union superset — Turnstile + fonts + our API are the
