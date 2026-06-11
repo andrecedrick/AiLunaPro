@@ -3276,12 +3276,9 @@ friction/confusion across the product.
 marketing tagline ("Powered by Luna AI"); there is no Copilot route/UI. Partial
 conceptual cover today: `#/audit/assistance` (static action plan), Agents + `/api/recommend`,
 `AudioExplanation` (TTS), Audit Express "understanding".
-**Pending decision (must be made before scoping):**
-- **Option A — rule-based / deterministic guidance** (contextual help, guided next-steps,
-  deep-links; no LLM) — consistent with the current no-LLM architecture.
-- **Option B — conversational / LLM-based** assistant — **explicitly OUT OF SCOPE for now**
-  (would introduce non-determinism + a model dependency; separate future decision).
-**Marked as a new gated epic.** No pre-flight until the A-vs-B decision + GO.
+**Decision RESOLVED (2026-06-11, operator-approved): Option A — rule-based /
+deterministic guidance** (contextual help, guided next-steps, deep-links; no LLM).
+Option B (conversational/LLM) remains explicitly out of scope (K6 = separate future item).
 
 ### B5 — Document upload → audit analysis *(net-new GATED EPIC)*
 **Definition:** allow companies to **upload documents** (PDF, text, …) so the system can
@@ -3357,7 +3354,7 @@ login/sign-up + lead capture · B3 System Builder as core feature · **B4 Luna A
 B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent Redirection
 (Luna flow — deterministic, gated epic; distinct from K6)**.
 **Decisions still required before any GO:**
-1. **B4** — rule-based vs LLM Copilot (LLM = out of scope for now → confirm A).
+1. **B4** — ~~rule-based vs LLM Copilot~~ **RESOLVED 2026-06-11: Option A (rule-based) confirmed** (LLM remains out of scope; K6 separate future item — see §19.B4).
 2. **B5** — confirm deterministic/no-LLM/rule-based interpretation + v1 format scope.
 3. **B2** — lead-storage model (analytics vs new consented store).
 4. **B6** — translation approach (static dictionaries vs service; deps/determinism impact).
