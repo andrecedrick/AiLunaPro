@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../theme/ThemeToggle';
+import { LunaPanel } from '../luna/LunaPanel';
 import { TokenBadge } from '../tokens/TokenBadge';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +35,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const [customFrom, setCustomFrom] = useState('');
   const [customTo,   setCustomTo]   = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
+  const [lunaOpen,  setLunaOpen]  = useState(false);
   const [search, setSearch] = useState('');
 
   const dateRef = useRef<HTMLDivElement>(null);
@@ -254,6 +256,23 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
       </div>
 
       <TokenBadge />
+
+      {/* B4: Luna AI Copilot — named, route-aware, rule-based guide */}
+      <button
+        type="button"
+        onClick={() => setLunaOpen(true)}
+        aria-label="Open Luna, your guide"
+        title="Luna — your guide"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+          borderRadius: 8, border: '1.5px solid var(--violet)', cursor: 'pointer',
+          background: 'var(--brand-soft-bg, transparent)', color: 'var(--violet-text)',
+          fontWeight: 700, fontSize: 12.5, fontFamily: 'var(--font-body)', flexShrink: 0,
+        }}
+      >
+        <span aria-hidden>✨</span> Luna
+      </button>
+      <LunaPanel open={lunaOpen} onClose={() => setLunaOpen(false)} />
 
       <ThemeToggle />
 
