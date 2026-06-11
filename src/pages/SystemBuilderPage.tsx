@@ -471,25 +471,43 @@ export function SystemBuilderPage() {
               Step {stepIdx + 1} of {BUILDER_STEPS.length}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setStepIdx(i => Math.min(BUILDER_STEPS.length - 1, i + 1))}
-              disabled={isLast}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: 'none',
-                background: isLast ? 'var(--surface-2, var(--surface))' : 'var(--brand-gradient)',
-                color: isLast ? 'var(--text-muted)' : '#fff',
-                cursor: isLast ? 'not-allowed' : 'pointer',
-                opacity: isLast ? 0.6 : 1,
-                fontWeight: 700,
-                fontSize: 13,
-                fontFamily: 'var(--font-body)',
-              }}
-            >
-              Next step →
-            </button>
+            {/* Final step: a disabled "Next" reads as "blocked" when the truth
+                is "finished" — show an explicit end-of-guide marker instead.
+                Checklist ticks intentionally never gate navigation (personal
+                markers only, no scoring semantics — B3 decision). */}
+            {isLast ? (
+              <div
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  background: 'var(--brand-tint-bg)',
+                  color: 'var(--violet-text)',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                ✓ End of the guide — all six dimensions covered
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStepIdx(i => Math.min(BUILDER_STEPS.length - 1, i + 1))}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'var(--brand-gradient)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                Next step →
+              </button>
+            )}
           </div>
         </main>
       </div>

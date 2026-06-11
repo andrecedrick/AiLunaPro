@@ -47,4 +47,15 @@ describe('SystemBuilderPage (B3)', () => {
     render(<Page />);
     expect(screen.getByText(/Step 6 of 6/)).toBeTruthy(); // clamped to last
   });
+
+  it('final step shows an end-of-guide marker instead of a disabled Next button', () => {
+    localStorage.setItem('ailunapro.sysbuilder.v1.step', '5');
+    render(<Page />);
+    expect(screen.getByText(/End of the guide — all six dimensions covered/)).toBeTruthy();
+    expect(screen.queryByText('Next step →')).toBeNull();      // no "blocked"-looking button
+    // navigation stays free: Previous works, checklist never gates steps
+    fireEvent.click(screen.getByText('← Previous step'));
+    expect(screen.getByText(/Step 5 of 6/)).toBeTruthy();
+    expect(screen.getByText('Next step →')).toBeTruthy();      // back on a non-final step
+  });
 });
