@@ -193,6 +193,20 @@ export async function runExtract(orgId: string, url: string, depth: 'quick' | 'd
   return j;
 }
 
+/** B5 — deterministic document analysis: client-extracted text only (raw bytes
+ *  never leave the browser); the server derives signals and discards the text. */
+export async function analyzeDocument(orgId: string, name: string, text: string): Promise<unknown> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/audit-express/analyze-document`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, name, text }),
+  });
+  const j = await res.json().catch(() => null) as ({ code?: string } & Record<string, unknown>) | null;
+  if (!res.ok) throw new SavedAuditError((j && j.code) ?? `HTTP_${res.status}`);
+  return j;
+}
+
 export async function deleteSavedAudit(orgId: string, auditId: string): Promise<void> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/audit-express/${encodeURIComponent(auditId)}?${q(orgId)}`, {
