@@ -3258,7 +3258,12 @@ the central **AI system design & governance** guide and a **bridge from Audit re
 system setup**.
 **Constraints to keep explicit (unchanged from today):** **read-only v1**, **no scoring**,
 **no LLM**, **no legal advice**, mandatory disclaimer retained.
-**Open decision:** whether v1.x adds persistence/checklists (currently in-memory only) —
+**Decision RESOLVED (2026-06-11, operator-approved):** v1.x adds **localStorage-only**
+persistence (current step + per-step checklist ticks; personal progress markers, no PII,
+no scoring semantics) + a Registry→design-guide entry point; **cross-device/Firestore
+persistence explicitly deferred**. Nav discoverability + audit-results bridge were already
+delivered by B1 + B8.2.
+~~**Open decision:** whether v1.x adds persistence/checklists (currently in-memory only) —~~
 **requires GO**.
 
 ### B4 — "Luna AI Copilot" *(net-new GATED EPIC)*
@@ -3354,7 +3359,7 @@ B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent 
 2. **B5** — confirm deterministic/no-LLM/rule-based interpretation + v1 format scope.
 3. **B2** — lead-storage model (analytics vs new consented store).
 4. **B6** — translation approach (static dictionaries vs service; deps/determinism impact).
-5. **B3** — whether v1.x adds persistence to System Builder.
+5. **B3** — ~~whether v1.x adds persistence to System Builder~~ **RESOLVED 2026-06-11** (localStorage-only persistence + checklists; Firestore deferred — see §19.B3).
 6. **Prioritization & phasing** of B1–B7 (not yet committed).
 **Unchanged:** all §18 closed epics remain as-is; nothing above is implemented.
 
