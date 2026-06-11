@@ -7,7 +7,9 @@ import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
 import { JourneyNext } from '../components/journey/JourneyNext';
+import { DocumentAnalyzeCard } from '../components/auditExpress/DocumentAnalyzeCard';
 import { advanceJourney } from '../lib/journey/journeyState';
+import { MAX_DOC_TEXT_CHARS } from '../lib/auditExpress/docValidation';
 
 interface Snapshot { understanding?: AuditUnderstanding; canonicalUrl?: string }
 
@@ -25,8 +27,6 @@ export function AuditExpressRunPage() {
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState('');
   const [depth, setDepth] = useState<'quick' | 'deep'>('quick');
-  const [docText, setDocText] = useState('');
-  const [docName, setDocName] = useState('');
 
   const auditIdRef = useRef('');     // latest saved id (ref => no stale closure on supersede)
   const createdAtRef = useRef('');   // fixed stamp for the run (determinism)
@@ -74,28 +74,13 @@ export function AuditExpressRunPage() {
     } finally { setBusy(''); }
   }
 
-  /* B5: deterministic document analysis — the file is read IN THE BROWSER;
-     only capped text reaches the worker, which derives signals and discards it. */
-  const MAX_DOC_FILE_BYTES = 1_000_000;
-  const MAX_DOC_TEXT_CHARS = 200_000;
-
-  async function onPickDocFile(file: File | null) {
-    if (!file) return;
-    setError(null);
-    if (file.size > MAX_DOC_FILE_BYTES) { setError('Document too large (max 1 MB).'); return; }
-    try {
-      const text = (await file.text()).slice(0, MAX_DOC_TEXT_CHARS);
-      setDocName(file.name);
-      setDocText(text);
-    } catch { setError('Could not read that file. Try pasting the text instead.'); }
-  }
-
-  async function onAnalyzeDocument() {
-    const text = docText.trim().slice(0, MAX_DOC_TEXT_CHARS);
+  /* B5: deterministic document analysis — validation + input UX live in
+     DocumentAnalyzeCard; only clean, capped text ever reaches the worker. */
+  async function onAnalyzeDocument(text: string, name: string) {
     if (!text || !orgId || busy) return;
     setBusy('doc'); setError(null);
     try {
-      const snap = await analyzeDocument(orgId, docName || 'pasted-text.txt', text) as Snapshot;
+      const snap = await analyzeDocument(orgId, name, text.slice(0, MAX_DOC_TEXT_CHARS)) as Snapshot;
       setSnapshot(snap);
       void persist(snap);
     } catch (e) {
@@ -162,36 +147,7 @@ export function AuditExpressRunPage() {
             </label>
           </div>
 
-          {/* B5: document analysis (deterministic, no LLM, nothing stored) */}
-          <div style={card}>
-            <h2 style={{ ...h2, margin: '0 0 8px' }}>Analyze a document (optional)</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 10px' }}>
-              Upload a text or markdown file — or paste text — to enrich “What this business does”.
-              We derive signals only; your document is never stored.
-            </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input
-                type="file"
-                accept=".txt,.md,text/plain,text/markdown"
-                aria-label="Choose a document to analyze"
-                onChange={e => { void onPickDocFile(e.target.files?.[0] ?? null); }}
-                style={{ fontSize: 13, fontFamily: 'var(--font-body)' }}
-              />
-              {docName && <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{docName} ({Math.ceil(docText.length / 1000)} KB text)</span>}
-            </div>
-            <textarea
-              value={docText}
-              onChange={e => { setDocText(e.target.value.slice(0, MAX_DOC_TEXT_CHARS)); if (docName) setDocName(''); }}
-              placeholder="…or paste document text here"
-              rows={4}
-              style={{ width: '100%', marginTop: 10, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-strong)', fontSize: 13.5, fontFamily: 'var(--font-body)', resize: 'vertical' }}
-            />
-            <div style={{ marginTop: 10 }}>
-              <button type="button" style={cta('primary')} disabled={!docText.trim() || busy === 'doc'} onClick={onAnalyzeDocument}>
-                {busy === 'doc' ? 'Analyzing…' : 'Analyze document'}
-              </button>
-            </div>
-          </div>
+          <DocumentAnalyzeCard busy={busy === 'doc'} onAnalyze={(t, n) => { void onAnalyzeDocument(t, n); }} />
 
           <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button type="button" style={cta('primary')} disabled={!auditId || pdf.busy === auditId} onClick={() => pdf.download(auditId)}>
