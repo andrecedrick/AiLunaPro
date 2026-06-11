@@ -57,6 +57,7 @@
 | **Option B — B7** Product hygiene & final inspection — truthful copy (demo toast, org-count claim, ROI reference cost, export label), dead `coming-soon` branches removed (org/profile editing verified working), DEV-gated `dlog` on the billing path, `alert()`→toast, KPI loading-vs-error state, a11y (aria-labels + global `:focus-visible` ring), orphaned Phase-C scoring module+test dropped; ready-to-ship checklist run (build/tsc · vitest 343/0-fail · determinism 6/6 · cross-tenant gates · prod 200/200 · deploy-flow) | `53d4987` (prod-verified 2026-06-10; earlier hygiene `00cc9a6`+`02a9710`) |
 | **Option B — B2** Systematic login/sign-up & lead capture — demo-request persistence (authed worker route → worker-only `demo_requests` store, rules deny), explicit cross-platform signup transition copy (external funnel untouched per product decision), auth chrome on static `/audit-express`, Diagnostic/ROI anon→auth continuity (journey-start banner, non-PII headline), client-side abandoned-flow resume, consent-gated flow events; **B2.5 re-engagement deferred** (blocked on T1 channel decision) | `c84532c` + `8933726` (decisions) (prod-verified 2026-06-11) |
 | **Stability & deploy integrity** (post-B2 crash chain) — (1) `vite:preloadError` swallow fix: failed imports must reject when no reload follows (was crashing React.lazy on `undefined.default`); (2) chunk-failure recovery that works: ErrorBoundary chunk branch reloads (React.lazy caches rejections), lazyWithRetry 2 retries w/ backoff; (3) **deterministic stale-bundle recovery**: `public/404.html` (kills Pages SPA-fallback HTML-as-JS cache poisoning), per-build `BUILD_ID` + `/version.json` (no-store) + `<meta>`, `staleBundle.ts` version-mismatch ⇒ one convergent auto-reload — open tabs self-heal after every redeploy, end-to-end simulated (stale tab + redeploy + nav → auto-recovery, zero manual action) | `8b4eac9` + `5b11bd9` + `3d9fb7a` (prod-verified 2026-06-11) |
+| **Option B — B3** System Builder core promotion — localStorage step + checklist-tick persistence (device-only), per-step progress count, honest copy, Registry→design-guide bridge; nav + audit-results bridge already via B1/B8.2; Firestore persistence deferred | `55e4337` + `a42fd8a` (decision) (prod-verified 2026-06-11) |
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
@@ -84,7 +85,7 @@
 | 🔴 **Analytics Phase B (feature-usage)** | v2.4 0bis.2 | Phase A only is done |
 | ✅ **Option B — B1** Global nav for non-sidebar pages | §19.B1 | **DONE/CLOSED `0889af2`** (prod-verified 2026-06-09) — see ✅ table |
 | ✅ **Option B — B2** Login/signup + lead capture + abandoned-flow — **COMPLETE (a–d)** | §19.B2 | `c84532c` (prod-verified 2026-06-11); decisions resolved in §19.B2 (`8933726`); **B2(e) re-engagement 🔴 deferred** — blocked on the T1 outbound-channel decision (§0bis.3) |
-| 🔴 **Option B — B3** System Builder → core feature | §19.B3 | gated |
+| ✅ **Option B — B3** System Builder promoted to core feature — **COMPLETE** | §19.B3 | `55e4337` (prod-verified 2026-06-11); decision resolved (`a42fd8a`): localStorage persistence + checklists; Firestore deferred |
 | 🔴 **Option B — B4** Luna AI Copilot (visible surface) | §19.B4 | gated; decision A/B + K6 conflict |
 | 🔴 **Option B — B5** Document upload → audit | §19.B5 | gated; K5 conflict |
 | 🔴 **Option B — B6** i18n + currency | §19.B6 | gated |
@@ -3251,7 +3252,8 @@ org/consent-scoped.
    and why). In-app `#/signup` continues to exist via campaign chrome — never forced.
 3. **B2(e) re-engagement:** deferred — gated on the T1 outbound-channel decision.
 
-### B3 — System Builder promoted to a core feature *(net-new, gated)*
+### B3 — System Builder promoted to a core feature *(✅ COMPLETE — `55e4337` prod-verified 2026-06-11)*
+> **B3 closed (permanent):** localStorage-only persistence (current step + per-step checklist ticks, `ailunapro.sysbuilder.v1.*`), per-step `n/m done` progress, honest "saved on this device only" copy, Registry→design-guide entry point. Discoverability (sidebar) + audit-results bridge were already delivered by B1 + B8.2. Guardrails intact: read-only character, no scoring, no LLM, no legal advice, disclaimer retained. Cross-device/Firestore persistence deferred.
 **Objective:** promote `#/system-builder` from a contextual guide to a **first-class**
 feature: discoverable via **main navigation** + clear in-app entry points; positioned as
 the central **AI system design & governance** guide and a **bridge from Audit results →
