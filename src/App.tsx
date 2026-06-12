@@ -256,6 +256,14 @@ function AppShell() {
       navigate({ name: 'audit-express/run' });
     } else if (h.startsWith('#/journey/start')) {
       navigate({ name: 'journey/start' });
+    } else if (h.startsWith('#/audit/result')) {
+      // Reload-safe: without this, a refresh / stale-bundle recovery on the
+      // results URL fell through to the default route (dashboard) after submit.
+      navigate({ name: 'audit/result' });
+    } else if (h.startsWith('#/audit/assistance')) {
+      navigate({ name: 'audit/assistance' });
+    } else if (h.startsWith('#/audit/new')) {
+      navigate({ name: 'audit/new' });
     } else if (h.startsWith('#/audit/history')) {
       navigate({ name: 'audit/history' });
     } else if (h.startsWith('#/reports/share/')) {
