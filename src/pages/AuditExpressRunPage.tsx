@@ -132,7 +132,9 @@ export function AuditExpressRunPage() {
 
       {phase === 'results' && preview && (
         <>
-          <AuditResultView preview={preview} understanding={snapshot?.understanding ?? null} />
+          <AuditResultView preview={preview} understanding={snapshot?.understanding ?? null}
+            onSeeAgents={() => navigate({ name: 'agents' })}
+            onRunFullAudit={() => navigate({ name: 'audit/new' })} />
 
           <div style={card}>
             <h2 style={{ ...h2, margin: '0 0 8px' }}>Analyze a public website (optional)</h2>

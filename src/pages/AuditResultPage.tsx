@@ -13,9 +13,8 @@ import { formatDate } from '../utils/formatters';
 import { ResultHero } from '../components/result/ResultHero';
 import { AudioExplanation } from '../components/result/AudioExplanation';
 import { SectionScores } from '../components/result/SectionScores';
-import { FindingsList } from '../components/result/FindingsList';
-import { RecommendationsList } from '../components/result/RecommendationsList';
 import { Roadmap } from '../components/result/Roadmap';
+import { ExplainedResults } from '../components/result/ExplainedResults';
 import { ActionPlan } from '../components/result/ActionPlan';
 import { Disclaimer } from '../components/result/Disclaimer';
 import { AssistanceTeaser } from '../components/result/AssistanceTeaser';
@@ -102,18 +101,9 @@ export function AuditResultPage() {
       {/* Section breakdown */}
       <SectionScores result={result} />
 
-      {/* Findings + Recommendations side-by-side */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 20,
-          marginBottom: 20,
-        }}
-      >
-        <FindingsList result={result} />
-        <RecommendationsList result={result} />
-      </div>
+      {/* Pedagogical, conversion-oriented explanation of findings + actions
+          (replaces the flat findings/recommendations lists). */}
+      <ExplainedResults result={result} />
 
       {/* Roadmap */}
       <ActionPlan result={result} />

@@ -136,7 +136,9 @@ export function AuditExpressDetailPage() {
           </p>
 
           {detail.preview ? (
-            <AuditResultView preview={detail.preview as AuditPreview} understanding={(detail.understanding as AuditUnderstanding | null) ?? null} />
+            <AuditResultView preview={detail.preview as AuditPreview} understanding={(detail.understanding as AuditUnderstanding | null) ?? null}
+              onSeeAgents={() => navigate({ name: 'agents' })}
+              onRunFullAudit={() => navigate({ name: 'audit/new' })} />
           ) : (
             <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 14 }}>This audit could not be recomputed.</p>
           )}
