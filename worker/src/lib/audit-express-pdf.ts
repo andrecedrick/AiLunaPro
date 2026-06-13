@@ -15,6 +15,7 @@
 
 import { PdfBuilder } from './pdf/pdf-doc';
 import { drawReadinessBar, drawKpiTiles, drawBarChart, drawOpportunityMatrix, drawSchematic } from './pdf/pdf-charts';
+import { coverPage, conceptBox } from './pdf/pdf-whitepaper';
 import type { Trace } from './determinism';
 import type { AuditExpressPreview } from './audit-express-preview';
 import type { ExtractSnapshot } from './audit-express-extract';
@@ -90,11 +91,18 @@ function humanLabel(ref: string): string {
 export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
   const { preview, extractSnapshot: ex, understanding: un, createdAt } = input;
   const doc = new PdfBuilder();
+  void input.title; // title is metadata only; the cover uses a fixed report name
 
-  // ── Cover header (brand gradient band). Title is metadata (deterministic
-  // input); scores below are unchanged. ──
-  const headerTitle = (input.title && input.title.trim()) ? input.title.trim() : 'Audit Express - Readiness Snapshot';
-  doc.coverHeader(headerTitle, `Audit Express - Generated ${createdAt}`);
+  // ── 1 · Cover page (dedicated, premium) ──
+  coverPage(doc, {
+    title: 'AI Readiness & Opportunity Report',
+    subtitle: 'A fast, strategic snapshot of where your business stands with AI - and the value of acting.',
+    metaRows: [
+      ['REPORT', 'Audit Express'],
+      ['DATE', createdAt],
+      ['ENGINE', `${preview.engineVersion} - deterministic, no AI-generated text`],
+    ],
+  });
 
   // ── Version & integrity (boxed, monospace stamp) ──
   const stamp: Array<[string, string]> = [
@@ -114,6 +122,19 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
 
   // ── Disclaimer (amber callout, text unchanged) ──
   doc.callout(`${PDF_DISCLAIMER} Indicative estimates only; not a legal classification.`, 'amber');
+
+  // ── 2 · Executive summary (where you stand, the cost of waiting, the gain) ──
+  const k1 = preview.k1a; const roi = preview.k2a.result;
+  doc.h2('Executive summary');
+  doc.para(
+    `Your AI readiness scores ${k1.normalizedScore}/100 (${k1.bucket}). ` +
+    `The opportunity is concrete: an estimated ${roi.estimatedTimeSavedHoursPerMonth} hours and ${moneyUsd(roi.estimatedMonthlyCostSaved)} a month are currently spent on repetitive work that AI can take on. ` +
+    `Left unchanged, that cost recurs every single month; acted on, those hours return to higher-value work` +
+    (roi.estimatedPaybackMonths !== null ? `, with an estimated payback of about ${roi.estimatedPaybackMonths} month(s)` : '') + `. ` +
+    `This snapshot shows exactly where to start - and how AiLuna gets you there faster.`,
+  );
+  conceptBox(doc, 'AI readiness',
+    'AI readiness is how prepared your business is to get value from AI safely and systematically. A higher score means faster, lower-risk gains - and less work done by hand.');
 
   // ── How it works (4-step schematic) ──
   doc.h2('How it works');
@@ -189,6 +210,20 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
       }
     }
   }
+
+  // ── How AiLuna can help (conversion-focused) ──
+  doc.h2('How AiLuna can help you improve');
+  doc.para('You can capture these gains faster, and with less risk, using AiLuna. The agents below are matched to your readiness band and the workflow you selected - each one targets the repetitive work behind the numbers above.');
+  doc.muted('What happens next - three steps:');
+  if (preview.k1a.recommendedAgentIds.length) doc.bullet(`Match. Start with the agents matched to you: ${preview.k1a.recommendedAgentIds.join(', ')}.`);
+  doc.bullet('Act. Pilot one agent on a single high-volume task for about two weeks.');
+  doc.bullet('Prove. Measure the hours saved, then run a full audit for the complete compliance picture.');
+  doc.callout('Your next step: open your matched agents, or run a full audit for a deeper plan. In the app, both are one click away.', 'tint');
+
+  // ── Conclusion ──
+  doc.h2('Conclusion');
+  doc.para(`At ${preview.k1a.normalizedScore}/100, the path to value is clear and quick. Every month of delay is recurring cost; every pilot is a compounding gain. Start with one task, prove the saving, and build from there - you do not have to do it alone.`);
+  doc.callout(`${PDF_DISCLAIMER} Indicative estimates only; not a legal classification.`, 'amber');
 
   // ── Appendix: Sources & reasons (human label + raw id) ──
   doc.h2('Sources & reasons');

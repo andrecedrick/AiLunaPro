@@ -255,8 +255,11 @@ describe('store route — titles + rename', () => {
     expect(title).toContain('My Custom Audit');
     expect(title).not.toContain('me@example.com'); // PII scrubbed
     expect(title).not.toContain('<b>');            // markup stripped
-    expect(state.r2.size).toBe(1);                 // same object, regenerated
-    expect(state.r2.get(`pdf/orgA/${auditId}.pdf`)).not.toEqual(before);
+    expect(state.r2.size).toBe(1);                 // same object, regenerated in place
+    // White-paper v2: the title is metadata only (fixed cover name), so the
+    // regenerated PDF is byte-identical — the rename updates the stored/list
+    // title (asserted below), not the embedded PDF content.
+    expect(state.r2.get(`pdf/orgA/${auditId}.pdf`)).toEqual(before);
     const list = await req('GET', '/api/audit-express/list?orgId=orgA', { token: 'valid-token' });
     expect((await list.json()).items[0].title).toBe(title);
   });

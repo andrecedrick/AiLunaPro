@@ -1,26 +1,26 @@
 /**
- * Deterministic premium Report PDF (main New-Audit flow).
+ * Deterministic, consulting-grade white-paper Report PDF (full New-Audit flow).
  *
- * Pure: same { title, createdAt, result, answers } → byte-identical output.
- * Uses the audit's recomputed AuditResult (the engine's `computedAt` is NEVER
- * rendered, so a freshly recomputed result still yields identical bytes).
- *
- * Tone is informational and pedagogical — no certification, audit-opinion, or
- * legal claims. Built on the hand-rolled deterministic PDF primitives (no deps).
+ * Pure: same { title, createdAt, result, answers } -> byte-identical output.
+ * The engine's `computedAt` is NEVER rendered. No LLM, no invented numbers
+ * (impact is expressed in recoverable score points + risk, never fabricated
+ * money), examples are labelled illustrative, disclaimers retained, no legal
+ * conclusions. Built on the hand-rolled deterministic PDF primitives (no deps).
  */
 import { PdfBuilder } from './pdf/pdf-doc';
-import { drawReadinessBar, drawKpiTiles, drawBarChart } from './pdf/pdf-charts';
+import { drawReadinessBar, drawKpiTiles } from './pdf/pdf-charts';
+import { coverPage, conceptBox, flowDiagram, maturityLadder, twoColumn } from './pdf/pdf-whitepaper';
+import { getDeepNarrative } from './report-narrative';
 import type { AuditAnswers, AuditResult } from './audit-scoring';
-import { buildReportAiSections } from './report-ai-sections';
 
-export const REPORT_PDF_ENGINE = 'report-pdf-1.0.0';
+export const REPORT_PDF_ENGINE = 'report-pdf-2.0.0';
 export const REPORT_DISCLAIMER =
-  'Preparation support for your AI governance work — informational only. Not a certification, audit opinion, or legal advice.';
+  'Preparation support for your AI governance work - informational only. Not a certification, audit opinion, or legal advice.';
 
 export interface ReportPdfInput {
   title: string;
-  createdAt: string;   // ISO; deterministic stamp (the report's createdAt)
-  result: AuditResult; // from computeAuditResult(answersSnapshot)
+  createdAt: string;
+  result: AuditResult;
   answers: AuditAnswers;
 }
 
@@ -28,82 +28,164 @@ const RISK_LABEL: Record<string, string> = {
   low: 'Low risk', medium: 'Medium risk', high: 'High risk', critical: 'Critical risk',
 };
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low'];
-const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+
+/** Split an authored description into up to 3 deterministic action steps. */
+function toSteps(desc: string): string[] {
+  const parts = desc.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  return (parts.length ? parts : [desc]).slice(0, 3);
+}
 
 export function buildReportPdf(input: ReportPdfInput): Uint8Array {
-  const { title, createdAt, result, answers } = input;
+  const { createdAt, result, answers } = input;
+  void answers; // free-text answers are intentionally never rendered (privacy)
   const doc = new PdfBuilder();
 
-  /* ── Cover ── */
-  doc.coverHeader(title, `AI Compliance Report - Generated ${createdAt}`);
-  drawReadinessBar(doc, result.globalScore, RISK_LABEL[result.riskLevel] ?? result.riskLevel);
-  doc.spacer(6);
+  const score = result.globalScore;
+  const riskLabel = RISK_LABEL[result.riskLevel] ?? result.riskLevel;
+  const findingCount = result.findings.length;
+  const recCount = result.recommendations.length;
+  const quickWins = result.recommendations.filter(r => r.effort === 'low').length;
+
+  const recoverableBy = new Map<string, number>();
+  for (const s of result.sectionScores) recoverableBy.set(s.key, Math.max(0, Math.round(s.weight * 100 - s.contribution)));
+  const recoverableTotal = [...recoverableBy.values()].reduce((a, b) => a + b, 0);
+
+  const byScoreDesc = [...result.sectionScores].sort((a, b) => b.score - a.score);
+  const weakSection = byScoreDesc[byScoreDesc.length - 1];
+  const standing = score >= 75 ? 'strong' : score >= 50 ? 'mixed' : 'early';
+
+  /* ── 1 · Cover page ───────────────────────────────────────────── */
+  coverPage(doc, {
+    title: 'AI Compliance & AI Maturity Report',
+    subtitle: 'A strategic assessment of your AI readiness, risks, and opportunities.',
+    metaRows: [
+      ['PREPARED FOR', 'Your workspace'],
+      ['DATE', createdAt],
+      ['ENGINE', `${REPORT_PDF_ENGINE} - deterministic, no AI-generated text`],
+    ],
+  });
+
+  /* ── 2 · Executive summary ────────────────────────────────────── */
+  doc.h2('1.  Executive summary');
+  doc.para(
+    `Your organisation scores ${score}/100 on AI compliance and maturity - a ${riskLabel.toLowerCase()} position. ` +
+    `Left unaddressed, the ${findingCount} gap${findingCount === 1 ? '' : 's'} in this report are the ones a regulator, customer, or partner tends to examine first, and they become more costly to fix the longer they wait. ` +
+    `Acted on, they are largely quick wins: about ${recoverableTotal} points of your score are recoverable through ${recCount} well-understood action${recCount === 1 ? '' : 's'}, most of them low-effort. ` +
+    (weakSection ? `Your single biggest lever is ${weakSection.title} at ${weakSection.score}/100. ` : '') +
+    `The pages that follow show exactly what to do, in priority order, and how AiLuna gets you there faster.`,
+  );
+  conceptBox(doc, 'your compliance & maturity score',
+    'Your score measures how well your AI practice is governed, secured, and explained - not how advanced your technology is. A higher score means lower risk and greater trust with customers, partners, and regulators.');
+  doc.spacer(4);
+  drawReadinessBar(doc, score, riskLabel);
+  doc.spacer(4);
   drawKpiTiles(doc, [
-    { value: String(result.findingsBySeverity.critical), label: 'Critical' },
-    { value: String(result.findingsBySeverity.high), label: 'High' },
-    { value: String(result.findingsBySeverity.medium), label: 'Medium' },
-    { value: String(result.recommendations.length), label: 'Actions' },
+    { value: `${recoverableTotal}`, label: 'Points recoverable' },
+    { value: `${findingCount}`, label: 'Gaps identified' },
+    { value: `${quickWins}`, label: 'Quick wins' },
+    { value: `L${result.maturityLevel}/5`, label: 'Maturity' },
   ]);
-  doc.spacer(8);
+  doc.spacer(4);
   doc.callout(REPORT_DISCLAIMER, 'amber');
 
-  /* ── Executive summary ── */
-  doc.h2('Executive summary');
+  /* ── 3 · AI maturity snapshot ─────────────────────────────────── */
+  doc.h2('2.  Your AI maturity snapshot');
+  doc.muted('To understand why your score sits where it does, start with how systematically your organisation runs AI today.');
+  conceptBox(doc, 'AI maturity level',
+    'Maturity is a 1-to-5 measure of how systematic your AI practice is - from improvised (Level 1) to well-run and continuously improving (Level 5). It is not about how advanced your technology is, but how reliably you manage it.');
+  maturityLadder(doc, result.maturityLevel);
   doc.para(
-    `This report is a point-in-time snapshot of your AI compliance posture. ` +
-    `Overall score ${result.globalScore}/100 (${RISK_LABEL[result.riskLevel] ?? result.riskLevel}), ` +
-    `maturity level ${result.maturityLevel} of 5. ` +
-    `${result.findings.length} finding(s) were identified across ${result.recommendations.length} recommended action(s).`,
+    `You are at Level ${result.maturityLevel} of 5. ` +
+    (result.maturityLevel >= 4
+      ? 'That is a strong, well-managed practice; the next gains come from scaling what works and tightening the edges.'
+      : 'Moving up a level is mostly about turning good intentions into repeatable habits - the specific, low-effort steps in this report are exactly how you climb.'),
   );
-  if (result.maturitySelfAssessed) {
-    doc.muted(`Self-assessed maturity: level ${result.maturitySelfAssessed} of 5.`);
-  }
 
-  /* ── Section scores ── */
-  if (result.sectionScores.length) {
-    doc.h2('Section scores');
-    drawBarChart(doc, result.sectionScores.map(s => ({
-      label: trunc(s.title, 22), value: s.score, display: `${s.score}`,
-    })));
-  }
-
-  /* ── Risk overview & findings ── */
-  doc.h2('Risk overview & findings');
-  if (result.findings.length === 0) {
-    doc.muted('No findings were identified from the provided answers.');
+  /* ── 4 · Detailed risks & findings ────────────────────────────── */
+  doc.h2('3.  Detailed risks & findings');
+  if (findingCount === 0) {
+    doc.para('Your answers did not trigger any findings - your AI practice already covers the fundamentals we assess. The opportunity now is to make these good practices systematic and to automate the parts you still do by hand.');
   } else {
-    const sorted = [...result.findings].sort(
-      (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
-    );
+    doc.muted('Each finding is explained in business terms: what it is, why it costs you, and the fastest way to close it. They are ordered by priority.');
+    const recById = new Map(result.recommendations.map(r => [r.id, r]));
+    const seenSections = new Set<string>();
+    const sorted = [...result.findings].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity));
     for (const f of sorted) {
-      doc.bullet(`[${f.severity.toUpperCase()}] ${f.title}`);
-      if (f.description) doc.muted(f.description);
+      const nar = getDeepNarrative(f.sectionKey);
+      const rec = f.recommendationIds.map(id => recById.get(id)).find(Boolean);
+      const recoverable = recoverableBy.get(f.sectionKey) ?? 0;
+      doc.h3(`[${f.severity.toUpperCase()}]  ${f.title}${recoverable > 0 ? `   -   recover ~${recoverable} pts (this area)` : ''}`);
+      if (!seenSections.has(f.sectionKey)) { conceptBox(doc, nar.concept, nar.conceptDef); seenSections.add(f.sectionKey); }
+      doc.para(nar.situation);
+      doc.para(nar.businessCase);
+      flowDiagram(doc, nar.flow);
+      doc.para(`Example. ${nar.example} (Illustrative.)`);
+      doc.muted(`The move${rec ? ` - ${rec.effort} effort, ~${rec.timeframeDays} days` : ''}:`);
+      for (const step of (rec ? toSteps(rec.description) : [f.description])) doc.bullet(step);
+      if (rec?.expectedOutcome) doc.muted(`Outcome: ${rec.expectedOutcome}`);
+      const refs = (f.regulatoryRefs ?? rec?.regulatoryRefs ?? []).map(r => `${r.framework.replace(/_/g, ' ')} ${r.ref}`);
+      if (refs.length) doc.muted(`References: ${refs.join(' - ')} (advisory, not legal advice).`, 8);
+      doc.spacer(4);
     }
   }
 
-  /* ── Action plan / roadmap ── */
-  doc.h2('Action plan & roadmap');
+  /* ── 5 · Strengths & opportunities ────────────────────────────── */
+  doc.h2('4.  Strengths & opportunities');
+  doc.muted('A balanced read: you are not starting from zero. Here is the foundation to build on, beside the areas with the most headroom.');
+  twoColumn(doc,
+    { title: 'What is already working', items: byScoreDesc.filter(s => s.score >= 75).slice(0, 5).map(s => `${s.title} (${s.score}/100)`) },
+    { title: 'Where the opportunity is', items: [...byScoreDesc].reverse().filter(s => s.score < 70).slice(0, 5).map(s => `${s.title} (${s.score}/100)`) },
+  );
+  doc.para('Your strengths are assets you can point to in sales and audits today. Your opportunities are where a small, well-sequenced effort moves the score - and the business - the most.');
+
+  /* ── 6 · Business impact ──────────────────────────────────────── */
+  doc.h2('5.  Business impact');
+  doc.muted('Translated into the language of the business: risk reduced, efficiency gained, advantage created.');
+  drawKpiTiles(doc, [
+    { value: `+${recoverableTotal}`, label: 'Score pts recoverable' },
+    { value: `${findingCount}`, label: 'Gaps to close' },
+    { value: `${quickWins}`, label: 'Low-effort wins' },
+  ]);
+  doc.para(`Risk reduction. Closing these gaps recovers up to ${recoverableTotal} points and moves you from a ${riskLabel.toLowerCase()} position toward one you can defend to customers, partners, and reviewers - precisely the things examined first when scrutiny arrives.`);
+  doc.para('Efficiency gains. The same controls remove manual rework - the reconstructions, the repeated debates, the back-and-forth - returning time to your team and making every future review faster.');
+  doc.para('Competitive advantage. Demonstrable, responsible AI is fast becoming a buying criterion. Closing these gaps turns compliance from a cost centre into a proof point that wins the trust - and the deals - others lose.');
+
+  /* ── 7 · Recommended action roadmap ───────────────────────────── */
+  doc.h2('6.  Recommended action roadmap');
+  doc.muted('Sequenced by leverage, not difficulty - so the earliest steps return the most.');
   const hasRoadmap = result.roadmap.some(b => b.items.length > 0);
   if (!hasRoadmap) {
-    doc.muted('No prioritized actions were generated for this snapshot.');
+    doc.para('No prioritised actions were generated for this snapshot - a sign your fundamentals are largely in place. Focus on making good practice systematic.');
   } else {
     for (const bucket of result.roadmap) {
       if (!bucket.items.length) continue;
-      doc.para(`${bucket.label} - ${bucket.description}`);
-      for (const it of bucket.items) {
-        doc.bullet(`${it.title} (${it.impact} impact / ${it.effort} effort)`);
-      }
+      doc.h3(bucket.label);
+      doc.muted(bucket.description);
+      for (const it of bucket.items) doc.bullet(`${it.title}  (${it.impact} impact / ${it.effort} effort)`);
+      doc.spacer(2);
     }
   }
 
-  /* ── AI usage & governance (enriched, educational) ── */
-  for (const sec of buildReportAiSections(answers, result)) {
-    doc.h2(sec.heading);
-    if (sec.body) doc.para(sec.body);
-    for (const b of sec.bullets) doc.bullet(b);
-  }
+  /* ── 8 · How AiLuna can help ──────────────────────────────────── */
+  doc.h2('7.  How AiLuna can help you improve');
+  doc.para('You now know exactly what to fix. The real question is how fast - and whether you do it alone. AiLuna is built to compress that timeline.');
+  doc.para(`What you gain. A clear, prioritised path from ${score}/100 toward a defensible position - turning a list of gaps into a sequence of quick, compounding wins that reduce risk, recover hours, and give you the responsible-AI proof points enterprise buyers ask for. You can achieve these improvements faster, and with less risk, using AiLuna.`);
+  doc.muted('What happens next - three steps:');
+  doc.bullet('Match. See the AiLuna agents mapped to your findings; each one targets a specific gap in this report.');
+  doc.bullet('Act. Start with the highest-leverage, lowest-effort fixes from your 30-day roadmap.');
+  doc.bullet('Prove. Re-audit to watch your score climb and generate the evidence your stakeholders ask for.');
+  doc.callout('Your next step: open your matched agents and start with action one from the roadmap. In the app, this links straight to your recommended agents and a deeper audit.', 'tint');
+
+  /* ── 9 · Conclusion ───────────────────────────────────────────── */
+  doc.h2('8.  Conclusion');
+  doc.para(
+    `Your AI practice is ${standing}, and the path forward is clear and largely low-effort. ` +
+    `The cost of waiting is quiet but compounding; the value of acting is a lower-risk, more efficient, more trusted business. ` +
+    (weakSection ? `Start with your single biggest lever - ${weakSection.title} - and let each quick win build on the last. ` : '') +
+    `This is a position you can move out of in weeks, not quarters.`,
+  );
   doc.callout(
-    'Framework references (EU AI Act, GDPR, ISO/IEC 42001, NIST AI RMF) are indicative and informational — not a legal classification or advice.',
+    'Framework references (EU AI Act, GDPR, ISO/IEC 42001, NIST AI RMF) are indicative and informational - not a legal classification or advice. This report is preparation support, not a certification or audit opinion.',
     'tint',
   );
 

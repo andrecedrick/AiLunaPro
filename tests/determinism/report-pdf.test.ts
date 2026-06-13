@@ -38,8 +38,8 @@ describe('report PDF — determinism', () => {
   it('createdAt participates in the bytes', () => {
     expect(bytesEqual(mk('2026-06-06T12:00:00.000Z'), mk('2026-06-07T12:00:00.000Z'))).toBe(false);
   });
-  it('title participates in the bytes', () => {
-    expect(bytesEqual(mk(CREATED, 'Alpha'), mk(CREATED, 'Beta'))).toBe(false);
+  it('title is metadata only — the white-paper uses a fixed report name (not in the bytes)', () => {
+    expect(bytesEqual(mk(CREATED, 'Alpha'), mk(CREATED, 'Beta'))).toBe(true);
   });
 });
 
@@ -52,13 +52,17 @@ describe('report PDF — structure & content', () => {
     expect(s.trimEnd().endsWith('%%EOF')).toBe(true);
   });
   it('renders the premium sections + engine stamp + disclaimer', () => {
+    // White-paper sections (v2). wrapText collapses the double-space heading
+    // prefix, so we assert on the stable section text.
     expect(s).toContain('Executive summary');
-    expect(s).toContain('Risk overview');
-    expect(s).toContain('Action plan');
-    expect(s).toContain('Section scores');
-    expect(s).toContain('AI usage context');
-    expect(s).toContain('AI risk');                 // governance section
-    expect(s).toContain('Human oversight');
+    expect(s).toContain('Your AI maturity snapshot');
+    expect(s).toContain('Detailed risks & findings');
+    expect(s).toContain('Strengths & opportunities');
+    expect(s).toContain('Business impact');
+    expect(s).toContain('Recommended action roadmap');
+    expect(s).toContain('How AiLuna can help');
+    expect(s).toContain('Conclusion');
+    expect(s).toContain('In plain terms');           // pedagogical concept box
     expect(s).toContain('certification'); // disclaimer present (text wraps across Tj lines)
     expect(s).toContain(REPORT_PDF_ENGINE);
   });

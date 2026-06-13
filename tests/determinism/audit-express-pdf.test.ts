@@ -67,12 +67,12 @@ describe('audit-express PDF — determinism', () => {
     expect(bytesEqual(a, b)).toBe(false);
   });
 
-  it('title is a deterministic input (same title identical; different title differs)', () => {
+  it('title is metadata only — the white-paper uses a fixed report name (not in the bytes)', () => {
     const p = computePreview(TAPS);
     const ex = snapshot(); const un = understand(ex);
     const mk = (title?: string) => buildAuditExpressPdf({ createdAt: CREATED, preview: p, extractSnapshot: ex, understanding: un, title });
     expect(bytesEqual(mk('Acme readiness'), mk('Acme readiness'))).toBe(true);
-    expect(bytesEqual(mk('Acme readiness'), mk('Different title'))).toBe(false);
+    expect(bytesEqual(mk('Acme readiness'), mk('Different title'))).toBe(true);
   });
 });
 
