@@ -126,7 +126,7 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
   // ── 2 · Executive summary (where you stand, the cost of waiting, the gain) ──
   const k1 = preview.k1a; const roi = preview.k2a.result;
   doc.h2('Executive summary');
-  doc.para(
+  doc.paraKey(
     `Your AI readiness scores ${k1.normalizedScore}/100 (${k1.bucket}). ` +
     `The opportunity is concrete: an estimated ${roi.estimatedTimeSavedHoursPerMonth} hours and ${moneyUsd(roi.estimatedMonthlyCostSaved)} a month are currently spent on repetitive work that AI can take on. ` +
     `Left unchanged, that cost recurs every single month; acted on, those hours return to higher-value work` +
@@ -150,8 +150,8 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
     medium: 'You have started with AI, but the gains are not yet systematic - the biggest lever is automating the repetitive work you still do by hand.',
     high: 'You are using AI well: the next gains come from scaling what works and tightening oversight so results stay dependable.',
   };
-  doc.para(`What this means. ${READ_MEANS[preview.k1a.bucket.toLowerCase()] ?? READ_MEANS.medium}`);
-  doc.para('Why it matters. Readiness is the difference between AI that quietly creates risk and AI that reliably returns time and trust. Moving up a band is mostly a few focused, low-effort steps - not a big programme.');
+  doc.paraKey(`What this means. ${READ_MEANS[preview.k1a.bucket.toLowerCase()] ?? READ_MEANS.medium}`);
+  doc.paraKey('Why it matters. Readiness is the difference between AI that quietly creates risk and AI that reliably returns time and trust. Moving up a band is mostly a few focused, low-effort steps - not a big programme.');
   if (preview.k1a.partial) doc.muted('Derived from a short preview (a subset of factors), not the full diagnostic.');
   if (preview.k1a.recommendedAgentIds.length) {
     doc.bullet(`Suggested starting points: ${preview.k1a.recommendedAgentIds.join(', ')}`, []);
@@ -171,8 +171,8 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
   ]);
   doc.row('Basis', 'rule-based ROI engine', k2Refs);
   const perWeek = Math.round((r.estimatedTimeSavedHoursPerMonth / 4.3) * 10) / 10;
-  doc.para(`What ${r.estimatedTimeSavedHoursPerMonth} hours and ${moneyUsd(r.estimatedMonthlyCostSaved)} a month really means. That is roughly ${perWeek} hours every week your team currently spends on repetitive tasks a capable assistant could take on - time that could go to customers, product, or growth instead. Across a year, that is about ${r.estimatedTimeSavedHoursPerMonth * 12} hours and ${moneyUsd(r.estimatedYearlyCostSaved)}.`);
-  doc.para(`A simple scenario. Picture one person spending ${r.estimatedTimeSavedHoursPerMonth} hours a month re-keying data or drafting routine replies. Automating that single task hands those hours back - and the saving repeats every month, while the setup is a one-off. That is the shape of the opportunity above.`);
+  doc.paraKey(`What ${r.estimatedTimeSavedHoursPerMonth} hours and ${moneyUsd(r.estimatedMonthlyCostSaved)} a month really means. That is roughly ${perWeek} hours every week your team currently spends on repetitive tasks a capable assistant could take on - time that could go to customers, product, or growth instead. Across a year, that is about ${r.estimatedTimeSavedHoursPerMonth * 12} hours and ${moneyUsd(r.estimatedYearlyCostSaved)}.`);
+  doc.paraKey(`A simple scenario. Picture one person spending ${r.estimatedTimeSavedHoursPerMonth} hours a month re-keying data or drafting routine replies. Automating that single task hands those hours back - and the saving repeats every month, while the setup is a one-off. That is the shape of the opportunity above.`);
 
   // ── Site understanding (optional) ──
   if (un) {
@@ -223,7 +223,7 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
 
   // ── How AiLuna can help (conversion-focused) ──
   doc.h2('How AiLuna can help you improve');
-  doc.para('You can capture these gains faster, and with less risk, using AiLuna. The agents below are matched to your readiness band and the workflow you selected - each one targets the repetitive work behind the numbers above.');
+  doc.paraKey('You can capture these gains faster, and with less risk, using AiLuna. The agents below are matched to your readiness band and the workflow you selected - each one targets the repetitive work behind the numbers above.');
   doc.muted('What happens next - three steps:');
   if (preview.k1a.recommendedAgentIds.length) doc.bullet(`Match. Start with the agents matched to you: ${preview.k1a.recommendedAgentIds.join(', ')}.`);
   doc.bullet('Act. Pilot one agent on a single high-volume task for about two weeks.');
@@ -232,7 +232,7 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
 
   // ── Conclusion ──
   doc.h2('Conclusion');
-  doc.para(`The numbers in this snapshot are not abstract - they are hours and dollars leaving your business every month, and they keep leaving until you act. At ${preview.k1a.normalizedScore}/100, the path to recovering them is short and low-risk: one focused pilot is usually enough to prove the saving and build momentum.`);
+  doc.paraKey(`The numbers in this snapshot are not abstract - they are hours and dollars leaving your business every month, and they keep leaving until you act. At ${preview.k1a.normalizedScore}/100, the path to recovering them is short and low-risk: one focused pilot is usually enough to prove the saving and build momentum.`);
   doc.para('The fastest movers do not wait for a perfect plan - they start with a single high-volume task, measure the result, and scale what works. You can do exactly that today, with AiLuna doing the heavy lifting. Open your matched agents, or run a full audit for the complete picture.');
   doc.callout('Estimates are indicative and based on your inputs - a starting point for your decision, not a guarantee or a legal classification.', 'amber');
 

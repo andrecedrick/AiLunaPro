@@ -67,7 +67,7 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
 
   /* ── 2 · Executive summary ────────────────────────────────────── */
   doc.h2('1.  Executive summary');
-  doc.para(
+  doc.paraKey(
     `Your organisation scores ${score}/100 on AI compliance and maturity - a ${riskLabel.toLowerCase()} position. ` +
     `Left unaddressed, the ${findingCount} gap${findingCount === 1 ? '' : 's'} in this report ${findingCount === 1 ? 'is the one' : 'are the ones'} a regulator, customer, or partner tends to examine first, and they become more costly to fix the longer they wait. ` +
     `Acted on, they are largely quick wins: about ${recoverableTotal} points of your score are recoverable through ${recCount} well-understood action${recCount === 1 ? '' : 's'}, most of them low-effort. ` +
@@ -94,7 +94,7 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
   conceptBox(doc, 'AI maturity level',
     'Maturity is a 1-to-5 measure of how systematic your AI practice is - from improvised (Level 1) to well-run and continuously improving (Level 5). It is not about how advanced your technology is, but how reliably you manage it.');
   maturityLadder(doc, result.maturityLevel);
-  doc.para(
+  doc.paraKey(
     `You are at Level ${result.maturityLevel} of 5. ` +
     (result.maturityLevel >= 4
       ? 'That is a strong, well-managed practice; the next gains come from scaling what works and tightening the edges.'
@@ -120,7 +120,7 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
       const recoverable = recoverableBy.get(key) ?? 0;
       doc.h3(`${nar.title}${recoverable > 0 ? `   -   recover ~${recoverable} pts` : ''}`);
       conceptBox(doc, nar.concept, nar.conceptDef);
-      doc.para(nar.situation);
+      doc.paraKey(nar.situation);
       doc.para(nar.businessCase);
       flowDiagram(doc, nar.flow);
       doc.para(`Example. ${nar.example} (Illustrative.)`);
@@ -154,9 +154,9 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
     { value: `${findingCount}`, label: 'Gaps to close' },
     { value: `${quickWins}`, label: 'Low-effort wins' },
   ]);
-  doc.para(`Risk reduction. Closing these gaps recovers up to ${recoverableTotal} points and moves you from a ${riskLabel.toLowerCase()} position toward one you can defend to customers, partners, and reviewers - precisely the things examined first when scrutiny arrives.`);
-  doc.para('Efficiency gains. The same controls remove manual rework - the reconstructions, the repeated debates, the back-and-forth - returning time to your team and making every future review faster.');
-  doc.para('Competitive advantage. Demonstrable, responsible AI is fast becoming a buying criterion. Closing these gaps turns compliance from a cost centre into a proof point that wins the trust - and the deals - others lose.');
+  doc.paraKey(`Risk reduction. Closing these gaps recovers up to ${recoverableTotal} points and moves you from a ${riskLabel.toLowerCase()} position toward one you can defend to customers, partners, and reviewers - precisely the things examined first when scrutiny arrives.`);
+  doc.paraKey('Efficiency gains. The same controls remove manual rework - the reconstructions, the repeated debates, the back-and-forth - returning time to your team and making every future review faster.');
+  doc.paraKey('Competitive advantage. Demonstrable, responsible AI is fast becoming a buying criterion. Closing these gaps turns compliance from a cost centre into a proof point that wins the trust - and the deals - others lose.');
 
   /* ── 7 · Recommended action roadmap ───────────────────────────── */
   doc.h2('6.  Recommended action roadmap');
@@ -196,7 +196,7 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
   /* ── 8 · How AiLuna can help ──────────────────────────────────── */
   doc.h2('8.  How AiLuna can help you improve');
   doc.para('You now know exactly what to fix. The real question is how fast - and whether you do it alone. AiLuna is built to compress that timeline.');
-  doc.para(`What you gain. A clear, prioritised path from ${score}/100 toward a defensible position - turning a list of gaps into a sequence of quick, compounding wins that reduce risk, recover hours, and give you the responsible-AI proof points enterprise buyers ask for. You can achieve these improvements faster, and with less risk, using AiLuna.`);
+  doc.paraKey(`What you gain. A clear, prioritised path from ${score}/100 toward a defensible position - turning a list of gaps into a sequence of quick, compounding wins that reduce risk, recover hours, and give you the responsible-AI proof points enterprise buyers ask for. You can achieve these improvements faster, and with less risk, using AiLuna.`);
   doc.muted('What happens next - three steps:');
   doc.bullet('Match. See the AiLuna agents mapped to your findings; each one targets a specific gap in this report.');
   doc.bullet('Act. Start with the highest-leverage, lowest-effort fixes from your 30-day roadmap.');
@@ -205,7 +205,7 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
 
   /* ── 9 · Conclusion ───────────────────────────────────────────── */
   doc.h2('9.  Conclusion');
-  doc.para(
+  doc.paraKey(
     `Your AI practice is ${standing}, and the path forward is clear and largely low-effort. ` +
     `The cost of waiting is quiet but compounding; the value of acting is a lower-risk, more efficient, more trusted business. ` +
     (weakSection ? `Start with your single biggest lever - ${weakSection.title} - and let each quick win build on the last. ` : '') +

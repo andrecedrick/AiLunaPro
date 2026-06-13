@@ -188,6 +188,19 @@ export class PdfBuilder {
   h3(text: string): void { this.ensure(24); this.spacer(9); this.drawWrapped(text, 'bold', 13, INK, 5); this.y -= 2; }
   para(text: string): void { this.drawWrapped(text, 'regular', 11, INK, 6); this.y -= 6; }
 
+  /** Paragraph whose FIRST sentence is bold — a scannable key line for quick
+   *  reading — with the remainder in regular weight. Same size/spacing as para. */
+  paraKey(text: string): void {
+    const m = text.match(/^(.*?[.!?])(?:\s+([\s\S]+))?$/);
+    if (m && m[1]) {
+      this.drawWrapped(m[1], 'bold', 11, INK, 6);
+      if (m[2]) { this.y -= 1; this.drawWrapped(m[2], 'regular', 11, INK, 6); }
+    } else {
+      this.drawWrapped(text, 'regular', 11, INK, 6);
+    }
+    this.y -= 6;
+  }
+
   /** Force a new page (gives the cover its own page; starts sections cleanly). */
   pageBreak(): void { this.newPage(); }
   /** Current cursor Y (for absolute-positioned composites). */
