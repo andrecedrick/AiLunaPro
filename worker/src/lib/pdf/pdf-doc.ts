@@ -179,16 +179,20 @@ export class PdfBuilder {
     }
   }
 
-  h1(text: string): void { this.spacer(2); this.drawWrapped(text, 'bold', 22, VIOLET, 6); }
-  h2(text: string): void { this.ensure(26); this.spacer(8); this.drawWrapped(text, 'bold', 14, INK, 5); this.y -= 2; }
-  h3(text: string): void { this.ensure(20); this.spacer(5); this.drawWrapped(text, 'bold', 11.5, INK, 4); this.y -= 1; }
-  para(text: string): void { this.drawWrapped(text, 'regular', 10, INK, 4); this.y -= 3; }
+  h1(text: string): void { this.spacer(2); this.drawWrapped(text, 'bold', 24, VIOLET, 7); }
+  h2(text: string): void {
+    this.ensure(38); this.spacer(16);
+    this.drawWrapped(text, 'bold', 16.5, INK, 6);
+    this.y -= 4; this.rectAbs(MARGIN, this.y, 42, 2.5, VIOLET); this.y -= 11; // brand accent rule (hierarchy)
+  }
+  h3(text: string): void { this.ensure(24); this.spacer(9); this.drawWrapped(text, 'bold', 13, INK, 5); this.y -= 2; }
+  para(text: string): void { this.drawWrapped(text, 'regular', 11, INK, 6); this.y -= 6; }
 
   /** Force a new page (gives the cover its own page; starts sections cleanly). */
   pageBreak(): void { this.newPage(); }
   /** Current cursor Y (for absolute-positioned composites). */
   get cursorY(): number { return this.y; }
-  muted(text: string, size = 9): void { this.drawWrapped(text, 'regular', size, MUTED, 3); }
+  muted(text: string, size = 9.5): void { this.drawWrapped(text, 'regular', size, MUTED, 4); this.y -= 1; }
 
   /** Key/value line (version stamp). */
   kv(label: string, value: string): void {
@@ -202,7 +206,7 @@ export class PdfBuilder {
 
   /** Filled callout box containing wrapped text (e.g. disclaimer). */
   callout(text: string, bg: 'amber' | 'tint' = 'amber'): void {
-    const size = 9.5, lineGap = 3, pad = 10;
+    const size = 10.5, lineGap = 4, pad = 13;
     const lines = wrapText(text, 'regular', size, CONTENT_W - pad * 2);
     const boxH = pad * 2 + lines.length * (size + lineGap) - lineGap;
     this.ensure(boxH + 8);
@@ -219,7 +223,7 @@ export class PdfBuilder {
 
   /** Bullet line with optional trailing [n] reference links. */
   bullet(text: string, refIds: string[] = []): void {
-    const size = 10, lineGap = 4, indent = 14;
+    const size = 10.5, lineGap = 5, indent = 16;
     const lines = wrapText(text, 'regular', size, CONTENT_W - indent);
     for (let i = 0; i < lines.length; i++) {
       this.ensure(size + lineGap);

@@ -24,9 +24,9 @@ function centerText(b: PdfBuilder, cx: number, y: number, size: number, font: Pd
 
 /** Readiness: 0-100 horizontal bar with low/med/high zone ticks + gradient fill. */
 export function drawReadinessBar(b: PdfBuilder, score: number, bucket: string): void {
-  const H = 46;
+  const H = 54;
   const { left, width, top } = b.reserve(H);
-  const barY = top - 30, barH = 12;
+  const barY = top - 34, barH = 15;
   const s = Math.max(0, Math.min(100, score));
   // track
   b.rectAbs(left, barY, width, barH, C.border);
@@ -38,18 +38,18 @@ export function drawReadinessBar(b: PdfBuilder, score: number, bucket: string): 
     b.lineAbs(x, barY - 2, x, barY + barH + 2, C.muted);
   }
   // labels
-  b.textAbs(left, top, 10, 'bold', C.ink, `Readiness ${s}/100`);
+  b.textAbs(left, top, 11.5, 'bold', C.ink, `Readiness ${s}/100`);
   const badge = `band: ${bucket}`;
-  b.textAbs(left + width - measureText(badge, 'bold', 10), top, 10, 'bold', C.violet, badge);
-  b.textAbs(left, barY - 12, 7.5, 'regular', C.muted, 'low');
-  centerText(b, left + width * 0.54, barY - 12, 7.5, 'regular', C.muted, 'medium');
-  b.textAbs(left + width - measureText('high', 'regular', 7.5), barY - 12, 7.5, 'regular', C.muted, 'high');
+  b.textAbs(left + width - measureText(badge, 'bold', 11.5), top, 11.5, 'bold', C.violet, badge);
+  b.textAbs(left, barY - 13, 8.5, 'regular', C.muted, 'low');
+  centerText(b, left + width * 0.54, barY - 13, 8.5, 'regular', C.muted, 'medium');
+  b.textAbs(left + width - measureText('high', 'regular', 8.5), barY - 13, 8.5, 'regular', C.muted, 'high');
   b.advance(H + 8);
 }
 
 /** Two KPI tiles side by side. */
 export function drawKpiTiles(b: PdfBuilder, tiles: Array<{ value: string; label: string }>): void {
-  const H = 58;
+  const H = 66;
   const { left, width, top } = b.reserve(H);
   const gap = 12, n = tiles.length || 1;
   const tw = (width - gap * (n - 1)) / n;
@@ -57,25 +57,25 @@ export function drawKpiTiles(b: PdfBuilder, tiles: Array<{ value: string; label:
     const x = left + i * (tw + gap);
     box(b, x, top, tw, H, C.surface2, C.border);
     b.rectAbs(x + 1, top - 4, tw - 2, 3, i === 0 ? C.violet : C.cyan);
-    centerText(b, x + tw / 2, top - 30, 19, 'bold', C.ink, tiles[i].value);
-    centerText(b, x + tw / 2, top - 46, 8.5, 'regular', C.muted, tiles[i].label);
+    centerText(b, x + tw / 2, top - 33, 23, 'bold', C.ink, tiles[i].value);
+    centerText(b, x + tw / 2, top - 52, 9.5, 'regular', C.muted, tiles[i].label);
   }
   b.advance(H + 10);
 }
 
 /** Horizontal bar chart. Values normalized to the max; display string at end. */
 export function drawBarChart(b: PdfBuilder, items: Array<{ label: string; value: number; display: string }>): void {
-  const rowH = 20, H = items.length * rowH + 6;
+  const rowH = 26, H = items.length * rowH + 8;
   const { left, width, top } = b.reserve(H);
   const max = Math.max(1, ...items.map(i => i.value));
-  const labelW = 130, barMax = width - labelW - 70;
+  const labelW = 150, barMax = width - labelW - 80;
   for (let i = 0; i < items.length; i++) {
-    const y = top - i * rowH - 14;
-    b.textAbs(left, y, 9, 'regular', C.ink, items[i].label);
+    const y = top - i * rowH - 16;
+    b.textAbs(left, y, 10.5, 'regular', C.ink, items[i].label);
     const bw = Math.max(2, (barMax * items[i].value) / max);
-    b.rectAbs(left + labelW, y - 1, barMax, 9, C.surface2);
-    b.gradientBar(left + labelW, y - 1, bw, 9);
-    b.textAbs(left + labelW + bw + 6, y, 9, 'bold', C.ink, items[i].display);
+    b.rectAbs(left + labelW, y - 2, barMax, 13, C.surface2);
+    b.gradientBar(left + labelW, y - 2, bw, 13);
+    b.textAbs(left + labelW + bw + 7, y, 10.5, 'bold', C.ink, items[i].display);
   }
   b.advance(H + 10);
 }
@@ -111,20 +111,20 @@ export function drawOpportunityMatrix(b: PdfBuilder, points: Array<{ impact: str
 
 /** 4-step "how it works" schematic: numbered boxes + arrows. */
 export function drawSchematic(b: PdfBuilder, steps: string[]): void {
-  const H = 64;
+  const H = 72;
   const { left, width, top } = b.reserve(H);
   const arrow = 16, n = steps.length || 1;
-  const bw = (width - arrow * (n - 1)) / n, bh = 48;
+  const bw = (width - arrow * (n - 1)) / n, bh = 56;
   for (let i = 0; i < steps.length; i++) {
     const x = left + i * (bw + arrow);
     box(b, x, top, bw, bh, C.surface2, C.border);
     b.rectAbs(x, top - bh, 3, bh, i === 0 ? C.violet : C.cyan);
     // step number
-    centerText(b, x + bw / 2, top - 16, 11, 'bold', C.violet, String(i + 1));
+    centerText(b, x + bw / 2, top - 18, 13, 'bold', C.violet, String(i + 1));
     // wrapped label
-    const lines = wrapText(steps[i], 'regular', 7.5, bw - 10).slice(0, 2);
-    let ty = top - 28;
-    for (const ln of lines) { centerText(b, x + bw / 2, ty, 7.5, 'regular', C.ink, ln); ty -= 9; }
+    const lines = wrapText(steps[i], 'regular', 8.5, bw - 10).slice(0, 2);
+    let ty = top - 31;
+    for (const ln of lines) { centerText(b, x + bw / 2, ty, 8.5, 'regular', C.ink, ln); ty -= 10; }
     // arrow to next
     if (i < steps.length - 1) {
       const ax = x + bw, ay = top - bh / 2;
