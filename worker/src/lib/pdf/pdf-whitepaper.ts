@@ -16,12 +16,23 @@ export function coverPage(
 ): void {
   const { pageW, pageH, margin, contentW } = doc.metrics;
 
-  // Top brand hairline + a small gradient mark beside the wordmark.
+  // Top brand hairline + the AiLunaPro logo: vector stacked-bars mark (violet ->
+  // cyan) beside the wordmark — crisp at any size, deterministic, no raster.
   doc.gradientBar(0, pageH - 6, pageW, 6);
-  doc.rectAbs(margin, pageH - 78, 16, 16, C.violet);
-  doc.gradientBar(margin, pageH - 78, 16, 16, 8);
-  doc.textAbs(margin + 24, pageH - 70, 20, 'bold', C.violet, 'AiLunaPro');
-  doc.textAbs(margin + 24, pageH - 86, 8, 'bold', C.muted, 'C O M P L I A N C E   S U I T E');
+  const bars = [11, 17, 23, 16];
+  const barW = 5, gap = 3, baseY = pageH - 84;
+  for (let i = 0; i < bars.length; i++) {
+    const t = i / (bars.length - 1);
+    const col: [number, number, number] = [
+      C.violet[0] + (C.cyan[0] - C.violet[0]) * t,
+      C.violet[1] + (C.cyan[1] - C.violet[1]) * t,
+      C.violet[2] + (C.cyan[2] - C.violet[2]) * t,
+    ];
+    doc.rectAbs(margin + i * (barW + gap), baseY, barW, bars[i], col);
+  }
+  const wmX = margin + bars.length * (barW + gap) + 10;
+  doc.textAbs(wmX, pageH - 72, 21, 'bold', C.violet, 'AiLunaPro');
+  doc.textAbs(wmX, pageH - 86, 8, 'bold', C.muted, 'C O M P L I A N C E   S U I T E');
 
   // Title block in the upper-middle third (lots of whitespace above + below).
   let ty = pageH * 0.56;
@@ -78,7 +89,8 @@ export function flowDiagram(doc: PdfBuilder, steps: [string, string, string, str
     doc.rectAbs(x, rowTop - boxH, boxW, boxH, fill);
     doc.rectAbs(x, rowTop - boxH, boxW, 2, i === 3 ? C.violet : C.cyan);
     doc.textAbs(x + 5, rowTop - 11, 6.5, 'bold', i === 3 ? C.violet : C.muted, labels[i]);
-    for (const [j, ln] of wrapText(steps[i], 'regular', 7.5, boxW - 10).slice(0, 2).entries()) {
+    const stepTxt = steps[i].replace(/\s*→\s*/g, ' -> '); // arrow -> ASCII (writer is ASCII-only)
+    for (const [j, ln] of wrapText(stepTxt, 'regular', 7.5, boxW - 10).slice(0, 2).entries()) {
       doc.textAbs(x + 5, rowTop - 20 - j * 9, 7.5, 'regular', C.ink, ln);
     }
     if (i < 3) {

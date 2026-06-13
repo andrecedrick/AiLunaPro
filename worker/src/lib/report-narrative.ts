@@ -6,6 +6,7 @@
  */
 
 export interface DeepNarrative {
+  title: string;       // business-oriented section heading
   concept: string;     // term for the "In plain terms" box
   conceptDef: string;  // plain-language definition
   situation: string;   // the situation today
@@ -16,6 +17,7 @@ export interface DeepNarrative {
 
 const N: Record<string, DeepNarrative> = {
   'governance': {
+    title: 'Governance - no clear owner for how AI is used',
     concept: 'AI governance',
     conceptDef: 'The simple practice of having someone clearly responsible for how AI is used, and a written rule everyone follows. It is to AI what a budget owner is to spending.',
     situation: 'Today there is no single owner and no written rule for how AI is adopted across your teams. Tools get introduced case by case, and no one has a complete view of what is in use or why.',
@@ -24,6 +26,7 @@ const N: Record<string, DeepNarrative> = {
     example: 'A 20-person firm named one AI owner and published a single-page policy. New tools now get a quick, documented yes or no — replacing months of silent sprawl with a path everyone trusts.',
   },
   'data': {
+    title: 'Data - sensitive inputs without a clear record',
     concept: 'Data governance',
     conceptDef: 'Knowing what data you hold, where it came from, and why you are allowed to use it. Good AI starts with data you can trust and account for.',
     situation: 'Sensitive information may be feeding your AI without a clear record of its source, its purpose, or your basis for holding it. There is no simple inventory to point to.',
@@ -32,6 +35,7 @@ const N: Record<string, DeepNarrative> = {
     example: 'A services team listed each dataset’s source and purpose in one sheet — and immediately retired two datasets it no longer needed, shrinking both cost and risk in an afternoon.',
   },
   'security': {
+    title: 'Security - foundations below the production bar',
     concept: 'AI security controls',
     conceptDef: 'The basic protections — access limits, logging, testing — that keep your AI systems from being misused or breached. The locks and cameras of your AI estate.',
     situation: 'The core safeguards around your AI systems are thin: fewer of the standard controls (encryption, access control, audit logs, secrets handling, isolation) are in place than we would expect for AI running in production.',
@@ -40,6 +44,7 @@ const N: Record<string, DeepNarrative> = {
     example: 'A startup added access limits and a quarterly review of its AI endpoints — closing precisely the gaps an auditor checks first, and unblocking a stalled enterprise contract.',
   },
   'transparency': {
+    title: 'Transparency - decisions you cannot yet explain',
     concept: 'Explainability & transparency',
     conceptDef: 'Being able to tell people when AI is involved and why it reached a result. If you cannot say why, you cannot defend the decision or earn trust in it.',
     situation: 'When your AI influences a decision, the people affected currently receive no reason, or only a generic one — and there is no record of why a given outcome occurred.',
@@ -48,6 +53,7 @@ const N: Record<string, DeepNarrative> = {
     example: 'A lender that began attaching category-level reason codes to automated declines resolved most customer disputes in a single reply — turning an afternoon of reconstruction into a one-line answer.',
   },
   'human-oversight': {
+    title: 'Oversight - no human checkpoint on key decisions',
     concept: 'Human oversight',
     conceptDef: 'Making sure a person can review, pause, or override AI on the decisions that really matter. A safety net for the cases where being wrong is expensive.',
     situation: 'AI outputs can currently drive consequential decisions with no required human checkpoint, and overrides are not captured for review.',
@@ -56,6 +62,7 @@ const N: Record<string, DeepNarrative> = {
     example: 'A 15-person lender added a two-minute sign-off on automated declines: clear cases move at the same speed, while the edge cases finally get a human safety net.',
   },
   'training-maturity': {
+    title: 'People - teams using AI without guidance',
     concept: 'AI literacy & maturity',
     conceptDef: 'Maturity level (1–5) is simply how systematic your AI practice is — from improvised to well-run. Literacy is whether your people know how to use AI safely.',
     situation: 'Staff using AI have not had basic guidance on doing it safely and effectively, and your self-assessed maturity sits at the lower end of the scale.',
@@ -64,6 +71,7 @@ const N: Record<string, DeepNarrative> = {
     example: 'A team ran one 45-minute "how we use AI here" session and standardised the prompts people had been improvising — lifting quality and cutting rework the same week.',
   },
   'ai-tools': {
+    title: 'Visibility - AI tools running outside oversight',
     concept: 'AI tool inventory',
     conceptDef: 'A single list of every AI tool in use across the company. You cannot govern, secure, or improve what you cannot see.',
     situation: 'The AI tools in use across your organisation are not fully inventoried, so some operate outside any oversight ("shadow AI").',
@@ -72,6 +80,7 @@ const N: Record<string, DeepNarrative> = {
     example: 'A company logged every AI tool in one registry and found three doing the same job — consolidating them cut both spend and risk at once.',
   },
   'profile': {
+    title: 'Context - what shapes your priorities',
     concept: 'Risk context',
     conceptDef: 'Your sector and AI footprint decide which risks matter most for you — the same gap can be minor for one business and serious for another.',
     situation: 'This context sets how the rest of your results are weighted, so your priorities are tailored rather than generic.',
@@ -82,6 +91,7 @@ const N: Record<string, DeepNarrative> = {
 };
 
 const FALLBACK: DeepNarrative = {
+  title: 'An area to strengthen',
   concept: 'This area',
   conceptDef: 'An aspect of your AI practice with room to strengthen.',
   situation: 'This area scored below where a well-run AI practice would sit.',

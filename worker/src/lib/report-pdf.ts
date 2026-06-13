@@ -69,7 +69,7 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
   doc.h2('1.  Executive summary');
   doc.para(
     `Your organisation scores ${score}/100 on AI compliance and maturity - a ${riskLabel.toLowerCase()} position. ` +
-    `Left unaddressed, the ${findingCount} gap${findingCount === 1 ? '' : 's'} in this report are the ones a regulator, customer, or partner tends to examine first, and they become more costly to fix the longer they wait. ` +
+    `Left unaddressed, the ${findingCount} gap${findingCount === 1 ? '' : 's'} in this report ${findingCount === 1 ? 'is the one' : 'are the ones'} a regulator, customer, or partner tends to examine first, and they become more costly to fix the longer they wait. ` +
     `Acted on, they are largely quick wins: about ${recoverableTotal} points of your score are recoverable through ${recCount} well-understood action${recCount === 1 ? '' : 's'}, most of them low-effort. ` +
     (weakSection ? `Your single biggest lever is ${weakSection.title} at ${weakSection.score}/100. ` : '') +
     `The pages that follow show exactly what to do, in priority order, and how AiLuna gets you there faster.`,
@@ -101,31 +101,39 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
       : 'Moving up a level is mostly about turning good intentions into repeatable habits - the specific, low-effort steps in this report are exactly how you climb.'),
   );
 
-  /* ── 4 · Detailed risks & findings ────────────────────────────── */
+  /* ── 4 · Detailed risks & findings (grouped by area — no repetition) ── */
   doc.h2('3.  Detailed risks & findings');
   if (findingCount === 0) {
     doc.para('Your answers did not trigger any findings - your AI practice already covers the fundamentals we assess. The opportunity now is to make these good practices systematic and to automate the parts you still do by hand.');
   } else {
-    doc.muted('Each finding is explained in business terms: what it is, why it costs you, and the fastest way to close it. They are ordered by priority.');
+    doc.muted('Each area is explained once, in business terms: what it is, why it costs you, and what we flagged. Areas are ordered by priority.');
     const recById = new Map(result.recommendations.map(r => [r.id, r]));
-    const seenSections = new Set<string>();
-    const sorted = [...result.findings].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity));
-    for (const f of sorted) {
-      const nar = getDeepNarrative(f.sectionKey);
-      const rec = f.recommendationIds.map(id => recById.get(id)).find(Boolean);
-      const recoverable = recoverableBy.get(f.sectionKey) ?? 0;
-      doc.h3(`[${f.severity.toUpperCase()}]  ${f.title}${recoverable > 0 ? `   -   recover ~${recoverable} pts (this area)` : ''}`);
-      if (!seenSections.has(f.sectionKey)) { conceptBox(doc, nar.concept, nar.conceptDef); seenSections.add(f.sectionKey); }
+    const sevRank = (s: string) => SEVERITY_ORDER.indexOf(s);
+    // Group findings by area so a shared explanation is written ONCE per area.
+    const groups = new Map<string, typeof result.findings>();
+    for (const f of result.findings) { const g = groups.get(f.sectionKey) ?? []; g.push(f); groups.set(f.sectionKey, g); }
+    const orderedKeys = [...groups.keys()].sort((a, b) =>
+      Math.min(...groups.get(a)!.map(f => sevRank(f.severity))) - Math.min(...groups.get(b)!.map(f => sevRank(f.severity))));
+    for (const key of orderedKeys) {
+      const fs = groups.get(key)!;
+      const nar = getDeepNarrative(key);
+      const recoverable = recoverableBy.get(key) ?? 0;
+      doc.h3(`${nar.title}${recoverable > 0 ? `   -   recover ~${recoverable} pts` : ''}`);
+      conceptBox(doc, nar.concept, nar.conceptDef);
       doc.para(nar.situation);
       doc.para(nar.businessCase);
       flowDiagram(doc, nar.flow);
       doc.para(`Example. ${nar.example} (Illustrative.)`);
-      doc.muted(`The move${rec ? ` - ${rec.effort} effort, ~${rec.timeframeDays} days` : ''}:`);
-      for (const step of (rec ? toSteps(rec.description) : [f.description])) doc.bullet(step);
-      if (rec?.expectedOutcome) doc.muted(`Outcome: ${rec.expectedOutcome}`);
-      const refs = (f.regulatoryRefs ?? rec?.regulatoryRefs ?? []).map(r => `${r.framework.replace(/_/g, ' ')} ${r.ref}`);
-      if (refs.length) doc.muted(`References: ${refs.join(' - ')} (advisory, not legal advice).`, 8);
-      doc.spacer(4);
+      doc.muted('What we flagged in this area, and what to do:');
+      const refSet = new Set<string>();
+      for (const f of [...fs].sort((a, b) => sevRank(a.severity) - sevRank(b.severity))) {
+        const rec = f.recommendationIds.map(id => recById.get(id)).find(Boolean);
+        doc.bullet(`[${f.severity.toUpperCase()}] ${f.title}`);
+        if (rec) doc.muted(`   Do: ${toSteps(rec.description)[0]}${rec.expectedOutcome ? ` (outcome: ${rec.expectedOutcome})` : ''}`, 9);
+        for (const r of (f.regulatoryRefs ?? rec?.regulatoryRefs ?? [])) refSet.add(`${r.framework.replace(/_/g, ' ')} ${r.ref}`);
+      }
+      if (refSet.size) doc.muted(`Frameworks referenced: ${[...refSet].join(', ')} (advisory, not legal advice).`, 7);
+      doc.spacer(8);
     }
   }
 
@@ -166,8 +174,27 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
     }
   }
 
+  /* ── 7 · Your three key priorities (the actionable summary) ───── */
+  doc.h2('7.  Your three key priorities');
+  doc.muted('If you do only three things, do these - chosen for the highest impact at the lowest effort.');
+  const IMPACT_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  const EFFORT_RANK: Record<string, number> = { low: 0, medium: 1, high: 2 };
+  const topRecs = [...result.recommendations]
+    .sort((a, b) => (IMPACT_RANK[a.impact] - IMPACT_RANK[b.impact]) || (EFFORT_RANK[a.effort] - EFFORT_RANK[b.effort]))
+    .slice(0, 3);
+  if (topRecs.length === 0) {
+    doc.para('Your fundamentals are largely in place - the priority is simply to keep them systematic and re-audit periodically.');
+  } else {
+    topRecs.forEach((r, i) => {
+      doc.h3(`Priority ${i + 1}:  ${r.title}`);
+      const why = (r.whyItMatters ?? '').trim();
+      doc.para(`${why}${why && !why.endsWith('.') ? '.' : ''} ${r.expectedOutcome ? `Outcome: ${r.expectedOutcome}` : ''}`.trim());
+      doc.muted(`Effort: ${r.effort} - about ${r.timeframeDays} days.`, 9);
+    });
+  }
+
   /* ── 8 · How AiLuna can help ──────────────────────────────────── */
-  doc.h2('7.  How AiLuna can help you improve');
+  doc.h2('8.  How AiLuna can help you improve');
   doc.para('You now know exactly what to fix. The real question is how fast - and whether you do it alone. AiLuna is built to compress that timeline.');
   doc.para(`What you gain. A clear, prioritised path from ${score}/100 toward a defensible position - turning a list of gaps into a sequence of quick, compounding wins that reduce risk, recover hours, and give you the responsible-AI proof points enterprise buyers ask for. You can achieve these improvements faster, and with less risk, using AiLuna.`);
   doc.muted('What happens next - three steps:');
@@ -177,7 +204,7 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
   doc.callout('Your next step: open your matched agents and start with action one from the roadmap. In the app, this links straight to your recommended agents and a deeper audit.', 'tint');
 
   /* ── 9 · Conclusion ───────────────────────────────────────────── */
-  doc.h2('8.  Conclusion');
+  doc.h2('9.  Conclusion');
   doc.para(
     `Your AI practice is ${standing}, and the path forward is clear and largely low-effort. ` +
     `The cost of waiting is quiet but compounding; the value of acting is a lower-risk, more efficient, more trusted business. ` +
