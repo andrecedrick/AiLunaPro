@@ -7,6 +7,7 @@
 
 import { PdfBuilder, PDF_COLORS as C } from './pdf-doc';
 import { measureText, wrapText } from './helvetica-metrics';
+import { LOGO_ASSET } from './logo-asset';
 
 /** A dedicated, elegant cover page. Draws on the current (first) page, then
  *  breaks so section 2 starts on a clean page. Absolute-positioned for control. */
@@ -16,23 +17,14 @@ export function coverPage(
 ): void {
   const { pageW, pageH, margin, contentW } = doc.metrics;
 
-  // Top brand hairline + the AiLunaPro logo: vector stacked-bars mark (violet ->
-  // cyan) beside the wordmark — crisp at any size, deterministic, no raster.
+  // Top brand hairline + the OFFICIAL AiLunaPro logo (embedded raster image,
+  // trimmed + composited onto white at build time). Crisp; deterministic from a
+  // committed constant — no network, no redesign.
   doc.gradientBar(0, pageH - 6, pageW, 6);
-  const bars = [11, 17, 23, 16];
-  const barW = 5, gap = 3, baseY = pageH - 84;
-  for (let i = 0; i < bars.length; i++) {
-    const t = i / (bars.length - 1);
-    const col: [number, number, number] = [
-      C.violet[0] + (C.cyan[0] - C.violet[0]) * t,
-      C.violet[1] + (C.cyan[1] - C.violet[1]) * t,
-      C.violet[2] + (C.cyan[2] - C.violet[2]) * t,
-    ];
-    doc.rectAbs(margin + i * (barW + gap), baseY, barW, bars[i], col);
-  }
-  const wmX = margin + bars.length * (barW + gap) + 10;
-  doc.textAbs(wmX, pageH - 72, 21, 'bold', C.violet, 'AiLunaPro');
-  doc.textAbs(wmX, pageH - 86, 8, 'bold', C.muted, 'C O M P L I A N C E   S U I T E');
+  const logoW = 156, logoH = (logoW * LOGO_ASSET.height) / LOGO_ASSET.width;
+  const logoTop = pageH - 40;
+  doc.image(LOGO_ASSET.deflatedRgbB64, LOGO_ASSET.width, LOGO_ASSET.height, margin, logoTop - logoH, logoW, logoH);
+  doc.textAbs(margin + 2, logoTop - logoH - 11, 8, 'bold', C.muted, 'C O M P L I A N C E   S U I T E');
 
   // Title block in the upper-middle third (lots of whitespace above + below).
   let ty = pageH * 0.56;

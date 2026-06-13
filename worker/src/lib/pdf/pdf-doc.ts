@@ -25,7 +25,8 @@ const CONTENT_BOTTOM = MARGIN + 24;
 interface TextOp { kind: 'text'; x: number; y: number; size: number; font: PdfFont; color: [number, number, number]; text: string }
 interface RectOp { kind: 'rect'; x: number; y: number; w: number; h: number; color: [number, number, number] }
 interface LineOp { kind: 'line'; x1: number; y1: number; x2: number; y2: number; color: [number, number, number] }
-type Op = TextOp | RectOp | LineOp;
+interface ImageOp { kind: 'image'; x: number; y: number; w: number; h: number; img: number }
+type Op = TextOp | RectOp | LineOp | ImageOp;
 
 interface PendingAnnot { pageIndex: number; rect: [number, number, number, number]; targetId: string }
 
@@ -50,6 +51,8 @@ export class PdfBuilder {
   private pages: Op[][] = [[]];
   private annots: PendingAnnot[] = [];
   private targets: Record<string, { pageIndex: number; y: number }> = {};
+  private images: Array<{ data: string; w: number; h: number }> = []; // deflated RGB (latin1)
+  private pageImages: Set<number>[] = [new Set()];                    // image indices used per page
   private pi = 0;       // current page index
   private y = PAGE_H - MARGIN; // cursor (PDF coords, from top)
 
@@ -57,8 +60,24 @@ export class PdfBuilder {
 
   private newPage(): void {
     this.pages.push([]);
+    this.pageImages.push(new Set());
     this.pi = this.pages.length - 1;
     this.y = PAGE_H - MARGIN;
+  }
+
+  /**
+   * Embed a raster image (deflated RGB, DeviceRGB 8bpc) as a PDF Image XObject
+   * and draw it with bottom-left at (x, y), sized (drawW x drawH) in points.
+   * `deflatedRgbB64` is zlib-deflated raw RGB, base64 — decoded to its byte
+   * string via atob (deterministic). Used for the official cover logo.
+   */
+  image(deflatedRgbB64: string, imgW: number, imgH: number, x: number, y: number, drawW: number, drawH: number): void {
+    const data = typeof atob === 'function'
+      ? atob(deflatedRgbB64)
+      : Buffer.from(deflatedRgbB64, 'base64').toString('latin1'); // test/node fallback
+    const idx = this.images.push({ data, w: imgW, h: imgH }) - 1;
+    this.pageImages[this.pi].add(idx);
+    this.cur().push({ kind: 'image', x, y, w: drawW, h: drawH, img: idx });
   }
 
   private ensure(h: number): void {
@@ -317,6 +336,9 @@ export class PdfBuilder {
     const d = pdfDate(opts.createdAt);
     objects[6] = `<< /Producer (AiLunaPro PDF v1) /Creator (AiLunaPro) /CreationDate (${d}) /ModDate (${d}) >>`;
 
+    // Image XObjects are numbered after all page objects (contiguous).
+    const imgObjBase = pageObjNum(this.pages.length - 1) + 2; // == 2*pages + 7
+
     for (let i = 0; i < this.pages.length; i++) {
       const content = renderContent(this.pages[i]);
       const annots = this.annots
@@ -329,8 +351,16 @@ export class PdfBuilder {
           return `<< /Type /Annot /Subtype /Link /Rect [ ${r} ] /Border [0 0 0] /Dest [ ${destPage} 0 R /XYZ ${fmt(MARGIN)} ${destY} null ] >>`;
         });
       const annotStr = annots.length ? ` /Annots [ ${annots.join(' ')} ]` : '';
-      objects[pageObjNum(i)] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${fmt(PAGE_W)} ${fmt(PAGE_H)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >>${annotStr} /Contents ${pageObjNum(i) + 1} 0 R >>`;
+      const imgs = [...this.pageImages[i]];
+      const xobjStr = imgs.length ? ` /XObject << ${imgs.map(k => `/Img${k} ${imgObjBase + k} 0 R`).join(' ')} >>` : '';
+      objects[pageObjNum(i)] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${fmt(PAGE_W)} ${fmt(PAGE_H)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>${xobjStr} >>${annotStr} /Contents ${pageObjNum(i) + 1} 0 R >>`;
       objects[pageObjNum(i) + 1] = `<< /Length ${byteLen(content)} >>\nstream\n${content}\nendstream`;
+    }
+
+    // Emit the image XObjects (binary deflated RGB streams).
+    for (let k = 0; k < this.images.length; k++) {
+      const im = this.images[k];
+      objects[imgObjBase + k] = `<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length ${im.data.length} >>\nstream\n${im.data}\nendstream`;
     }
 
     return assemble(objects);
@@ -353,7 +383,12 @@ function escapeText(s: string): string {
 function renderContent(ops: Op[]): string {
   const out: string[] = [];
   for (const op of ops) {
-    if (op.kind === 'rect') {
+    if (op.kind === 'image') {
+      out.push('q');
+      out.push(`${fmt(op.w)} 0 0 ${fmt(op.h)} ${fmt(op.x)} ${fmt(op.y)} cm`);
+      out.push(`/Img${op.img} Do`);
+      out.push('Q');
+    } else if (op.kind === 'rect') {
       out.push(`${fmt(op.color[0])} ${fmt(op.color[1])} ${fmt(op.color[2])} rg`);
       out.push(`${fmt(op.x)} ${fmt(op.y)} ${fmt(op.w)} ${fmt(op.h)} re f`);
     } else if (op.kind === 'line') {
