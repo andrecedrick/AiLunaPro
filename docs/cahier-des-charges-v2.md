@@ -81,7 +81,7 @@
 | 🔴 **U1 — Mode assisté zéro-expertise** | §20 (v2.4 U1) | wizard 1-action/screen |
 | 🔴 **K5 — Document Intelligence** | §20 (v2.4 K5) · §19.B5 | RAG/Vectorize (LLM) variant — still 🔴. Governance conflict **RESOLVED 2026-06-11** (§0bis.3): B5 shipped deterministic/no-LLM (`c4fe055`+`7bb273a`); K5 RAG/LLM stays a separate future item under the no-LLM guardrail |
 | 🔴 **X1 — Audit of AI-in-place / OPEX reduction** | §20 (v2.4 X1) | quantified €/mo savings |
-| 🔴 **K6 — Luna Copilot** | §20 (v2.4 K6) · §19.B4 | **CONFLICT:** v2.4 = LLM/Anthropic SSE agent vs §19.B4 = rule-based/no-LLM — **unresolved** |
+| 🔴 **K6 — Luna Copilot** | §20 (v2.4 K6) · §19.B4 | LLM/Anthropic SSE-agent variant — still 🔴. Governance conflict **RESOLVED 2026-06-11** (§0bis.3): B4 shipped rule-based/no-LLM (`bdaef89`); K6 LLM/SSE agent stays a separate future item under the no-LLM guardrail |
 | 🔴 **L3 — Managed quote (€ calibration, SLA)** | §20 (v2.4 L3) | |
 | 🔴 **L4 — Contract generation + e-signature** | §20 (v2.4 L4) | |
 | 🔴 **Y1 — SOP generation** | §20 (v2.4 Y1) | |
@@ -101,7 +101,7 @@
 
 ### 0bis.3 — Unresolved governance decisions (must be settled before related GO)
 1. **K5/B5 (documents):** ~~RAG/LLM (v2.4) **vs** deterministic/no-LLM~~ **RESOLVED 2026-06-11** — **B5 shipped deterministic/no-LLM** (`c4fe055`+`7bb273a`, §19.B5). The **K5 RAG/LLM variant remains a separate 🔴 future item**, still blocked by the standing no-LLM guardrail.
-2. **K6/B4 (Luna Copilot):** LLM/Anthropic SSE agent (v2.4) **vs** rule-based/no-LLM (§19.B4).
+2. **K6/B4 (Luna Copilot):** ~~LLM/Anthropic SSE agent (v2.4) **vs** rule-based/no-LLM~~ **RESOLVED 2026-06-11** — **B4 shipped rule-based/no-LLM** (`bdaef89`, §19.B4). The **K6 LLM/SSE-agent variant remains a separate 🔴 future item**, still blocked by the standing no-LLM guardrail.
 3. **i18n (B6/§9.24):** static dictionaries vs translation service.
 4. **B2/T1:** ~~lead-storage model~~ **RESOLVED 2026-06-10** (worker-only consented Firestore — see §19.B2); dunning/re-engagement **channel** (Sequenzy/Twilio) still open — blocks B2(e)/T1 only.
 > Note: the standing project guardrail today is **no-LLM / deterministic**. The **LLM variants** (K5 RAG, K6 conversational copilot) cannot proceed until this is explicitly overridden or the deterministic re-scope is confirmed — their deterministic counterparts (B5, B4) are shipped and closed.
@@ -3276,7 +3276,7 @@ delivered by B1 + B8.2.
 **requires GO**.
 
 ### B4 — "Luna AI Copilot" *(✅ COMPLETE — `bdaef89` prod-verified 2026-06-11; Option A rule-based)*
-> **B4 closed (permanent):** named, visible "Luna — your guide" surface — Topbar ✨ button → route-aware slide-over with a static deterministic route→guidance map (page purpose, 1–3 deep-link next actions, Help Center section link), journey position while the B8 journey is active (reuses `journeyState`), honest "Deterministic guidance · no AI chat" subtitle, dismissible via Esc/overlay/✕. **Option A (rule-based) confirmed; LLM remains out of scope** — K6 conversational copilot is a separate unresolved future item.
+> **B4 closed (permanent):** named, visible "Luna — your guide" surface — Topbar ✨ button → route-aware slide-over with a static deterministic route→guidance map (page purpose, 1–3 deep-link next actions, Help Center section link), journey position while the B8 journey is active (reuses `journeyState`), honest "Deterministic guidance · no AI chat" subtitle, dismissible via Esc/overlay/✕. **Option A (rule-based) confirmed; LLM remains out of scope** — K6 conversational copilot is a separate, gated future item (no-LLM guardrail).
 **Definition:** a **visible, named in-app surface** ("Luna AI Copilot") whose role is to
 **guide users** through audits, reports, and features; improve **onboarding**; and reduce
 friction/confusion across the product.
@@ -3338,7 +3338,7 @@ Pages-from-root / Worker-from-`worker/`).
 > **B8.3 closed (permanent):** `JourneyProgress` bar mounted once in the authed app shell — deterministic 4-stage indicator (Choose→Audit→Understand→Adopt) with per-step "why you're here / what's next" hints + "Choose audit type →" CTA; reactive to in-page step advances (`JOURNEY_EVENT`); `audit` step wired on New Audit + Express run entry; first step revisitable. **Default-ON (product decision, `f81aa5b`):** the bar appears automatically for every user on every authed shell page while the journey is active; it is hidden ONLY by explicit user Dismiss (persisted) or by reaching the Adopt step — no route-surface gate. Deterministic, no LLM, no PII, localStorage-only, no new deps.
 **Goal:** replace the open dashboard-first experience with a **linear, guided funnel** (e-commerce-style) that auto-advances the user from step to step toward value (audit → insights → savings → adoption), so users are never lost and never face a "blank choice" without guidance.
 
-**Relationship to B4 (Luna AI Copilot):** B8 is the **deterministic journey/redirection layer**; the **B4 "Luna AI Copilot" surface** is its visible guide. **Deterministic, rule-based only — NO LLM** (unless explicitly approved later). This is explicitly **distinct from the v2.4 K6 Luna Copilot** (LLM/SSE conversational agent, §20), which remains a separate unresolved FUTURE item.
+**Relationship to B4 (Luna AI Copilot):** B8 is the **deterministic journey/redirection layer**; the **B4 "Luna AI Copilot" surface** is its visible guide. **Deterministic, rule-based only — NO LLM** (unless explicitly approved later). This is explicitly **distinct from the v2.4 K6 Luna Copilot** (LLM/SSE conversational agent, §20), which remains a separate, gated FUTURE item (no-LLM guardrail).
 
 **Step-by-step flow (to specify, not build):**
 1. **Sign-up / Login →** auto-redirect to a **guided choice**: *Start Audit Express* vs *Create a New Audit*; Luna explains the difference in plain terms.
@@ -3389,7 +3389,7 @@ B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent 
 - **🟡 W1 — Quick Win matrix** *(high)*: Impact×Effort scoring on detected tasks → 2×2 matrix + top-3. **Partial** (matrix inside Express PDF). **Missing:** standalone scored cockpit. **AC:** detected tasks → matrix + explained top-3.
 - **🔴 X1 — Audit of AI-in-place & OPEX reduction** *(high)*: inventory current AI tools + monthly cost → detect redundancy/oversizing/Shadow-AI → propose consolidation/model-change/renegotiation → quantify €/mo + payback; feeds ROI (K2A) + reco (K3+). **AC:** 3+ tools → before/after table + €/mo savings + 3 actions.
 - **🔴 K3+ — Recommendation Fork**: AiLunaPro-coverage score; ≥ threshold → AiLunaPro (badge) else managed agents (L3); mandatory transparency ("when external is better"). *(K3A base is ✅; the fork extension is 🔴.)*
-- **🔴 K6 — Luna Copilot** *(detailed tech spec)*: conversational agent orchestrating the 9-step journey. **Stack:** Cloudflare Worker **SSE streaming**, state in Firestore `audit_sessions/{id}`, **Anthropic API (Claude) tool-use** orchestrator, RAG via Vectorize+R2 (K5). Tools: `analyze_site`, `query_documents`, `run_diagnostic`, `audit_existing_ai`, `quick_win_matrix`, `classify_eu_ai_act`, `calculate_roi`, `recommend_agents`, `build_quote`, `draft_contract`, `generate_sop`, `save_audit_state`. APIs: `POST /api/copilot/session`, `POST /api/copilot/message` (SSE), `GET /api/copilot/session/{id}`. **AC:** one session produces profile→diagnostic→OPEX audit→Quick-Win→ROI→forked reco→decision→offer→SOP, with save/resume, no dead form, no PII leak. **⚠️ CONFLICT** with §19.B4 (rule-based/no-LLM). **Unresolved.**
+- **🔴 K6 — Luna Copilot** *(detailed tech spec)*: conversational agent orchestrating the 9-step journey. **Stack:** Cloudflare Worker **SSE streaming**, state in Firestore `audit_sessions/{id}`, **Anthropic API (Claude) tool-use** orchestrator, RAG via Vectorize+R2 (K5). Tools: `analyze_site`, `query_documents`, `run_diagnostic`, `audit_existing_ai`, `quick_win_matrix`, `classify_eu_ai_act`, `calculate_roi`, `recommend_agents`, `build_quote`, `draft_contract`, `generate_sop`, `save_audit_state`. APIs: `POST /api/copilot/session`, `POST /api/copilot/message` (SSE), `GET /api/copilot/session/{id}`. **AC:** one session produces profile→diagnostic→OPEX audit→Quick-Win→ROI→forked reco→decision→offer→SOP, with save/resume, no dead form, no PII leak. **Conflict with §19.B4 RESOLVED 2026-06-11** (§0bis.3): the deterministic/rule-based Luna surface shipped as **B4** (`bdaef89`); this **K6 LLM/Anthropic-SSE-agent variant stays 🔴** and remains gated by the no-LLM guardrail.
 - **🔴 L3 — Managed quote** *(€ calibration, SLA)*: setup + monthly calibrated price + SLA. **AC:** full quote with specs/SLA/billing.
 - **🔴 L4 — Contract generation + e-signature**: accepted quote → signable archived contract.
 - **🔴 Y1 — SOP generation**: process → SOP with roles, triggers, fallback + agent runbook.
