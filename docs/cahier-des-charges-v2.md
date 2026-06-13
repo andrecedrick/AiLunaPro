@@ -60,6 +60,11 @@
 | **Option B — B3** System Builder core promotion — localStorage step + checklist-tick persistence (device-only), per-step progress count, honest copy, Registry→design-guide bridge; nav + audit-results bridge already via B1/B8.2; Firestore persistence deferred | `55e4337` + `a42fd8a` (decision) (prod-verified 2026-06-11) |
 | **Option B — B3 UX patch** Final System Builder step shows "✓ End of the guide" marker instead of a disabled Next button; checklist confirmed non-gating (intent documented in code) | `bc4c0d3` (prod-verified 2026-06-11) |
 | **Option B — B4** Luna AI Copilot surface (Option A, rule-based) — Topbar ✨ Luna button → named route-aware slide-over: deterministic per-route guidance map (20 routes + fallback), suggested deep-link actions, journey position (reuses journeyState), Help Center section link; "no AI chat" stated honestly; always dismissible; no LLM/PII/new deps | `bdaef89` + `7a9dc54` (decision) (prod-verified 2026-06-11) |
+| **Option B — B5** Document upload → audit analysis (deterministic, no LLM) — client-side text extraction (`.txt`/`.md` + paste, raw bytes never leave the browser), authed org-gated `analyze-document` worker route reusing the existing extract→signals→`scrubPii`→understand pipeline (analyze→derive→discard, zero raw persistence), output feeds the existing Audit Express save path; clean input UX (real type validation, binary sniffing of mis-named files, file shown as a chip not dumped, prominent single Analyze CTA, specific errors) | `c4fe055` + `bb106fd` (UX) + `0365e0b` (decision) (prod-verified 2026-06-11) |
+| **Option B — B5.1** PDF document support — browser-side text-layer extraction via lazy `pdfjs-dist@6.0.227` (own chunk, zero main-bundle impact, worker covered by existing CSP), scanned-PDF detection (no OCR), 8 MB/50-page caps, drag-and-drop + Extracting state; deterministic, no LLM, raw bytes stay in the browser; B5 v1 (txt/md/paste) unchanged | `7bb273a` (prod-verified 2026-06-12) |
+| **Results presentation redesign** (deterministic, no LLM) — reusable `InsightCard` (what it means / why / Input→Process→Output→Gain / illustrative example / conversion-first "Do this next"), full-audit `ExplainedResults` (finding⊕recommendation⊕recoverable score points⊕agents CTA) replacing flat lists, Audit Express ROI restructured with indicative ±15% ranges + What-to-do-first + agents/full-audit CTAs; static section-narrative layer, honest ranges not fake precision | `5afc36e` (prod-verified 2026-06-12) |
+| **Routing reload-safety fix** — boot deep-link parser now handles `#/audit/result`, `#/audit/new`, `#/audit/assistance`, so a refresh / stale-bundle recovery after a full-audit submit lands on the results page instead of falling through to the dashboard | `ad77b02` (prod-verified 2026-06-12) |
+| **Consulting-grade white-paper PDFs** (Report PDF v2.0.0 + Audit Express) — 9-section narrative (cover + embedded **official AiLunaPro logo**, exec summary, maturity snapshot, findings **grouped by area** so each explanation renders once, strengths/opportunities, business impact in recoverable points, roadmap, How-AiLuna, conclusion), deterministic deep business-language content + pedagogical concept boxes + Input→Process→Output→Impact flow, "Your three key priorities", typography/readability pass, **bold key lead sentence per section**; logo embedded as a deterministic Image-XObject from a committed constant (no network/runtime), byte-identical output, no LLM/PII, no fabricated money | `36ebfd0` + `d8891db` + `6209ce3` + `7431889` + `9e0d410` (prod-verified 2026-06-13) |
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
@@ -74,7 +79,7 @@
 | Task | Spec | Note |
 |---|---|---|
 | 🔴 **U1 — Mode assisté zéro-expertise** | §20 (v2.4 U1) | wizard 1-action/screen |
-| 🔴 **K5 — Document Intelligence** | §20 (v2.4 K5) · §19.B5 | **CONFLICT:** v2.4 = RAG/Vectorize (LLM) vs §19.B5 = no-LLM/deterministic — **unresolved** |
+| 🔴 **K5 — Document Intelligence** | §20 (v2.4 K5) · §19.B5 | RAG/Vectorize (LLM) variant — still 🔴. Governance conflict **RESOLVED 2026-06-11** (§0bis.3): B5 shipped deterministic/no-LLM (`c4fe055`+`7bb273a`); K5 RAG/LLM stays a separate future item under the no-LLM guardrail |
 | 🔴 **X1 — Audit of AI-in-place / OPEX reduction** | §20 (v2.4 X1) | quantified €/mo savings |
 | 🔴 **K6 — Luna Copilot** | §20 (v2.4 K6) · §19.B4 | **CONFLICT:** v2.4 = LLM/Anthropic SSE agent vs §19.B4 = rule-based/no-LLM — **unresolved** |
 | 🔴 **L3 — Managed quote (€ calibration, SLA)** | §20 (v2.4 L3) | |
@@ -89,17 +94,17 @@
 | ✅ **Option B — B2** Login/signup + lead capture + abandoned-flow — **COMPLETE (a–d)** | §19.B2 | `c84532c` (prod-verified 2026-06-11); decisions resolved in §19.B2 (`8933726`); **B2(e) re-engagement 🔴 deferred** — blocked on the T1 outbound-channel decision (§0bis.3) |
 | ✅ **Option B — B3** System Builder promoted to core feature — **COMPLETE** | §19.B3 | `55e4337` (prod-verified 2026-06-11); decision resolved (`a42fd8a`): localStorage persistence + checklists; Firestore deferred |
 | ✅ **Option B — B4** Luna AI Copilot (Option A, rule-based) — **COMPLETE** | §19.B4 | `bdaef89` (prod-verified 2026-06-11); decision resolved (`7a9dc54`): rule-based confirmed, LLM out of scope (K6 separate) |
-| 🔴 **Option B — B5** Document upload → audit | §19.B5 | gated; K5 conflict |
+| ✅ **Option B — B5** Document upload → audit analysis (deterministic, no LLM) — **COMPLETE (+ B5.1 PDF)** | §19.B5 | `c4fe055`+`bb106fd` (prod-verified 2026-06-11) + **B5.1** PDF text-layer `7bb273a` (2026-06-12); decision resolved (`0365e0b`): deterministic/no-LLM confirmed, K5 RAG/LLM separate (§0bis.3) |
 | 🔴 **Option B — B6** i18n + currency | §19.B6 | gated |
 | ✅ **Option B — B7** Product hygiene + final inspection — **COMPLETE** | §19.B7 | `00cc9a6`+`02a9710` (hygiene) · `53d4987` (full inspection batch, prod-verified 2026-06-10); deferred polish recorded in §19.B7 |
 | ✅ **Option B — B8** Guided User Journey & Intelligent Redirection (Luna flow) — **EPIC COMPLETE** | §19.B8 | **B8.1 ✅ `cd76463`** (engine + guided-choice) · **B8.2 ✅ `546ebbc`+`1abd0ee`** (transitions + CTA emphasis) · **B8.3 ✅ `8fa0acb`+`f81aa5b`** (progress bar + continuous guidance, default-ON); all prod-verified; deterministic/no-LLM; distinct from K6 |
 
 ### 0bis.3 — Unresolved governance decisions (must be settled before related GO)
-1. **K5/B5 (documents):** RAG/LLM (v2.4) **vs** deterministic/no-LLM (§19.B5).
+1. **K5/B5 (documents):** ~~RAG/LLM (v2.4) **vs** deterministic/no-LLM~~ **RESOLVED 2026-06-11** — **B5 shipped deterministic/no-LLM** (`c4fe055`+`7bb273a`, §19.B5). The **K5 RAG/LLM variant remains a separate 🔴 future item**, still blocked by the standing no-LLM guardrail.
 2. **K6/B4 (Luna Copilot):** LLM/Anthropic SSE agent (v2.4) **vs** rule-based/no-LLM (§19.B4).
 3. **i18n (B6/§9.24):** static dictionaries vs translation service.
 4. **B2/T1:** ~~lead-storage model~~ **RESOLVED 2026-06-10** (worker-only consented Firestore — see §19.B2); dunning/re-engagement **channel** (Sequenzy/Twilio) still open — blocks B2(e)/T1 only.
-> Note: the standing project guardrail today is **no-LLM / deterministic**. Items 1–2 cannot proceed until this is explicitly overridden or the deterministic re-scope is confirmed.
+> Note: the standing project guardrail today is **no-LLM / deterministic**. The **LLM variants** (K5 RAG, K6 conversational copilot) cannot proceed until this is explicitly overridden or the deterministic re-scope is confirmed — their deterministic counterparts (B5, B4) are shipped and closed.
 
 ---
 
@@ -3283,7 +3288,8 @@ conceptual cover today: `#/audit/assistance` (static action plan), Agents + `/ap
 deterministic guidance** (contextual help, guided next-steps, deep-links; no LLM).
 Option B (conversational/LLM) remains explicitly out of scope (K6 = separate future item).
 
-### B5 — Document upload → audit analysis *(net-new GATED EPIC)*
+### B5 — Document upload → audit analysis *(✅ COMPLETE — `c4fe055` prod-verified 2026-06-11; `7bb273a` B5.1 PDF 2026-06-12; deterministic/no-LLM)*
+> **B5 closed (permanent):** client-side text extraction — v1 = `.txt`/`.md` + paste (`c4fe055`, clean input UX `bb106fd`); **B5.1** adds **PDF text-layer** via lazy `pdfjs-dist@6.0.227` (`7bb273a`), scanned-PDF detected (no OCR), 8 MB/50-page caps, drag-and-drop. Authed org-gated `analyze-document` route reuses the existing extract→`scrubPii`→understand pipeline; **analyze → derive non-PII signals → discard (zero raw persistence)**; output feeds the existing Audit Express path (no new report engine). Deterministic/no-LLM confirmed (`0365e0b`); **K5 RAG/LLM stays a separate future item** (§0bis.3). DOCX/XLSX/OCR remain out of scope.
 **Definition:** allow companies to **upload documents** (PDF, text, …) so the system can
 **analyze** them and **feed / pre-fill** an audit or report from the content.
 **Current state (factual):** never scoped; net-new (see the verification note — both flows
@@ -3355,19 +3361,19 @@ Pages-from-root / Worker-from-`worker/`).
 **Status:** Option B — New evolution · Net-new · **GATED**. No implementation without explicit GO. Tracked in §0bis.2.
 
 ### 19.x — Option B summary
-**Added (specification only, gated):** B1 global nav for non-sidebar pages · B2 systematic
+**Specced under Option B (status authoritative in §0bis.2):** B1 global nav for non-sidebar pages · B2 systematic
 login/sign-up + lead capture · B3 System Builder as core feature · **B4 Luna AI Copilot
-(gated epic)** · **B5 Document upload → audit (gated epic)** · B6 i18n & currency ·
+(✅ shipped — Option A rule-based)** · **B5 Document upload → audit (✅ shipped + B5.1 PDF)** · B6 i18n & currency ·
 B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent Redirection
-(Luna flow — deterministic, gated epic; distinct from K6)**.
+(✅ shipped — Luna flow, deterministic; distinct from K6)**.
 **Decisions still required before any GO:**
 1. **B4** — ~~rule-based vs LLM Copilot~~ **RESOLVED 2026-06-11: Option A (rule-based) confirmed** (LLM remains out of scope; K6 separate future item — see §19.B4).
-2. **B5** — ~~confirm deterministic + v1 format scope~~ **RESOLVED 2026-06-11: deterministic/no-LLM confirmed**; v1 formats = `.txt`/`.md` + paste-text (PDF text-layer deferred pending `pdfjs-dist` dep approval); K5 RAG remains a separate future item — see §19.B5.
+2. **B5** — ~~confirm deterministic + v1 format scope~~ **RESOLVED 2026-06-11: deterministic/no-LLM confirmed**; v1 formats = `.txt`/`.md` + paste-text, **PDF text-layer shipped in B5.1** (`pdfjs-dist@6.0.227`, `7bb273a`); K5 RAG remains a separate future item — see §19.B5.
 3. **B2** — lead-storage model (analytics vs new consented store).
 4. **B6** — translation approach (static dictionaries vs service; deps/determinism impact).
 5. **B3** — ~~whether v1.x adds persistence to System Builder~~ **RESOLVED 2026-06-11** (localStorage-only persistence + checklists; Firestore deferred — see §19.B3).
 6. **Prioritization & phasing** of B1–B7 (not yet committed).
-**Unchanged:** all §18 closed epics remain as-is; nothing above is implemented.
+**Implementation status (authoritative in §0bis.2):** B1, B2 (a–d), B3, B4, B5 (+B5.1), B7, B8 are ✅ shipped & prod-verified; **B2(e) re-engagement and B6 i18n remain 🔴 / gated**. All §18 closed epics remain as-is.
 
 ---
 
@@ -3379,7 +3385,7 @@ B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent 
 
 - **🔴 U1 — Mode assisté zéro-expertise** *(transversal)*: 1-action-per-screen wizard, "Luna does it for you". **AC:** a non-technical user completes the 9 steps alone.
 - **🟡 V1 — Analyse de site** *(high)*: lightweight crawl → company profile + detected stack/AI. **Shipped lite** via Audit Express `runExtraction`. **Missing:** editable fiche + standalone surface. **AC:** URL → editable profile + tools.
-- **🔴 K5 — Document Intelligence**: upload PDF/DOCX/XLSX/CSV → R2 + **Vectorize (namespace orgId)** → company fiche + audit quality score; at-rest encryption, PII detection, org isolation, erasure. **AC:** 3 docs → fiche + ≥5 tasks + ≥1 risk, source-traced. **⚠️ CONFLICT** with §19.B5 (no-LLM/deterministic, no raw persistence). **Unresolved.**
+- **🔴 K5 — Document Intelligence**: upload PDF/DOCX/XLSX/CSV → R2 + **Vectorize (namespace orgId)** → company fiche + audit quality score; at-rest encryption, PII detection, org isolation, erasure. **AC:** 3 docs → fiche + ≥5 tasks + ≥1 risk, source-traced. **Conflict with §19.B5 RESOLVED 2026-06-11** (§0bis.3): the deterministic/no-LLM document flow shipped as **B5/B5.1** (`c4fe055`+`7bb273a`); this **K5 RAG/Vectorize/LLM variant stays 🔴** and remains gated by the no-LLM guardrail.
 - **🟡 W1 — Quick Win matrix** *(high)*: Impact×Effort scoring on detected tasks → 2×2 matrix + top-3. **Partial** (matrix inside Express PDF). **Missing:** standalone scored cockpit. **AC:** detected tasks → matrix + explained top-3.
 - **🔴 X1 — Audit of AI-in-place & OPEX reduction** *(high)*: inventory current AI tools + monthly cost → detect redundancy/oversizing/Shadow-AI → propose consolidation/model-change/renegotiation → quantify €/mo + payback; feeds ROI (K2A) + reco (K3+). **AC:** 3+ tools → before/after table + €/mo savings + 3 actions.
 - **🔴 K3+ — Recommendation Fork**: AiLunaPro-coverage score; ≥ threshold → AiLunaPro (badge) else managed agents (L3); mandatory transparency ("when external is better"). *(K3A base is ✅; the fork extension is 🔴.)*
