@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
 import { parseInviteHash } from '../lib/team/invitationsService';
 import { apiAcceptInvite, getIdToken } from '../lib/team/teamApiClient';
 import { resolveLayer } from '../lib/featureFlags';
@@ -24,6 +25,7 @@ const STORAGE_KEY = 'ailunapro:pendingInvite';
 export function AcceptInvitePage() {
   const { session, isAuthenticated } = useAuth();
   const { navigate } = useRoute();
+  const I = useLocale().auth.invite;
   const [state, setState] = useState<State>('parsing');
   const [error, setError] = useState<string | null>(null);
   const [planName, setPlanName] = useState<string | null>(null);
@@ -126,19 +128,19 @@ export function AcceptInvitePage() {
         </div>
 
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>
-          {state === 'parsing'       && 'Reading invitation…'}
-          {state === 'auth-required' && 'Sign in to accept'}
-          {state === 'verifying'     && 'Verifying invitation…'}
-          {state === 'accepting'     && 'Adding you to the workspace…'}
-          {state === 'done'          && 'Welcome to the team!'}
-          {state === 'error'         && 'Invitation problem'}
+          {state === 'parsing'       && I.titleParsing}
+          {state === 'auth-required' && I.titleAuthRequired}
+          {state === 'verifying'     && I.titleVerifying}
+          {state === 'accepting'     && I.titleAccepting}
+          {state === 'done'          && I.titleDone}
+          {state === 'error'         && I.titleError}
         </h1>
 
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 22px', lineHeight: 1.55 }}>
-          {state === 'auth-required' && 'Sign in or create an account to accept this invitation.'}
-          {state === 'done'          && (planName ? `You joined as ${planName}. Redirecting…` : 'Redirecting…')}
+          {state === 'auth-required' && I.authRequiredBody}
+          {state === 'done'          && (planName ? `You joined as ${planName}. ${I.redirecting}` : I.redirecting)}
           {state === 'error'         && (error ?? 'Something went wrong.')}
-          {(state === 'parsing' || state === 'verifying' || state === 'accepting') && 'Please wait a moment.'}
+          {(state === 'parsing' || state === 'verifying' || state === 'accepting') && I.pleaseWait}
         </p>
 
         {state === 'auth-required' && (
@@ -148,14 +150,14 @@ export function AcceptInvitePage() {
               onClick={() => navigate({ name: 'signup' })}
               style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
             >
-              Create account
+              {I.createAccountButton}
             </button>
             <button
               type="button"
               onClick={() => navigate({ name: 'login' })}
               style={{ padding: '10px 22px', borderRadius: 10, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
             >
-              Sign in
+              {I.signInButton}
             </button>
           </div>
         )}
@@ -166,7 +168,7 @@ export function AcceptInvitePage() {
             onClick={() => navigate({ name: 'dashboard' })}
             style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
           >
-            Back to dashboard
+            {I.backToDashboard}
           </button>
         )}
       </div>

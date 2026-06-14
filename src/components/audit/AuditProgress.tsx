@@ -1,5 +1,6 @@
 import { useAudit } from '../../context/AuditContext';
 import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import { qSection } from '../../lib/locale/i18n/questionsAccess';
 import { auditSections } from '../../data/mockAuditQuestions';
 
@@ -44,7 +45,7 @@ export function AuditProgress() {
               marginBottom: 4,
             }}
           >
-            Step {currentStep + 1} of {totalSteps}
+            {format(T.auditForm.stepOf, { current: currentStep + 1, total: totalSteps })}
           </div>
           <h2
             style={{
@@ -79,7 +80,7 @@ export function AuditProgress() {
               fontWeight: 600,
             }}
           >
-            Overall progress
+            {T.auditForm.overallProgress}
           </div>
           <div
             style={{

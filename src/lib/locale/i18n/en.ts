@@ -539,6 +539,277 @@ export const en = {
       "startFreeTrial": "Start Free Trial →"
     }
   },
+  topbar: {
+    "title": {
+      "dashboard": "Dashboard",
+      "audit/new": "New Audit",
+      "audit/result": "Audit Result",
+      "audit/assistance": "Implementation Guide",
+      "audit/history": "Audit history",
+      "reports": "Reports",
+      "reports/detail": "Report",
+      "reports/share": "Shared Report",
+      "registry": "AI Registry",
+      "system-builder": "System Builder",
+      "agents": "Agents",
+      "agents/detail": "Agent",
+      "team": "Team",
+      "settings": "Settings",
+      "billing": "Billing",
+      "billing/tokens": "Tokens",
+      "help": "Help",
+      "audit-express/run": "Run Audit Express",
+      "audit-express/saved": "Saved Audits",
+      "audit-express/detail": "Saved Audit"
+    },
+    "subtitle": {
+      "dashboard": "AI Compliance Overview"
+    },
+    "search": {
+      "placeholder": "Search audits, reports…",
+      "toast": "Searching for \"{query}\"…"
+    },
+    "dateRange": {
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "thisMonth": "This month",
+      "lastMonth": "Last month",
+      "customRange": "Custom range…",
+      "from": "From",
+      "to": "To",
+      "apply": "Apply range",
+      "toast": "Date range: {label}",
+      "errPickBoth": "Pick a from and to date.",
+      "errOrder": "From date must be before To date."
+    },
+    "notifications": {
+      "label": "Notifications",
+      "title": "Notifications",
+      "empty": "No notifications yet."
+    },
+    "tokens": {
+      "aria": "{n} tokens left — manage tokens",
+      "title": "{n} tokens left · click to manage",
+      "balance": "{used} / {total}",
+      "corruptTitle": "Token balance contains invalid data — click to repair",
+      "corruptLabel": "Tokens need repair"
+    },
+    "luna": {
+      "aria": "Open Luna, your guide",
+      "title": "Luna — your guide",
+      "label": "Luna"
+    },
+    "theme": {
+      "toDark": "Switch to dark mode",
+      "toLight": "Switch to light mode"
+    },
+    "newAudit": {
+      "label": "New Audit",
+      "denied": "Your role doesn't allow creating audits. Audits are for Owner, Admin, and Member."
+    },
+    "sidebar": {
+      "openMenu": "Open navigation menu",
+      "closeMenu": "Close navigation menu",
+      "menu": "Menu",
+      "expand": "Expand sidebar",
+      "collapse": "Collapse sidebar"
+    }
+  },
+  auditForm: {
+    "title": "New Audit",
+    "subtitle": "Walk through 8 sections to assess your AI compliance posture. Your progress is saved as you go — you can leave and come back anytime.",
+    "loading": "Loading audit…",
+    "forbiddenTitle": "Your role doesn't allow creating audits",
+    "forbiddenBody": "Audits are available to Owner, Admin, and Member roles. Ask a workspace owner or admin if you need audit access.",
+    "errorLoad": "Failed to load audit. Refresh to retry.",
+    "pageTitle": "New Audit",
+    "pageIntro": "Walk through 8 sections to assess your AI compliance posture. Your progress is saved as you go — you can leave and come back anytime.",
+    "stepOf": "Step {current} of {total}",
+    "overallProgress": "Overall progress",
+    "previous": "← Previous",
+    "saveDraft": "Save draft",
+    "saveContinue": "Save & Continue →",
+    "submit": "Submit Audit ✓",
+    "saved": "✓ Saved"
+  },
+  settingsPages: {
+    "shell": {
+      "title": "Settings",
+      "subtitle": "Manage your profile, organization, and preferences."
+    },
+    "tabs": {
+      "profile": "Profile",
+      "org": "Organization",
+      "preferences": "Preferences",
+      "billing": "Billing"
+    },
+    "profile": {
+      "sectionTitle": "Profile",
+      "avatarHint": "Avatar is generated from your initials. Custom upload coming later.",
+      "displayName": "Display name",
+      "displayNamePlaceholder": "Your full name",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "emailVerificationTitle": "Email verification",
+      "emailVerified": "✓ Your email is verified.",
+      "sendVerification": "Send verification email",
+      "sendingVerification": "Sending…",
+      "passwordTitle": "Password",
+      "passwordHint": "We will send a reset link to your email. The link expires after one hour.",
+      "sendPasswordReset": "Send password reset email",
+      "sendingReset": "Sending…",
+      "savedToast": "Profile updated."
+    },
+    "org": {
+      "sectionTitle": "Organization",
+      "fallbackName": "Workspace",
+      "nameLabel": "Organization name",
+      "namePlaceholder": "Acme Corp",
+      "ownerOnlyNotice": "Only the workspace owner can rename or delete the organization.",
+      "planTitle": "Plan",
+      "dangerZoneTitle": "Danger zone",
+      "dangerZoneHint": "Deleting an organization removes all of its data: audits, reports, registry, and team members. This action cannot be undone.",
+      "deleteButton": "Delete organization…",
+      "deleteDialogTitle": "Delete \"{name}\"?",
+      "deleteDialogBody1": "This will permanently remove the organization, all its audits, reports, registry items, and team memberships.",
+      "deleteDialogBody2": "You will be asked to confirm one more time before any data is touched.",
+      "deleteConfirmLabel": "I understand, continue",
+      "renamedToast": "Organization renamed.",
+      "deletionDeferredToast": "Organization deletion will be enabled in a later backend step."
+    },
+    "billing": {
+      "sectionTitle": "Billing",
+      "checkingAccess": "Checking access…"
+    }
+  },
+  common: {
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "loading": "Loading…",
+    "save": "Save",
+    "confirm": "Confirm",
+    "close": "Close",
+    "tryAgain": "Try again",
+    "reloadPage": "Reload page",
+    "retryNow": "Retry now",
+    "reload": "Reload",
+    "somethingWentWrong": "Something went wrong",
+    "couldntLoadThePage": "Couldn’t load the page",
+    "stillConnecting": "Still connecting…"
+  },
+  journey: {
+    "label": {
+      "choice": "Choose",
+      "audit": "Audit",
+      "understanding": "Understand",
+      "adoption": "Adopt"
+    },
+    "hint": {
+      "choice": "Choose how to start — Audit Express for a quick snapshot, or a New Audit for depth.",
+      "audit": "Complete your audit — we'll explain what it means and what to do next.",
+      "understanding": "Here's what your audit means. Review the insights, then pick a next step."
+    },
+    "progress": {
+      "ariaLabel": "Guided journey progress"
+    },
+    "chooseAuditType": "Choose audit type →",
+    "dismissAriaLabel": "Dismiss guided journey",
+    "dismiss": "Dismiss",
+    "next": {
+      "whatNext": "What would you like to do next?",
+      "recommendedTag": "Recommended",
+      "backToDashboard": "Back to dashboard",
+      "cta": {
+        "agents": {
+          "title": "See recommended agents",
+          "body": "Tools matched to your audit that can save time on the work you flagged."
+        },
+        "billing": {
+          "title": "Explore membership",
+          "body": "Plans, tokens, and what's included — adopt at your own pace."
+        },
+        "systemBuilder": {
+          "title": "Open System Builder",
+          "body": "A read-only guide to design your AI system across six dimensions."
+        }
+      }
+    },
+    "start": {
+      "greetingTitle": "Hi, I'm Luna — let's get you started.",
+      "greetingBody": "Pick how you'd like to begin. You can switch anytime, and you can always go straight to your dashboard.",
+      "heading": "How do you want to start?",
+      "express": {
+        "title": "Audit Express",
+        "body": "A fast, ~5-minute AI-readiness snapshot — a few quick questions, an optional website analysis, indicative ROI. Best for a first look.",
+        "cta": "Start Audit Express →"
+      },
+      "full": {
+        "title": "New Audit (full)",
+        "body": "The complete structured questionnaire — deeper compliance + maturity scoring you can turn into a shareable report. Best for a thorough assessment.",
+        "cta": "Create a New Audit →"
+      },
+      "skip": "Skip — go straight to my dashboard"
+    }
+  },
+  auth: {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Welcome back to AiLunaPro",
+      "forgotPassword": "Forgot password?",
+      "signingIn": "Signing in…",
+      "signInButton": "Sign in",
+      "noAccountPrompt": "Don't have an account?",
+      "signUpLink": "Sign up"
+    },
+    "field": {
+      "emailAddress": "Email address",
+      "password": "Password",
+      "fullName": "Full name",
+      "workEmail": "Work email"
+    },
+    "placeholder": {
+      "email": "you@company.com",
+      "fullName": "Sophie Martin"
+    },
+    "signup": {
+      "title": "Create your account",
+      "subtitle": "Start your AI compliance journey",
+      "passwordHint": "Minimum 8 characters",
+      "creatingAccount": "Creating account…",
+      "createAccountButton": "Create account",
+      "haveAccountPrompt": "Already have an account?",
+      "signInLink": "Sign in"
+    },
+    "forgot": {
+      "title": "Reset password",
+      "subtitleSent": "Check your inbox for a reset link.",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "sentDetail": "Check your spam folder if it doesn't arrive.",
+      "backToSignIn": "← Back to sign in",
+      "sending": "Sending…",
+      "sendResetLink": "Send reset link",
+      "rememberPrompt": "Remember your password?",
+      "signInLink": "Sign in"
+    },
+    "invite": {
+      "titleParsing": "Reading invitation…",
+      "titleAuthRequired": "Sign in to accept",
+      "titleVerifying": "Verifying invitation…",
+      "titleAccepting": "Adding you to the workspace…",
+      "titleDone": "Welcome to the team!",
+      "titleError": "Invitation problem",
+      "authRequiredBody": "Sign in or create an account to accept this invitation.",
+      "redirecting": "Redirecting…",
+      "pleaseWait": "Please wait a moment.",
+      "createAccountButton": "Create account",
+      "signInButton": "Sign in",
+      "backToDashboard": "Back to dashboard"
+    },
+    "card": {
+      "logoAlt": "AiLunaPro"
+    }
+  },
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed

@@ -4,12 +4,14 @@ import { AuthInput, FormField } from '../components/auth/FormField';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
 import { signupValidate } from '../utils/validators/auth';
 import type { FormErrors } from '../types/form';
 
 export function SignupPage() {
   const { signup } = useAuth();
   const { navigate } = useRoute();
+  const A = useLocale().auth;
 
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
@@ -66,7 +68,7 @@ export function SignupPage() {
           textAlign: 'center',
         }}
       >
-        Create your account
+        {A.signup.title}
       </h2>
       <p
         style={{
@@ -77,32 +79,32 @@ export function SignupPage() {
           lineHeight: 1.5,
         }}
       >
-        Start your AI compliance journey
+        {A.signup.subtitle}
       </p>
 
       <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-        <FormField label="Full name" error={errors.name}>
+        <FormField label={A.field.fullName} error={errors.name}>
           <AuthInput
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="Sophie Martin"
+            placeholder={A.placeholder.fullName}
             autoComplete="name"
             autoFocus
           />
         </FormField>
 
-        <FormField label="Work email" error={errors.email}>
+        <FormField label={A.field.workEmail} error={errors.email}>
           <AuthInput
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="you@company.com"
+            placeholder={A.placeholder.email}
             autoComplete="email"
           />
         </FormField>
 
-        <FormField label="Password" error={errors.password} hint="Minimum 8 characters">
+        <FormField label={A.field.password} error={errors.password} hint={A.signup.passwordHint}>
           <AuthInput
             type="password"
             value={password}
@@ -135,7 +137,7 @@ export function SignupPage() {
           disabled={loading}
           style={{ marginTop: 4 }}
         >
-          {loading ? 'Creating account…' : 'Create account'}
+          {loading ? A.signup.creatingAccount : A.signup.createAccountButton}
         </Button>
 
         <p
@@ -162,12 +164,12 @@ export function SignupPage() {
           color: 'var(--text-muted)',
         }}
       >
-        Already have an account?{' '}
+        {A.signup.haveAccountPrompt}{' '}
         <span
           onClick={() => navigate({ name: 'login' })}
           style={{ color: 'var(--violet-text)', fontWeight: 600, cursor: 'pointer' }}
         >
-          Sign in
+          {A.signup.signInLink}
         </span>
       </p>
     </AuthCard>

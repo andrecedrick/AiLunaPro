@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLocale } from '../../context/LocaleContext';
 import type { Route, RouteName } from '../../types/audit';
 
 interface Tab {
@@ -32,6 +33,7 @@ interface Props {
 export function SettingsLayout({ title, children }: Props) {
   const { route, navigate } = useRoute();
   const { session } = useAuth();
+  const T = useLocale();
   const role = session?.role ?? 'member';
   const isOwner       = role === 'owner';
   const isOwnerOrAdm  = role === 'owner' || role === 'admin';
@@ -52,7 +54,7 @@ export function SettingsLayout({ title, children }: Props) {
           marginBottom: 4,
         }}
       >
-        Settings
+        {T.settingsPages.shell.title}
       </h1>
       <div
         style={{
@@ -61,7 +63,7 @@ export function SettingsLayout({ title, children }: Props) {
           marginBottom: 22,
         }}
       >
-        Manage your profile, organization, and preferences.
+        {T.settingsPages.shell.subtitle}
       </div>
 
       {/* Tab strip */}
@@ -99,7 +101,7 @@ export function SettingsLayout({ title, children }: Props) {
                 transition: 'color 0.15s, border-color 0.15s',
               }}
             >
-              {t.label}
+              {T.settingsPages.tabs[t.id]}
             </button>
           );
         })}

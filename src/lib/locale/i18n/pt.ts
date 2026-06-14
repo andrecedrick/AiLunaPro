@@ -524,4 +524,275 @@ export const pt: Dict = {
       "startFreeTrial": "Iniciar teste gratuito →"
     }
   },
+  topbar: {
+    "title": {
+      "dashboard": "Dashboard",
+      "audit/new": "Nova auditoria",
+      "audit/result": "Resultado da auditoria",
+      "audit/assistance": "Guia de implementação",
+      "audit/history": "Histórico de auditorias",
+      "reports": "Relatórios",
+      "reports/detail": "Relatório",
+      "reports/share": "Relatório partilhado",
+      "registry": "Registo de IA",
+      "system-builder": "System Builder",
+      "agents": "Agentes",
+      "agents/detail": "Agente",
+      "team": "Equipa",
+      "settings": "Definições",
+      "billing": "Faturação",
+      "billing/tokens": "Tokens",
+      "help": "Ajuda",
+      "audit-express/run": "Executar Audit Express",
+      "audit-express/saved": "Auditorias guardadas",
+      "audit-express/detail": "Auditoria guardada"
+    },
+    "subtitle": {
+      "dashboard": "Visão geral da conformidade de IA"
+    },
+    "search": {
+      "placeholder": "Pesquisar auditorias, relatórios…",
+      "toast": "A pesquisar \"{query}\"…"
+    },
+    "dateRange": {
+      "last7": "Últimos 7 dias",
+      "last30": "Últimos 30 dias",
+      "thisMonth": "Este mês",
+      "lastMonth": "Mês passado",
+      "customRange": "Intervalo personalizado…",
+      "from": "De",
+      "to": "Até",
+      "apply": "Aplicar intervalo",
+      "toast": "Intervalo de datas: {label}",
+      "errPickBoth": "Selecione uma data de início e de fim.",
+      "errOrder": "A data de início deve ser anterior à data de fim."
+    },
+    "notifications": {
+      "label": "Notificações",
+      "title": "Notificações",
+      "empty": "Ainda não há notificações."
+    },
+    "tokens": {
+      "aria": "{n} tokens restantes — gerir tokens",
+      "title": "{n} tokens restantes · clique para gerir",
+      "balance": "{used} / {total}",
+      "corruptTitle": "O saldo de tokens contém dados inválidos — clique para reparar",
+      "corruptLabel": "Os tokens precisam de reparação"
+    },
+    "luna": {
+      "aria": "Abrir a Luna, a sua guia",
+      "title": "Luna — a sua guia",
+      "label": "Luna"
+    },
+    "theme": {
+      "toDark": "Mudar para o modo escuro",
+      "toLight": "Mudar para o modo claro"
+    },
+    "newAudit": {
+      "label": "Nova auditoria",
+      "denied": "A sua função não permite criar auditorias. As auditorias estão disponíveis para os perfis Proprietário, Administrador e Membro."
+    },
+    "sidebar": {
+      "openMenu": "Abrir o menu de navegação",
+      "closeMenu": "Fechar o menu de navegação",
+      "menu": "Menu",
+      "expand": "Expandir a barra lateral",
+      "collapse": "Recolher a barra lateral"
+    }
+  },
+  auditForm: {
+    "title": "Nova auditoria",
+    "subtitle": "Percorra 8 secções para avaliar a sua postura de conformidade de IA. O seu progresso é guardado à medida que avança — pode sair e voltar a qualquer momento.",
+    "loading": "A carregar a auditoria…",
+    "forbiddenTitle": "A sua função não permite criar auditorias",
+    "forbiddenBody": "As auditorias estão disponíveis para os perfis Proprietário, Administrador e Membro. Contacte um proprietário ou administrador do espaço de trabalho se precisar de acesso às auditorias.",
+    "errorLoad": "Falha ao carregar a auditoria. Atualize para tentar novamente.",
+    "pageTitle": "Nova auditoria",
+    "pageIntro": "Percorra 8 secções para avaliar a sua postura de conformidade de IA. O seu progresso é guardado à medida que avança — pode sair e voltar a qualquer momento.",
+    "stepOf": "Passo {current} de {total}",
+    "overallProgress": "Progresso global",
+    "previous": "← Anterior",
+    "saveDraft": "Guardar rascunho",
+    "saveContinue": "Guardar e continuar →",
+    "submit": "Submeter auditoria ✓",
+    "saved": "✓ Guardado"
+  },
+  settingsPages: {
+    "shell": {
+      "title": "Definições",
+      "subtitle": "Faça a gestão do seu perfil, organização e preferências."
+    },
+    "tabs": {
+      "profile": "Perfil",
+      "org": "Organização",
+      "preferences": "Preferências",
+      "billing": "Faturação"
+    },
+    "profile": {
+      "sectionTitle": "Perfil",
+      "avatarHint": "O avatar é gerado a partir das suas iniciais. O carregamento personalizado será disponibilizado mais tarde.",
+      "displayName": "Nome a apresentar",
+      "displayNamePlaceholder": "O seu nome completo",
+      "email": "E-mail",
+      "emailPlaceholder": "voce@exemplo.com",
+      "emailVerificationTitle": "Verificação de e-mail",
+      "emailVerified": "✓ O seu e-mail está verificado.",
+      "sendVerification": "Enviar e-mail de verificação",
+      "sendingVerification": "A enviar…",
+      "passwordTitle": "Palavra-passe",
+      "passwordHint": "Enviaremos uma ligação de redefinição para o seu e-mail. A ligação expira após uma hora.",
+      "sendPasswordReset": "Enviar e-mail de redefinição da palavra-passe",
+      "sendingReset": "A enviar…",
+      "savedToast": "Perfil atualizado."
+    },
+    "org": {
+      "sectionTitle": "Organização",
+      "fallbackName": "Espaço de trabalho",
+      "nameLabel": "Nome da organização",
+      "namePlaceholder": "Acme Corp",
+      "ownerOnlyNotice": "Apenas o proprietário do espaço de trabalho pode renomear ou eliminar a organização.",
+      "planTitle": "Plano",
+      "dangerZoneTitle": "Zona de perigo",
+      "dangerZoneHint": "Eliminar uma organização remove todos os seus dados: auditorias, relatórios, registo e membros da equipa. Esta ação não pode ser anulada.",
+      "deleteButton": "Eliminar organização…",
+      "deleteDialogTitle": "Eliminar \"{name}\"?",
+      "deleteDialogBody1": "Isto irá remover permanentemente a organização, todas as suas auditorias, relatórios, itens do registo e participações na equipa.",
+      "deleteDialogBody2": "Ser-lhe-á pedido para confirmar mais uma vez antes de qualquer dado ser afetado.",
+      "deleteConfirmLabel": "Compreendo, continuar",
+      "renamedToast": "Organização renomeada.",
+      "deletionDeferredToast": "A eliminação de organizações será ativada numa etapa posterior do backend."
+    },
+    "billing": {
+      "sectionTitle": "Faturação",
+      "checkingAccess": "A verificar o acesso…"
+    }
+  },
+  common: {
+    "saveChanges": "Guardar alterações",
+    "saving": "A guardar…",
+    "cancel": "Cancelar",
+    "loading": "A carregar…",
+    "save": "Guardar",
+    "confirm": "Confirmar",
+    "close": "Fechar",
+    "tryAgain": "Tentar novamente",
+    "reloadPage": "Recarregar a página",
+    "retryNow": "Tentar novamente agora",
+    "reload": "Recarregar",
+    "somethingWentWrong": "Algo correu mal",
+    "couldntLoadThePage": "Não foi possível carregar a página",
+    "stillConnecting": "Ainda a ligar…"
+  },
+  journey: {
+    "label": {
+      "choice": "Escolher",
+      "audit": "Auditar",
+      "understanding": "Compreender",
+      "adoption": "Adotar"
+    },
+    "hint": {
+      "choice": "Escolha como começar — Audit Express para uma visão rápida, ou uma Nova auditoria para maior profundidade.",
+      "audit": "Conclua a sua auditoria — explicaremos o que significa e o que fazer a seguir.",
+      "understanding": "Eis o que a sua auditoria significa. Reveja as informações e, em seguida, escolha o próximo passo."
+    },
+    "progress": {
+      "ariaLabel": "Progresso do percurso guiado"
+    },
+    "chooseAuditType": "Escolher o tipo de auditoria →",
+    "dismissAriaLabel": "Dispensar o percurso guiado",
+    "dismiss": "Dispensar",
+    "next": {
+      "whatNext": "O que gostaria de fazer a seguir?",
+      "recommendedTag": "Recomendado",
+      "backToDashboard": "Voltar ao dashboard",
+      "cta": {
+        "agents": {
+          "title": "Ver agentes recomendados",
+          "body": "Ferramentas adequadas à sua auditoria que podem poupar tempo no trabalho que assinalou."
+        },
+        "billing": {
+          "title": "Explorar a adesão",
+          "body": "Planos, tokens e o que está incluído — adote ao seu próprio ritmo."
+        },
+        "systemBuilder": {
+          "title": "Abrir o System Builder",
+          "body": "Um guia só de leitura para conceber o seu sistema de IA em seis dimensões."
+        }
+      }
+    },
+    "start": {
+      "greetingTitle": "Olá, sou a Luna — vamos começar.",
+      "greetingBody": "Escolha como prefere começar. Pode mudar a qualquer momento e pode sempre ir diretamente para o seu dashboard.",
+      "heading": "Como quer começar?",
+      "express": {
+        "title": "Audit Express",
+        "body": "Uma visão rápida da prontidão para a IA, em cerca de 5 minutos — algumas perguntas rápidas, uma análise opcional do site e um ROI indicativo. Ideal para uma primeira abordagem.",
+        "cta": "Iniciar o Audit Express →"
+      },
+      "full": {
+        "title": "Nova auditoria (completa)",
+        "body": "O questionário estruturado completo — uma pontuação de conformidade e maturidade mais aprofundada que pode transformar num relatório partilhável. Ideal para uma avaliação minuciosa.",
+        "cta": "Criar uma nova auditoria →"
+      },
+      "skip": "Ignorar — ir diretamente para o meu dashboard"
+    }
+  },
+  auth: {
+    "login": {
+      "title": "Iniciar sessão",
+      "subtitle": "Bem-vindo de volta ao AiLunaPro",
+      "forgotPassword": "Esqueceu-se da palavra-passe?",
+      "signingIn": "A iniciar sessão…",
+      "signInButton": "Iniciar sessão",
+      "noAccountPrompt": "Ainda não tem uma conta?",
+      "signUpLink": "Registar-se"
+    },
+    "field": {
+      "emailAddress": "Endereço de e-mail",
+      "password": "Palavra-passe",
+      "fullName": "Nome completo",
+      "workEmail": "E-mail profissional"
+    },
+    "placeholder": {
+      "email": "voce@empresa.com",
+      "fullName": "Sofia Martins"
+    },
+    "signup": {
+      "title": "Crie a sua conta",
+      "subtitle": "Inicie o seu percurso de conformidade de IA",
+      "passwordHint": "Mínimo de 8 caracteres",
+      "creatingAccount": "A criar a conta…",
+      "createAccountButton": "Criar conta",
+      "haveAccountPrompt": "Já tem uma conta?",
+      "signInLink": "Iniciar sessão"
+    },
+    "forgot": {
+      "title": "Redefinir palavra-passe",
+      "subtitleSent": "Verifique a sua caixa de entrada para encontrar a ligação de redefinição.",
+      "subtitle": "Introduza o seu e-mail e enviar-lhe-emos uma ligação de redefinição.",
+      "sentDetail": "Verifique a pasta de spam se não chegar.",
+      "backToSignIn": "← Voltar ao início de sessão",
+      "sending": "A enviar…",
+      "sendResetLink": "Enviar ligação de redefinição",
+      "rememberPrompt": "Lembra-se da sua palavra-passe?",
+      "signInLink": "Iniciar sessão"
+    },
+    "invite": {
+      "titleParsing": "A ler o convite…",
+      "titleAuthRequired": "Inicie sessão para aceitar",
+      "titleVerifying": "A verificar o convite…",
+      "titleAccepting": "A adicioná-lo ao espaço de trabalho…",
+      "titleDone": "Bem-vindo à equipa!",
+      "titleError": "Problema com o convite",
+      "authRequiredBody": "Inicie sessão ou crie uma conta para aceitar este convite.",
+      "redirecting": "A redirecionar…",
+      "pleaseWait": "Aguarde um momento.",
+      "createAccountButton": "Criar conta",
+      "signInButton": "Iniciar sessão",
+      "backToDashboard": "Voltar ao dashboard"
+    },
+    "card": {
+      "logoAlt": "AiLunaPro"
+    }
+  },
 };

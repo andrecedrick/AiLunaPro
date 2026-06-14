@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Button } from './Button';
+import { useLocale } from '../../context/LocaleContext';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -23,12 +24,15 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel  = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   destructive  = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const C = useLocale().common;
+  const cLabel = confirmLabel ?? C.confirm;
+  const xLabel = cancelLabel ?? C.cancel;
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -99,7 +103,7 @@ export function ConfirmDialog({
           }}
         >
           <Button variant="ghost" size="md" onClick={onCancel}>
-            {cancelLabel}
+            {xLabel}
           </Button>
           <Button
             variant={destructive ? 'primary' : 'primary'}
@@ -111,7 +115,7 @@ export function ConfirmDialog({
                 : undefined
             }
           >
-            {confirmLabel}
+            {cLabel}
           </Button>
         </div>
       </div>

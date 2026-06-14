@@ -1,15 +1,18 @@
 import { useTheme } from '../../context/ThemeContext';
+import { useLocale } from '../../context/LocaleContext';
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const T = useLocale();
   const isDark = theme === 'dark';
+  const label = isDark ? T.topbar.theme.toLight : T.topbar.theme.toDark;
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={label}
+      title={label}
       style={{
         width: 36,
         height: 36,

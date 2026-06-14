@@ -14,11 +14,14 @@
 
 import { useTokens } from '../../context/TokensContext';
 import { useRoute } from '../../context/RouteContext';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import { safeTokenNumber } from '../../lib/tokens/tokensClient';
 
 export function TokenBadge() {
   const { balance, enabled } = useTokens();
   const { navigate }         = useRoute();
+  const T = useLocale();
 
   if (!enabled || !balance) return null;
 
@@ -35,7 +38,7 @@ export function TokenBadge() {
       <button
         type="button"
         onClick={goto}
-        title="Token balance contains invalid data — click to repair"
+        title={T.topbar.tokens.corruptTitle}
         style={{
           display:        'flex',
           alignItems:     'center',
@@ -60,7 +63,7 @@ export function TokenBadge() {
           fontSize: 12, fontWeight: 600, color: 'var(--yellow-text)',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          Tokens need repair
+          {T.topbar.tokens.corruptLabel}
         </span>
       </button>
     );
@@ -74,8 +77,8 @@ export function TokenBadge() {
     <button
       type="button"
       onClick={goto}
-      aria-label={`${bal.toLocaleString('en-US')} tokens left — manage tokens`}
-      title={`${bal.toLocaleString('en-US')} tokens left · click to manage`}
+      aria-label={format(T.topbar.tokens.aria, { n: bal.toLocaleString('en-US') })}
+      title={format(T.topbar.tokens.title, { n: bal.toLocaleString('en-US') })}
       style={{
         display:        'flex',
         alignItems:     'center',

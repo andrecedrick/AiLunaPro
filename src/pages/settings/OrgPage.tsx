@@ -5,6 +5,8 @@ import { useToast } from '../../hooks/useToast';
 import { FormField, AuthInput } from '../../components/auth/FormField';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 
 /**
  * Settings — Organization.
@@ -15,6 +17,9 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 export function OrgPage() {
   const { session, updateOrgName } = useAuth();
   const { showToast } = useToast();
+  const T = useLocale();
+  const O = T.settingsPages.org;
+  const C = T.common;
 
   const org  = session?.org;
   const role = session?.role;
@@ -33,7 +38,7 @@ export function OrgPage() {
     setSaving(false);
 
     if (res.success) {
-      showToast('Organization renamed.', 'success');
+      showToast(O.renamedToast, 'success');
     } else {
       showToast(res.error ?? 'Could not update organization.', 'error');
     }
@@ -43,15 +48,11 @@ export function OrgPage() {
     // Option C: do not delete locally, do not call backend, do not log out.
     // Just notify the user that the feature is not available yet.
     setConfirming(false);
-    showToast(
-      'Organization deletion will be enabled in a later backend step.',
-      'info',
-      7000,
-    );
+    showToast(O.deletionDeferredToast, 'info', 7000);
   };
 
   return (
-    <SettingsLayout title="Organization">
+    <SettingsLayout title={O.sectionTitle}>
       {/* Identity card */}
       <div
         style={{
@@ -83,7 +84,7 @@ export function OrgPage() {
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              {org?.name ?? 'Workspace'}
+              {org?.name ?? O.fallbackName}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               Plan: <strong style={{ color: 'var(--text-secondary)' }}>{org?.plan ?? '—'}</strong>
@@ -91,12 +92,12 @@ export function OrgPage() {
           </div>
         </div>
 
-        <FormField label="Organization name">
+        <FormField label={O.nameLabel}>
           <AuthInput
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Acme Corp"
+            placeholder={O.namePlaceholder}
             disabled={!isOwner}
           />
         </FormField>
@@ -112,7 +113,7 @@ export function OrgPage() {
               padding: '8px 12px',
             }}
           >
-            Only the workspace owner can rename or delete the organization.
+            {O.ownerOnlyNotice}
           </div>
         )}
 
@@ -128,7 +129,7 @@ export function OrgPage() {
                 : undefined
             }
           >
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? C.saving : C.saveChanges}
           </Button>
         </div>
       </div>
@@ -144,7 +145,7 @@ export function OrgPage() {
         }}
       >
         <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, marginBottom: 6, color: 'var(--text-primary)' }}>
-          Plan
+          {O.planTitle}
         </h3>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
           You are on the <strong style={{ color: 'var(--text-secondary)' }}>{org?.plan ?? '—'}</strong> plan.
@@ -172,11 +173,10 @@ export function OrgPage() {
               color: 'var(--red-text, #DC2626)',
             }}
           >
-            Danger zone
+            {O.dangerZoneTitle}
           </h3>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 0, marginBottom: 14 }}>
-            Deleting an organization removes all of its data: audits, reports, registry, and team members.
-            This action cannot be undone.
+            {O.dangerZoneHint}
           </p>
           <Button
             variant="ghost"
@@ -184,27 +184,26 @@ export function OrgPage() {
             onClick={() => setConfirming(true)}
             style={{ borderColor: 'var(--red-text, #DC2626)', color: 'var(--red-text, #DC2626)' }}
           >
-            Delete organization…
+            {O.deleteButton}
           </Button>
         </div>
       )}
 
       <ConfirmDialog
         open={confirming}
-        title={`Delete "${org?.name ?? 'this organization'}"?`}
+        title={format(O.deleteDialogTitle, { name: org?.name ?? 'this organization' })}
         message={
           <>
             <p style={{ margin: 0, marginBottom: 8 }}>
-              This will permanently remove the organization, all its audits, reports,
-              registry items, and team memberships.
+              {O.deleteDialogBody1}
             </p>
             <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-              You will be asked to confirm one more time before any data is touched.
+              {O.deleteDialogBody2}
             </p>
           </>
         }
-        confirmLabel="I understand, continue"
-        cancelLabel="Cancel"
+        confirmLabel={O.deleteConfirmLabel}
+        cancelLabel={C.cancel}
         destructive
         onConfirm={onDeleteConfirmed}
         onCancel={() => setConfirming(false)}

@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { useAudit } from '../../context/AuditContext';
 import { useRoute } from '../../context/RouteContext';
+import { useLocale } from '../../context/LocaleContext';
 
 export function AuditFooter() {
   const { isFirst, isLast, prevStep, nextStep, saveProgress, submitAudit } = useAudit();
   const { navigate } = useRoute();
+  const F = useLocale().auditForm;
   const [savedFlash, setSavedFlash] = useState(false);
 
   const handleSaveContinue = () => {
@@ -53,7 +55,7 @@ export function AuditFooter() {
         disabled={isFirst}
         style={{ opacity: isFirst ? 0.45 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
       >
-        ← Previous
+        {F.previous}
       </Button>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -66,21 +68,21 @@ export function AuditFooter() {
               transition: 'opacity 0.2s',
             }}
           >
-            ✓ Saved
+            {F.saved}
           </span>
         )}
 
         <Button variant="secondary" size="md" onClick={handleSaveOnly}>
-          Save draft
+          {F.saveDraft}
         </Button>
 
         {!isLast ? (
           <Button variant="primary" size="md" onClick={handleSaveContinue}>
-            Save & Continue →
+            {F.saveContinue}
           </Button>
         ) : (
           <Button variant="primary" size="md" onClick={handleSubmit}>
-            Submit Audit ✓
+            {F.submit}
           </Button>
         )}
       </div>

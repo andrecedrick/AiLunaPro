@@ -4,6 +4,7 @@ import { AuthInput, FormField } from '../components/auth/FormField';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
 import { loginValidate } from '../utils/validators/auth';
 import { resolveLayer } from '../lib/featureFlags';
 import { postAuthRoute } from '../lib/journey/journeyState';
@@ -15,6 +16,7 @@ const SHOW_DEMO_CREDS = resolveLayer('auth') === 'mock';
 export function LoginPage() {
   const { login } = useAuth();
   const { navigate } = useRoute();
+  const A = useLocale().auth;
 
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -62,7 +64,7 @@ export function LoginPage() {
           textAlign: 'center',
         }}
       >
-        Sign in
+        {A.login.title}
       </h2>
       <p
         style={{
@@ -73,22 +75,22 @@ export function LoginPage() {
           lineHeight: 1.5,
         }}
       >
-        Welcome back to AiLunaPro
+        {A.login.subtitle}
       </p>
 
       <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <FormField label="Email address">
+        <FormField label={A.field.emailAddress}>
           <AuthInput
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="you@company.com"
+            placeholder={A.placeholder.email}
             autoComplete="email"
             autoFocus
           />
         </FormField>
 
-        <FormField label="Password">
+        <FormField label={A.field.password}>
           <AuthInput
             type="password"
             value={password}
@@ -106,7 +108,7 @@ export function LoginPage() {
                 fontWeight: 500,
               }}
             >
-              Forgot password?
+              {A.login.forgotPassword}
             </span>
           </div>
         </FormField>
@@ -135,7 +137,7 @@ export function LoginPage() {
           disabled={loading}
           style={{ marginTop: 4 }}
         >
-          {loading ? 'Signing in…' : 'Sign in'}
+          {loading ? A.login.signingIn : A.login.signInButton}
         </Button>
       </form>
 
@@ -183,7 +185,7 @@ export function LoginPage() {
           color: 'var(--text-muted)',
         }}
       >
-        Don't have an account?{' '}
+        {A.login.noAccountPrompt}{' '}
         <span
           onClick={() => navigate({ name: 'signup' })}
           style={{
@@ -192,7 +194,7 @@ export function LoginPage() {
             cursor: 'pointer',
           }}
         >
-          Sign up
+          {A.login.signUpLink}
         </span>
       </p>
     </AuthCard>

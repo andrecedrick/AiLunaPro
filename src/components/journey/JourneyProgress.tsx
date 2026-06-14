@@ -1,8 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useRoute } from '../../context/RouteContext';
+import { useLocale } from '../../context/LocaleContext';
 import {
   getJourneyStep, isJourneyBarDismissed, dismissJourneyBar,
-  JOURNEY_STEPS, JOURNEY_LABELS, JOURNEY_EVENT, type JourneyStep,
+  JOURNEY_STEPS, JOURNEY_EVENT, type JourneyStep,
 } from '../../lib/journey/journeyState';
 
 /**
@@ -14,16 +15,9 @@ import {
  * bar is dismissible, and the dashboard/sidebar stay reachable at all times.
  */
 
-// Deterministic per-step guidance — why you're here / what happens next.
-const HINT: Record<JourneyStep, string> = {
-  choice: "Choose how to start — Audit Express for a quick snapshot, or a New Audit for depth.",
-  audit: "Complete your audit — we'll explain what it means and what to do next.",
-  understanding: "Here's what your audit means. Review the insights, then pick a next step.",
-  adoption: '',
-};
-
 export function JourneyProgress() {
   const { navigate } = useRoute();
+  const T = useLocale();
   const [, force] = useState(0);
   const [dismissed, setDismissed] = useState(() => isJourneyBarDismissed());
 
@@ -50,7 +44,7 @@ export function JourneyProgress() {
   const connector: CSSProperties = { width: 18, height: 2, background: 'var(--border-strong)', flex: '0 0 auto' };
 
   return (
-    <nav aria-label="Guided journey progress" style={bar}>
+    <nav aria-label={T.journey.progress.ariaLabel} style={bar}>
       <ol style={stepsRow}>
         {JOURNEY_STEPS.map((s, i) => {
           const done = i < currentIdx;
@@ -71,7 +65,7 @@ export function JourneyProgress() {
           const content = (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
               <span style={dot} aria-hidden>{done ? '✓' : i + 1}</span>
-              <span style={label}>{JOURNEY_LABELS[s]}</span>
+              <span style={label}>{(T.journey.label as Record<JourneyStep, string>)[s]}</span>
             </span>
           );
           return (
@@ -92,16 +86,16 @@ export function JourneyProgress() {
       </ol>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 280px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4, flex: '1 1 auto', minWidth: 160 }}>{HINT[step]}</span>
+        <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4, flex: '1 1 auto', minWidth: 160 }}>{(T.journey.hint as Record<string, string>)[step] ?? ''}</span>
         {step === 'choice' && (
           <button type="button" onClick={() => navigate({ name: 'journey/start' })}
             style={{ flex: '0 0 auto', padding: '6px 12px', borderRadius: 8, border: '1.5px solid var(--violet)', background: 'var(--brand-soft-bg)', color: 'var(--violet-text)', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
-            Choose audit type →
+            {T.journey.chooseAuditType}
           </button>
         )}
-        <button type="button" onClick={onDismiss} aria-label="Dismiss guided journey"
+        <button type="button" onClick={onDismiss} aria-label={T.journey.dismissAriaLabel}
           style={{ flex: '0 0 auto', background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
-          Dismiss
+          {T.journey.dismiss}
         </button>
       </div>
     </nav>

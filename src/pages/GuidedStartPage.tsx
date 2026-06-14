@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
 import { markJourneyStarted } from '../lib/journey/journeyState';
 import { readLatestPendingResult, clearPendingResult } from '../lib/leads/pendingLead';
 import type { Route } from '../types/audit';
@@ -12,6 +13,7 @@ import type { Route } from '../types/audit';
  */
 export function GuidedStartPage() {
   const { navigate } = useRoute();
+  const S = useLocale().journey.start;
 
   // B2.3: anonymous→authenticated continuity — if the user ran the public
   // Diagnostic or ROI Calculator before signing up (same browser), greet them
@@ -40,34 +42,34 @@ export function GuidedStartPage() {
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', padding: '14px 16px', marginBottom: 18 }}>
         <div style={{ fontSize: 22, lineHeight: 1 }} aria-hidden>👋</div>
         <div>
-          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--text-primary)' }}>Hi, I'm Luna — let's get you started.</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--text-primary)' }}>{S.greetingTitle}</div>
           <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '4px 0 0' }}>
             {pending
               ? <>We saved your {pending.kind === 'diagnostic' ? 'diagnostic' : 'ROI estimate'} — <strong style={{ color: 'var(--text-primary)' }}>{pending.headline}</strong>. A full audit turns it into a complete action plan. Pick how you'd like to continue.</>
-              : <>Pick how you'd like to begin. You can switch anytime, and you can always go straight to your dashboard.</>}
+              : S.greetingBody}
           </p>
         </div>
       </div>
 
-      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: '0 0 14px' }}>How do you want to start?</h1>
+      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: '0 0 14px' }}>{S.heading}</h1>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <button type="button" style={card} onClick={() => go({ name: 'audit-express/run' })}>
-          <div style={cardTitle}>Audit Express</div>
-          <p style={cardBody}>A fast, ~5-minute AI-readiness snapshot — a few quick questions, an optional website analysis, indicative ROI. Best for a first look.</p>
-          <span style={cta}>Start Audit Express →</span>
+          <div style={cardTitle}>{S.express.title}</div>
+          <p style={cardBody}>{S.express.body}</p>
+          <span style={cta}>{S.express.cta}</span>
         </button>
 
         <button type="button" style={card} onClick={() => go({ name: 'audit/new' })}>
-          <div style={cardTitle}>New Audit (full)</div>
-          <p style={cardBody}>The complete structured questionnaire — deeper compliance + maturity scoring you can turn into a shareable report. Best for a thorough assessment.</p>
-          <span style={cta}>Create a New Audit →</span>
+          <div style={cardTitle}>{S.full.title}</div>
+          <p style={cardBody}>{S.full.body}</p>
+          <span style={cta}>{S.full.cta}</span>
         </button>
       </div>
 
       <button type="button" onClick={() => go({ name: 'dashboard' })}
         style={{ marginTop: 18, background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
-        Skip — go straight to my dashboard
+        {S.skip}
       </button>
     </div>
   );

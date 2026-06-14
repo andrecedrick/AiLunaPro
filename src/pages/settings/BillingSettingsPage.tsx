@@ -12,6 +12,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRoute } from '../../context/RouteContext';
+import { useLocale } from '../../context/LocaleContext';
 import { fetchBillingConfigStatus } from '../../lib/billing/configService';
 import { fetchPlatformMe } from '../../lib/platform/platformService';
 import type { BillingConfigStatus, KeyStatus, StripeMode } from '../../types/billingConfig';
@@ -111,10 +112,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 /* ── Access-check placeholder (operator allowlist resolving) ── */
 function CheckingAccess() {
+  const B = useLocale().settingsPages.billing;
   return (
-    <SettingsLayout title="Billing">
+    <SettingsLayout title={B.sectionTitle}>
       <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-        Checking access…
+        {B.checkingAccess}
       </div>
     </SettingsLayout>
   );
@@ -128,8 +130,9 @@ function CheckingAccess() {
  * subscription/tokens) lives on the main Billing page (#/billing), untouched.
  */
 function OperatorManaged({ unverifiedEmail = false }: { unverifiedEmail?: boolean }) {
+  const B = useLocale().settingsPages.billing;
   return (
-    <SettingsLayout title="Billing">
+    <SettingsLayout title={B.sectionTitle}>
       <div style={{ padding: 32, textAlign: 'center' }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
           Managed by the platform operator
@@ -159,6 +162,7 @@ function OperatorManaged({ unverifiedEmail = false }: { unverifiedEmail?: boolea
 export function BillingSettingsPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
+  const TL = useLocale();
   const [status, setStatus]     = useState<BillingConfigStatus | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
@@ -205,7 +209,7 @@ export function BillingSettingsPage() {
   if (!isPlatformAdmin) return <OperatorManaged unverifiedEmail={emailVerified === false} />;
 
   return (
-    <SettingsLayout title="Billing">
+    <SettingsLayout title={TL.settingsPages.billing.sectionTitle}>
       {/* J7: operator-only entry point to the read-only Operator Console.
           This section already renders only for platform admins. */}
       <div
@@ -268,7 +272,7 @@ export function BillingSettingsPage() {
         {status && <ModeBadge mode={status.mode} />}
       </div>
 
-      {loading && <div style={{ color: 'var(--text-muted)', padding: 12 }}>Loading…</div>}
+      {loading && <div style={{ color: 'var(--text-muted)', padding: 12 }}>{TL.common.loading}</div>}
       {error && <div style={{ color: 'var(--red-text)', padding: 12 }}>Error: {error}</div>}
 
       {status && !loading && (

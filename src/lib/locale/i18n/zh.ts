@@ -526,4 +526,275 @@ export const zh: Dict = {
       "startFreeTrial": "开始免费试用 →"
     }
   },
+  topbar: {
+    "title": {
+      "dashboard": "仪表盘",
+      "audit/new": "新建审计",
+      "audit/result": "审计结果",
+      "audit/assistance": "实施指南",
+      "audit/history": "审计历史",
+      "reports": "报告",
+      "reports/detail": "报告",
+      "reports/share": "共享报告",
+      "registry": "AI 登记册",
+      "system-builder": "系统构建器",
+      "agents": "智能体",
+      "agents/detail": "智能体",
+      "team": "团队",
+      "settings": "设置",
+      "billing": "账单",
+      "billing/tokens": "Tokens",
+      "help": "帮助",
+      "audit-express/run": "运行 Audit Express",
+      "audit-express/saved": "已保存的审计",
+      "audit-express/detail": "已保存的审计"
+    },
+    "subtitle": {
+      "dashboard": "AI 合规总览"
+    },
+    "search": {
+      "placeholder": "搜索审计、报告…",
+      "toast": "正在搜索“{query}”…"
+    },
+    "dateRange": {
+      "last7": "最近 7 天",
+      "last30": "最近 30 天",
+      "thisMonth": "本月",
+      "lastMonth": "上月",
+      "customRange": "自定义范围…",
+      "from": "起始",
+      "to": "结束",
+      "apply": "应用范围",
+      "toast": "日期范围：{label}",
+      "errPickBoth": "请选择起始日期和结束日期。",
+      "errOrder": "起始日期必须早于结束日期。"
+    },
+    "notifications": {
+      "label": "通知",
+      "title": "通知",
+      "empty": "暂无通知。"
+    },
+    "tokens": {
+      "aria": "剩余 {n} 个 tokens — 管理 tokens",
+      "title": "剩余 {n} 个 tokens · 点击管理",
+      "balance": "{used} / {total}",
+      "corruptTitle": "Token 余额包含无效数据 — 点击修复",
+      "corruptLabel": "Tokens 需要修复"
+    },
+    "luna": {
+      "aria": "打开 Luna，您的向导",
+      "title": "Luna — 您的向导",
+      "label": "Luna"
+    },
+    "theme": {
+      "toDark": "切换到深色模式",
+      "toLight": "切换到浅色模式"
+    },
+    "newAudit": {
+      "label": "新建审计",
+      "denied": "您的角色不允许创建审计。审计功能面向所有者、管理员和成员开放。"
+    },
+    "sidebar": {
+      "openMenu": "打开导航菜单",
+      "closeMenu": "关闭导航菜单",
+      "menu": "菜单",
+      "expand": "展开侧边栏",
+      "collapse": "收起侧边栏"
+    }
+  },
+  auditForm: {
+    "title": "新建审计",
+    "subtitle": "通过 8 个板块逐步评估您的 AI 合规状况。系统会在您操作时自动保存进度 — 您可以随时离开并继续。",
+    "loading": "正在加载审计…",
+    "forbiddenTitle": "您的角色不允许创建审计",
+    "forbiddenBody": "审计功能面向所有者、管理员和成员角色开放。如需审计权限，请联系工作区的所有者或管理员。",
+    "errorLoad": "加载审计失败。请刷新重试。",
+    "pageTitle": "新建审计",
+    "pageIntro": "通过 8 个板块逐步评估您的 AI 合规状况。系统会在您操作时自动保存进度 — 您可以随时离开并继续。",
+    "stepOf": "第 {current} 步，共 {total} 步",
+    "overallProgress": "总体进度",
+    "previous": "← 上一步",
+    "saveDraft": "保存草稿",
+    "saveContinue": "保存并继续 →",
+    "submit": "提交审计 ✓",
+    "saved": "✓ 已保存"
+  },
+  settingsPages: {
+    "shell": {
+      "title": "设置",
+      "subtitle": "管理您的个人资料、组织和偏好设置。"
+    },
+    "tabs": {
+      "profile": "个人资料",
+      "org": "组织",
+      "preferences": "偏好设置",
+      "billing": "账单"
+    },
+    "profile": {
+      "sectionTitle": "个人资料",
+      "avatarHint": "头像根据您的姓名首字母生成。自定义上传功能即将推出。",
+      "displayName": "显示名称",
+      "displayNamePlaceholder": "您的全名",
+      "email": "邮箱",
+      "emailPlaceholder": "you@example.com",
+      "emailVerificationTitle": "邮箱验证",
+      "emailVerified": "✓ 您的邮箱已验证。",
+      "sendVerification": "发送验证邮件",
+      "sendingVerification": "正在发送…",
+      "passwordTitle": "密码",
+      "passwordHint": "我们将向您的邮箱发送一个重置链接。该链接将在一小时后失效。",
+      "sendPasswordReset": "发送密码重置邮件",
+      "sendingReset": "正在发送…",
+      "savedToast": "个人资料已更新。"
+    },
+    "org": {
+      "sectionTitle": "组织",
+      "fallbackName": "工作区",
+      "nameLabel": "组织名称",
+      "namePlaceholder": "Acme Corp",
+      "ownerOnlyNotice": "只有工作区所有者才能重命名或删除组织。",
+      "planTitle": "套餐",
+      "dangerZoneTitle": "危险操作区",
+      "dangerZoneHint": "删除组织将移除其所有数据：审计、报告、登记册和团队成员。此操作无法撤销。",
+      "deleteButton": "删除组织…",
+      "deleteDialogTitle": "删除“{name}”？",
+      "deleteDialogBody1": "这将永久移除该组织及其所有审计、报告、登记册条目和团队成员关系。",
+      "deleteDialogBody2": "在触及任何数据之前，系统会再次请您确认。",
+      "deleteConfirmLabel": "我已了解，继续",
+      "renamedToast": "组织已重命名。",
+      "deletionDeferredToast": "组织删除功能将在后续的后端步骤中启用。"
+    },
+    "billing": {
+      "sectionTitle": "账单",
+      "checkingAccess": "正在检查访问权限…"
+    }
+  },
+  common: {
+    "saveChanges": "保存更改",
+    "saving": "正在保存…",
+    "cancel": "取消",
+    "loading": "正在加载…",
+    "save": "保存",
+    "confirm": "确认",
+    "close": "关闭",
+    "tryAgain": "重试",
+    "reloadPage": "重新加载页面",
+    "retryNow": "立即重试",
+    "reload": "重新加载",
+    "somethingWentWrong": "出现了问题",
+    "couldntLoadThePage": "无法加载页面",
+    "stillConnecting": "仍在连接…"
+  },
+  journey: {
+    "label": {
+      "choice": "选择",
+      "audit": "审计",
+      "understanding": "理解",
+      "adoption": "采用"
+    },
+    "hint": {
+      "choice": "选择开始方式 — 使用 Audit Express 快速了解概况，或新建审计深入评估。",
+      "audit": "完成您的审计 — 我们将为您解释其含义以及下一步该做什么。",
+      "understanding": "这是您的审计结果含义。查看洞察，然后选择下一步。"
+    },
+    "progress": {
+      "ariaLabel": "引导式旅程进度"
+    },
+    "chooseAuditType": "选择审计类型 →",
+    "dismissAriaLabel": "关闭引导式旅程",
+    "dismiss": "关闭",
+    "next": {
+      "whatNext": "接下来您想做什么？",
+      "recommendedTag": "推荐",
+      "backToDashboard": "返回仪表盘",
+      "cta": {
+        "agents": {
+          "title": "查看推荐的智能体",
+          "body": "与您的审计匹配的工具，可在您标记的工作上为您节省时间。"
+        },
+        "billing": {
+          "title": "了解会员方案",
+          "body": "套餐、tokens 及所含内容 — 按您自己的节奏采用。"
+        },
+        "systemBuilder": {
+          "title": "打开系统构建器",
+          "body": "一份只读指南，帮助您从六个维度设计 AI 系统。"
+        }
+      }
+    },
+    "start": {
+      "greetingTitle": "您好，我是 Luna — 让我们开始吧。",
+      "greetingBody": "选择您希望的开始方式。您可以随时切换，也可以随时直接前往仪表盘。",
+      "heading": "您想如何开始？",
+      "express": {
+        "title": "Audit Express",
+        "body": "一份快速的、约 5 分钟的 AI 就绪情况概览 — 几个快速问题、可选的网站分析以及指示性 ROI。最适合初步了解。",
+        "cta": "开始 Audit Express →"
+      },
+      "full": {
+        "title": "新建审计（完整）",
+        "body": "完整的结构化问卷 — 更深入的合规性 + 成熟度评分，可转化为可共享的报告。最适合全面评估。",
+        "cta": "创建新建审计 →"
+      },
+      "skip": "跳过 — 直接前往我的仪表盘"
+    }
+  },
+  auth: {
+    "login": {
+      "title": "登录",
+      "subtitle": "欢迎回到 AiLunaPro",
+      "forgotPassword": "忘记密码？",
+      "signingIn": "正在登录…",
+      "signInButton": "登录",
+      "noAccountPrompt": "还没有账户？",
+      "signUpLink": "注册"
+    },
+    "field": {
+      "emailAddress": "邮箱地址",
+      "password": "密码",
+      "fullName": "全名",
+      "workEmail": "工作邮箱"
+    },
+    "placeholder": {
+      "email": "you@company.com",
+      "fullName": "Sophie Martin"
+    },
+    "signup": {
+      "title": "创建您的账户",
+      "subtitle": "开启您的 AI 合规之旅",
+      "passwordHint": "至少 8 个字符",
+      "creatingAccount": "正在创建账户…",
+      "createAccountButton": "创建账户",
+      "haveAccountPrompt": "已有账户？",
+      "signInLink": "登录"
+    },
+    "forgot": {
+      "title": "重置密码",
+      "subtitleSent": "请查收您收件箱中的重置链接。",
+      "subtitle": "输入您的邮箱，我们将向您发送一个重置链接。",
+      "sentDetail": "如果没有收到，请检查您的垃圾邮件文件夹。",
+      "backToSignIn": "← 返回登录",
+      "sending": "正在发送…",
+      "sendResetLink": "发送重置链接",
+      "rememberPrompt": "想起密码了？",
+      "signInLink": "登录"
+    },
+    "invite": {
+      "titleParsing": "正在读取邀请…",
+      "titleAuthRequired": "登录以接受",
+      "titleVerifying": "正在验证邀请…",
+      "titleAccepting": "正在将您加入工作区…",
+      "titleDone": "欢迎加入团队！",
+      "titleError": "邀请出现问题",
+      "authRequiredBody": "登录或创建账户以接受此邀请。",
+      "redirecting": "正在跳转…",
+      "pleaseWait": "请稍候片刻。",
+      "createAccountButton": "创建账户",
+      "signInButton": "登录",
+      "backToDashboard": "返回仪表盘"
+    },
+    "card": {
+      "logoAlt": "AiLunaPro"
+    }
+  },
 };

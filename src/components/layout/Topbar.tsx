@@ -6,14 +6,9 @@ import { TokenBadge } from '../tokens/TokenBadge';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import { ROLE } from '../../types/auth';
-
-const DATE_PRESETS: { id: string; label: string }[] = [
-  { id: 'last7',     label: 'Last 7 days' },
-  { id: 'last30',    label: 'Last 30 days' },
-  { id: 'thismonth', label: 'This month' },
-  { id: 'lastmonth', label: 'Last month' },
-];
 
 interface TopbarProps {
   onToggleSidebar: () => void;
@@ -23,9 +18,16 @@ interface TopbarProps {
 }
 
 export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen }: TopbarProps) {
-  const { navigate } = useRoute();
+  const { navigate, route } = useRoute();
   const { session }  = useAuth();
   const { showToast } = useToast();
+  const T = useLocale();
+  const datePresets = [
+    { id: 'last7',     label: T.topbar.dateRange.last7 },
+    { id: 'last30',    label: T.topbar.dateRange.last30 },
+    { id: 'thismonth', label: T.topbar.dateRange.thisMonth },
+    { id: 'lastmonth', label: T.topbar.dateRange.lastMonth },
+  ];
 
   const [dateLabel, setDateLabel] = useState<string>(() => {
     try { return localStorage.getItem('ailunapro:dateRange') ?? 'Apr 1 – Apr 27, 2025'; } catch { return 'Apr 1 – Apr 27, 2025'; }
@@ -57,7 +59,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
     setDateLabel(label);
     setDateOpen(false);
     try { localStorage.setItem('ailunapro:dateRange', label); } catch { /* ignore */ }
-    showToast(`Date range: ${label}`, 'info');
+    showToast(format(T.topbar.dateRange.toast, { label }), 'info');
   };
 
   const formatDate = (iso: string): string => {
@@ -67,13 +69,13 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
 
   const applyCustomRange = () => {
     if (!customFrom || !customTo) {
-      showToast('Pick a from and to date.', 'warning');
+      showToast(T.topbar.dateRange.errPickBoth, 'warning');
       return;
     }
     const from = new Date(customFrom);
     const to   = new Date(customTo);
     if (from > to) {
-      showToast('From date must be before To date.', 'warning');
+      showToast(T.topbar.dateRange.errOrder, 'warning');
       return;
     }
     const label = `${formatDate(customFrom)} – ${formatDate(customTo)}`;
@@ -81,18 +83,18 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
     try { localStorage.setItem('ailunapro:dateRange', label); } catch { /* ignore */ }
     setCustomOpen(false);
     setDateOpen(false);
-    showToast(`Date range: ${label}`, 'info');
+    showToast(format(T.topbar.dateRange.toast, { label }), 'info');
   };
 
   const onSearchEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && search.trim()) {
       navigate({ name: 'reports' });
-      showToast(`Searching for "${search.trim()}"…`, 'info');
+      showToast(format(T.topbar.search.toast, { query: search.trim() }), 'info');
     }
   };
 
   const onNewAudit = () => {
-    if (!canCreateAudit) { showToast("Your role doesn't allow creating audits. Audits are for Owner, Admin, and Member.", 'warning'); return; }
+    if (!canCreateAudit) { showToast(T.topbar.newAudit.denied, 'warning'); return; }
     navigate({ name: 'audit/new' });
   };
 
@@ -114,10 +116,10 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
         aria-expanded={isMobile ? mobileOpen : !sidebarCollapsed}
         aria-label={
           isMobile
-            ? (mobileOpen ? 'Close navigation menu' : 'Open navigation menu')
-            : (sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar')
+            ? (mobileOpen ? T.topbar.sidebar.closeMenu : T.topbar.sidebar.openMenu)
+            : (sidebarCollapsed ? T.topbar.sidebar.expand : T.topbar.sidebar.collapse)
         }
-        title={isMobile ? 'Menu' : (sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+        title={isMobile ? T.topbar.sidebar.menu : (sidebarCollapsed ? T.topbar.sidebar.expand : T.topbar.sidebar.collapse)}
         style={{
           width: 36, height: 36, borderRadius: 9, flexShrink: 0,
           background: 'var(--input-bg)', border: '1px solid var(--input-border)',
@@ -132,11 +134,13 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
 
       <div style={{ flex: 1 }}>
         <h1 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 18, color: 'var(--text-primary)', letterSpacing: -0.3 }}>
-          Dashboard
+          {(T.topbar.title as Record<string, string>)[route.name] ?? T.topbar.title.dashboard}
         </h1>
-        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>
-          AI Compliance Overview — April 2025
-        </p>
+        {route.name === 'dashboard' && (
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>
+            {T.topbar.subtitle.dashboard}
+          </p>
+        )}
       </div>
 
       {/* Date range dropdown */}
@@ -162,26 +166,26 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
         </button>
         {dateOpen && (
           <div style={dropdownStyle()}>
-            {DATE_PRESETS.map(p => (
+            {datePresets.map(p => (
               <button key={p.id} type="button" onClick={() => onPickDate(p.label)} style={dropdownItem()}>
                 {p.label}
               </button>
             ))}
             <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
             <button type="button" onClick={() => { setCustomOpen(o => !o); }} style={{ ...dropdownItem(), color: 'var(--violet-text)', fontWeight: 600 }}>
-              Custom range…
+              {T.topbar.dateRange.customRange}
             </button>
 
             {customOpen && (
               <div style={{ padding: 12, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>From</label>
+                <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{T.topbar.dateRange.from}</label>
                 <input
                   type="date"
                   value={customFrom}
                   onChange={e => setCustomFrom(e.target.value)}
                   style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, background: 'var(--surface)', color: 'var(--text-primary)' }}
                 />
-                <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>To</label>
+                <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{T.topbar.dateRange.to}</label>
                 <input
                   type="date"
                   value={customTo}
@@ -196,7 +200,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
                     background: 'var(--violet)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  Apply range
+                  {T.topbar.dateRange.apply}
                 </button>
               </div>
             )}
@@ -215,7 +219,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
         </svg>
         <input
           type="text"
-          placeholder="Search audits, reports…"
+          placeholder={T.topbar.search.placeholder}
           value={search}
           onChange={e => setSearch(e.target.value)}
           onKeyDown={onSearchEnter}
@@ -237,7 +241,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', position: 'relative', color: 'var(--text-secondary)',
           }}
-          aria-label="Notifications"
+          aria-label={T.topbar.notifications.label}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -246,10 +250,10 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
         {notifOpen && (
           <div style={dropdownStyle({ width: 260 })}>
             <div style={{ padding: '10px 14px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Notifications
+              {T.topbar.notifications.title}
             </div>
             <div style={{ padding: '20px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-              No notifications yet.
+              {T.topbar.notifications.empty}
             </div>
           </div>
         )}
@@ -261,8 +265,8 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
       <button
         type="button"
         onClick={() => setLunaOpen(true)}
-        aria-label="Open Luna, your guide"
-        title="Luna — your guide"
+        aria-label={T.topbar.luna.aria}
+        title={T.topbar.luna.title}
         style={{
           display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
           borderRadius: 8, border: '1.5px solid var(--violet)', cursor: 'pointer',
@@ -270,7 +274,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
           fontWeight: 700, fontSize: 12.5, fontFamily: 'var(--font-body)', flexShrink: 0,
         }}
       >
-        <span aria-hidden>✨</span> Luna
+        <span aria-hidden>✨</span> {T.topbar.luna.label}
       </button>
       <LunaPanel open={lunaOpen} onClose={() => setLunaOpen(false)} />
 
@@ -281,7 +285,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
           <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
         </svg>
-        New Audit
+        {T.topbar.newAudit.label}
       </Button>
     </header>
   );

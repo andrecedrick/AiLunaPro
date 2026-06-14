@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLocale } from '../../context/LocaleContext';
 
 const LOGO_URL =
   'https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/6_xldhxr.png';
@@ -9,6 +10,7 @@ interface AuthCardProps {
 
 /** Full-screen centred card used by Login, Signup, and OrgCreate pages. */
 export function AuthCard({ children }: AuthCardProps) {
+  const T = useLocale();
   return (
     <div
       style={{
@@ -42,7 +44,7 @@ export function AuthCard({ children }: AuthCardProps) {
         >
           <img
             src={LOGO_URL}
-            alt="AiLunaPro"
+            alt={T.auth.card.logoAlt}
             style={{ width: '100%', height: 'auto', display: 'block', marginTop: -58 }}
           />
         </div>

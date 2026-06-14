@@ -1,5 +1,6 @@
 import { useEffect, type CSSProperties } from 'react';
 import { useRoute } from '../../context/RouteContext';
+import { useLocale } from '../../context/LocaleContext';
 import { advanceJourney } from '../../lib/journey/journeyState';
 import type { Route } from '../../types/audit';
 
@@ -48,6 +49,9 @@ const CTA_CSS = `
 
 export function JourneyNext({ summary, hasRecommendedAgents = false }: { summary: JourneySummary; hasRecommendedAgents?: boolean }) {
   const { navigate } = useRoute();
+  const J = useLocale().journey.next;
+  const ctaT = (key: string): { title: string; body: string } | undefined =>
+    (J.cta as Record<string, { title: string; body: string }>)[key === 'system-builder' ? 'systemBuilder' : key];
 
   // Reaching this panel = "understanding" step. Monotonic; safe on revisit.
   useEffect(() => { advanceJourney('understanding'); }, []);
@@ -75,21 +79,22 @@ export function JourneyNext({ summary, hasRecommendedAgents = false }: { summary
       </div>
 
       {/* Next action (guided proposal — prominent button-like CTAs, never a forced redirect) */}
-      <div style={{ marginTop: 14, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13.5, color: 'var(--text-primary)' }}>What would you like to do next?</div>
+      <div style={{ marginTop: 14, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13.5, color: 'var(--text-primary)' }}>{J.whatNext}</div>
       <div className="jn-cta-row">
         {CTAS.map(c => {
           const isPrimary = c.key === 'agents' && hasRecommendedAgents;
+          const t = ctaT(c.key);
           return (
             <button key={c.key} type="button" className={`jn-cta${isPrimary ? ' jn-cta--primary' : ''}`} onClick={() => go(c.route)}>
               <span className="jn-cta__head">
                 <span className="jn-cta__icon" aria-hidden>{c.icon}</span>
                 <span className="jn-cta__title">
-                  {c.title}
-                  {isPrimary && <span className="jn-cta__tag">Recommended</span>}
+                  {t?.title ?? c.title}
+                  {isPrimary && <span className="jn-cta__tag">{J.recommendedTag}</span>}
                 </span>
                 <span className="jn-cta__arrow" aria-hidden>→</span>
               </span>
-              <span className="jn-cta__body">{c.body}</span>
+              <span className="jn-cta__body">{t?.body ?? c.body}</span>
             </button>
           );
         })}
@@ -97,7 +102,7 @@ export function JourneyNext({ summary, hasRecommendedAgents = false }: { summary
 
       <button type="button" onClick={() => navigate({ name: 'dashboard' })}
         style={{ marginTop: 12, background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}>
-        Back to dashboard
+        {J.backToDashboard}
       </button>
     </div>
   );

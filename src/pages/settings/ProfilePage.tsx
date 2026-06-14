@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { SettingsLayout } from './SettingsLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
+import { useLocale } from '../../context/LocaleContext';
 import { FormField, AuthInput } from '../../components/auth/FormField';
 import { Button } from '../../components/ui/Button';
 import { resolveLayer } from '../../lib/featureFlags';
@@ -15,6 +16,9 @@ import { firebaseGetEmailVerified, firebaseSendEmailVerification } from '../../l
 export function ProfilePage() {
   const { session, updateProfile, resetPassword } = useAuth();
   const { showToast } = useToast();
+  const T = useLocale();
+  const P = T.settingsPages.profile;
+  const C = T.common;
 
   const user = session?.user;
 
@@ -57,7 +61,7 @@ export function ProfilePage() {
     setSaving(false);
 
     if (res.success) {
-      showToast('Profile updated.', 'success');
+      showToast(P.savedToast, 'success');
     } else {
       showToast(res.error ?? 'Could not update profile.', 'error');
     }
@@ -76,7 +80,7 @@ export function ProfilePage() {
   };
 
   return (
-    <SettingsLayout title="Profile">
+    <SettingsLayout title={P.sectionTitle}>
       <div
         style={{
           display: 'grid',
@@ -107,25 +111,25 @@ export function ProfilePage() {
             {user?.initials ?? '??'}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            Avatar is generated from your initials. Custom upload coming later.
+            {P.avatarHint}
           </div>
         </div>
 
-        <FormField label="Display name">
+        <FormField label={P.displayName}>
           <AuthInput
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your full name"
+            placeholder={P.displayNamePlaceholder}
           />
         </FormField>
 
-        <FormField label="Email">
+        <FormField label={P.email}>
           <AuthInput
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder={P.emailPlaceholder}
           />
         </FormField>
 
@@ -137,7 +141,7 @@ export function ProfilePage() {
             disabled={!dirty || saving}
             style={!dirty || saving ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
           >
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? C.saving : C.saveChanges}
           </Button>
         </div>
       </div>
@@ -156,11 +160,11 @@ export function ProfilePage() {
         {isFirebase && emailVerified !== null && (
           <div style={{ marginBottom: 18, paddingBottom: 18, borderBottom: '1px solid var(--border)' }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, marginBottom: 6, color: 'var(--text-primary)' }}>
-              Email verification
+              {P.emailVerificationTitle}
             </h3>
             {emailVerified ? (
               <p style={{ fontSize: 12, color: 'var(--green-text)', margin: 0 }}>
-                ✓ Your email is verified.
+                {P.emailVerified}
               </p>
             ) : (
               <>
@@ -176,7 +180,7 @@ export function ProfilePage() {
                   disabled={verifying}
                   style={verifying ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
                 >
-                  {verifying ? 'Sending…' : 'Send verification email'}
+                  {verifying ? P.sendingVerification : P.sendVerification}
                 </Button>
               </>
             )}
@@ -192,7 +196,7 @@ export function ProfilePage() {
             color: 'var(--text-primary)',
           }}
         >
-          Password
+          {P.passwordTitle}
         </h3>
         <p
           style={{
@@ -202,7 +206,7 @@ export function ProfilePage() {
             marginBottom: 14,
           }}
         >
-          We will send a reset link to your email. The link expires after one hour.
+          {P.passwordHint}
         </p>
         <Button
           variant="ghost"
@@ -211,7 +215,7 @@ export function ProfilePage() {
           disabled={resetting || !email}
           style={resetting || !email ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
         >
-          {resetting ? 'Sending…' : 'Send password reset email'}
+          {resetting ? P.sendingReset : P.sendPasswordReset}
         </Button>
       </div>
     </SettingsLayout>

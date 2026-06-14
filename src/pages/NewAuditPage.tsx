@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { AuditShell } from '../components/audit/AuditShell';
 import { useAudit } from '../context/AuditContext';
+import { useLocale } from '../context/LocaleContext';
 import { advanceJourney } from '../lib/journey/journeyState';
 
 export function NewAuditPage() {
   const { status } = useAudit();
+  const F = useLocale().auditForm;
 
   // B8.3: entering the New Audit flow = the "Audit" journey step (monotonic).
   useEffect(() => { advanceJourney('audit'); }, []);
@@ -23,7 +25,7 @@ export function NewAuditPage() {
             letterSpacing: -0.5,
           }}
         >
-          New Audit
+          {F.pageTitle}
         </h1>
         <p
           style={{
@@ -33,8 +35,7 @@ export function NewAuditPage() {
             lineHeight: 1.55,
           }}
         >
-          Walk through 8 sections to assess your AI compliance posture. Your progress is saved
-          as you go — you can leave and come back anytime.
+          {F.pageIntro}
         </p>
       </div>
 
@@ -47,7 +48,7 @@ export function NewAuditPage() {
             color: 'var(--text-muted)',
           }}
         >
-          Loading audit…
+          {F.loading}
         </div>
       ) : status === 'forbidden' ? (
         <div
@@ -59,11 +60,10 @@ export function NewAuditPage() {
           }}
         >
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Your role doesn't allow creating audits
+            {F.forbiddenTitle}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.55 }}>
-            Audits are available to Owner, Admin, and Member roles. Ask a workspace
-            owner or admin if you need audit access.
+            {F.forbiddenBody}
           </div>
         </div>
       ) : status === 'error' ? (
@@ -75,7 +75,7 @@ export function NewAuditPage() {
             color: 'var(--red-text)',
           }}
         >
-          Failed to load audit. Refresh to retry.
+          {F.errorLoad}
         </div>
       ) : (
         <AuditShell />

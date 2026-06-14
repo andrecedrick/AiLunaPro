@@ -8,6 +8,7 @@ import { LoadingState } from './LoadingState';
 import { SkeletonLoader } from './SkeletonLoader';
 import { EmptyState } from './EmptyState';
 import { ErrorBoundary } from '../ErrorBoundary';
+import { useLocale } from '../../context/LocaleContext';
 
 /**
  * Discriminated union for state config.
@@ -67,6 +68,7 @@ export function StateWrapper({
   withErrorBoundary = true,
   ...config
 }: StateWrapperProps) {
+  const C = useLocale().common;
   // Loading state
   if (config.state === 'loading') {
     return (
@@ -136,7 +138,7 @@ export function StateWrapper({
 
           {/* Error title */}
           <h3 className="mb-2 text-lg font-medium text-gray-900">
-            Something went wrong
+            {C.somethingWentWrong}
           </h3>
 
           {/* Error message */}
@@ -148,7 +150,7 @@ export function StateWrapper({
               onClick={config.onRetry}
               className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
-              Try Again
+              {C.tryAgain}
             </button>
           )}
         </div>

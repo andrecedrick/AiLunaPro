@@ -524,4 +524,275 @@ export const fr: Dict = {
       "startFreeTrial": "Démarrer l'essai gratuit →"
     }
   },
+  topbar: {
+    "title": {
+      "dashboard": "Tableau de bord",
+      "audit/new": "Nouvel audit",
+      "audit/result": "Résultat d'audit",
+      "audit/assistance": "Guide de mise en œuvre",
+      "audit/history": "Historique des audits",
+      "reports": "Rapports",
+      "reports/detail": "Rapport",
+      "reports/share": "Rapport partagé",
+      "registry": "Registre IA",
+      "system-builder": "Concepteur de système",
+      "agents": "Agents",
+      "agents/detail": "Agent",
+      "team": "Équipe",
+      "settings": "Paramètres",
+      "billing": "Facturation",
+      "billing/tokens": "Tokens",
+      "help": "Aide",
+      "audit-express/run": "Lancer Audit Express",
+      "audit-express/saved": "Audits enregistrés",
+      "audit-express/detail": "Audit enregistré"
+    },
+    "subtitle": {
+      "dashboard": "Vue d'ensemble de la conformité IA"
+    },
+    "search": {
+      "placeholder": "Rechercher des audits, des rapports…",
+      "toast": "Recherche de « {query} »…"
+    },
+    "dateRange": {
+      "last7": "7 derniers jours",
+      "last30": "30 derniers jours",
+      "thisMonth": "Ce mois-ci",
+      "lastMonth": "Le mois dernier",
+      "customRange": "Période personnalisée…",
+      "from": "Du",
+      "to": "Au",
+      "apply": "Appliquer la période",
+      "toast": "Période : {label}",
+      "errPickBoth": "Choisissez une date de début et une date de fin.",
+      "errOrder": "La date de début doit être antérieure à la date de fin."
+    },
+    "notifications": {
+      "label": "Notifications",
+      "title": "Notifications",
+      "empty": "Aucune notification pour le moment."
+    },
+    "tokens": {
+      "aria": "{n} tokens restants — gérer les tokens",
+      "title": "{n} tokens restants · cliquez pour gérer",
+      "balance": "{used} / {total}",
+      "corruptTitle": "Le solde de tokens contient des données non valides — cliquez pour réparer",
+      "corruptLabel": "Les tokens nécessitent une réparation"
+    },
+    "luna": {
+      "aria": "Ouvrir Luna, votre guide",
+      "title": "Luna — votre guide",
+      "label": "Luna"
+    },
+    "theme": {
+      "toDark": "Passer en mode sombre",
+      "toLight": "Passer en mode clair"
+    },
+    "newAudit": {
+      "label": "Nouvel audit",
+      "denied": "Votre rôle ne permet pas de créer des audits. Les audits sont réservés aux rôles Propriétaire, Administrateur et Membre."
+    },
+    "sidebar": {
+      "openMenu": "Ouvrir le menu de navigation",
+      "closeMenu": "Fermer le menu de navigation",
+      "menu": "Menu",
+      "expand": "Déployer la barre latérale",
+      "collapse": "Réduire la barre latérale"
+    }
+  },
+  auditForm: {
+    "title": "Nouvel audit",
+    "subtitle": "Parcourez 8 sections pour évaluer votre posture de conformité IA. Votre progression est enregistrée au fur et à mesure — vous pouvez quitter et revenir à tout moment.",
+    "loading": "Chargement de l'audit…",
+    "forbiddenTitle": "Votre rôle ne permet pas de créer des audits",
+    "forbiddenBody": "Les audits sont accessibles aux rôles Propriétaire, Administrateur et Membre. Demandez à un propriétaire ou à un administrateur de l'espace de travail si vous avez besoin d'un accès aux audits.",
+    "errorLoad": "Échec du chargement de l'audit. Actualisez pour réessayer.",
+    "pageTitle": "Nouvel audit",
+    "pageIntro": "Parcourez 8 sections pour évaluer votre posture de conformité IA. Votre progression est enregistrée au fur et à mesure — vous pouvez quitter et revenir à tout moment.",
+    "stepOf": "Étape {current} sur {total}",
+    "overallProgress": "Progression globale",
+    "previous": "← Précédent",
+    "saveDraft": "Enregistrer le brouillon",
+    "saveContinue": "Enregistrer et continuer →",
+    "submit": "Soumettre l'audit ✓",
+    "saved": "✓ Enregistré"
+  },
+  settingsPages: {
+    "shell": {
+      "title": "Paramètres",
+      "subtitle": "Gérez votre profil, votre organisation et vos préférences."
+    },
+    "tabs": {
+      "profile": "Profil",
+      "org": "Organisation",
+      "preferences": "Préférences",
+      "billing": "Facturation"
+    },
+    "profile": {
+      "sectionTitle": "Profil",
+      "avatarHint": "L'avatar est généré à partir de vos initiales. Le téléversement personnalisé arrivera plus tard.",
+      "displayName": "Nom affiché",
+      "displayNamePlaceholder": "Votre nom complet",
+      "email": "E-mail",
+      "emailPlaceholder": "vous@exemple.com",
+      "emailVerificationTitle": "Vérification de l'e-mail",
+      "emailVerified": "✓ Votre e-mail est vérifié.",
+      "sendVerification": "Envoyer l'e-mail de vérification",
+      "sendingVerification": "Envoi…",
+      "passwordTitle": "Mot de passe",
+      "passwordHint": "Nous enverrons un lien de réinitialisation à votre adresse e-mail. Le lien expire au bout d'une heure.",
+      "sendPasswordReset": "Envoyer l'e-mail de réinitialisation du mot de passe",
+      "sendingReset": "Envoi…",
+      "savedToast": "Profil mis à jour."
+    },
+    "org": {
+      "sectionTitle": "Organisation",
+      "fallbackName": "Espace de travail",
+      "nameLabel": "Nom de l'organisation",
+      "namePlaceholder": "Acme Corp",
+      "ownerOnlyNotice": "Seul le propriétaire de l'espace de travail peut renommer ou supprimer l'organisation.",
+      "planTitle": "Forfait",
+      "dangerZoneTitle": "Zone de danger",
+      "dangerZoneHint": "La suppression d'une organisation efface toutes ses données : audits, rapports, registre et membres de l'équipe. Cette action est irréversible.",
+      "deleteButton": "Supprimer l'organisation…",
+      "deleteDialogTitle": "Supprimer « {name} » ?",
+      "deleteDialogBody1": "Cela supprimera définitivement l'organisation, tous ses audits, rapports, éléments de registre et adhésions d'équipe.",
+      "deleteDialogBody2": "Il vous sera demandé de confirmer une dernière fois avant que la moindre donnée ne soit touchée.",
+      "deleteConfirmLabel": "Je comprends, continuer",
+      "renamedToast": "Organisation renommée.",
+      "deletionDeferredToast": "La suppression d'organisation sera activée lors d'une étape backend ultérieure."
+    },
+    "billing": {
+      "sectionTitle": "Facturation",
+      "checkingAccess": "Vérification de l'accès…"
+    }
+  },
+  common: {
+    "saveChanges": "Enregistrer les modifications",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "tryAgain": "Réessayer",
+    "reloadPage": "Recharger la page",
+    "retryNow": "Réessayer maintenant",
+    "reload": "Recharger",
+    "somethingWentWrong": "Une erreur s'est produite",
+    "couldntLoadThePage": "Impossible de charger la page",
+    "stillConnecting": "Connexion en cours…"
+  },
+  journey: {
+    "label": {
+      "choice": "Choisir",
+      "audit": "Auditer",
+      "understanding": "Comprendre",
+      "adoption": "Adopter"
+    },
+    "hint": {
+      "choice": "Choisissez comment commencer — Audit Express pour un aperçu rapide, ou un nouvel audit pour aller en profondeur.",
+      "audit": "Réalisez votre audit — nous vous expliquerons ce qu'il signifie et les prochaines étapes.",
+      "understanding": "Voici ce que signifie votre audit. Examinez les analyses, puis choisissez une prochaine étape."
+    },
+    "progress": {
+      "ariaLabel": "Progression du parcours guidé"
+    },
+    "chooseAuditType": "Choisir le type d'audit →",
+    "dismissAriaLabel": "Ignorer le parcours guidé",
+    "dismiss": "Ignorer",
+    "next": {
+      "whatNext": "Que souhaitez-vous faire ensuite ?",
+      "recommendedTag": "Recommandé",
+      "backToDashboard": "Retour au tableau de bord",
+      "cta": {
+        "agents": {
+          "title": "Voir les agents recommandés",
+          "body": "Des outils adaptés à votre audit, capables de vous faire gagner du temps sur les points que vous avez signalés."
+        },
+        "billing": {
+          "title": "Découvrir l'abonnement",
+          "body": "Forfaits, tokens et ce qui est inclus — adoptez à votre rythme."
+        },
+        "systemBuilder": {
+          "title": "Ouvrir le Concepteur de système",
+          "body": "Un guide en lecture seule pour concevoir votre système d'IA selon six dimensions."
+        }
+      }
+    },
+    "start": {
+      "greetingTitle": "Bonjour, je suis Luna — commençons ensemble.",
+      "greetingBody": "Choisissez comment vous souhaitez débuter. Vous pouvez changer à tout moment et toujours accéder directement à votre tableau de bord.",
+      "heading": "Comment voulez-vous commencer ?",
+      "express": {
+        "title": "Audit Express",
+        "body": "Un aperçu rapide de votre maturité IA en environ 5 minutes — quelques questions rapides, une analyse de site web facultative, un ROI indicatif. Idéal pour un premier coup d'œil.",
+        "cta": "Lancer Audit Express →"
+      },
+      "full": {
+        "title": "Nouvel audit (complet)",
+        "body": "Le questionnaire structuré complet — une évaluation plus poussée de la conformité et de la maturité, que vous pouvez transformer en un rapport partageable. Idéal pour une évaluation approfondie.",
+        "cta": "Créer un nouvel audit →"
+      },
+      "skip": "Passer — accéder directement à mon tableau de bord"
+    }
+  },
+  auth: {
+    "login": {
+      "title": "Se connecter",
+      "subtitle": "Bon retour sur AiLunaPro",
+      "forgotPassword": "Mot de passe oublié ?",
+      "signingIn": "Connexion…",
+      "signInButton": "Se connecter",
+      "noAccountPrompt": "Vous n'avez pas de compte ?",
+      "signUpLink": "S'inscrire"
+    },
+    "field": {
+      "emailAddress": "Adresse e-mail",
+      "password": "Mot de passe",
+      "fullName": "Nom complet",
+      "workEmail": "E-mail professionnel"
+    },
+    "placeholder": {
+      "email": "vous@entreprise.com",
+      "fullName": "Sophie Martin"
+    },
+    "signup": {
+      "title": "Créer votre compte",
+      "subtitle": "Démarrez votre parcours de conformité IA",
+      "passwordHint": "8 caractères minimum",
+      "creatingAccount": "Création du compte…",
+      "createAccountButton": "Créer un compte",
+      "haveAccountPrompt": "Vous avez déjà un compte ?",
+      "signInLink": "Se connecter"
+    },
+    "forgot": {
+      "title": "Réinitialiser le mot de passe",
+      "subtitleSent": "Consultez votre boîte de réception pour le lien de réinitialisation.",
+      "subtitle": "Saisissez votre e-mail et nous vous enverrons un lien de réinitialisation.",
+      "sentDetail": "Vérifiez votre dossier de spam s'il n'arrive pas.",
+      "backToSignIn": "← Retour à la connexion",
+      "sending": "Envoi…",
+      "sendResetLink": "Envoyer le lien de réinitialisation",
+      "rememberPrompt": "Vous vous souvenez de votre mot de passe ?",
+      "signInLink": "Se connecter"
+    },
+    "invite": {
+      "titleParsing": "Lecture de l'invitation…",
+      "titleAuthRequired": "Connectez-vous pour accepter",
+      "titleVerifying": "Vérification de l'invitation…",
+      "titleAccepting": "Ajout à l'espace de travail en cours…",
+      "titleDone": "Bienvenue dans l'équipe !",
+      "titleError": "Problème d'invitation",
+      "authRequiredBody": "Connectez-vous ou créez un compte pour accepter cette invitation.",
+      "redirecting": "Redirection…",
+      "pleaseWait": "Veuillez patienter un instant.",
+      "createAccountButton": "Créer un compte",
+      "signInButton": "Se connecter",
+      "backToDashboard": "Retour au tableau de bord"
+    },
+    "card": {
+      "logoAlt": "AiLunaPro"
+    }
+  },
 };

@@ -4,10 +4,12 @@ import { AuthInput, FormField } from '../components/auth/FormField';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
 
 export function ForgotPasswordPage() {
   const { resetPassword } = useAuth();
   const { navigate } = useRoute();
+  const A = useLocale().auth;
 
   const [email,   setEmail]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,7 @@ export function ForgotPasswordPage() {
           textAlign: 'center',
         }}
       >
-        Reset password
+        {A.forgot.title}
       </h2>
       <p
         style={{
@@ -57,9 +59,7 @@ export function ForgotPasswordPage() {
           lineHeight: 1.5,
         }}
       >
-        {sent
-          ? 'Check your inbox for a reset link.'
-          : 'Enter your email and we\'ll send you a reset link.'}
+        {sent ? A.forgot.subtitleSent : A.forgot.subtitle}
       </p>
 
       {sent ? (
@@ -80,7 +80,7 @@ export function ForgotPasswordPage() {
           >
             Reset email sent to <strong>{email}</strong>.
             <br />
-            Check your spam folder if it doesn't arrive.
+            {A.forgot.sentDetail}
           </div>
           <Button
             variant="secondary"
@@ -88,18 +88,18 @@ export function ForgotPasswordPage() {
             fullWidth
             onClick={() => navigate({ name: 'login' })}
           >
-            ← Back to sign in
+            {A.forgot.backToSignIn}
           </Button>
         </div>
       ) : (
         /* ── Form ───────────────────────────────────────────── */
         <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <FormField label="Email address">
+          <FormField label={A.field.emailAddress}>
             <AuthInput
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="you@company.com"
+              placeholder={A.placeholder.email}
               autoComplete="email"
               autoFocus
             />
@@ -129,7 +129,7 @@ export function ForgotPasswordPage() {
             disabled={loading}
             style={{ marginTop: 4 }}
           >
-            {loading ? 'Sending…' : 'Send reset link'}
+            {loading ? A.forgot.sending : A.forgot.sendResetLink}
           </Button>
         </form>
       )}
@@ -144,7 +144,7 @@ export function ForgotPasswordPage() {
             color: 'var(--text-muted)',
           }}
         >
-          Remember your password?{' '}
+          {A.forgot.rememberPrompt}{' '}
           <span
             onClick={() => navigate({ name: 'login' })}
             style={{
@@ -153,7 +153,7 @@ export function ForgotPasswordPage() {
               cursor: 'pointer',
             }}
           >
-            Sign in
+            {A.forgot.signInLink}
           </span>
         </p>
       )}
