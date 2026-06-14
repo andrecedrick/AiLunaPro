@@ -2351,4 +2351,110 @@ export const es: Dict = {
       "disabled": "Deshabilitado"
     }
   },
+  agentsContent: {
+    "byId": {
+      "support-agent": {
+        "tagline": "Automatiza las respuestas a clientes y reduce la carga del soporte.",
+        "description": "Agente de IA diseñado para responder a preguntas frecuentes, cualificar solicitudes de soporte, enrutar tickets y asistir a los equipos de atención al cliente. Ayuda a las empresas a estructurar un primer nivel de soporte disponible de forma continua sin reemplazar a los equipos humanos.",
+        "problemSolved": "Tiempos de respuesta lentos, solicitudes repetitivas y equipos de soporte saturados."
+      },
+      "sales-agent": {
+        "tagline": "Cualifica prospectos y prepara los seguimientos comerciales.",
+        "description": "Agente de IA orientado a ventas, diseñado para cualificar leads, preparar respuestas comerciales, generar seguimientos y estructurar oportunidades. Ayuda a los equipos de ventas a ahorrar tiempo en tareas repetitivas y a mejorar el seguimiento de prospectos.",
+        "problemSolved": "Prospectos mal cualificados, seguimientos olvidados y tiempo comercial desperdiciado."
+      },
+      "finance-agent": {
+        "tagline": "Asiste con facturas, presupuestos y cobros.",
+        "description": "Agente de IA diseñado para ayudar a clasificar documentos financieros, preparar presupuestos, hacer seguimiento de facturas, generar recordatorios de cobro y señalar anomalías sencillas. No reemplaza a un contable, pero reduce notablemente el tiempo administrativo financiero.",
+        "problemSolved": "Procesamiento manual de facturas, cobros tardíos y errores de introducción de datos."
+      },
+      "hr-agent": {
+        "tagline": "Asiste a los equipos de RR. HH. con cribado, resúmenes y documentación.",
+        "description": "Agente de IA diseñado para apoyar tareas repetitivas de RR. HH. como resúmenes de CV, notas de candidatos, respuestas internas, documentación de empleados y seguimiento administrativo de RR. HH. Ayuda a los equipos a estructurar la información y a reducir el tiempo dedicado al trabajo documental manual.",
+        "problemSolved": "Los equipos de RR. HH. pierden tiempo en el cribado de documentos, respuestas repetitivas y seguimiento manual."
+      },
+      "compliance-agent": {
+        "tagline": "Ayuda a estructurar el cumplimiento, los riesgos y los registros de IA.",
+        "description": "Agente de IA diseñado para apoyar la documentación de cumplimiento, los controles internos, la preparación del registro de IA y los planes de mitigación. Resulta especialmente útil para organizaciones expuestas a obligaciones de gobernanza, trazabilidad y cumplimiento en materia de IA.",
+        "problemSolved": "Las organizaciones carecen de una visibilidad clara sobre el cumplimiento de la IA, con documentación dispersa y riesgos de IA sin gestionar."
+      },
+      "marketing-agent": {
+        "tagline": "Genera contenidos, campañas e ideas de marketing.",
+        "description": "Agente de IA diseñado para generar publicaciones, correos electrónicos, contenidos de páginas de destino, ideas de campañas, resúmenes y recursos de marketing adaptados al perfil de la empresa. Ayuda a los equipos pequeños a publicar con mayor regularidad sin multiplicar las herramientas.",
+        "problemSolved": "Los equipos de marketing tienen dificultades con la coherencia del contenido, la creación que consume mucho tiempo y los recursos de campaña dispersos."
+      },
+      "reporting-agent": {
+        "tagline": "Crea resúmenes, paneles e informes para la toma de decisiones.",
+        "description": "Agente de IA diseñado para transformar datos e información internos en resúmenes, informes, planes de acción y análisis listos para la dirección. Ayuda a líderes y responsables a obtener una visión más clara sin dedicar horas a consolidar la información manualmente.",
+        "problemSolved": "Los informes manuales tardan demasiado en elaborarse y los responsables de la toma de decisiones carecen de resúmenes concisos."
+      },
+      "audit-agent": {
+        "tagline": "Apoya la auditoría de IA, la evaluación de madurez y los planes de acción.",
+        "description": "Agente de IA diseñado para ayudar a estructurar auditorías, analizar respuestas, identificar riesgos y elaborar recomendaciones accionables. Conecta la auditoría de IA, el cumplimiento y la transformación del negocio en un flujo de trabajo práctico.",
+        "problemSolved": "Las auditorías de IA consumen mucho tiempo, se analizan manualmente y resultan difíciles de priorizar."
+      },
+      "document-agent": {
+        "tagline": "Clasifica, resume y extrae información de los documentos.",
+        "description": "Agente de IA diseñado para procesar documentos, extraer información clave, generar resúmenes y organizar archivos. Resulta útil para organizaciones que manejan numerosos adjuntos, contratos, informes, expedientes de RR. HH., documentos financieros o evidencias de cumplimiento.",
+        "problemSolved": "Los documentos están mal organizados, son lentos de buscar y costosos de resumir manualmente."
+      },
+      "admin-agent": {
+        "tagline": "Automatiza el trabajo administrativo diario.",
+        "description": "Agente de IA de uso general para correos electrónicos, citas, seguimientos, resúmenes, notas, organización de tareas y flujos de trabajo administrativos diarios. Ayuda a fundadores, profesionales independientes y equipos pequeños a ahorrar tiempo en el trabajo operativo repetitivo.",
+        "problemSolved": "El trabajo administrativo consume demasiado tiempo, las tareas son repetitivas y la organización es manual."
+      }
+    },
+    "industries": {
+      "all": "Todos",
+      "b2b": "B2B",
+      "construction": "Construcción",
+      "consulting": "Consultoría",
+      "creator": "Creadores de contenido",
+      "ecommerce": "Comercio electrónico",
+      "education": "Educación",
+      "enterprise": "Gran empresa",
+      "finance": "Finanzas",
+      "healthcare": "Sanidad",
+      "legal": "Legal",
+      "public-sector": "Sector público",
+      "real-estate": "Inmobiliario",
+      "retail": "Comercio minorista",
+      "saas": "SaaS",
+      "services": "Servicios"
+    },
+    "companySize": {
+      "enterprise": "Gran empresa",
+      "sme": "PYME",
+      "solo": "Autónomo"
+    },
+    "profile": {
+      "high": "Alto",
+      "medium": "Medio"
+    },
+    "complexity": {
+      "high": "Alta",
+      "low": "Baja",
+      "medium": "Media"
+    },
+    "model": {
+      "subscription": "Suscripción"
+    },
+    "integrations": {
+      "accounting": "Contabilidad",
+      "audit-ai": "Auditoría de IA",
+      "calendar": "Calendario",
+      "cloud-storage": "Almacenamiento en la nube",
+      "compliance-tools": "Herramientas de cumplimiento",
+      "crm": "CRM",
+      "dashboard": "Panel de control",
+      "documents": "Documentos",
+      "email": "Correo electrónico",
+      "helpdesk": "Centro de asistencia",
+      "hris": "HRIS",
+      "registry": "Registro",
+      "social-media": "Redes sociales",
+      "spreadsheet": "Hoja de cálculo",
+      "website": "Sitio web"
+    }
+  },
 };

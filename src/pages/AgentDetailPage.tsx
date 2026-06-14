@@ -55,10 +55,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+type AgentText = { tagline: string; description: string; problemSolved: string };
+
 export function AgentDetailPage() {
   const { route, navigate } = useRoute();
   const { session } = useAuth();
   const T = useLocale();
+  const AC = T.agentsContent;
+  const tax = (group: Record<string, string>, key: string) => group[key] ?? key;
   const role  = session?.role;
   const orgId = session?.orgId ?? null;
   const agentId = route.name === 'agents/detail' ? route.agentId : null;
@@ -136,8 +140,8 @@ export function AgentDetailPage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               <Pill tone={agent.source === 'ailunapro' ? 'violet' : 'neutral'}>{agent.source === 'ailunapro' ? 'AiLunaPro' : T.agentsPages.detail.pills.external}</Pill>
               <Pill>{format(T.agentsPages.detail.pills.minPlanSuffix, { plan: PLAN_LABEL[agent.minPlan] })}</Pill>
-              <Pill tone="green">{format(T.agentsPages.detail.pills.tokens, { profile: agent.tokenUsageProfile })}</Pill>
-              <Pill tone="yellow">{format(T.agentsPages.detail.pills.setup, { complexity: agent.implementationComplexity })}</Pill>
+              <Pill tone="green">{format(T.agentsPages.detail.pills.tokens, { profile: tax(AC.profile as Record<string, string>, agent.tokenUsageProfile) })}</Pill>
+              <Pill tone="yellow">{format(T.agentsPages.detail.pills.setup, { complexity: tax(AC.complexity as Record<string, string>, agent.implementationComplexity) })}</Pill>
               {agent.badges.includes('recommended-all-in-one') && <Pill tone="violet">{T.agentsPages.detail.pills.recommendedAllInOne}</Pill>}
               {agent.badges.includes('compliance') && <Pill tone="green">{T.agentsPages.detail.pills.compliance}</Pill>}
               {agent.badges.includes('audit')      && <Pill tone="green">{T.agentsPages.detail.pills.audit}</Pill>}
@@ -146,7 +150,7 @@ export function AgentDetailPage() {
               {agent.name}
             </h1>
             <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-              {agent.tagline}
+              {(AC.byId as Record<string, AgentText>)[agent.agentId]?.tagline ?? agent.tagline}
             </p>
           </div>
 
@@ -169,14 +173,14 @@ export function AgentDetailPage() {
           {/* Description */}
           <Section title={T.agentsPages.detail.sections.overview}>
             <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
-              {agent.description}
+              {(AC.byId as Record<string, AgentText>)[agent.agentId]?.description ?? agent.description}
             </p>
           </Section>
 
           {/* Problem */}
           <Section title={T.agentsPages.detail.sections.problemSolved}>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
-              {agent.problemSolved}
+              {(AC.byId as Record<string, AgentText>)[agent.agentId]?.problemSolved ?? agent.problemSolved}
             </p>
           </Section>
 
@@ -186,13 +190,13 @@ export function AgentDetailPage() {
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{T.agentsPages.detail.bestFit.industries}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {agent.fits.industries.map(i => <Pill key={i}>{i}</Pill>)}
+                  {agent.fits.industries.map(i => <Pill key={i}>{tax(AC.industries as Record<string, string>, i)}</Pill>)}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{T.agentsPages.detail.bestFit.companySize}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {agent.fits.companySize.map(s => <Pill key={s}>{s}</Pill>)}
+                  {agent.fits.companySize.map(s => <Pill key={s}>{tax(AC.companySize as Record<string, string>, s)}</Pill>)}
                 </div>
               </div>
               {agent.fits.budgetMin !== null && (
@@ -210,7 +214,7 @@ export function AgentDetailPage() {
           {agent.integrations.length > 0 && (
             <Section title={T.agentsPages.detail.sections.integrations}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {agent.integrations.map(i => <Pill key={i}>{i}</Pill>)}
+                {agent.integrations.map(i => <Pill key={i}>{tax(AC.integrations as Record<string, string>, i)}</Pill>)}
               </div>
             </Section>
           )}
@@ -248,7 +252,7 @@ export function AgentDetailPage() {
           {/* Pricing */}
           <Section title={T.agentsPages.detail.sections.pricing}>
             <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-              {format(T.agentsPages.detail.pricing.modelPrefix, { model: agent.pricing.model })
+              {format(T.agentsPages.detail.pricing.modelPrefix, { model: tax(AC.model as Record<string, string>, agent.pricing.model) })
                 .split('**')
                 .map((seg, i) => (i % 2 === 1 ? <strong key={i}>{seg}</strong> : seg))}
               {agent.pricing.installPrice !== null && (

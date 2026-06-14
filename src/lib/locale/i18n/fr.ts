@@ -2351,4 +2351,110 @@ export const fr: Dict = {
       "disabled": "Désactivé"
     }
   },
+  agentsContent: {
+    "byId": {
+      "support-agent": {
+        "tagline": "Automatise les réponses clients et réduit la charge du support.",
+        "description": "Agent AI conçu pour répondre aux questions fréquentes, qualifier les demandes de support, router les tickets et assister les équipes de service client. Il aide les entreprises à structurer un premier niveau de support disponible en continu, sans remplacer les équipes humaines.",
+        "problemSolved": "Temps de réponse client trop longs, demandes répétitives et équipes de support surchargées."
+      },
+      "sales-agent": {
+        "tagline": "Qualifie les prospects et prépare les relances commerciales.",
+        "description": "Agent AI orienté commercial conçu pour qualifier les leads, préparer les réponses commerciales, générer des relances et structurer les opportunités. Il aide les équipes commerciales à gagner du temps sur les tâches répétitives et à améliorer le suivi des prospects.",
+        "problemSolved": "Prospects mal qualifiés, relances oubliées et temps commercial gaspillé."
+      },
+      "finance-agent": {
+        "tagline": "Assiste pour les factures, les devis et les relances.",
+        "description": "Agent AI conçu pour aider à classer les documents financiers, préparer les devis, suivre les factures, générer des relances de recouvrement et signaler les anomalies simples. Il ne remplace pas un comptable, mais réduit considérablement le temps administratif lié aux finances.",
+        "problemSolved": "Traitement manuel des factures, retards de recouvrement et erreurs de saisie."
+      },
+      "hr-agent": {
+        "tagline": "Assiste les équipes RH pour le tri, les synthèses et la documentation.",
+        "description": "Agent AI conçu pour soutenir les tâches RH répétitives telles que les synthèses de CV, les notes de candidats, les réponses internes, la documentation des collaborateurs et le suivi administratif RH. Il aide les équipes à structurer l'information et à réduire le temps consacré au travail documentaire manuel.",
+        "problemSolved": "Les équipes RH perdent du temps sur le tri documentaire, les réponses répétitives et le suivi manuel."
+      },
+      "compliance-agent": {
+        "tagline": "Aide à structurer la conformité AI, les risques et les registres.",
+        "description": "Agent AI conçu pour soutenir la documentation de conformité, les contrôles internes, la préparation du registre AI et les plans de remédiation. Il est particulièrement utile aux organisations exposées aux obligations de gouvernance, de traçabilité et de conformité AI.",
+        "problemSolved": "Les organisations manquent de visibilité claire sur la conformité AI, ont une documentation éparpillée et des risques AI non maîtrisés."
+      },
+      "marketing-agent": {
+        "tagline": "Génère des contenus, des campagnes et des idées marketing.",
+        "description": "Agent AI conçu pour générer des publications, des e-mails, des contenus de landing pages, des idées de campagnes, des synthèses et des supports marketing adaptés au profil de l'entreprise. Il aide les petites équipes à publier de manière plus régulière sans multiplier les outils.",
+        "problemSolved": "Les équipes marketing peinent à assurer la cohérence des contenus, une création chronophage et des supports de campagne dispersés."
+      },
+      "reporting-agent": {
+        "tagline": "Crée des synthèses, des tableaux de bord et des rapports décisionnels.",
+        "description": "Agent AI conçu pour transformer les données et informations internes en synthèses, rapports, plans d'action et analyses prêtes pour la décision. Il aide les dirigeants et managers à obtenir une vision plus claire sans passer des heures à consolider l'information manuellement.",
+        "problemSolved": "Les rapports manuels prennent trop de temps à produire et les décideurs manquent de synthèses concises."
+      },
+      "audit-agent": {
+        "tagline": "Soutient l'audit AI, l'évaluation de maturité et les plans d'action.",
+        "description": "Agent AI conçu pour aider à structurer les audits, analyser les réponses, identifier les risques et produire des recommandations actionnables. Il relie l'audit AI, la conformité et la transformation métier dans un flux de travail concret.",
+        "problemSolved": "Les audits AI sont chronophages, analysés manuellement et difficiles à prioriser."
+      },
+      "document-agent": {
+        "tagline": "Classe, synthétise et extrait l'information des documents.",
+        "description": "Agent AI conçu pour traiter les documents, extraire les informations clés, générer des synthèses et organiser les fichiers. Il est utile aux organisations gérant de nombreuses pièces jointes, contrats, rapports, dossiers RH, documents financiers ou preuves de conformité.",
+        "problemSolved": "Les documents sont mal organisés, longs à rechercher et coûteux à synthétiser manuellement."
+      },
+      "admin-agent": {
+        "tagline": "Automatise le travail administratif quotidien.",
+        "description": "Agent AI polyvalent pour les e-mails, les rendez-vous, les relances, les synthèses, les notes, l'organisation des tâches et les flux administratifs quotidiens. Il aide les fondateurs, les indépendants et les petites équipes à gagner du temps sur le travail opérationnel répétitif.",
+        "problemSolved": "Le travail administratif prend trop de temps, les tâches sont répétitives et l'organisation est manuelle."
+      }
+    },
+    "industries": {
+      "all": "Tous",
+      "b2b": "B2B",
+      "construction": "Construction",
+      "consulting": "Conseil",
+      "creator": "Créateur",
+      "ecommerce": "E-commerce",
+      "education": "Éducation",
+      "enterprise": "Grande entreprise",
+      "finance": "Finance",
+      "healthcare": "Santé",
+      "legal": "Juridique",
+      "public-sector": "Secteur public",
+      "real-estate": "Immobilier",
+      "retail": "Commerce de détail",
+      "saas": "SaaS",
+      "services": "Services"
+    },
+    "companySize": {
+      "enterprise": "Grande entreprise",
+      "sme": "PME",
+      "solo": "Indépendant"
+    },
+    "profile": {
+      "high": "Élevé",
+      "medium": "Moyen"
+    },
+    "complexity": {
+      "high": "Élevée",
+      "low": "Faible",
+      "medium": "Moyenne"
+    },
+    "model": {
+      "subscription": "Abonnement"
+    },
+    "integrations": {
+      "accounting": "Comptabilité",
+      "audit-ai": "Audit AI",
+      "calendar": "Agenda",
+      "cloud-storage": "Stockage cloud",
+      "compliance-tools": "Outils de conformité",
+      "crm": "CRM",
+      "dashboard": "Tableau de bord",
+      "documents": "Documents",
+      "email": "E-mail",
+      "helpdesk": "Support client",
+      "hris": "SIRH",
+      "registry": "Registre",
+      "social-media": "Réseaux sociaux",
+      "spreadsheet": "Tableur",
+      "website": "Site web"
+    }
+  },
 };

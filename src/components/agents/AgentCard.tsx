@@ -18,8 +18,12 @@ const PLAN_LABEL: Record<AgentCatalogEntry['minPlan'], string> = {
   enterprise:   'Enterprise',
 };
 
+type AgentText = { tagline: string; description: string; problemSolved: string };
+
 export function AgentCard({ agent, onOpen }: Props) {
   const T = useLocale();
+  const AC = T.agentsContent;
+  const content = (AC.byId as Record<string, AgentText>)[agent.agentId];
   const isAiLuna = agent.source === 'ailunapro';
   return (
     <div
@@ -67,7 +71,7 @@ export function AgentCard({ agent, onOpen }: Props) {
         {agent.name}
       </h3>
       <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.45, minHeight: 36 }}>
-        {agent.tagline}
+        {content?.tagline ?? agent.tagline}
       </p>
 
       {agent.expectedRoi.timeSavedHoursPerMonth !== null && (
@@ -83,7 +87,7 @@ export function AgentCard({ agent, onOpen }: Props) {
               fontSize: 10, padding: '2px 8px', borderRadius: 6,
               background: 'var(--surface-2)', color: 'var(--text-muted)',
             }}>
-              {it}
+              {(AC.integrations as Record<string, string>)[it] ?? it}
             </span>
           ))}
           {agent.integrations.length > 4 && (

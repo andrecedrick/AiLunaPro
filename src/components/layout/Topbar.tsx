@@ -29,8 +29,15 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
     { id: 'lastmonth', label: T.topbar.dateRange.lastMonth },
   ];
 
-  const [dateLabel, setDateLabel] = useState<string>(() => {
-    try { return localStorage.getItem('ailunapro:dateRange') ?? 'Apr 1 – Apr 27, 2025'; } catch { return 'Apr 1 – Apr 27, 2025'; }
+  // B6.2 precision: store the SELECTION (preset id or custom range), never a
+  // frozen label — so the displayed text re-localizes when the language changes.
+  type DateSel = { kind: 'preset'; id: string } | { kind: 'custom'; from: string; to: string };
+  const [dateSel, setDateSel] = useState<DateSel>(() => {
+    try {
+      const raw = localStorage.getItem('ailunapro:dateRange:v2');
+      if (raw) { const p = JSON.parse(raw); if (p && (p.kind === 'preset' || p.kind === 'custom')) return p; }
+    } catch { /* ignore */ }
+    return { kind: 'preset', id: 'thismonth' };
   });
   const [dateOpen, setDateOpen]   = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -55,10 +62,12 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const role = session?.role;
   const canCreateAudit = ROLE.canUseFeatures(role);
 
-  const onPickDate = (label: string) => {
-    setDateLabel(label);
+  const onPickPreset = (id: string) => {
+    const sel: DateSel = { kind: 'preset', id };
+    setDateSel(sel);
     setDateOpen(false);
-    try { localStorage.setItem('ailunapro:dateRange', label); } catch { /* ignore */ }
+    try { localStorage.setItem('ailunapro:dateRange:v2', JSON.stringify(sel)); } catch { /* ignore */ }
+    const label = datePresets.find(p => p.id === id)?.label ?? '';
     showToast(format(T.topbar.dateRange.toast, { label }), 'info');
   };
 
@@ -78,13 +87,19 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
       showToast(T.topbar.dateRange.errOrder, 'warning');
       return;
     }
+    const sel: DateSel = { kind: 'custom', from: customFrom, to: customTo };
+    setDateSel(sel);
+    try { localStorage.setItem('ailunapro:dateRange:v2', JSON.stringify(sel)); } catch { /* ignore */ }
     const label = `${formatDate(customFrom)} – ${formatDate(customTo)}`;
-    setDateLabel(label);
-    try { localStorage.setItem('ailunapro:dateRange', label); } catch { /* ignore */ }
     setCustomOpen(false);
     setDateOpen(false);
     showToast(format(T.topbar.dateRange.toast, { label }), 'info');
   };
+
+  // Displayed label is derived from the selection + current locale (re-localizes).
+  const dateLabel = dateSel.kind === 'preset'
+    ? (datePresets.find(p => p.id === dateSel.id)?.label ?? T.topbar.dateRange.thisMonth)
+    : `${formatDate(dateSel.from)} – ${formatDate(dateSel.to)}`;
 
   const onSearchEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && search.trim()) {
@@ -167,7 +182,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
         {dateOpen && (
           <div style={dropdownStyle()}>
             {datePresets.map(p => (
-              <button key={p.id} type="button" onClick={() => onPickDate(p.label)} style={dropdownItem()}>
+              <button key={p.id} type="button" onClick={() => onPickPreset(p.id)} style={dropdownItem()}>
                 {p.label}
               </button>
             ))}

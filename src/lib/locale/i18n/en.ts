@@ -2366,6 +2366,112 @@ export const en = {
       "disabled": "Disabled"
     }
   },
+  agentsContent: {
+    "byId": {
+      "support-agent": {
+        "tagline": "Automates customer responses and reduces support workload.",
+        "description": "AI agent designed to answer frequently asked questions, qualify support requests, route tickets, and assist customer service teams. It helps companies structure a first level of support that is available continuously without replacing human teams.",
+        "problemSolved": "Slow customer response times, repetitive requests, and overloaded support teams."
+      },
+      "sales-agent": {
+        "tagline": "Qualifies prospects and prepares commercial follow-ups.",
+        "description": "Sales-focused AI agent designed to qualify leads, prepare commercial responses, generate follow-ups, and structure opportunities. It helps sales teams save time on repetitive tasks and improve prospect follow-up.",
+        "problemSolved": "Poorly qualified prospects, forgotten follow-ups, and wasted sales time."
+      },
+      "finance-agent": {
+        "tagline": "Assists with invoices, quotes, and collections.",
+        "description": "AI agent designed to help classify financial documents, prepare quotes, track invoices, generate collection reminders, and flag simple anomalies. Does not replace an accountant, but greatly reduces financial administrative time.",
+        "problemSolved": "Manual invoice processing, late collections, and data entry errors."
+      },
+      "hr-agent": {
+        "tagline": "Assists HR teams with screening, summaries, and documentation.",
+        "description": "AI agent designed to support repetitive HR tasks such as CV summaries, candidate notes, internal responses, employee documentation, and HR administrative follow-up. It helps teams structure information and reduce the time spent on manual document work.",
+        "problemSolved": "HR teams lose time on document screening, repetitive answers, and manual follow-up."
+      },
+      "compliance-agent": {
+        "tagline": "Helps structure AI compliance, risks, and registries.",
+        "description": "AI agent designed to support compliance documentation, internal controls, AI registry preparation, and mitigation plans. It is especially useful for organizations exposed to governance, traceability, and AI compliance obligations.",
+        "problemSolved": "Organizations lack clear visibility on AI compliance, scattered documentation, and unmanaged AI risks."
+      },
+      "marketing-agent": {
+        "tagline": "Generates content, campaigns, and marketing ideas.",
+        "description": "AI agent designed to generate posts, emails, landing-page content, campaign ideas, summaries, and marketing assets adapted to the company profile. It helps small teams publish more consistently without multiplying tools.",
+        "problemSolved": "Marketing teams struggle with content consistency, time-consuming creation, and scattered campaign assets."
+      },
+      "reporting-agent": {
+        "tagline": "Creates summaries, dashboards, and decision reports.",
+        "description": "AI agent designed to transform internal data and information into summaries, reports, action plans, and management-ready insights. It helps leaders and managers get a clearer view without spending hours consolidating information manually.",
+        "problemSolved": "Manual reports take too long to produce, and decision-makers lack concise summaries."
+      },
+      "audit-agent": {
+        "tagline": "Supports AI audit, maturity assessment, and action plans.",
+        "description": "AI agent designed to help structure audits, analyze answers, identify risks, and produce actionable recommendations. It connects AI audit, compliance, and business transformation into a practical workflow.",
+        "problemSolved": "AI audits are time-consuming, manually analyzed, and difficult to prioritize."
+      },
+      "document-agent": {
+        "tagline": "Classifies, summarizes, and extracts information from documents.",
+        "description": "AI agent designed to process documents, extract key information, generate summaries, and organize files. It is useful for organizations handling many attachments, contracts, reports, HR files, financial documents, or compliance evidence.",
+        "problemSolved": "Documents are poorly organized, slow to search, and expensive to summarize manually."
+      },
+      "admin-agent": {
+        "tagline": "Automates daily administrative work.",
+        "description": "General-purpose AI agent for emails, appointments, follow-ups, summaries, notes, task organization, and daily administrative workflows. It helps founders, independent professionals, and small teams save time on repetitive operational work.",
+        "problemSolved": "Administrative work takes too much time, tasks are repetitive, and organization is manual."
+      }
+    },
+    "industries": {
+      "all": "all",
+      "b2b": "b2b",
+      "construction": "construction",
+      "consulting": "consulting",
+      "creator": "creator",
+      "ecommerce": "ecommerce",
+      "education": "education",
+      "enterprise": "enterprise",
+      "finance": "finance",
+      "healthcare": "healthcare",
+      "legal": "legal",
+      "public-sector": "public-sector",
+      "real-estate": "real-estate",
+      "retail": "retail",
+      "saas": "saas",
+      "services": "services"
+    },
+    "companySize": {
+      "enterprise": "enterprise",
+      "sme": "sme",
+      "solo": "solo"
+    },
+    "profile": {
+      "high": "high",
+      "medium": "medium"
+    },
+    "complexity": {
+      "high": "high",
+      "low": "low",
+      "medium": "medium"
+    },
+    "model": {
+      "subscription": "subscription"
+    },
+    "integrations": {
+      "accounting": "accounting",
+      "audit-ai": "audit-ai",
+      "calendar": "calendar",
+      "cloud-storage": "cloud-storage",
+      "compliance-tools": "compliance-tools",
+      "crm": "crm",
+      "dashboard": "dashboard",
+      "documents": "documents",
+      "email": "email",
+      "helpdesk": "helpdesk",
+      "hris": "hris",
+      "registry": "registry",
+      "social-media": "social-media",
+      "spreadsheet": "spreadsheet",
+      "website": "website"
+    }
+  },
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed

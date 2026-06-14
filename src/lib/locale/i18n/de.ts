@@ -2351,4 +2351,110 @@ export const de: Dict = {
       "disabled": "Deaktiviert"
     }
   },
+  agentsContent: {
+    "byId": {
+      "support-agent": {
+        "tagline": "Automatisiert Kundenantworten und reduziert den Support-Aufwand.",
+        "description": "KI-Agent, der häufig gestellte Fragen beantwortet, Support-Anfragen qualifiziert, Tickets weiterleitet und Kundenservice-Teams unterstützt. Er hilft Unternehmen, eine durchgehend verfügbare erste Support-Ebene aufzubauen, ohne menschliche Teams zu ersetzen.",
+        "problemSolved": "Langsame Reaktionszeiten gegenüber Kunden, wiederkehrende Anfragen und überlastete Support-Teams."
+      },
+      "sales-agent": {
+        "tagline": "Qualifiziert Interessenten und bereitet kommerzielle Follow-ups vor.",
+        "description": "Vertriebsorientierter KI-Agent, der Leads qualifiziert, kommerzielle Antworten vorbereitet, Follow-ups erstellt und Verkaufschancen strukturiert. Er hilft Vertriebsteams, Zeit bei wiederkehrenden Aufgaben zu sparen und die Nachverfolgung von Interessenten zu verbessern.",
+        "problemSolved": "Schlecht qualifizierte Interessenten, vergessene Follow-ups und vergeudete Vertriebszeit."
+      },
+      "finance-agent": {
+        "tagline": "Unterstützt bei Rechnungen, Angeboten und dem Mahnwesen.",
+        "description": "KI-Agent, der bei der Klassifizierung von Finanzdokumenten, der Erstellung von Angeboten, der Rechnungsverfolgung, dem Generieren von Zahlungserinnerungen und dem Erkennen einfacher Unstimmigkeiten hilft. Er ersetzt keine Buchhaltung, reduziert aber den finanziellen Verwaltungsaufwand erheblich.",
+        "problemSolved": "Manuelle Rechnungsbearbeitung, verspätetes Mahnwesen und Eingabefehler."
+      },
+      "hr-agent": {
+        "tagline": "Unterstützt HR-Teams bei Vorauswahl, Zusammenfassungen und Dokumentation.",
+        "description": "KI-Agent, der wiederkehrende HR-Aufgaben unterstützt, etwa CV-Zusammenfassungen, Bewerbernotizen, interne Antworten, Mitarbeiterdokumentation und administrative HR-Nachverfolgung. Er hilft Teams, Informationen zu strukturieren und den Zeitaufwand für manuelle Dokumentenarbeit zu reduzieren.",
+        "problemSolved": "HR-Teams verlieren Zeit durch das Sichten von Dokumenten, wiederkehrende Antworten und manuelle Nachverfolgung."
+      },
+      "compliance-agent": {
+        "tagline": "Hilft, KI-Compliance, Risiken und Register zu strukturieren.",
+        "description": "KI-Agent, der die Compliance-Dokumentation, interne Kontrollen, die Vorbereitung des KI-Registers und Maßnahmenpläne unterstützt. Besonders nützlich für Organisationen mit Verpflichtungen in den Bereichen Governance, Nachvollziehbarkeit und KI-Compliance.",
+        "problemSolved": "Organisationen fehlt ein klarer Überblick über die KI-Compliance, die Dokumentation ist verstreut und KI-Risiken bleiben unkontrolliert."
+      },
+      "marketing-agent": {
+        "tagline": "Erstellt Inhalte, Kampagnen und Marketing-Ideen.",
+        "description": "KI-Agent, der Posts, E-Mails, Landingpage-Inhalte, Kampagnenideen, Zusammenfassungen und Marketing-Assets passend zum Unternehmensprofil generiert. Er hilft kleinen Teams, konsistenter zu veröffentlichen, ohne die Zahl der Tools zu erhöhen.",
+        "problemSolved": "Marketing-Teams kämpfen mit der Konsistenz von Inhalten, zeitaufwendiger Erstellung und verstreuten Kampagnen-Assets."
+      },
+      "reporting-agent": {
+        "tagline": "Erstellt Zusammenfassungen, Dashboards und Entscheidungsberichte.",
+        "description": "KI-Agent, der interne Daten und Informationen in Zusammenfassungen, Berichte, Aktionspläne und entscheidungsreife Erkenntnisse umwandelt. Er hilft Führungskräften und Managern, einen klareren Überblick zu gewinnen, ohne Stunden mit der manuellen Konsolidierung von Informationen zu verbringen.",
+        "problemSolved": "Manuelle Berichte dauern zu lange in der Erstellung, und Entscheidungsträgern fehlen prägnante Zusammenfassungen."
+      },
+      "audit-agent": {
+        "tagline": "Unterstützt KI-Audit, Reifegradbewertung und Aktionspläne.",
+        "description": "KI-Agent, der hilft, Audits zu strukturieren, Antworten zu analysieren, Risiken zu identifizieren und umsetzbare Empfehlungen zu erstellen. Er verbindet KI-Audit, Compliance und Geschäftstransformation zu einem praxisnahen Workflow.",
+        "problemSolved": "KI-Audits sind zeitaufwendig, werden manuell ausgewertet und lassen sich schwer priorisieren."
+      },
+      "document-agent": {
+        "tagline": "Klassifiziert, fasst zusammen und extrahiert Informationen aus Dokumenten.",
+        "description": "KI-Agent, der Dokumente verarbeitet, wichtige Informationen extrahiert, Zusammenfassungen erstellt und Dateien organisiert. Nützlich für Organisationen, die mit vielen Anhängen, Verträgen, Berichten, HR-Akten, Finanzdokumenten oder Compliance-Nachweisen arbeiten.",
+        "problemSolved": "Dokumente sind schlecht organisiert, langsam zu durchsuchen und teuer manuell zusammenzufassen."
+      },
+      "admin-agent": {
+        "tagline": "Automatisiert die tägliche Verwaltungsarbeit.",
+        "description": "Universeller KI-Agent für E-Mails, Termine, Follow-ups, Zusammenfassungen, Notizen, Aufgabenorganisation und tägliche administrative Workflows. Er hilft Gründern, selbstständigen Fachkräften und kleinen Teams, Zeit bei wiederkehrender operativer Arbeit zu sparen.",
+        "problemSolved": "Verwaltungsarbeit kostet zu viel Zeit, Aufgaben sind repetitiv und die Organisation erfolgt manuell."
+      }
+    },
+    "industries": {
+      "all": "Alle",
+      "b2b": "B2B",
+      "construction": "Bauwesen",
+      "consulting": "Beratung",
+      "creator": "Creator",
+      "ecommerce": "E-Commerce",
+      "education": "Bildung",
+      "enterprise": "Großunternehmen",
+      "finance": "Finanzen",
+      "healthcare": "Gesundheitswesen",
+      "legal": "Recht",
+      "public-sector": "Öffentlicher Sektor",
+      "real-estate": "Immobilien",
+      "retail": "Einzelhandel",
+      "saas": "SaaS",
+      "services": "Dienstleistungen"
+    },
+    "companySize": {
+      "enterprise": "Großunternehmen",
+      "sme": "KMU",
+      "solo": "Solo"
+    },
+    "profile": {
+      "high": "Hoch",
+      "medium": "Mittel"
+    },
+    "complexity": {
+      "high": "Hoch",
+      "low": "Niedrig",
+      "medium": "Mittel"
+    },
+    "model": {
+      "subscription": "Abonnement"
+    },
+    "integrations": {
+      "accounting": "Buchhaltung",
+      "audit-ai": "Audit AI",
+      "calendar": "Kalender",
+      "cloud-storage": "Cloud-Speicher",
+      "compliance-tools": "Compliance-Tools",
+      "crm": "CRM",
+      "dashboard": "Dashboard",
+      "documents": "Dokumente",
+      "email": "E-Mail",
+      "helpdesk": "Helpdesk",
+      "hris": "HRIS",
+      "registry": "Register",
+      "social-media": "Social Media",
+      "spreadsheet": "Tabellenkalkulation",
+      "website": "Website"
+    }
+  },
 };

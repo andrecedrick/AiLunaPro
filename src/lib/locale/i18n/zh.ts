@@ -2353,4 +2353,110 @@ export const zh: Dict = {
       "disabled": "已停用"
     }
   },
+  agentsContent: {
+    "byId": {
+      "support-agent": {
+        "tagline": "自动化客户回复，减轻支持团队的工作负担。",
+        "description": "AI 智能体专为解答常见问题、甄别支持请求、分配工单并协助客服团队而设计。它帮助企业搭建可全天候运行的第一级支持，而无需取代人工团队。",
+        "problemSolved": "客户响应缓慢、请求重复以及支持团队负荷过重。"
+      },
+      "sales-agent": {
+        "tagline": "甄别潜在客户并准备商务跟进。",
+        "description": "面向销售的 AI 智能体，专为甄别潜在客户、准备商务回复、生成跟进内容并梳理商机而设计。它帮助销售团队节省重复性工作的时间，并改善对潜在客户的跟进。",
+        "problemSolved": "潜在客户甄别不到位、遗忘跟进以及销售时间浪费。"
+      },
+      "finance-agent": {
+        "tagline": "协助处理发票、报价和催收。",
+        "description": "AI 智能体专为帮助分类财务文档、准备报价、跟踪发票、生成催收提醒并标记简单异常而设计。它不取代会计，但能大幅减少财务行政工作的时间。",
+        "problemSolved": "人工处理发票、催收延迟以及录入错误。"
+      },
+      "hr-agent": {
+        "tagline": "协助 HR 团队完成筛选、摘要和文档工作。",
+        "description": "AI 智能体专为支持重复性 HR 任务而设计，例如 CV 摘要、候选人备注、内部回复、员工文档及 HR 行政跟进。它帮助团队梳理信息，并减少手工文档工作所花费的时间。",
+        "problemSolved": "HR 团队在文档筛选、重复回答和手工跟进上耗费时间。"
+      },
+      "compliance-agent": {
+        "tagline": "帮助梳理 AI 合规、风险与登记册。",
+        "description": "AI 智能体专为支持合规文档、内部控制、AI 登记册准备及缓解方案而设计。它对面临治理、可追溯性和 AI 合规义务的组织尤为有用。",
+        "problemSolved": "组织对 AI 合规缺乏清晰可见性、文档分散以及 AI 风险失管。"
+      },
+      "marketing-agent": {
+        "tagline": "生成内容、营销活动与营销创意。",
+        "description": "AI 智能体专为生成帖子、邮件、落地页内容、营销活动创意、摘要及契合企业画像的营销素材而设计。它帮助小团队在不增加工具数量的情况下更稳定地进行发布。",
+        "problemSolved": "营销团队在内容一致性、耗时的创作以及分散的活动素材上面临困难。"
+      },
+      "reporting-agent": {
+        "tagline": "创建摘要、仪表盘和决策报告。",
+        "description": "AI 智能体专为将内部数据和信息转化为摘要、报告、行动计划及可供管理层使用的洞察而设计。它帮助领导者和管理者获得更清晰的全局视图，而无需花费数小时手工整合信息。",
+        "problemSolved": "人工报告耗时过长，决策者缺乏简明的摘要。"
+      },
+      "audit-agent": {
+        "tagline": "支持 AI 审计、成熟度评估和行动计划。",
+        "description": "AI 智能体专为帮助梳理审计、分析答复、识别风险并产出可执行建议而设计。它将 AI 审计、合规与业务转型衔接为一套实用的工作流程。",
+        "problemSolved": "AI 审计耗时、需手工分析且难以确定优先级。"
+      },
+      "document-agent": {
+        "tagline": "对文档进行分类、摘要和信息提取。",
+        "description": "AI 智能体专为处理文档、提取关键信息、生成摘要并整理文件而设计。它适用于需要处理大量附件、合同、报告、HR 文件、财务文档或合规证据的组织。",
+        "problemSolved": "文档整理混乱、检索缓慢，手工摘要成本高昂。"
+      },
+      "admin-agent": {
+        "tagline": "自动化日常行政工作。",
+        "description": "通用型 AI 智能体，用于处理邮件、预约、跟进、摘要、笔记、任务整理及日常行政工作流。它帮助创始人、独立专业人士和小团队节省重复性运营工作的时间。",
+        "problemSolved": "行政工作耗时过多、任务重复且整理全靠手工。"
+      }
+    },
+    "industries": {
+      "all": "全部",
+      "b2b": "B2B",
+      "construction": "建筑",
+      "consulting": "咨询",
+      "creator": "创作者",
+      "ecommerce": "电子商务",
+      "education": "教育",
+      "enterprise": "企业",
+      "finance": "金融",
+      "healthcare": "医疗健康",
+      "legal": "法律",
+      "public-sector": "公共部门",
+      "real-estate": "房地产",
+      "retail": "零售",
+      "saas": "SaaS",
+      "services": "服务业"
+    },
+    "companySize": {
+      "enterprise": "大型企业",
+      "sme": "中小企业",
+      "solo": "个人/独立"
+    },
+    "profile": {
+      "high": "高",
+      "medium": "中"
+    },
+    "complexity": {
+      "high": "高",
+      "low": "低",
+      "medium": "中"
+    },
+    "model": {
+      "subscription": "订阅"
+    },
+    "integrations": {
+      "accounting": "会计",
+      "audit-ai": "Audit AI",
+      "calendar": "日历",
+      "cloud-storage": "云存储",
+      "compliance-tools": "合规工具",
+      "crm": "CRM",
+      "dashboard": "仪表盘",
+      "documents": "文档",
+      "email": "电子邮件",
+      "helpdesk": "服务台",
+      "hris": "HRIS",
+      "registry": "登记册",
+      "social-media": "社交媒体",
+      "spreadsheet": "电子表格",
+      "website": "网站"
+    }
+  },
 };
