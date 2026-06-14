@@ -1,4 +1,6 @@
 import { useAudit } from '../../context/AuditContext';
+import { useLocale } from '../../context/LocaleContext';
+import { qField } from '../../lib/locale/i18n/questionsAccess';
 import type { Question } from '../../types/audit';
 import { TextQuestion } from './questions/TextQuestion';
 import { TextareaQuestion } from './questions/TextareaQuestion';
@@ -12,7 +14,12 @@ interface Props {
 
 export function QuestionRenderer({ question }: Props) {
   const { answers, setAnswer } = useAudit();
+  const T = useLocale();
   const value = answers[question.id];
+  const f = qField(T, question.id);
+  const label = f?.label ?? question.label;
+  const helper = f?.helper ?? question.helper;
+  const placeholder = f?.placeholder ?? question.placeholder;
 
   return (
     <div
@@ -26,7 +33,7 @@ export function QuestionRenderer({ question }: Props) {
       }}
     >
       {/* Label + required marker */}
-      <div style={{ marginBottom: question.helper ? 4 : 14 }}>
+      <div style={{ marginBottom: helper ? 4 : 14 }}>
         <span
           style={{
             fontSize: 14,
@@ -35,14 +42,14 @@ export function QuestionRenderer({ question }: Props) {
             fontFamily: 'var(--font-heading)',
           }}
         >
-          {question.label}
+          {label}
           {question.required && (
             <span style={{ color: 'var(--red-text)', marginLeft: 4 }}>*</span>
           )}
         </span>
       </div>
 
-      {question.helper && (
+      {helper && (
         <div
           style={{
             fontSize: 12,
@@ -51,7 +58,7 @@ export function QuestionRenderer({ question }: Props) {
             lineHeight: 1.5,
           }}
         >
-          {question.helper}
+          {helper}
         </div>
       )}
 
@@ -59,6 +66,7 @@ export function QuestionRenderer({ question }: Props) {
       {question.type === 'text' && (
         <TextQuestion
           question={question}
+          placeholder={placeholder}
           value={(value as string) ?? ''}
           onChange={v => setAnswer(question.id, v)}
         />
@@ -66,6 +74,7 @@ export function QuestionRenderer({ question }: Props) {
       {question.type === 'textarea' && (
         <TextareaQuestion
           question={question}
+          placeholder={placeholder}
           value={(value as string) ?? ''}
           onChange={v => setAnswer(question.id, v)}
         />

@@ -4,14 +4,16 @@ interface Props {
   question: Question;
   value: string;
   onChange: (next: string) => void;
+  /** Translated placeholder override (falls back to the question's own). */
+  placeholder?: string;
 }
 
-export function TextQuestion({ question, value, onChange }: Props) {
+export function TextQuestion({ question, value, onChange, placeholder }: Props) {
   return (
     <input
       type="text"
       value={value ?? ''}
-      placeholder={question.placeholder}
+      placeholder={placeholder ?? question.placeholder}
       onChange={e => onChange(e.target.value)}
       style={{
         width: '100%',

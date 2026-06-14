@@ -51,4 +51,228 @@ export const fr: Dict = {
     currencyToast:       'Devise : {value}',
     profileToast:        'Profil : {value}',
   },
+  questions: {
+    "ui": {
+      "sectionsNav": "Sections de l'audit",
+      "questionCount": "{n} questions",
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "section": {
+      "profile": {
+        "title": "Profil",
+        "subtitle": "Votre organisation en un coup d'œil"
+      },
+      "ai-tools": {
+        "title": "Outils d'IA",
+        "subtitle": "Quelle IA votre organisation utilise-t-elle réellement ?"
+      },
+      "data": {
+        "title": "Données",
+        "subtitle": "Quelles données alimentent vos systèmes d'IA ?"
+      },
+      "governance": {
+        "title": "Gouvernance",
+        "subtitle": "Politiques, responsabilités et reddition de comptes"
+      },
+      "security": {
+        "title": "Sécurité",
+        "subtitle": "Protéger les systèmes d'IA et leurs données"
+      },
+      "transparency": {
+        "title": "Transparence",
+        "subtitle": "Divulgation et explicabilité"
+      },
+      "human-oversight": {
+        "title": "Supervision humaine",
+        "subtitle": "Garder les humains aux commandes"
+      },
+      "training-maturity": {
+        "title": "Formation et maturité",
+        "subtitle": "Quelle est la culture IA de votre organisation ?"
+      }
+    },
+    "field": {
+      "profile.org_name": {
+        "label": "Nom de l'organisation",
+        "placeholder": "ex. Acme Corp"
+      },
+      "profile.industry": {
+        "label": "Secteur d'activité principal"
+      },
+      "profile.size": {
+        "label": "Taille de l'entreprise"
+      },
+      "profile.region": {
+        "label": "Principale région d'activité"
+      },
+      "tools.categories": {
+        "label": "Quelles catégories d'IA sont en production ?",
+        "helper": "Sélectionnez toutes les options applicables."
+      },
+      "tools.vendors": {
+        "label": "Principaux fournisseurs / produits d'IA",
+        "placeholder": "ex. OpenAI GPT-4, Anthropic Claude, modèle interne sur AWS Bedrock…"
+      },
+      "tools.scope": {
+        "label": "Périmètre de déploiement"
+      },
+      "tools.builds_custom": {
+        "label": "Entraînez-vous ou affinez-vous vos propres modèles ?"
+      },
+      "data.types": {
+        "label": "Quels types de données sont traités par l'IA ?"
+      },
+      "data.residency": {
+        "label": "Où les données sont-elles principalement stockées ?"
+      },
+      "data.governance_framework": {
+        "label": "Existe-t-il un cadre de gouvernance des données documenté ?"
+      },
+      "data.sources": {
+        "label": "Décrivez vos principales sources de données",
+        "placeholder": "ex. CRM, télémétrie produit, tickets de support client, jeux de données tiers…"
+      },
+      "gov.committee": {
+        "label": "Disposez-vous d'un comité de gouvernance de l'IA ou d'un responsable désigné ?"
+      },
+      "gov.written_policy": {
+        "label": "Existe-t-il une politique d'IA écrite et approuvée par la direction ?"
+      },
+      "gov.frameworks": {
+        "label": "Avec quels cadres vous alignez-vous ?"
+      },
+      "gov.structure": {
+        "label": "Décrivez votre structure de gouvernance",
+        "placeholder": "Qui est responsable du risque lié à l'IA ? Comment les décisions sont-elles escaladées ?"
+      },
+      "sec.controls": {
+        "label": "Quels contrôles de sécurité sont en place pour les systèmes d'IA ?"
+      },
+      "sec.red_team": {
+        "label": "Vos systèmes d'IA ont-ils fait l'objet d'un test d'intrusion ou d'un test adverse ?"
+      },
+      "sec.incident_readiness": {
+        "label": "Dans quelle mesure êtes-vous préparé à un incident spécifique à l'IA ?"
+      },
+      "sec.review_process": {
+        "label": "Décrivez votre processus de revue de sécurité pour les nouveaux systèmes d'IA"
+      },
+      "trans.disclosure": {
+        "label": "Indiquez-vous aux utilisateurs finaux qu'ils interagissent avec une IA ?"
+      },
+      "trans.cards": {
+        "label": "Tenez-vous à jour des fiches de modèle ou des fiches de système ?"
+      },
+      "trans.explainability": {
+        "label": "Dans quelle mesure vos décisions d'IA sont-elles explicables aux utilisateurs concernés ?"
+      },
+      "trans.measures": {
+        "label": "Décrivez vos mesures de transparence",
+        "placeholder": "Registre d'IA public, divulgations dans l'application, journaux d'audit accessibles aux utilisateurs…"
+      },
+      "over.model": {
+        "label": "Quel modèle de supervision décrit le mieux votre dispositif ?"
+      },
+      "over.escalation": {
+        "label": "Les procédures d'escalade sont-elles documentées pour les erreurs ou préjudices liés à l'IA ?"
+      },
+      "over.review_categories": {
+        "label": "Quelles catégories de décisions exigent une revue humaine obligatoire ?"
+      },
+      "over.processes": {
+        "label": "Décrivez vos processus de supervision avec vos propres mots"
+      },
+      "train.staff_training": {
+        "label": "Proposez-vous une formation à la culture de l'IA à votre personnel ?"
+      },
+      "train.maturity": {
+        "label": "Maturité auto-évaluée de votre conformité IA"
+      },
+      "train.topics": {
+        "label": "Quels thèmes sont couverts par votre formation ?"
+      },
+      "train.program": {
+        "label": "Décrivez votre programme de formation (ou ce qui fait défaut)"
+      }
+    },
+    "option": {
+      "profile.industry.finance": "Finance et banque",
+      "profile.industry.health": "Santé et sciences de la vie",
+      "profile.industry.tech": "Technologie / SaaS",
+      "profile.industry.retail": "Commerce de détail et e-commerce",
+      "profile.industry.public": "Secteur public",
+      "profile.industry.other": "Autre",
+      "profile.size.xs": "1–10 employés",
+      "profile.size.s": "11–50",
+      "profile.size.m": "51–200",
+      "profile.size.l": "201–1000",
+      "profile.size.xl": "1000+",
+      "profile.region.eu": "Union européenne",
+      "profile.region.uk": "Royaume-Uni",
+      "profile.region.us": "États-Unis",
+      "profile.region.ca": "Canada",
+      "profile.region.apac": "Asie-Pacifique",
+      "profile.region.global": "Mondial / multirégional",
+      "tools.categories.llm": "Grands modèles de langage (chat, agents, copilotes)",
+      "tools.categories.ml": "ML classique / modèles prédictifs",
+      "tools.categories.cv": "Vision par ordinateur",
+      "tools.categories.speech": "Voix et audio",
+      "tools.categories.rec": "Systèmes de recommandation",
+      "tools.categories.rpa": "RPA / automatisation avec composants d'IA",
+      "tools.scope.pilot": "Pilotes / expérimentations uniquement",
+      "tools.scope.internal": "Usage interne par le personnel",
+      "tools.scope.customer": "Fonctionnalités destinées aux clients",
+      "tools.scope.critical": "Décisions critiques / réglementées",
+      "data.types.pii": "Données personnelles (PII)",
+      "data.types.health": "Données de santé",
+      "data.types.financial": "Données financières / transactionnelles",
+      "data.types.biometric": "Données biométriques",
+      "data.types.children": "Données concernant des mineurs",
+      "data.types.public": "Données publiques / ouvertes",
+      "data.residency.eu": "UE / EEA",
+      "data.residency.us": "États-Unis",
+      "data.residency.mixed": "Mixte / multirégional",
+      "data.residency.unknown": "Incertain",
+      "gov.frameworks.eu-ai-act": "EU AI Act",
+      "gov.frameworks.iso-42001": "ISO/IEC 42001",
+      "gov.frameworks.nist-aimrf": "NIST AI RMF",
+      "gov.frameworks.soc2": "SOC 2",
+      "gov.frameworks.gdpr": "GDPR",
+      "gov.frameworks.none": "Aucun cadre formel",
+      "sec.controls.encryption": "Chiffrement au repos et en transit",
+      "sec.controls.rbac": "Contrôle d'accès basé sur les rôles (RBAC)",
+      "sec.controls.audit_logs": "Journalisation d'audit des accès au modèle et des entrées",
+      "sec.controls.secrets": "Gestion des secrets (aucune clé codée en dur)",
+      "sec.controls.isolation": "Isolation des tenants / des données",
+      "sec.incident_readiness.1": "1 — Aucun plan",
+      "sec.incident_readiness.2": "2 — Plan informel",
+      "sec.incident_readiness.3": "3 — Documenté mais non testé",
+      "sec.incident_readiness.4": "4 — Documenté et éprouvé",
+      "sec.incident_readiness.5": "5 — Continu, intégré au SOC",
+      "trans.explainability.none": "Aucune explication fournie",
+      "trans.explainability.generic": "Divulgations génériques uniquement",
+      "trans.explainability.category": "Justifications au niveau de la catégorie",
+      "trans.explainability.individual": "Explications par décision sur demande",
+      "trans.explainability.realtime": "Explications en temps réel, dans le produit",
+      "over.model.hitl": "Humain dans la boucle (chaque décision revue)",
+      "over.model.hotl": "Humain sur la boucle (revue par échantillonnage)",
+      "over.model.oot": "Humain hors de la boucle (autonome)",
+      "over.review_categories.hr": "Décisions de recrutement / RH",
+      "over.review_categories.credit": "Décisions de crédit / financières",
+      "over.review_categories.health": "Recommandations liées à la santé",
+      "over.review_categories.content": "Résultats de modération de contenu",
+      "over.review_categories.legal": "Décisions juridiques / de conformité",
+      "train.maturity.1": "1 — Initial / ad hoc",
+      "train.maturity.2": "2 — En développement",
+      "train.maturity.3": "3 — Défini",
+      "train.maturity.4": "4 — Géré",
+      "train.maturity.5": "5 — Optimisé",
+      "train.topics.bias": "Biais et équité",
+      "train.topics.privacy": "Confidentialité et protection des données",
+      "train.topics.security": "Sécurité de l'IA et usage abusif",
+      "train.topics.usage": "Politiques d'usage acceptable",
+      "train.topics.incident": "Réponse aux incidents"
+    }
+  },
 };

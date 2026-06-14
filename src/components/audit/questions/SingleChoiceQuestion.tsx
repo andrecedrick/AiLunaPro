@@ -1,4 +1,6 @@
 import type { Question } from '../../../types/audit';
+import { useLocale } from '../../../context/LocaleContext';
+import { qOption } from '../../../lib/locale/i18n/questionsAccess';
 
 interface Props {
   question: Question;
@@ -7,6 +9,7 @@ interface Props {
 }
 
 export function SingleChoiceQuestion({ question, value, onChange }: Props) {
+  const T = useLocale();
   const options = question.options ?? [];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -37,7 +40,7 @@ export function SingleChoiceQuestion({ question, value, onChange }: Props) {
               onChange={() => onChange(opt.value)}
               style={{ accentColor: 'var(--violet)', width: 16, height: 16, cursor: 'pointer' }}
             />
-            <span style={{ flex: 1 }}>{opt.label}</span>
+            <span style={{ flex: 1 }}>{qOption(T, question.id, opt.value) ?? opt.label}</span>
           </label>
         );
       })}

@@ -1,9 +1,13 @@
 import { useAudit } from '../../context/AuditContext';
+import { useLocale } from '../../context/LocaleContext';
+import { qSection } from '../../lib/locale/i18n/questionsAccess';
 import { auditSections } from '../../data/mockAuditQuestions';
 
 export function AuditProgress() {
   const { currentStep, totalSteps, overallCompletion } = useAudit();
+  const T = useLocale();
   const section = auditSections[currentStep];
+  const sec = qSection(T, section.key);
   const pct = Math.round(overallCompletion * 100);
 
   return (
@@ -52,7 +56,7 @@ export function AuditProgress() {
               letterSpacing: -0.3,
             }}
           >
-            {section.title}
+            {sec?.title ?? section.title}
           </h2>
           <div
             style={{
@@ -61,7 +65,7 @@ export function AuditProgress() {
               marginTop: 4,
             }}
           >
-            {section.subtitle}
+            {sec?.subtitle ?? section.subtitle}
           </div>
         </div>
 

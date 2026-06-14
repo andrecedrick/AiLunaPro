@@ -1,4 +1,7 @@
 import { useAudit } from '../../context/AuditContext';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
+import { qSection } from '../../lib/locale/i18n/questionsAccess';
 import { auditSections } from '../../data/mockAuditQuestions';
 
 type StepStatus = 'done' | 'in-progress' | 'pending';
@@ -73,6 +76,7 @@ function StatusDot({ status, active }: { status: StepStatus; active: boolean }) 
 
 export function AuditStepSidebar() {
   const { currentStep, completionByStep, goToStep } = useAudit();
+  const T = useLocale();
 
   return (
     <aside
@@ -101,7 +105,7 @@ export function AuditStepSidebar() {
           padding: '6px 10px 10px',
         }}
       >
-        Audit sections
+        {T.questions.ui.sectionsNav}
       </div>
 
       {auditSections.map((section, idx) => {
@@ -160,7 +164,7 @@ export function AuditStepSidebar() {
                   lineHeight: 1.3,
                 }}
               >
-                {section.title}
+                {qSection(T, section.key)?.title ?? section.title}
               </div>
               <div
                 style={{
@@ -172,7 +176,7 @@ export function AuditStepSidebar() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {section.questions.length} questions
+                {format(T.questions.ui.questionCount, { n: section.questions.length })}
               </div>
             </div>
           </button>

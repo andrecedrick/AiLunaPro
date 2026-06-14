@@ -20,6 +20,13 @@ function keyPaths(obj: Record<string, unknown>, prefix = ''): string[] {
   });
 }
 
+/** Recursively collect all leaf string values (dicts nest beyond 2 levels). */
+function leafValues(obj: Record<string, unknown>): unknown[] {
+  return Object.values(obj).flatMap(v =>
+    v && typeof v === 'object' ? leafValues(v as Record<string, unknown>) : [v],
+  );
+}
+
 const PDF_LATIN: Language[] = ['en', 'fr', 'es', 'de', 'it', 'pt'];
 const NON_LATIN: Language[] = ['ru', 'zh'];
 
@@ -33,7 +40,7 @@ describe('i18n — catalog completeness (registry-driven)', () => {
     });
     it(`${code} has no empty / placeholder string values`, async () => {
       const dict = await loadDict(code);
-      for (const v of Object.values(dict).flatMap(g => Object.values(g))) {
+      for (const v of leafValues(dict)) {
         expect(typeof v).toBe('string');
         expect((v as string).trim().length).toBeGreaterThan(0);
         expect(v as string).not.toMatch(/TODO\[/); // un-validated draft marker

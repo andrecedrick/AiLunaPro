@@ -1,14 +1,17 @@
+import { useLocale } from '../../../context/LocaleContext';
+
 interface Props {
   value: boolean | undefined;
   onChange: (next: boolean) => void;
 }
 
 export function BooleanQuestion({ value, onChange }: Props) {
+  const T = useLocale();
   return (
     <div style={{ display: 'flex', gap: 10 }}>
       {[
-        { v: true, label: 'Yes' },
-        { v: false, label: 'No' },
+        { v: true, label: T.questions.ui.yes },
+        { v: false, label: T.questions.ui.no },
       ].map(opt => {
         const selected = value === opt.v;
         return (
