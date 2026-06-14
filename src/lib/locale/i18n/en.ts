@@ -368,6 +368,121 @@ export const en = {
       "expectedOutcome": "Expected outcome —"
     }
   },
+  audit: {
+    "express": {
+      "q": {
+        "workflow": {
+          "label": "Which area would you most like to improve?",
+          "opt": {
+            "support": "Customer support",
+            "sales": "Sales",
+            "finance": "Finance",
+            "documents": "Documents",
+            "reporting": "Reporting",
+            "admin": "Admin",
+            "compliance": "Compliance",
+            "marketing": "Marketing",
+            "hr": "HR"
+          }
+        },
+        "monthlyHours": {
+          "label": "Roughly how many hours per month go to repetitive work?",
+          "opt": {
+            "low": "A little (~20)",
+            "medium": "A fair amount (~80)",
+            "high": "A lot (~160)"
+          }
+        },
+        "hourlyCost": {
+          "label": "Approximate average hourly cost of that work?",
+          "opt": {
+            "low": "Lower (~$25)",
+            "medium": "Mid (~$45)",
+            "high": "Higher (~$75)"
+          }
+        },
+        "aiUsage": {
+          "label": "How is AI used in your organization today?",
+          "opt": {
+            "none": "Not yet",
+            "individual": "Individually",
+            "team": "Across teams",
+            "structured": "In structured workflows"
+          }
+        },
+        "shadowAi": {
+          "label": "How much visibility do you have over AI tools in use?",
+          "opt": {
+            "no_visibility": "None",
+            "partial_visibility": "Some",
+            "mostly_visible": "Most",
+            "full_inventory": "Full inventory"
+          }
+        }
+      },
+      "run": {
+        "title": "Run Audit Express",
+        "subtitle": "A fast, estimate-only AI readiness snapshot — saved automatically to your workspace.",
+        "errPreviewCode": "Could not run the preview ({code}).",
+        "errPreview": "Could not run the preview.",
+        "errAnalysisCode": "Analysis unavailable ({code}).",
+        "errAnalysis": "Analysis unavailable. Please try again.",
+        "errDocCode": "Document analysis unavailable ({code}).",
+        "errDoc": "Document analysis unavailable. Please try again.",
+        "analyzeSiteTitle": "Analyze a public website (optional)",
+        "analyzeSiteHint": "Reads only public pages, respects robots.txt. Enriches “What this business does”.",
+        "deepScan": "Deep scan (slower, more pages)",
+        "saving": "Saving your result…",
+        "journeyHeadline": "Here is what your snapshot means",
+        "journeyReadiness": "AI readiness: {bucket} ({score}/100).",
+        "journeyTimeSaved": "Estimated time saved ≈ {hours} hours/month.",
+        "journeyCostSaved": "Estimated cost saved ≈ ${amount}/month."
+      },
+      "cta": {
+        "computing": "Computing…",
+        "getPreview": "Get preview",
+        "analyzing": "Analyzing…",
+        "analyzeSite": "Analyze site",
+        "preparing": "Preparing…",
+        "downloadPdf": "Download PDF",
+        "viewSaved": "View Saved Audits",
+        "seeAgents": "See agents matched to your audit →",
+        "runFullAudit": "Run a full audit",
+        "extracting": "Extracting…",
+        "analyzeDocument": "Analyze document →",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "result": {
+        "snapshotHeading": "Your snapshot · AI readiness: {bucket} ({score}/100)",
+        "whatThisMeans": "What this means",
+        "opportunityLabel": "The opportunity — indicative ranges",
+        "timeBack": "Time back",
+        "timeBackValue": "{range} (≈ {low}–{high} h/yr)",
+        "costImpact": "Cost impact",
+        "costImpactValue": "{range} (≈ {low}–{high}/yr)",
+        "payback": "Payback",
+        "howSavingLabel": "How the saving happens",
+        "flowRepetitive": "repetitive tasks",
+        "flowAssisted": "assisted / automated",
+        "flowSameWork": "same work, less manual time",
+        "flowHoursBack": "hours back to higher-value work",
+        "roiUnavailable": "ROI estimate unavailable for this audit.",
+        "whatToDoFirst": "What to do first",
+        "step1": "Pick one high-volume task (support replies, invoice entry, reporting).",
+        "step2": "Pilot one assistant on it for ~2 weeks.",
+        "step3": "Measure hours before/after — keep what pays back.",
+        "businessHeading": "What this business does",
+        "businessType": "Type:",
+        "businessAudience": "Audience:",
+        "businessConfidence": "confidence {confidence}",
+        "businessUnknown": "unknown",
+        "offers": "Offers: {list}",
+        "automationHeading": "Automation opportunities",
+        "opportunityItem": "{title} — {impact} impact / {effort} effort"
+      }
+    }
+  },
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed

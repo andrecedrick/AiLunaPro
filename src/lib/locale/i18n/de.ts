@@ -353,4 +353,119 @@ export const de: Dict = {
       "expectedOutcome": "Erwartetes Ergebnis —"
     }
   },
+  audit: {
+    "express": {
+      "q": {
+        "workflow": {
+          "label": "Welchen Bereich möchten Sie am liebsten verbessern?",
+          "opt": {
+            "support": "Kundensupport",
+            "sales": "Vertrieb",
+            "finance": "Finanzen",
+            "documents": "Dokumente",
+            "reporting": "Berichtswesen",
+            "admin": "Verwaltung",
+            "compliance": "Compliance",
+            "marketing": "Marketing",
+            "hr": "HR"
+          }
+        },
+        "monthlyHours": {
+          "label": "Wie viele Stunden pro Monat entfallen ungefähr auf wiederkehrende Arbeit?",
+          "opt": {
+            "low": "Wenig (~20)",
+            "medium": "Einiges (~80)",
+            "high": "Viel (~160)"
+          }
+        },
+        "hourlyCost": {
+          "label": "Ungefährer durchschnittlicher Stundensatz dieser Arbeit?",
+          "opt": {
+            "low": "Niedriger (~$25)",
+            "medium": "Mittel (~$45)",
+            "high": "Höher (~$75)"
+          }
+        },
+        "aiUsage": {
+          "label": "Wie wird KI heute in Ihrer Organisation eingesetzt?",
+          "opt": {
+            "none": "Noch nicht",
+            "individual": "Individuell",
+            "team": "Teamübergreifend",
+            "structured": "In strukturierten Workflows"
+          }
+        },
+        "shadowAi": {
+          "label": "Wie viel Überblick haben Sie über die genutzten KI-Tools?",
+          "opt": {
+            "no_visibility": "Keinen",
+            "partial_visibility": "Etwas",
+            "mostly_visible": "Den größten Teil",
+            "full_inventory": "Vollständige Übersicht"
+          }
+        }
+      },
+      "run": {
+        "title": "Audit Express ausführen",
+        "subtitle": "Eine schnelle, rein schätzbasierte Momentaufnahme Ihrer KI-Reife — automatisch in Ihrem Workspace gespeichert.",
+        "errPreviewCode": "Vorschau konnte nicht ausgeführt werden ({code}).",
+        "errPreview": "Vorschau konnte nicht ausgeführt werden.",
+        "errAnalysisCode": "Analyse nicht verfügbar ({code}).",
+        "errAnalysis": "Analyse nicht verfügbar. Bitte versuchen Sie es erneut.",
+        "errDocCode": "Dokumentenanalyse nicht verfügbar ({code}).",
+        "errDoc": "Dokumentenanalyse nicht verfügbar. Bitte versuchen Sie es erneut.",
+        "analyzeSiteTitle": "Eine öffentliche Website analysieren (optional)",
+        "analyzeSiteHint": "Liest nur öffentliche Seiten, beachtet robots.txt. Reichert „Was dieses Unternehmen tut“ an.",
+        "deepScan": "Tiefenscan (langsamer, mehr Seiten)",
+        "saving": "Ihr Ergebnis wird gespeichert…",
+        "journeyHeadline": "So ist Ihre Momentaufnahme zu verstehen",
+        "journeyReadiness": "KI-Reife: {bucket} ({score}/100).",
+        "journeyTimeSaved": "Geschätzte eingesparte Zeit ≈ {hours} Stunden/Monat.",
+        "journeyCostSaved": "Geschätzte eingesparte Kosten ≈ ${amount}/Monat."
+      },
+      "cta": {
+        "computing": "Wird berechnet…",
+        "getPreview": "Vorschau abrufen",
+        "analyzing": "Wird analysiert…",
+        "analyzeSite": "Website analysieren",
+        "preparing": "Wird vorbereitet…",
+        "downloadPdf": "PDF herunterladen",
+        "viewSaved": "Gespeicherte Audits ansehen",
+        "seeAgents": "Auf Ihr Audit abgestimmte Agenten ansehen →",
+        "runFullAudit": "Vollständiges Audit ausführen",
+        "extracting": "Wird extrahiert…",
+        "analyzeDocument": "Dokument analysieren →",
+        "save": "Speichern",
+        "cancel": "Abbrechen"
+      },
+      "result": {
+        "snapshotHeading": "Ihre Momentaufnahme · KI-Reife: {bucket} ({score}/100)",
+        "whatThisMeans": "Was das bedeutet",
+        "opportunityLabel": "Das Potenzial — Richtwerte",
+        "timeBack": "Zurückgewonnene Zeit",
+        "timeBackValue": "{range} (≈ {low}–{high} h/yr)",
+        "costImpact": "Kostenwirkung",
+        "costImpactValue": "{range} (≈ {low}–{high}/yr)",
+        "payback": "Amortisation",
+        "howSavingLabel": "Wie die Einsparung entsteht",
+        "flowRepetitive": "wiederkehrende Aufgaben",
+        "flowAssisted": "unterstützt / automatisiert",
+        "flowSameWork": "gleiche Arbeit, weniger manuelle Zeit",
+        "flowHoursBack": "Stunden zurück für wertvollere Arbeit",
+        "roiUnavailable": "ROI-Schätzung für dieses Audit nicht verfügbar.",
+        "whatToDoFirst": "Was zuerst zu tun ist",
+        "step1": "Wählen Sie eine Aufgabe mit hohem Volumen (Support-Antworten, Rechnungserfassung, Berichtswesen).",
+        "step2": "Testen Sie dafür ~2 Wochen lang einen Assistenten.",
+        "step3": "Messen Sie die Stunden vorher/nachher — behalten Sie, was sich auszahlt.",
+        "businessHeading": "Was dieses Unternehmen tut",
+        "businessType": "Typ:",
+        "businessAudience": "Zielgruppe:",
+        "businessConfidence": "Konfidenz {confidence}",
+        "businessUnknown": "unbekannt",
+        "offers": "Angebote: {list}",
+        "automationHeading": "Automatisierungspotenziale",
+        "opportunityItem": "{title} — {impact} Wirkung / {effort} Aufwand"
+      }
+    }
+  },
 };

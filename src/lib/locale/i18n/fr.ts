@@ -353,4 +353,119 @@ export const fr: Dict = {
       "expectedOutcome": "Résultat attendu —"
     }
   },
+  audit: {
+    "express": {
+      "q": {
+        "workflow": {
+          "label": "Quel domaine souhaiteriez-vous le plus améliorer ?",
+          "opt": {
+            "support": "Support client",
+            "sales": "Ventes",
+            "finance": "Finance",
+            "documents": "Documents",
+            "reporting": "Reporting",
+            "admin": "Administration",
+            "compliance": "Conformité",
+            "marketing": "Marketing",
+            "hr": "RH"
+          }
+        },
+        "monthlyHours": {
+          "label": "Environ combien d'heures par mois sont consacrées à des tâches répétitives ?",
+          "opt": {
+            "low": "Un peu (~20)",
+            "medium": "Une part notable (~80)",
+            "high": "Beaucoup (~160)"
+          }
+        },
+        "hourlyCost": {
+          "label": "Coût horaire moyen approximatif de ce travail ?",
+          "opt": {
+            "low": "Plus bas (~$25)",
+            "medium": "Moyen (~$45)",
+            "high": "Plus élevé (~$75)"
+          }
+        },
+        "aiUsage": {
+          "label": "Comment l'IA est-elle utilisée dans votre organisation aujourd'hui ?",
+          "opt": {
+            "none": "Pas encore",
+            "individual": "De façon individuelle",
+            "team": "À l'échelle des équipes",
+            "structured": "Dans des workflows structurés"
+          }
+        },
+        "shadowAi": {
+          "label": "Quelle visibilité avez-vous sur les outils d'IA utilisés ?",
+          "opt": {
+            "no_visibility": "Aucune",
+            "partial_visibility": "Partielle",
+            "mostly_visible": "La plupart",
+            "full_inventory": "Inventaire complet"
+          }
+        }
+      },
+      "run": {
+        "title": "Lancer l'Audit Express",
+        "subtitle": "Un aperçu rapide et purement estimatif de votre maturité IA — enregistré automatiquement dans votre espace de travail.",
+        "errPreviewCode": "Impossible de lancer l'aperçu ({code}).",
+        "errPreview": "Impossible de lancer l'aperçu.",
+        "errAnalysisCode": "Analyse indisponible ({code}).",
+        "errAnalysis": "Analyse indisponible. Veuillez réessayer.",
+        "errDocCode": "Analyse du document indisponible ({code}).",
+        "errDoc": "Analyse du document indisponible. Veuillez réessayer.",
+        "analyzeSiteTitle": "Analyser un site web public (facultatif)",
+        "analyzeSiteHint": "Lit uniquement les pages publiques, respecte robots.txt. Enrichit « Ce que fait cette entreprise ».",
+        "deepScan": "Analyse approfondie (plus lente, plus de pages)",
+        "saving": "Enregistrement de votre résultat…",
+        "journeyHeadline": "Voici ce que signifie votre aperçu",
+        "journeyReadiness": "Maturité IA : {bucket} ({score}/100).",
+        "journeyTimeSaved": "Temps économisé estimé ≈ {hours} heures/mois.",
+        "journeyCostSaved": "Coût économisé estimé ≈ ${amount}/mois."
+      },
+      "cta": {
+        "computing": "Calcul…",
+        "getPreview": "Obtenir l'aperçu",
+        "analyzing": "Analyse…",
+        "analyzeSite": "Analyser le site",
+        "preparing": "Préparation…",
+        "downloadPdf": "Télécharger le PDF",
+        "viewSaved": "Voir les audits enregistrés",
+        "seeAgents": "Voir les agents adaptés à votre audit →",
+        "runFullAudit": "Lancer un audit complet",
+        "extracting": "Extraction…",
+        "analyzeDocument": "Analyser le document →",
+        "save": "Enregistrer",
+        "cancel": "Annuler"
+      },
+      "result": {
+        "snapshotHeading": "Votre aperçu · Maturité IA : {bucket} ({score}/100)",
+        "whatThisMeans": "Ce que cela signifie",
+        "opportunityLabel": "L'opportunité — fourchettes indicatives",
+        "timeBack": "Temps regagné",
+        "timeBackValue": "{range} (≈ {low}–{high} h/yr)",
+        "costImpact": "Impact sur les coûts",
+        "costImpactValue": "{range} (≈ {low}–{high}/yr)",
+        "payback": "Retour sur investissement",
+        "howSavingLabel": "Comment l'économie se réalise",
+        "flowRepetitive": "tâches répétitives",
+        "flowAssisted": "assistées / automatisées",
+        "flowSameWork": "même travail, moins de temps manuel",
+        "flowHoursBack": "heures regagnées pour des tâches à plus forte valeur",
+        "roiUnavailable": "Estimation du ROI indisponible pour cet audit.",
+        "whatToDoFirst": "Par où commencer",
+        "step1": "Choisissez une tâche à fort volume (réponses au support, saisie de factures, reporting).",
+        "step2": "Pilotez un assistant dessus pendant ~2 semaines.",
+        "step3": "Mesurez les heures avant/après — conservez ce qui est rentable.",
+        "businessHeading": "Ce que fait cette entreprise",
+        "businessType": "Type :",
+        "businessAudience": "Audience :",
+        "businessConfidence": "confiance {confidence}",
+        "businessUnknown": "inconnu",
+        "offers": "Offres : {list}",
+        "automationHeading": "Opportunités d'automatisation",
+        "opportunityItem": "{title} — impact {impact} / effort {effort}"
+      }
+    }
+  },
 };

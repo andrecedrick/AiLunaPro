@@ -27,3 +27,15 @@ export function qField(T: Dict, id: string): QField | undefined {
 export function qOption(T: Dict, id: string, value: string): string | undefined {
   return (T.questions.option as unknown as Record<string, string>)[`${id}.${value}`];
 }
+
+/* ── Audit Express (B6.2c) — keyed by AX_QUESTIONS key + option value ── */
+
+/** Translated label for an Audit Express question key, or undefined. */
+export function axLabel(T: Dict, key: string): string | undefined {
+  return (T.audit.express.q as unknown as Record<string, { label: string }>)[key]?.label;
+}
+
+/** Translated option label for an Audit Express question key + value, or undefined. */
+export function axOption(T: Dict, key: string, value: string): string | undefined {
+  return (T.audit.express.q as unknown as Record<string, { opt: Record<string, string> }>)[key]?.opt?.[value];
+}

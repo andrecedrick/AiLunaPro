@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
 import { formatHoursRange, formatMoneyRange, formatPaybackRange, indicativeRange } from '../../lib/result/narrative';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 
 /** Shared, non-PII result rendering for Audit Express (Run page + Detail page). */
 
@@ -37,6 +39,9 @@ export function AuditResultView({ preview, understanding, onSeeAgents, onRunFull
   onSeeAgents?: () => void;
   onRunFullAudit?: () => void;
 }) {
+  const T = useLocale();
+  const R = T.audit.express.result;
+  const C = T.audit.express.cta;
   // Defensive: never assume a fully-shaped server response. Missing fields render
   // a graceful fallback instead of crashing the page (global ErrorBoundary).
   const r = preview?.k2a?.result;
@@ -54,43 +59,43 @@ export function AuditResultView({ preview, understanding, onSeeAgents, onRunFull
   return (
     <>
       <div style={card}>
-        <h2 style={{ ...h2, margin: '0 0 4px' }}>Your snapshot · AI readiness: {(preview?.k1a?.bucket ?? 'n/a')} ({num(preview?.k1a?.normalizedScore)}/100)</h2>
+        <h2 style={{ ...h2, margin: '0 0 4px' }}>{format(R.snapshotHeading, { bucket: preview?.k1a?.bucket ?? 'n/a', score: num(preview?.k1a?.normalizedScore) })}</h2>
 
-        <div style={label}>What this means</div>
+        <div style={label}>{R.whatThisMeans}</div>
         <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{READINESS_MEANING[bucket] ?? READINESS_MEANING.medium}</p>
 
         {r ? (
           <>
-            <div style={label}>The opportunity — indicative ranges</div>
-            <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>Time back</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{formatHoursRange(num(r.estimatedTimeSavedHoursPerMonth))} (≈ {Math.round(yearHrs.low)}–{Math.round(yearHrs.high)} h/yr)</span></div>
-            <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>Cost impact</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{formatMoneyRange(num(r.estimatedMonthlyCostSaved))} (≈ {usd(yearUsd.low)}–{usd(yearUsd.high)}/yr)</span></div>
-            {formatPaybackRange(r.estimatedPaybackMonths) && <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>Payback</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{formatPaybackRange(r.estimatedPaybackMonths)}</span></div>}
+            <div style={label}>{R.opportunityLabel}</div>
+            <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>{R.timeBack}</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{format(R.timeBackValue, { range: formatHoursRange(num(r.estimatedTimeSavedHoursPerMonth)), low: Math.round(yearHrs.low), high: Math.round(yearHrs.high) })}</span></div>
+            <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>{R.costImpact}</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{format(R.costImpactValue, { range: formatMoneyRange(num(r.estimatedMonthlyCostSaved)), low: usd(yearUsd.low), high: usd(yearUsd.high) })}</span></div>
+            {formatPaybackRange(r.estimatedPaybackMonths) && <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>{R.payback}</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{formatPaybackRange(r.estimatedPaybackMonths)}</span></div>}
 
-            <div style={label}>How the saving happens</div>
+            <div style={label}>{R.howSavingLabel}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--text-secondary)' }}>
-              {['repetitive tasks', 'assisted / automated', 'same work, less manual time'].map((s, i) => (
+              {[R.flowRepetitive, R.flowAssisted, R.flowSameWork].map((s, i) => (
                 <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px' }}>{s}</span>
                   <span aria-hidden style={{ color: 'var(--text-muted)' }}>→</span>
                 </span>
               ))}
-              <span style={{ background: 'var(--brand-tint-bg)', border: '1px solid var(--violet)', color: 'var(--text-primary)', borderRadius: 8, padding: '4px 10px', fontWeight: 700 }}>hours back to higher-value work</span>
+              <span style={{ background: 'var(--brand-tint-bg)', border: '1px solid var(--violet)', color: 'var(--text-primary)', borderRadius: 8, padding: '4px 10px', fontWeight: 700 }}>{R.flowHoursBack}</span>
             </div>
           </>
         ) : (
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 10 }}>ROI estimate unavailable for this audit.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 10 }}>{R.roiUnavailable}</p>
         )}
 
-        <div style={label}>What to do first</div>
+        <div style={label}>{R.whatToDoFirst}</div>
         <ol style={{ margin: '0 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>
-          <li>Pick <strong>one</strong> high-volume task (support replies, invoice entry, reporting).</li>
-          <li>Pilot one assistant on it for ~2 weeks.</li>
-          <li>Measure hours before/after — keep what pays back.</li>
+          <li>{R.step1}</li>
+          <li>{R.step2}</li>
+          <li>{R.step3}</li>
         </ol>
         {(onSeeAgents || onRunFullAudit) && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-            {onSeeAgents && <button type="button" onClick={onSeeAgents} style={{ padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient, var(--violet))', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>See agents matched to your audit →</button>}
-            {onRunFullAudit && <button type="button" onClick={onRunFullAudit} style={{ padding: '9px 16px', borderRadius: 10, border: '1.5px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Run a full audit</button>}
+            {onSeeAgents && <button type="button" onClick={onSeeAgents} style={{ padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient, var(--violet))', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{C.seeAgents}</button>}
+            {onRunFullAudit && <button type="button" onClick={onRunFullAudit} style={{ padding: '9px 16px', borderRadius: 10, border: '1.5px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{C.runFullAudit}</button>}
           </div>
         )}
         <p style={{ margin: '12px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>Estimates from your inputs · indicative only · not a guarantee.</p>
@@ -98,18 +103,18 @@ export function AuditResultView({ preview, understanding, onSeeAgents, onRunFull
 
       {bp && (
         <div style={card}>
-          <h2 style={{ ...h2, margin: '0 0 10px' }}>What this business does</h2>
+          <h2 style={{ ...h2, margin: '0 0 10px' }}>{R.businessHeading}</h2>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            <div><strong>Type:</strong> {(bp.businessType ?? 'unknown').replace(/_/g, ' ')} · <strong>Audience:</strong> {bp.audience ?? 'unknown'} · confidence {bp.confidence ?? 'low'}</div>
-            {offers.length > 0 && <div style={{ marginTop: 6 }}>Offers: {offers.map(o => o.tag).join(', ')}</div>}
+            <div><strong>{R.businessType}</strong> {(bp.businessType ?? R.businessUnknown).replace(/_/g, ' ')} · <strong>{R.businessAudience}</strong> {bp.audience ?? R.businessUnknown} · {format(R.businessConfidence, { confidence: bp.confidence ?? 'low' })}</div>
+            {offers.length > 0 && <div style={{ marginTop: 6 }}>{format(R.offers, { list: offers.map(o => o.tag).join(', ') })}</div>}
           </div>
           {opportunities.length > 0 && (
             <>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 15, fontWeight: 700, margin: '14px 0 6px' }}>Automation opportunities</h3>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 15, fontWeight: 700, margin: '14px 0 6px' }}>{R.automationHeading}</h3>
               {understanding?.automationHeadline && <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginBottom: 6 }}>{understanding.automationHeadline}</div>}
               <ul style={{ margin: 0, paddingLeft: 18 }}>
                 {opportunities.map(o => (
-                  <li key={o.id} style={{ fontSize: 13.5, margin: '5px 0', color: 'var(--text-secondary)' }}>{o.title} — {o.impact} impact / {o.effort} effort</li>
+                  <li key={o.id} style={{ fontSize: 13.5, margin: '5px 0', color: 'var(--text-secondary)' }}>{format(R.opportunityItem, { title: o.title, impact: o.impact, effort: o.effort })}</li>
                 ))}
               </ul>
             </>

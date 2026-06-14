@@ -353,4 +353,119 @@ export const it: Dict = {
       "expectedOutcome": "Risultato atteso —"
     }
   },
+  audit: {
+    "express": {
+      "q": {
+        "workflow": {
+          "label": "Quale area vorresti migliorare di più?",
+          "opt": {
+            "support": "Assistenza clienti",
+            "sales": "Vendite",
+            "finance": "Finanza",
+            "documents": "Documenti",
+            "reporting": "Reportistica",
+            "admin": "Amministrazione",
+            "compliance": "Conformità",
+            "marketing": "Marketing",
+            "hr": "HR"
+          }
+        },
+        "monthlyHours": {
+          "label": "Più o meno quante ore al mese sono dedicate al lavoro ripetitivo?",
+          "opt": {
+            "low": "Poche (~20)",
+            "medium": "Una discreta quantità (~80)",
+            "high": "Molte (~160)"
+          }
+        },
+        "hourlyCost": {
+          "label": "Costo orario medio approssimativo di quel lavoro?",
+          "opt": {
+            "low": "Più basso (~$25)",
+            "medium": "Medio (~$45)",
+            "high": "Più alto (~$75)"
+          }
+        },
+        "aiUsage": {
+          "label": "Come viene utilizzata l'AI nella tua organizzazione oggi?",
+          "opt": {
+            "none": "Non ancora",
+            "individual": "Individualmente",
+            "team": "Tra i team",
+            "structured": "In flussi di lavoro strutturati"
+          }
+        },
+        "shadowAi": {
+          "label": "Quanta visibilità hai sugli strumenti AI in uso?",
+          "opt": {
+            "no_visibility": "Nessuna",
+            "partial_visibility": "Parziale",
+            "mostly_visible": "Per la maggior parte",
+            "full_inventory": "Inventario completo"
+          }
+        }
+      },
+      "run": {
+        "title": "Avvia Audit Express",
+        "subtitle": "Un'istantanea rapida e puramente indicativa della preparazione all'AI — salvata automaticamente nel tuo spazio di lavoro.",
+        "errPreviewCode": "Impossibile eseguire l'anteprima ({code}).",
+        "errPreview": "Impossibile eseguire l'anteprima.",
+        "errAnalysisCode": "Analisi non disponibile ({code}).",
+        "errAnalysis": "Analisi non disponibile. Riprova.",
+        "errDocCode": "Analisi del documento non disponibile ({code}).",
+        "errDoc": "Analisi del documento non disponibile. Riprova.",
+        "analyzeSiteTitle": "Analizza un sito web pubblico (facoltativo)",
+        "analyzeSiteHint": "Legge solo le pagine pubbliche, rispetta robots.txt. Arricchisce “Cosa fa questa azienda”.",
+        "deepScan": "Scansione approfondita (più lenta, più pagine)",
+        "saving": "Salvataggio del tuo risultato…",
+        "journeyHeadline": "Ecco cosa significa la tua istantanea",
+        "journeyReadiness": "Preparazione all'AI: {bucket} ({score}/100).",
+        "journeyTimeSaved": "Tempo risparmiato stimato ≈ {hours} ore/mese.",
+        "journeyCostSaved": "Costo risparmiato stimato ≈ ${amount}/mese."
+      },
+      "cta": {
+        "computing": "Elaborazione…",
+        "getPreview": "Ottieni anteprima",
+        "analyzing": "Analisi in corso…",
+        "analyzeSite": "Analizza sito",
+        "preparing": "Preparazione…",
+        "downloadPdf": "Scarica PDF",
+        "viewSaved": "Visualizza audit salvati",
+        "seeAgents": "Vedi gli agenti abbinati al tuo audit →",
+        "runFullAudit": "Esegui un audit completo",
+        "extracting": "Estrazione…",
+        "analyzeDocument": "Analizza documento →",
+        "save": "Salva",
+        "cancel": "Annulla"
+      },
+      "result": {
+        "snapshotHeading": "La tua istantanea · Preparazione all'AI: {bucket} ({score}/100)",
+        "whatThisMeans": "Cosa significa",
+        "opportunityLabel": "L'opportunità — intervalli indicativi",
+        "timeBack": "Tempo recuperato",
+        "timeBackValue": "{range} (≈ {low}–{high} h/yr)",
+        "costImpact": "Impatto sui costi",
+        "costImpactValue": "{range} (≈ {low}–{high}/yr)",
+        "payback": "Ritorno",
+        "howSavingLabel": "Come avviene il risparmio",
+        "flowRepetitive": "attività ripetitive",
+        "flowAssisted": "assistito / automatizzato",
+        "flowSameWork": "stesso lavoro, meno tempo manuale",
+        "flowHoursBack": "ore restituite ad attività a maggior valore",
+        "roiUnavailable": "Stima del ROI non disponibile per questo audit.",
+        "whatToDoFirst": "Cosa fare per primo",
+        "step1": "Scegli un'attività ad alto volume (risposte di assistenza, inserimento fatture, reportistica).",
+        "step2": "Sperimenta un assistente su di essa per ~2 settimane.",
+        "step3": "Misura le ore prima/dopo — mantieni ciò che ripaga.",
+        "businessHeading": "Cosa fa questa azienda",
+        "businessType": "Tipo:",
+        "businessAudience": "Pubblico:",
+        "businessConfidence": "affidabilità {confidence}",
+        "businessUnknown": "sconosciuto",
+        "offers": "Offerte: {list}",
+        "automationHeading": "Opportunità di automazione",
+        "opportunityItem": "{title} — impatto {impact} / sforzo {effort}"
+      }
+    }
+  },
 };

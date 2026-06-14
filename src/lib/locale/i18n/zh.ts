@@ -355,4 +355,119 @@ export const zh: Dict = {
       "expectedOutcome": "预期成果——"
     }
   },
+  audit: {
+    "express": {
+      "q": {
+        "workflow": {
+          "label": "您最希望改进哪个领域？",
+          "opt": {
+            "support": "客户支持",
+            "sales": "销售",
+            "finance": "财务",
+            "documents": "文档",
+            "reporting": "报告",
+            "admin": "行政",
+            "compliance": "合规",
+            "marketing": "营销",
+            "hr": "HR"
+          }
+        },
+        "monthlyHours": {
+          "label": "每月大约有多少小时用于重复性工作？",
+          "opt": {
+            "low": "较少（~20）",
+            "medium": "中等（~80）",
+            "high": "较多（~160）"
+          }
+        },
+        "hourlyCost": {
+          "label": "这类工作的大致平均每小时成本是多少？",
+          "opt": {
+            "low": "较低（~$25）",
+            "medium": "中等（~$45）",
+            "high": "较高（~$75）"
+          }
+        },
+        "aiUsage": {
+          "label": "目前贵组织如何使用 AI？",
+          "opt": {
+            "none": "尚未使用",
+            "individual": "个人使用",
+            "team": "跨团队使用",
+            "structured": "用于结构化工作流"
+          }
+        },
+        "shadowAi": {
+          "label": "您对正在使用的 AI 工具有多大的可见性？",
+          "opt": {
+            "no_visibility": "没有",
+            "partial_visibility": "部分",
+            "mostly_visible": "大部分",
+            "full_inventory": "完整清单"
+          }
+        }
+      },
+      "run": {
+        "title": "运行 Audit Express",
+        "subtitle": "一份快速的、仅供估算的 AI 就绪度快照 — 自动保存至您的工作区。",
+        "errPreviewCode": "无法运行预览（{code}）。",
+        "errPreview": "无法运行预览。",
+        "errAnalysisCode": "分析不可用（{code}）。",
+        "errAnalysis": "分析不可用。请重试。",
+        "errDocCode": "文档分析不可用（{code}）。",
+        "errDoc": "文档分析不可用。请重试。",
+        "analyzeSiteTitle": "分析一个公开网站（可选）",
+        "analyzeSiteHint": "仅读取公开页面，遵循 robots.txt。丰富“该业务的内容”。",
+        "deepScan": "深度扫描（更慢，覆盖更多页面）",
+        "saving": "正在保存您的结果…",
+        "journeyHeadline": "以下是您的快照含义",
+        "journeyReadiness": "AI 就绪度：{bucket}（{score}/100）。",
+        "journeyTimeSaved": "预计节省时间 ≈ {hours} 小时/月。",
+        "journeyCostSaved": "预计节省成本 ≈ ${amount}/月。"
+      },
+      "cta": {
+        "computing": "计算中…",
+        "getPreview": "获取预览",
+        "analyzing": "分析中…",
+        "analyzeSite": "分析网站",
+        "preparing": "准备中…",
+        "downloadPdf": "下载 PDF",
+        "viewSaved": "查看已保存的审计",
+        "seeAgents": "查看与您审计匹配的智能体 →",
+        "runFullAudit": "运行完整审计",
+        "extracting": "提取中…",
+        "analyzeDocument": "分析文档 →",
+        "save": "保存",
+        "cancel": "取消"
+      },
+      "result": {
+        "snapshotHeading": "您的快照 · AI 就绪度：{bucket}（{score}/100）",
+        "whatThisMeans": "这意味着什么",
+        "opportunityLabel": "机会 — 指示性区间",
+        "timeBack": "节省的时间",
+        "timeBackValue": "{range}（≈ {low}–{high} h/yr）",
+        "costImpact": "成本影响",
+        "costImpactValue": "{range}（≈ {low}–{high}/yr）",
+        "payback": "回本周期",
+        "howSavingLabel": "节省如何实现",
+        "flowRepetitive": "重复性任务",
+        "flowAssisted": "辅助 / 自动化",
+        "flowSameWork": "同样的工作，更少的手动时间",
+        "flowHoursBack": "把时间投入更高价值的工作",
+        "roiUnavailable": "本次审计无法提供 ROI 估算。",
+        "whatToDoFirst": "首先该做什么",
+        "step1": "选择一个高频任务（支持回复、发票录入、报告）。",
+        "step2": "用一个助手在该任务上试点约 2 周。",
+        "step3": "衡量前后的小时数 — 保留能带来回报的部分。",
+        "businessHeading": "该业务的内容",
+        "businessType": "类型：",
+        "businessAudience": "受众：",
+        "businessConfidence": "置信度 {confidence}",
+        "businessUnknown": "未知",
+        "offers": "提供内容：{list}",
+        "automationHeading": "自动化机会",
+        "opportunityItem": "{title} — {impact} 影响 / {effort} 投入"
+      }
+    }
+  },
 };
