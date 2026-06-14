@@ -3,10 +3,8 @@ import { Button } from '../ui/Button';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
 import {
-  APPROVAL_LABEL,
   DATA_TYPES,
   DEPARTMENTS,
-  OVERSIGHT_LABEL,
 } from '../../data/mockRegistry';
 import { makeNewItem } from '../../lib/registry/storage';
 import { formatDate } from '@/utils/formatters';
@@ -239,7 +237,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                         onChange={() => toggleDataType(opt.value)}
                         style={{ accentColor: 'var(--violet)', cursor: 'pointer' }}
                       />
-                      <span>{opt.label}</span>
+                      <span>{(T.enums.dataTypes as Record<string, string>)[opt.value] ?? opt.label}</span>
                     </label>
                   );
                 })}
@@ -353,11 +351,10 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                 onChange={e => update('approvalStatus', e.target.value as ApprovalStatus)}
                 style={inputStyle}
               >
-                {Object.entries(APPROVAL_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
+                <option value="approved">{T.enums.approval.approved}</option>
+                <option value="pending">{T.enums.approval.pending}</option>
+                <option value="under-review">{T.enums.approval.underReview}</option>
+                <option value="rejected">{T.enums.approval.rejected}</option>
               </select>
             </Field>
 
@@ -380,11 +377,9 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                 onChange={e => update('humanOversight', e.target.value as OversightModel)}
                 style={inputStyle}
               >
-                {Object.entries(OVERSIGHT_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
+                <option value="hitl">{T.enums.oversight.hitl}</option>
+                <option value="hotl">{T.enums.oversight.hotl}</option>
+                <option value="oot">{T.enums.oversight.oot}</option>
               </select>
             </Field>
 

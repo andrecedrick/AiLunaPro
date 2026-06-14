@@ -2298,4 +2298,59 @@ export const zh: Dict = {
       }
     }
   },
+  enums: {
+    "badge": {
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "critical": "严重",
+      "completed": "已完成",
+      "inProgress": "进行中",
+      "draft": "草稿",
+      "published": "已发布",
+      "archived": "已归档",
+      "effortLow": "低投入",
+      "effortMedium": "中投入",
+      "effortHigh": "高投入"
+    },
+    "riskWord": {
+      "critical": "严重风险",
+      "high": "高风险",
+      "medium": "中风险",
+      "low": "低风险",
+      "minimal": "极低风险"
+    },
+    "approval": {
+      "approved": "已批准",
+      "pending": "待处理",
+      "underReview": "审核中",
+      "rejected": "已驳回"
+    },
+    "oversight": {
+      "hitl": "人工介入（在环）",
+      "hotl": "人工监督（在线）",
+      "oot": "自主运行"
+    },
+    "dataTypes": {
+      "pii": "个人数据 (PII)",
+      "health": "健康数据",
+      "financial": "财务 / 交易",
+      "biometric": "生物识别",
+      "children": "未成年人数据",
+      "public": "公开 / 开放",
+      "internal": "内部文档",
+      "employee": "员工记录"
+    },
+    "confidence": {
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    },
+    "memberStatus": {
+      "active": "活跃",
+      "pending": "待处理",
+      "invited": "已邀请",
+      "disabled": "已停用"
+    }
+  },
 };

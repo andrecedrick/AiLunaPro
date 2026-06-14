@@ -1,3 +1,6 @@
+import { useLocale } from '../../context/LocaleContext';
+import type { Dict } from '../../lib/locale/i18n/en';
+
 type BadgeVariant =
   | 'low'
   | 'medium'
@@ -48,9 +51,21 @@ function effortVariant(effort: 'low' | 'medium' | 'high'): BadgeVariant {
   return `effort-${effort}` as BadgeVariant;
 }
 
+/* Localized default label per variant (single source: enums.badge). Variants
+   with no intrinsic label (info/success/warning/danger) always receive an
+   explicit label/children, so they map to none. */
+const BADGE_TEXT_KEY: Partial<Record<BadgeVariant, keyof Dict['enums']['badge']>> = {
+  low: 'low', medium: 'medium', high: 'high', critical: 'critical',
+  completed: 'completed', in_progress: 'inProgress', draft: 'draft',
+  published: 'published', archived: 'archived',
+  'effort-low': 'effortLow', 'effort-medium': 'effortMedium', 'effort-high': 'effortHigh',
+};
+
 export function Badge({ variant, label, children, className = '' }: BadgeProps) {
+  const T = useLocale();
   const s = STYLES[variant] ?? STYLES.info;
-  const text = label ?? children ?? s.text;
+  const k = BADGE_TEXT_KEY[variant];
+  const text = label ?? children ?? (k ? T.enums.badge[k] : s.text);
   return (
     <span
       className={className}

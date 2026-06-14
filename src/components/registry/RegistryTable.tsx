@@ -1,12 +1,17 @@
 import { Badge } from '../ui/Badge';
 import { useLocale } from '../../context/LocaleContext';
-import { OVERSIGHT_LABEL, APPROVAL_LABEL } from '../../data/mockRegistry';
+import type { Dict } from '../../lib/locale/i18n/en';
 import { formatDate } from '@/utils/formatters';
 import type {
   ApprovalStatus,
   RegistryItem,
   RegistryRiskLevel,
 } from '../../types/registry';
+
+/** Maps the data enum keys to the shared enums.* dictionary keys. */
+const APPROVAL_KEY: Record<ApprovalStatus, keyof Dict['enums']['approval']> = {
+  approved: 'approved', pending: 'pending', 'under-review': 'underReview', rejected: 'rejected',
+};
 
 const RISK_BADGE: Record<RegistryRiskLevel, 'low' | 'medium' | 'high' | 'critical'> = {
   low: 'low',
@@ -110,12 +115,12 @@ export function RegistryTable({ items, onRowClick }: Props) {
               </Td>
               <Td>
                 <Badge variant={APPROVAL_BADGE[item.approvalStatus]}>
-                  {APPROVAL_LABEL[item.approvalStatus]}
+                  {T.enums.approval[APPROVAL_KEY[item.approvalStatus]]}
                 </Badge>
               </Td>
               <Td>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {OVERSIGHT_LABEL[item.humanOversight]}
+                  {T.enums.oversight[item.humanOversight]}
                 </span>
               </Td>
               <Td>

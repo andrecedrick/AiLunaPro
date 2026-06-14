@@ -2296,4 +2296,59 @@ export const de: Dict = {
       }
     }
   },
+  enums: {
+    "badge": {
+      "low": "Niedrig",
+      "medium": "Mittel",
+      "high": "Hoch",
+      "critical": "Kritisch",
+      "completed": "Abgeschlossen",
+      "inProgress": "In Bearbeitung",
+      "draft": "Entwurf",
+      "published": "Veröffentlicht",
+      "archived": "Archiviert",
+      "effortLow": "Geringer Aufwand",
+      "effortMedium": "Mittl. Aufwand",
+      "effortHigh": "Hoher Aufwand"
+    },
+    "riskWord": {
+      "critical": "Kritisches Risiko",
+      "high": "Hohes Risiko",
+      "medium": "Mittleres Risiko",
+      "low": "Geringes Risiko",
+      "minimal": "Minimales Risiko"
+    },
+    "approval": {
+      "approved": "Genehmigt",
+      "pending": "Ausstehend",
+      "underReview": "In Prüfung",
+      "rejected": "Abgelehnt"
+    },
+    "oversight": {
+      "hitl": "Human-in-the-Loop",
+      "hotl": "Human-on-the-Loop",
+      "oot": "Autonom"
+    },
+    "dataTypes": {
+      "pii": "Personenbezogene Daten (PII)",
+      "health": "Gesundheitsdaten",
+      "financial": "Finanziell / transaktional",
+      "biometric": "Biometrisch",
+      "children": "Daten zu Minderjährigen",
+      "public": "Öffentlich / offen",
+      "internal": "Interne Dokumente",
+      "employee": "Mitarbeiterdaten"
+    },
+    "confidence": {
+      "low": "niedrig",
+      "medium": "mittel",
+      "high": "hoch"
+    },
+    "memberStatus": {
+      "active": "Aktiv",
+      "pending": "Ausstehend",
+      "invited": "Eingeladen",
+      "disabled": "Deaktiviert"
+    }
+  },
 };

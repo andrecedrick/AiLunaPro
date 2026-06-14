@@ -126,7 +126,7 @@ export function AuditExpressSavedPage() {
                       {it.title || `${(it.businessType ?? 'unknown').replace(/_/g, ' ')} · ${it.audience ?? 'unknown'}`}
                     </button>
                     <div style={{ color: 'var(--text-muted)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {it.canonicalUrl ? it.canonicalUrl + ' · ' : ''}{new Date(it.createdAt).toLocaleString()} · {T.savedAudits.list.meta.engineLabel} {it.engineVersion || T.savedAudits.list.meta.engineFallback} · {T.savedAudits.list.meta.confidenceLabel} {it.confidence}
+                      {it.canonicalUrl ? it.canonicalUrl + ' · ' : ''}{new Date(it.createdAt).toLocaleString()} · {T.savedAudits.list.meta.engineLabel} {it.engineVersion || T.savedAudits.list.meta.engineFallback} · {T.savedAudits.list.meta.confidenceLabel} {(T.enums.confidence as Record<string, string>)[it.confidence] ?? it.confidence}
                     </div>
                   </>
                 )}

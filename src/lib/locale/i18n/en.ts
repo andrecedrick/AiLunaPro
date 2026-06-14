@@ -2311,6 +2311,61 @@ export const en = {
       }
     }
   },
+  enums: {
+    "badge": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical",
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived",
+      "effortLow": "Low effort",
+      "effortMedium": "Med effort",
+      "effortHigh": "High effort"
+    },
+    "riskWord": {
+      "critical": "Critical risk",
+      "high": "High risk",
+      "medium": "Medium risk",
+      "low": "Low risk",
+      "minimal": "Minimal risk"
+    },
+    "approval": {
+      "approved": "Approved",
+      "pending": "Pending",
+      "underReview": "Under review",
+      "rejected": "Rejected"
+    },
+    "oversight": {
+      "hitl": "Human-in-the-loop",
+      "hotl": "Human-on-the-loop",
+      "oot": "Autonomous"
+    },
+    "dataTypes": {
+      "pii": "Personal data (PII)",
+      "health": "Health data",
+      "financial": "Financial / transactional",
+      "biometric": "Biometric",
+      "children": "Data on minors",
+      "public": "Public / open",
+      "internal": "Internal documents",
+      "employee": "Employee records"
+    },
+    "confidence": {
+      "low": "low",
+      "medium": "medium",
+      "high": "high"
+    },
+    "memberStatus": {
+      "active": "Active",
+      "pending": "Pending",
+      "invited": "Invited",
+      "disabled": "Disabled"
+    }
+  },
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useLocale } from '../../context/LocaleContext';
 import type { Dict } from '../../lib/locale/i18n/en';
 import type { RegistryFilters as Filters } from '../../types/registry';
-import { DEPARTMENTS, APPROVAL_LABEL } from '../../data/mockRegistry';
+import { DEPARTMENTS } from '../../data/mockRegistry';
 
 interface Props {
   filters: Filters;
@@ -100,7 +100,10 @@ export function RegistryFilters({ filters, onChange, onClear }: Props) {
         onChange={v => update({ approvalStatus: v })}
         options={[
           { value: 'all', label: T.registry.filters.allApproval },
-          ...Object.entries(APPROVAL_LABEL).map(([value, label]) => ({ value, label })),
+          { value: 'approved', label: T.enums.approval.approved },
+          { value: 'pending', label: T.enums.approval.pending },
+          { value: 'under-review', label: T.enums.approval.underReview },
+          { value: 'rejected', label: T.enums.approval.rejected },
         ]}
       />
 

@@ -105,7 +105,7 @@ export function AuditResultView({ preview, understanding, onSeeAgents, onRunFull
         <div style={card}>
           <h2 style={{ ...h2, margin: '0 0 10px' }}>{R.businessHeading}</h2>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            <div><strong>{R.businessType}</strong> {(bp.businessType ?? R.businessUnknown).replace(/_/g, ' ')} · <strong>{R.businessAudience}</strong> {bp.audience ?? R.businessUnknown} · {format(R.businessConfidence, { confidence: bp.confidence ?? 'low' })}</div>
+            <div><strong>{R.businessType}</strong> {(bp.businessType ?? R.businessUnknown).replace(/_/g, ' ')} · <strong>{R.businessAudience}</strong> {bp.audience ?? R.businessUnknown} · {format(R.businessConfidence, { confidence: (T.enums.confidence as Record<string, string>)[bp.confidence ?? 'low'] ?? (bp.confidence ?? 'low') })}</div>
             {offers.length > 0 && <div style={{ marginTop: 6 }}>{format(R.offers, { list: offers.map(o => o.tag).join(', ') })}</div>}
           </div>
           {opportunities.length > 0 && (
