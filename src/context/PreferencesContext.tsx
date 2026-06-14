@@ -20,7 +20,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  loadLanguage,
+  initialLanguage,
   saveLanguage,
   loadDisplayCurrency,
   saveDisplayCurrency,
@@ -47,7 +47,8 @@ interface PreferencesValue {
 const PreferencesContext = createContext<PreferencesValue | undefined>(undefined);
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const [language,        setLanguageState]        = useState<Language>(() => loadLanguage());
+  // First paint: explicit stored choice → browser detection (non-persisted) → 'en'.
+  const [language,        setLanguageState]        = useState<Language>(() => initialLanguage());
   const [displayCurrency, setDisplayCurrencyState] = useState<DisplayCurrency>(() => loadDisplayCurrency());
   const [userProfile,     setUserProfileState]     = useState<UserProfile>(() => loadUserProfile());
 

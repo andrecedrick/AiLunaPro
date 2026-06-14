@@ -10,6 +10,7 @@
  */
 
 import { usePreferences } from '../../context/PreferencesContext';
+import { useLocale } from '../../context/LocaleContext';
 import {
   CURRENCY_LABELS,
   CURRENCY_VALUES,
@@ -21,6 +22,7 @@ import {
 
 export function SidebarPreferences() {
   const { language, setLanguage, displayCurrency, setDisplayCurrency } = usePreferences();
+  const T = useLocale();
 
   return (
     <div
@@ -37,16 +39,16 @@ export function SidebarPreferences() {
     >
       <Row
         icon={<GlobeIcon />}
-        label="Language"
-        ariaLabel="Language"
+        label={T.shell.language}
+        ariaLabel={T.shell.language}
         value={language}
         onChange={v => setLanguage(v as Language)}
         options={LANGUAGE_VALUES.map(v => ({ value: v, label: LANGUAGE_SHORT_LABELS[v] }))}
       />
       <Row
         icon={<DollarIcon />}
-        label="Currency"
-        ariaLabel="Currency"
+        label={T.shell.currency}
+        ariaLabel={T.shell.currency}
         value={displayCurrency}
         onChange={v => setDisplayCurrency(v as DisplayCurrency)}
         options={CURRENCY_VALUES.map(v => ({ value: v, label: CURRENCY_LABELS[v] }))}

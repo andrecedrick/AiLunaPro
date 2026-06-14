@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { SettingsLayout } from './SettingsLayout';
 import { useTheme } from '../../context/ThemeContext';
 import { usePreferences } from '../../context/PreferencesContext';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import { useToast } from '../../hooks/useToast';
 import {
   CURRENCY_LABELS,
@@ -26,6 +28,7 @@ import {
 export function PreferencesPage() {
   const { theme, setTheme } = useTheme();
   const { language, setLanguage, displayCurrency, setDisplayCurrency, userProfile, setUserProfile } = usePreferences();
+  const T = useLocale();
   const { showToast } = useToast();
 
   const [notif, setNotif] = useState<NotificationPrefs>(() => loadNotifPrefs());
@@ -36,17 +39,17 @@ export function PreferencesPage() {
 
   const onSelectLang = (next: Language) => {
     setLanguage(next);
-    showToast(`Language: ${LANGUAGE_LABELS[next]}`, 'success');
+    showToast(format(T.settings.langToast, { value: LANGUAGE_LABELS[next] }), 'success');
   };
 
   const onSelectCurrency = (next: DisplayCurrency) => {
     setDisplayCurrency(next);
-    showToast(`Currency: ${CURRENCY_LABELS[next]}`, 'success');
+    showToast(format(T.settings.currencyToast, { value: CURRENCY_LABELS[next] }), 'success');
   };
 
   const onSelectProfile = (next: UserProfile) => {
     setUserProfile(next);
-    showToast(`Profile: ${USER_PROFILE_LABELS[next]}`, 'success');
+    showToast(format(T.settings.profileToast, { value: USER_PROFILE_LABELS[next] }), 'success');
   };
 
   const onToggleNotif = (key: keyof NotificationPrefs) => {
@@ -56,17 +59,17 @@ export function PreferencesPage() {
   };
 
   return (
-    <SettingsLayout title="Preferences">
+    <SettingsLayout title={T.settings.title}>
       {/* Theme */}
-      <Card title="Theme" hint="Choose how AiLunaPro looks. Applies immediately.">
+      <Card title={T.settings.themeTitle} hint={T.settings.themeHint}>
         <div style={{ display: 'flex', gap: 10 }}>
           <ThemeOption
-            label="Light"
+            label={T.settings.light}
             active={theme === 'light'}
             onClick={() => onSelectTheme('light')}
           />
           <ThemeOption
-            label="Dark"
+            label={T.settings.dark}
             active={theme === 'dark'}
             onClick={() => onSelectTheme('dark')}
           />
@@ -74,11 +77,11 @@ export function PreferencesPage() {
       </Card>
 
       {/* Language */}
-      <Card title="Language" hint="Used for UI labels and emails. Most labels are still in English while full i18n is in progress.">
+      <Card title={T.settings.languageTitle} hint={T.settings.languageHint}>
         <select
           value={language}
           onChange={e => onSelectLang(e.target.value as Language)}
-          aria-label="Language"
+          aria-label={T.settings.languageTitle}
           style={selectStyle()}
         >
           {LANGUAGE_VALUES.map(v => (
@@ -88,11 +91,11 @@ export function PreferencesPage() {
       </Card>
 
       {/* Display currency */}
-      <Card title="Default currency" hint="Display preference only. Billing and token packs remain in USD.">
+      <Card title={T.settings.currencyTitle} hint={T.settings.currencyHint}>
         <select
           value={displayCurrency}
           onChange={e => onSelectCurrency(e.target.value as DisplayCurrency)}
-          aria-label="Default currency"
+          aria-label={T.settings.currencyTitle}
           style={selectStyle()}
         >
           {CURRENCY_VALUES.map(v => (
@@ -102,14 +105,11 @@ export function PreferencesPage() {
       </Card>
 
       {/* User profile (J9 Phase B-lite) */}
-      <Card
-        title="Profile"
-        hint="Tunes the tone of guidance and the recommended starting resource. Never changes scoring, findings, or any regulatory mapping."
-      >
+      <Card title={T.settings.profileTitle} hint={T.settings.profileHint}>
         <select
           value={userProfile}
           onChange={e => onSelectProfile(e.target.value as UserProfile)}
-          aria-label="Profile"
+          aria-label={T.settings.profileTitle}
           style={selectStyle()}
         >
           {USER_PROFILE_VALUES.map(v => (
@@ -119,22 +119,22 @@ export function PreferencesPage() {
       </Card>
 
       {/* Notifications */}
-      <Card title="Email notifications" hint="Choose which emails you receive. Sender setup arrives in a later phase.">
+      <Card title={T.settings.notificationsTitle} hint={T.settings.notificationsHint}>
         <ToggleRow
-          label="Weekly compliance digest"
-          description="Summary of new findings and resolved actions every Monday."
+          label={T.settings.weeklyDigest}
+          description={T.settings.weeklyDigestDesc}
           checked={notif.weeklyDigest}
           onChange={() => onToggleNotif('weeklyDigest')}
         />
         <ToggleRow
-          label="Report ready"
-          description="Email me when a report I requested is generated."
+          label={T.settings.reportReady}
+          description={T.settings.reportReadyDesc}
           checked={notif.reportReady}
           onChange={() => onToggleNotif('reportReady')}
         />
         <ToggleRow
-          label="Team activity"
-          description="Invitations, role changes, and member removals in my workspaces."
+          label={T.settings.teamActivity}
+          description={T.settings.teamActivityDesc}
           checked={notif.teamActivity}
           onChange={() => onToggleNotif('teamActivity')}
         />

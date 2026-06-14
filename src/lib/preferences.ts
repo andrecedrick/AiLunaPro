@@ -114,6 +114,39 @@ export function saveLanguage(lang: Language): void {
   try { localStorage.setItem(KEYS.lang, lang); } catch { /* noop */ }
 }
 
+/** Has the user EXPLICITLY chosen a UI language? (localStorage key present). */
+export function hasExplicitLanguage(): boolean {
+  try { return localStorage.getItem(KEYS.lang) !== null; } catch { return false; }
+}
+
+/**
+ * Best-effort UI-language detection from the browser, mapped to a SUPPORTED
+ * language. No IP, no network, no PII — only `navigator.language(s)` primary
+ * subtag. Returns null when nothing supported matches.
+ */
+export function detectNavigatorLanguage(): Language | null {
+  try {
+    const tags = typeof navigator !== 'undefined'
+      ? [navigator.language, ...(navigator.languages ?? [])]
+      : [];
+    for (const tag of tags) {
+      const primary = (tag ?? '').toLowerCase().split('-')[0];
+      if (isLanguage(primary)) return primary;
+    }
+  } catch { /* noop */ }
+  return null;
+}
+
+/**
+ * Initial UI language for first paint: an explicit stored choice wins;
+ * otherwise fall back to browser detection (NOT persisted — detection stays
+ * non-persistent until the user confirms a preference, §9.24); else English.
+ */
+export function initialLanguage(): Language {
+  if (hasExplicitLanguage()) return loadLanguage();
+  return detectNavigatorLanguage() ?? 'en';
+}
+
 /* ── Notifications ────────────────────────────────────────── */
 
 export function loadNotifPrefs(): NotificationPrefs {

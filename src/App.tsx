@@ -6,6 +6,7 @@ import { CampaignChrome } from './components/layout/CampaignChrome';
 import { JourneyProgress } from './components/journey/JourneyProgress';
 import { ThemeProvider } from './context/ThemeContext';
 import { PreferencesProvider } from './context/PreferencesContext';
+import { LocaleProvider } from './context/LocaleContext';
 import { ToastProvider } from './context/ToastContext';
 import { RouteProvider, useRoute } from './context/RouteContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -544,6 +545,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <PreferencesProvider>
+        <LocaleProvider>
         <ToastProvider>
           <RouteProvider>
             <AuthProvider>
@@ -556,6 +558,7 @@ function App() {
             </AuthProvider>
           </RouteProvider>
         </ToastProvider>
+        </LocaleProvider>
         </PreferencesProvider>
       </ThemeProvider>
     </ErrorBoundary>

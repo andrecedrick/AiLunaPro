@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { mockNavItems } from '../../data/mockDashboard';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLocale } from '../../context/LocaleContext';
 import { SidebarPreferences } from './SidebarPreferences';
 import type { Route, RouteName } from '../../types/audit';
 
@@ -134,6 +135,7 @@ function NavIcon({ id }: { id: string }): ReactNode {
 function OrgSwitcher() {
   const { session, orgs, switchOrg } = useAuth();
   const { navigate } = useRoute();
+  const T = useLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -257,7 +259,7 @@ function OrgSwitcher() {
               letterSpacing: 0.8,
             }}
           >
-            Workspaces ({userOrgs.length})
+            {T.shell.workspaces} ({userOrgs.length})
           </div>
 
           {/* Search — only useful past a handful of workspaces. */}
@@ -267,7 +269,7 @@ function OrgSwitcher() {
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Search workspaces…"
+                placeholder={T.shell.searchWorkspaces}
                 autoFocus
                 style={{
                   width: '100%',
@@ -366,7 +368,7 @@ function OrgSwitcher() {
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--hover-bg)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
-            + Create workspace
+            + {T.shell.createWorkspace}
           </div>
         </div>
       )}
@@ -385,6 +387,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = false, onNavigate }: SidebarProps) {
   const { route, navigate } = useRoute();
   const { session, logout } = useAuth();
+  const T = useLocale();
   const activeId = routeToActiveId(route.name);
 
   const user = session?.user;
@@ -450,7 +453,7 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
                 textAlign: 'center',
               }}
             >
-              Compliance Suite
+              {T.shell.complianceSuite}
             </div>
 
             <div
@@ -491,6 +494,7 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
             <NavItem
               key={item.id}
               {...item}
+              label={T.nav[item.id as keyof typeof T.nav] ?? item.label}
               active={item.id === activeId}
               iconsOnly={iconsOnly}
               onClick={() => {
@@ -556,7 +560,7 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
         {/* Sign out */}
         <button
           type="button"
-          title="Sign out"
+          title={T.shell.signOut}
           onClick={logout}
           style={{
             background: 'transparent',
@@ -571,7 +575,7 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--red-text)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-          aria-label="Sign out"
+          aria-label={T.shell.signOut}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
