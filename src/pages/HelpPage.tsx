@@ -17,8 +17,9 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { HELP_SECTIONS, DEFAULT_SECTION_ID, isValidSectionId } from '../data/help';
+import { buildHelpSections, HELP_SECTION_IDS, DEFAULT_SECTION_ID, isValidSectionId } from '../data/help';
 import { HelpToc } from '../components/help/HelpToc';
+import { useLocale } from '../context/LocaleContext';
 
 const SCROLL_OFFSET_PX = 80; // matches Topbar height + small breathing room
 
@@ -54,6 +55,8 @@ function useIsNarrow(threshold = 900): boolean {
 }
 
 export function HelpPage() {
+  const H = useLocale().help;
+  const sections = useMemo(() => buildHelpSections(H), [H]);
   const [activeId, setActiveId] = useState<string>(() => readSectionFromHash());
   const isNarrow = useIsNarrow(900);
   const programmaticScrollRef = useRef(false);
@@ -73,8 +76,8 @@ export function HelpPage() {
   // we triggered the scroll programmatically to avoid TOC flicker)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const sections = HELP_SECTIONS.map(s => document.getElementById(`help-${s.id}`)).filter(Boolean) as HTMLElement[];
-    if (sections.length === 0) return;
+    const els = HELP_SECTION_IDS.map(id => document.getElementById(`help-${id}`)).filter(Boolean) as HTMLElement[];
+    if (els.length === 0) return;
     const obs = new IntersectionObserver(
       entries => {
         if (programmaticScrollRef.current) return;
@@ -94,7 +97,7 @@ export function HelpPage() {
         threshold: [0, 0.25, 0.5, 0.75, 1],
       },
     );
-    sections.forEach(s => obs.observe(s));
+    els.forEach(s => obs.observe(s));
     return () => obs.disconnect();
   }, []);
 
@@ -116,9 +119,9 @@ export function HelpPage() {
   };
 
   const tocNode = useMemo(
-    () => <HelpToc sections={HELP_SECTIONS} activeId={activeId} onSelect={onSelect} />,
+    () => <HelpToc sections={sections} activeId={activeId} onSelect={onSelect} />,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeId],
+    [activeId, sections],
   );
 
   return (
@@ -126,10 +129,10 @@ export function HelpPage() {
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-          Help Center
+          {H.header.title}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-          Find answers, learn workflows, and troubleshoot common issues.
+          {H.header.subtitle}
         </p>
       </div>
 
@@ -152,7 +155,7 @@ export function HelpPage() {
             userSelect: 'none',
             padding: 4,
           }}>
-            On this page
+            {H.header.onThisPage}
           </summary>
           <div style={{ marginTop: 10 }}>
             {tocNode}
@@ -179,7 +182,7 @@ export function HelpPage() {
 
         {/* Main content */}
         <main style={{ minWidth: 0 }}>
-          {HELP_SECTIONS.map(s => (
+          {sections.map(s => (
             <section
               key={s.id}
               id={`help-${s.id}`}
@@ -214,10 +217,10 @@ export function HelpPage() {
             textAlign:    'center',
           }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-              Need more help?
+              {H.header.needMoreHelpTitle}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              Contact your workspace owner or AiLunaPro support.
+              {H.header.needMoreHelpBody}
             </div>
           </div>
         </main>

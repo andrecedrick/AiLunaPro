@@ -1,14 +1,20 @@
 /**
- * Help Center static content — Phase H0.
+ * Help Center content — Phase H0, localized in B6.2f.
  *
- * English-only. User-facing wording. No developer-facing internals
- * (no env var names, no curl commands, no inspect/CLI references).
+ * The visible wording lives in the i18n `help` namespace (Dict). This module
+ * keeps the STRUCTURE (layout, lists, callouts, flow diagrams, tables, icons)
+ * and builds the section bodies from the active locale via buildHelpSections().
  *
- * If you add a new section, also add it to TOC (auto-generated from
- * this array). Section ids must be lowercase kebab.
+ * Inline emphasis inside prose is expressed with lightweight markers and
+ * rendered by <RichText>:  **bold**  ·  *italic*  ·  `code`.
+ * Proper nouns / product names (agent names, category taxonomy) stay literal.
+ *
+ * If you add a new section: add its content keys to the `help` namespace in
+ * every locale, add a builder entry below, and add its id to HELP_SECTION_IDS.
  */
 
 import type { ReactNode } from 'react';
+import type { Dict } from '../../lib/locale/i18n/en';
 import { Callout } from '../../components/help/Callout';
 import { FlowDiagram } from '../../components/help/FlowDiagram';
 
@@ -17,6 +23,26 @@ export interface HelpSection {
   title: string;
   body:  ReactNode;
 }
+
+type HelpT = Dict['help'];
+
+/** Stable, locale-independent section ids — order drives the TOC + scroll-spy. */
+export const HELP_SECTION_IDS = [
+  'getting-started',
+  'audit-vs-report',
+  'reports-workspaces',
+  'filling-the-audit',
+  'agents',
+  'tokens',
+  'billing',
+  'diagnostic',
+  'roi-calculator',
+  'team',
+  'settings',
+  'settings-analytics',
+  'troubleshooting',
+  'faq',
+] as const;
 
 /* ── Style atoms used inside body JSX ───────────────────── */
 
@@ -30,6 +56,27 @@ const thStyle: React.CSSProperties = { textAlign: 'left', padding: '8px 12px', b
 const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' };
 
 const Code = ({ children }: { children: ReactNode }) => <code style={codeStyle}>{children}</code>;
+
+/* Inline rich-text: renders **bold**, *italic*, `code` markers. Deterministic,
+ * no markdown lib. Markers are preserved verbatim across translations. */
+function RichText({ t }: { t: string }) {
+  const parts = t.split(/(\*\*.+?\*\*|`[^`]+`|\*.+?\*)/g);
+  return (
+    <>
+      {parts.map((seg, i) => {
+        if (!seg) return null;
+        if (seg.startsWith('**') && seg.endsWith('**')) return <strong key={i}>{seg.slice(2, -2)}</strong>;
+        if (seg.startsWith('`')  && seg.endsWith('`'))  return <Code key={i}>{seg.slice(1, -1)}</Code>;
+        if (seg.startsWith('*')  && seg.endsWith('*'))  return <em key={i}>{seg.slice(1, -1)}</em>;
+        return <span key={i}>{seg}</span>;
+      })}
+    </>
+  );
+}
+
+/* Prose paragraph / list item built from a marked string. */
+const P  = ({ t }: { t: string }) => <p style={p}><RichText t={t} /></p>;
+const Li = ({ t }: { t: string }) => <li style={li}><RichText t={t} /></li>;
 
 /* ── Lightweight visual aids (inline SVG / CSS only — no images, no libs) ── */
 
@@ -83,9 +130,9 @@ const SectionLede = ({ icon, children }: { icon: ReactNode; children: ReactNode 
 );
 
 /* "Key takeaways" callout: 2–3 short bullets. */
-const Takeaways = ({ items }: { items: ReactNode[] }) => (
+const Takeaways = ({ heading, items }: { heading: string; items: ReactNode[] }) => (
   <div style={{ background: 'var(--brand-tint-bg, #EDE9FE)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', margin: '4px 0 16px' }}>
-    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text, #7C3AED)', marginBottom: 6 }}>Key takeaways</div>
+    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text, #7C3AED)', marginBottom: 6 }}>{heading}</div>
     <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
       {items.map((it, i) => (<li key={i} style={{ marginBottom: 3 }}>{it}</li>))}
     </ul>
@@ -99,633 +146,316 @@ const Chips = ({ items }: { items: string[] }) => (
   </div>
 );
 
-/* ── Sections ───────────────────────────────────────────── */
+/* Proper nouns / product taxonomy — stay English, coherent with the Agents
+ * catalog which lists them as product names. */
+const AGENT_CHIPS = ['Support', 'Sales', 'Finance', 'HR', 'Compliance', 'Marketing', 'Reporting', 'Audit', 'Document', 'Admin'];
+const AGENT_NAMES = ['Support Agent', 'Sales Agent', 'Finance Agent', 'HR Agent', 'Compliance Agent', 'Marketing Agent', 'Reporting Agent', 'Audit Agent', 'Document Agent', 'Admin Agent'];
 
-export const HELP_SECTIONS: readonly HelpSection[] = [
-  {
-    id: 'getting-started',
-    title: 'Getting Started',
-    body: (
-      <>
-        <SectionLede icon={<IconRocket />}>
-          AiLunaPro is a compliance and AI-transformation suite for organizations adopting AI —
-          audits, an AI registry, agent recommendations, ROI estimates, and a token-based usage
-          model in one workspace.
-        </SectionLede>
-        <Takeaways items={[
-          'Start from the dashboard, then run a New Audit from the sidebar.',
-          'Two public tools need no login: Diagnostic Express and the ROI Calculator.',
-          'Owners and admins invite teammates with 7-day links.',
-        ]} />
-        <h3 style={h3}>Your first three actions</h3>
-        <ul style={ul}>
-          <li style={li}>Open the dashboard and review your current AI maturity score.</li>
-          <li style={li}>Run a New Audit from the sidebar to capture your AI usage and risks.</li>
-          <li style={li}>Browse the Agents catalog to see which AiLunaPro agents fit your workflow.</li>
-        </ul>
-        <h3 style={h3}>Public lead-magnets</h3>
-        <ul style={ul}>
-          <li style={li}>Diagnostic Express — a free 8-question AI maturity assessment, no account required.</li>
-          <li style={li}>ROI Calculator — estimate the time and money your team can save with AiLunaPro agents.</li>
-        </ul>
-        <p style={p}>
-          You can find both at <Code>#/diagnostic</Code> and <Code>#/roi-calculator</Code>.
-          Share these links with colleagues — they do not require login.
-        </p>
-        <h3 style={h3}>Inviting teammates</h3>
-        <p style={p}>
-          Owners and admins can invite teammates from the Team page in the sidebar.
-          Each invitee receives a link valid for 7 days. Roles are assigned at invitation time.
-        </p>
-        <h3 style={h3}>How it flows</h3>
-        <FlowDiagram
-          steps={['New Audit', 'Submit Audit', 'Audit saved + score', 'Generate report', 'Reports list']}
-          caption="From audit to a shareable report snapshot"
-        />
-      </>
-    ),
-  },
+/* ── Builder ─────────────────────────────────────────────── */
 
-  {
-    id: 'audit-vs-report',
-    title: 'Audit vs Report',
-    body: (
-      <>
-        <h3 style={h3}>In short</h3>
-        <ul style={ul}>
-          <li style={li}>An <strong>Audit</strong> captures your answers and computes your score.</li>
-          <li style={li}>A <strong>Report</strong> is a <strong>snapshot</strong> of an audit, created intentionally to share or archive.</li>
-        </ul>
-        <Callout variant="info">
-          <strong>Submitting saves your audit + score.</strong> A <strong>Report</strong> is a
-          snapshot, created only when you click <strong>Generate report</strong>.
-        </Callout>
-        <h3 style={h3}>What is an Audit?</h3>
-        <ul style={ul}>
-          <li style={li}>Your answers to structured questions.</li>
-          <li style={li}>Your compliance / maturity score.</li>
-          <li style={li}>A dynamic analysis that can evolve with scoring rules.</li>
-        </ul>
-        <Callout variant="note">An audit remains editable until you generate a report.</Callout>
-        <h3 style={h3}>What is a Report?</h3>
-        <ul style={ul}>
-          <li style={li}>A frozen snapshot at a specific point in time.</li>
-          <li style={li}>Created only when clicking <strong>Generate report</strong>.</li>
-          <li style={li}>Stable even if you run new audits later. Exportable and shareable, listed under <strong>Reports</strong> for the active workspace.</li>
-        </ul>
-        <FlowDiagram
-          steps={['Submit Audit', 'Audit saved', 'Generate report?', 'Report snapshot', 'Reports list']}
-          caption="A report is created only on Generate report"
-        />
-        <Callout variant="note">
-          <strong>Submit Audit</strong> → saves audit + score. <strong>Generate report</strong> → creates a snapshot visible in <em>Reports</em>.
-        </Callout>
-        <p style={p}>An <strong>Audit history</strong> view (distinct from Reports) is available in the sidebar. <em>Coming soon:</em> optional auto-report on submit.</p>
-      </>
-    ),
-  },
+export function buildHelpSections(t: HelpT): HelpSection[] {
+  const takeawaysHeading = t.header.keyTakeaways;
+  const g  = t.gettingStarted;
+  const av = t.auditVsReport;
+  const rw = t.reportsWorkspaces;
+  const fa = t.fillingAudit;
+  const ag = t.agents;
+  const tk = t.tokens;
+  const bl = t.billing;
+  const dg = t.diagnostic;
+  const roi = t.roiCalculator;
+  const tm = t.team;
+  const st = t.settings;
+  const an = t.analytics;
+  const ts = t.troubleshooting;
+  const fq = t.faq;
 
-  {
-    id: 'reports-workspaces',
-    title: 'Reports & Workspaces',
-    body: (
-      <>
-        <p style={p}>
-          Reports are <strong>per workspace</strong>, not global. The Reports list shows only
-          the reports of the <strong>active</strong> workspace.
-        </p>
-        <FlowDiagram
-          steps={['Workspace A → its reports', 'Workspace B → its reports']}
-          caption="Each workspace keeps its own reports"
-        />
-        <Callout variant="warning">
-          Don't see an old report? It likely belongs to <strong>another workspace</strong>.
-          Switch workspace from the selector at the top of the sidebar.
-        </Callout>
-        <Callout variant="note">
-          The dashboard date filter does <strong>not</strong> affect the Reports list.
-        </Callout>
-      </>
-    ),
-  },
-
-  {
-    id: 'filling-the-audit',
-    title: 'How to fill the audit properly',
-    body: (
-      <>
-        <p style={p}>
-          Good inputs make a credible audit. Take a minute to answer honestly — the result
-          reflects what you put in.
-        </p>
-        <Callout variant="info">
-          The <strong>“Describe…”</strong> free-text fields add context. Your <strong>score comes
-          from the structured (choice) questions</strong>, not the free text. Use clear, real,
-          readable information for a credible report.
-        </Callout>
-        <ul style={ul}>
-          <li style={li}>Answer every structured question — they drive the score and findings.</li>
-          <li style={li}>Use the free-text fields for real context (owners, tools, processes), not placeholder text.</li>
-          <li style={li}>Re-run the audit as your practices evolve to track progress.</li>
-        </ul>
-      </>
-    ),
-  },
-
-  {
-    id: 'agents',
-    title: 'AI Agents',
-    body: (
-      <>
-        <SectionLede icon={<IconAgent />}>
-          The Agents catalog lists ten ready-to-use AI agents for common business workflows.
-          Each card shows a description, expected ROI, a recommended minimum plan, and a link
-          to get started.
-        </SectionLede>
-        <Takeaways items={[
-          'Ten first-party agents, each tagged AiLunaPro.',
-          'A plan badge (Starter+ / Professional+ / Enterprise+) suggests the typical tier.',
-          '“Get this agent” starts the standard sign-up flow — no in-app purchase yet.',
-        ]} />
-        <Chips items={['Support', 'Sales', 'Finance', 'HR', 'Compliance', 'Marketing', 'Reporting', 'Audit', 'Document', 'Admin']} />
-        <h3 style={h3}>Catalog (10 agents)</h3>
-        <ul style={ul}>
-          <li style={li}><strong>Support Agent</strong> — automate customer responses and reduce support workload.</li>
-          <li style={li}><strong>Sales Agent</strong> — qualify prospects and prepare commercial follow-ups.</li>
-          <li style={li}><strong>Finance Agent</strong> — assist with invoices, quotes, and collections.</li>
-          <li style={li}><strong>HR Agent</strong> — assist HR teams with screening, summaries, and documentation.</li>
-          <li style={li}><strong>Compliance Agent</strong> — help structure AI compliance, risks, and registries.</li>
-          <li style={li}><strong>Marketing Agent</strong> — generate content, campaigns, and marketing ideas.</li>
-          <li style={li}><strong>Reporting Agent</strong> — create summaries, dashboards, and decision reports.</li>
-          <li style={li}><strong>Audit Agent</strong> — support AI audit, maturity assessment, and action plans.</li>
-          <li style={li}><strong>Document Agent</strong> — classify, summarize, and extract information from documents.</li>
-          <li style={li}><strong>Admin Agent</strong> — automate daily administrative work.</li>
-        </ul>
-        <h3 style={h3}>Source badge</h3>
-        <p style={p}>
-          Agents are tagged <strong>AiLunaPro</strong> when they are first-party. Future
-          versions will surface external alternatives with their own badge.
-        </p>
-        <h3 style={h3}>Plan badge</h3>
-        <p style={p}>
-          Each card shows a minimum plan badge (Starter+, Professional+, Enterprise+). It indicates the
-          recommended subscription tier for typical usage.
-        </p>
-        <h3 style={h3}>Get this agent</h3>
-        <p style={p}>
-          Click the "Get this agent" button to start onboarding. Agents are not yet purchasable
-          directly inside AiLunaPro — the link takes you through the standard sign-up flow.
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'tokens',
-    title: 'Tokens',
-    body: (
-      <>
-        <p style={p}>
-          Tokens are the unit of AI consumption inside AiLunaPro. Every audit, recommendation,
-          or agent call uses tokens from your workspace's monthly allocation.
-        </p>
-        <h3 style={h3}>How tokens work</h3>
-        <ul style={ul}>
-          <li style={li}>Your subscription includes a monthly token allocation that fits the plan.</li>
-          <li style={li}>Each cycle, your balance refreshes. A small rollover (capped at one monthly allocation) carries over to avoid losing unused tokens.</li>
-          <li style={li}>If your balance runs low, you can buy a top-up pack at any time.</li>
-          <li style={li}>Top-up tokens are added to your balance and never expire.</li>
-          <li style={li}>Top-ups complement your subscription — they do not replace it.</li>
-        </ul>
-        <h3 style={h3}>Top-up packs</h3>
-        <p style={p}>
-          Three packs are available: Starter (+5,000 tokens), Pro (+25,000 tokens), Max
-          (+100,000 tokens). Token packs are currently billed in USD.
-        </p>
-        <h3 style={h3}>Where to view your balance</h3>
-        <p style={p}>
-          The token badge in the topbar shows your current balance and monthly allocation.
-          Click it to open the Tokens page for full usage history and to buy a top-up.
-        </p>
-        <h3 style={h3}>When tokens run out</h3>
-        <p style={p}>
-          AI actions that need more tokens than your balance show a clear "not enough tokens"
-          message and a link to buy a top-up. Owners, admins, and billing managers can buy
-          packs. Members can view balances but cannot buy.
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'billing',
-    title: 'Billing',
-    body: (
-      <>
-        <SectionLede icon={<IconBilling />}>
-          AiLunaPro offers Free, Starter, Professional, and Enterprise plans, differing by token
-          allocation, audit volume, and team capabilities. Checkout and management run through
-          Stripe.
-        </SectionLede>
-        <Takeaways items={[
-          'Billing and token packs are in USD; the currency selector is display-only for now.',
-          'Owners/admins subscribe and manage plans from the Billing page (Stripe Customer Portal).',
-          'The Free plan includes limited audits and 100 tokens per month.',
-        ]} />
-        <Chips items={['Free', 'Starter', 'Professional', 'Enterprise']} />
-        <h3 style={h3}>Currency</h3>
-        <p style={p}>
-          Billing and token packs are currently in USD. The sidebar currency selector is
-          a display preference only. It does not change Stripe checkout currency or token
-          pack pricing yet. Multi-currency billing is planned for a future release.
-        </p>
-        <h3 style={h3}>Subscribing</h3>
-        <p style={p}>
-          From the Billing page, owners and admins can pick a plan and complete checkout
-          via Stripe. The subscription activates immediately on successful payment and
-          your token allocation updates automatically.
-        </p>
-        <h3 style={h3}>Managing your subscription</h3>
-        <p style={p}>
-          The "Manage subscription" button opens the Stripe Customer Portal where you can
-          update your payment method, change plan, view invoices, or cancel. Cancellation
-          takes effect at the end of the current period.
-        </p>
-        <h3 style={h3}>Invoices</h3>
-        <p style={p}>
-          Invoices appear on the Billing page after each renewal. Click View or PDF to
-          download a copy.
-        </p>
-        <h3 style={h3}>Free plan</h3>
-        <p style={p}>
-          The Free plan gives limited audit access and 100 tokens per month. Use it to
-          explore the product before subscribing.
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'diagnostic',
-    title: 'Diagnostic Express',
-    body: (
-      <>
-        <p style={p}>
-          Diagnostic Express is a free, 8-question assessment that gives you an AI maturity
-          score from 0 to 100, along with a short list of recommended AiLunaPro agents.
-        </p>
-        <h3 style={h3}>Where to access it</h3>
-        <p style={p}>
-          Open <Code>#/diagnostic</Code> in your browser. No login required. Takes about
-          two minutes. You can share the link with colleagues.
-        </p>
-        <h3 style={h3}>What you get</h3>
-        <ul style={ul}>
-          <li style={li}>A normalized score from 0 to 100.</li>
-          <li style={li}>A maturity bucket: Emerging, Developing, or Advanced.</li>
-          <li style={li}>Three recommended agents adapted to your stage.</li>
-          <li style={li}>A direct link to create your free AiLunaPro account.</li>
-        </ul>
-        <h3 style={h3}>Privacy</h3>
-        <p style={p}>
-          Submitted answers and your email are stored only to generate your diagnostic and
-          to follow up about relevant AI services. You can request deletion at any time.
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'roi-calculator',
-    title: 'ROI Calculator',
-    body: (
-      <>
-        <p style={p}>
-          The ROI Calculator estimates how much time and money your team can save by
-          adopting AiLunaPro AI agents for a specific workflow.
-        </p>
-        <h3 style={h3}>Where to access it</h3>
-        <p style={p}>
-          Open <Code>#/roi-calculator</Code> in your browser. No login required. Takes
-          about one minute.
-        </p>
-        <h3 style={h3}>Inputs</h3>
-        <ul style={ul}>
-          <li style={li}>Team size (1 to 10,000).</li>
-          <li style={li}>Monthly hours your team spends on repetitive work.</li>
-          <li style={li}>Average hourly cost in USD (defaults to 50).</li>
-          <li style={li}>Target workflow (one of nine: support, sales, finance, documents, reporting, admin, compliance, marketing, hr).</li>
-        </ul>
-        <h3 style={h3}>Outputs</h3>
-        <ul style={ul}>
-          <li style={li}>Estimated monthly cost saved (USD).</li>
-          <li style={li}>Estimated yearly cost saved (USD).</li>
-          <li style={li}>Estimated time saved per month (hours).</li>
-          <li style={li}>Estimated payback period in months.</li>
-          <li style={li}>Two recommended AiLunaPro agents for the chosen workflow.</li>
-        </ul>
-        <h3 style={h3}>About the estimate</h3>
-        <p style={p}>
-          The result is based on the information you provide and conservative automation
-          assumptions. Actual savings may vary. Payback uses a placeholder agent cost of
-          $99/month until agent pricing is finalized.
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'team',
-    title: 'Team and Roles',
-    body: (
-      <>
-        <p style={p}>
-          AiLunaPro supports five roles per workspace. Each role has a specific scope:
-        </p>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Role</th>
-              <th style={thStyle}>Manage workspace</th>
-              <th style={thStyle}>Manage billing</th>
-              <th style={thStyle}>Run audits</th>
-              <th style={thStyle}>View reports</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td style={tdStyle}><strong>Owner</strong></td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td></tr>
-            <tr><td style={tdStyle}><strong>Admin</strong></td><td style={tdStyle}>✓</td><td style={tdStyle}>—</td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td></tr>
-            <tr><td style={tdStyle}><strong>Billing</strong></td><td style={tdStyle}>—</td><td style={tdStyle}>✓</td><td style={tdStyle}>—</td><td style={tdStyle}>—</td></tr>
-            <tr><td style={tdStyle}><strong>Member</strong></td><td style={tdStyle}>—</td><td style={tdStyle}>—</td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td></tr>
-            <tr><td style={tdStyle}><strong>Client</strong></td><td style={tdStyle}>—</td><td style={tdStyle}>—</td><td style={tdStyle}>—</td><td style={tdStyle}>limited</td></tr>
-          </tbody>
-        </table>
-        <h3 style={h3}>Inviting teammates</h3>
-        <p style={p}>
-          Owners and admins open the Team page, click Invite, enter the email address, and
-          choose a role. The invitee receives a link valid for 7 days. If a link expires
-          or is lost, owners and admins can regenerate it.
-        </p>
-        <h3 style={h3}>Changing roles</h3>
-        <p style={p}>
-          Owners and admins can change a teammate's role from the Team page. Members can
-          be temporarily disabled (no access) and re-enabled later, or removed from the
-          workspace.
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'settings',
-    title: 'Settings',
-    body: (
-      <>
-        <SectionLede icon={<IconSettings />}>
-          Manage your profile, organization, appearance, and notification preferences. Language
-          and currency selectors are display preferences for now.
-        </SectionLede>
-        <Takeaways items={[
-          'Profile & organization details live under Settings.',
-          'Theme (light/dark) persists across sessions.',
-          'Language and currency are display-only until those features ship.',
-        ]} />
-        <h3 style={h3}>Profile</h3>
-        <p style={p}>Update your display name and email address from Settings → Profile.</p>
-        <h3 style={h3}>Organization</h3>
-        <p style={p}>Owners can rename the organization from Settings → Organization.</p>
-        <h3 style={h3}>Theme</h3>
-        <p style={p}>Switch between light and dark mode from Settings → Preferences. Your choice persists across sessions.</p>
-        <h3 style={h3}>Language</h3>
-        <p style={p}>
-          The language selector in the sidebar and in Settings is a preference only. The
-          application currently displays in English. Full multi-language support is planned
-          for a future release.
-        </p>
-        <h3 style={h3}>Currency</h3>
-        <p style={p}>
-          The currency selector in the sidebar and in Settings is a display preference only.
-          Billing and token pack pricing remain in USD until multi-currency billing is
-          implemented.
-        </p>
-        <h3 style={h3}>Email notifications</h3>
-        <p style={p}>
-          Choose which emails you want to receive: weekly compliance digest, report-ready
-          notifications, and team activity. Settings → Preferences → Email notifications.
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'settings-analytics',
-    title: 'Analytics & Cookies (Optional)',
-    body: (
-      <>
-        <p style={p}>
-          AiLunaPro uses optional, privacy-friendly product analytics to help us improve
-          reliability and fix issues faster. It is entirely optional and stays off until you
-          allow it.
-        </p>
-        <div style={schemeRow}>
-          <ToggleOff />
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Off by default</strong> — nothing
-            is collected until you choose <strong>Allow</strong>.
-          </span>
-        </div>
-
-        <h3 style={h3}>What is collected</h3>
-        <div style={schemeRow}>
-          <span style={{ color: 'var(--violet-text, #7C3AED)', display: 'inline-flex' }}><LockIcon /></span>
-          <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <span style={chip}>No personal data</span>
-            <span style={chip}>No session recording</span>
-            <span style={chip}>No ad tracking</span>
-          </span>
-        </div>
-        <p style={p}>
-          Only anonymous usage signals such as page views and reliability events.
-        </p>
-
-        <h3 style={h3}>Opt in or out anytime</h3>
-        <StepFlow steps={[
-          'On your first visit, choose Allow or No thanks in the small banner.',
-          'Your choice is saved on this device — the banner will not ask again.',
-          'To change it, clear this site’s browser storage (site data) and reload.',
-        ]} />
-
-        <h3 style={h3}>Do Not Track</h3>
-        <p style={p}>
-          If your browser sends a &ldquo;Do Not Track&rdquo; signal, analytics stay off
-          automatically and no banner is shown.
-        </p>
-
-        <h3 style={h3}>If analytics are blocked</h3>
-        <p style={p}>
-          Some browsers, extensions, or networks block analytics requests. That is completely
-          fine — the application works normally either way, and no action is needed.
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'troubleshooting',
-    title: 'Troubleshooting',
-    body: (
-      <>
-        <SectionLede icon={<IconAlert />}>
-          Quick fixes for the most common issues. Most are resolved by a refresh; if not,
-          your workspace owner or AiLunaPro support can help.
-        </SectionLede>
-        <Takeaways items={[
-          'Refresh first — it resolves most load, balance, and session hiccups.',
-          'Token credits arrive within a few seconds of a successful payment.',
-          'A blank screen is usually a browser extension or network filter.',
-        ]} />
-        <h3 style={h3}>The page won't load</h3>
-        <p style={p}>
-          The service may be temporarily unavailable. Refresh the page. If the issue
-          continues, contact your workspace owner or AiLunaPro support.
-        </p>
-        <h3 style={h3}>You're signed out unexpectedly</h3>
-        <p style={p}>
-          Your session may have expired. Sign in again. If you keep getting signed out,
-          contact your workspace owner.
-        </p>
-        <h3 style={h3}>Token balance looks incorrect</h3>
-        <p style={p}>
-          Refresh the page first. If your balance still looks wrong after a refresh,
-          contact your workspace owner or AiLunaPro support.
-        </p>
-        <h3 style={h3}>Token balance didn't update after checkout</h3>
-        <p style={p}>
-          Wait a moment and refresh the page. Token credits arrive within a few seconds
-          of a successful payment. If the balance still does not update, contact your
-          workspace owner or AiLunaPro support.
-        </p>
-        <h3 style={h3}>Captcha keeps failing on the public forms</h3>
-        <p style={p}>
-          Reload the page and complete the captcha again. If the issue persists, try a
-          different browser or contact AiLunaPro support.
-        </p>
-        <h3 style={h3}>Subscription sync failed</h3>
-        <p style={p}>
-          On the Billing success page, click Retry sync. If the failure persists, contact
-          AiLunaPro support and include your Stripe receipt.
-        </p>
-        <h3 style={h3}>Invitation link doesn't work</h3>
-        <p style={p}>
-          Invitations expire after 7 days. Ask your workspace owner or admin to regenerate
-          the invite from the Team page.
-        </p>
-        <h3 style={h3}>What's the difference between Roadmap and Action Plan?</h3>
-        <p style={p}>
-          Both views derive from the same audit findings and recommendations, but they
-          answer different questions. The <strong>Roadmap</strong> answers{' '}
-          <strong>when</strong> to ship work — items are bucketed by horizon (30 / 60
-          / 90 days) to help with planning and capacity. The <strong>Prioritized
-          Action Plan</strong> answers <strong>what to fix first</strong> — items are
-          bucketed by priority (Critical / Important / Improvement) using a fixed
-          deterministic rule on the existing finding severity and recommendation impact.
-          They are complementary, not duplicates. Neither view changes scoring, and
-          neither is a compliance certification.
-        </p>
-        <h3 style={h3}>Blank screen, "Oops", or broken layout?</h3>
-        <p style={p}>
-          This is almost always a browser <strong>ad-blocker or privacy extension</strong>{' '}
-          (or a corporate/VPN/DNS filter) blocking the app's scripts, styles, or data
-          requests — you may see <strong>ERR_BLOCKED_BY_CLIENT</strong> in the console.
-          Fix it by allowing <strong>audit.ailunapro.com</strong> and{' '}
-          <strong>*.googleapis.com</strong> in your blocker, or open the app in a clean
-          browser profile with no extensions, then reload.
-        </p>
-        <h3 style={h3}>Didn't get the verification or password reset email?</h3>
-        <p style={p}>
-          Verification and password reset emails are sent by Firebase from your project&rsquo;s
-          configured no-reply address (the default Firebase sender until a custom sender domain
-          is verified). Check your <strong>spam / promotions</strong> folder first. You can
-          resend the verification email from <strong>Settings → Profile</strong>, or request a
-          new reset link from the <strong>Forgot password</strong> page. After verifying, sign
-          out and back in so your account reflects the verified status. (Team invitations are
-          separate and sent via AiLunaPro&rsquo;s email provider.)
-        </p>
-      </>
-    ),
-  },
-
-  {
-    id: 'faq',
-    title: 'FAQ',
-    body: (
-      <>
-        <h3 style={h3}>Why don't I see my old reports?</h3>
-        <p style={p}>
-          Reports are <strong>per workspace</strong>. An older report likely belongs to a
-          different workspace — switch workspace from the selector at the top of the sidebar.
-          The dashboard date filter does not affect the Reports list.
-        </p>
-        <h3 style={h3}>Why is Reports empty?</h3>
-        <p style={p}>
-          A submitted audit alone does not create a report. Open a submitted audit and click
-          <strong> Generate report</strong> to create a snapshot — it then appears under Reports.
-        </p>
-        <h3 style={h3}>Does random text affect my score?</h3>
-        <p style={p}>
-          No. The score comes from the structured (choice) questions. Free-text “Describe…”
-          fields add context only — but clear, real input makes your report credible.
-        </p>
-        <h3 style={h3}>What is saved, and when?</h3>
-        <p style={p}>
-          <strong>Submit Audit</strong> saves your answers + score. <strong>Generate report</strong>
-          creates a separate, shareable snapshot. See “Audit vs Report” above.
-        </p>
-        <h3 style={h3}>Is my data secure?</h3>
-        <p style={p}>
-          AiLunaPro uses authenticated access, role-based permissions, Firestore security
-          rules, and server-side writes for sensitive operations. Token amounts, billing
-          actions, and team changes are validated by the server.
-        </p>
-        <h3 style={h3}>Can I delete my data?</h3>
-        <p style={p}>
-          Yes. Contact your workspace owner or AiLunaPro support to request deletion of
-          your account or your workspace data.
-        </p>
-        <h3 style={h3}>Why are token packs in USD?</h3>
-        <p style={p}>
-          AiLunaPro is rolling out multi-currency support in stages. Subscriptions support
-          multiple currencies via Stripe. Token packs will become multi-currency in a
-          future release.
-        </p>
-        <h3 style={h3}>What does the currency selector do?</h3>
-        <p style={p}>
-          It is a display preference only. It does not change Stripe checkout currency or
-          token pack pricing yet.
-        </p>
-        <h3 style={h3}>What does the language selector do?</h3>
-        <p style={p}>
-          It stores your preferred language. Full UI translation is in progress and will
-          ship in a future release.
-        </p>
-        <h3 style={h3}>How do I contact support?</h3>
-        <p style={p}>
-          For account, billing, or technical questions, contact your workspace owner first.
-          For issues that need our help, contact AiLunaPro support directly.
-        </p>
-        <h3 style={h3}>Are agents purchased inside AiLunaPro yet?</h3>
-        <p style={p}>
-          Not yet. The Agents catalog lists recommended AI agents. Selecting "Get this
-          agent" takes you through the standard onboarding flow. Direct in-app purchase
-          is planned for a later phase.
-        </p>
-        <h3 style={h3}>Is the ROI estimate guaranteed?</h3>
-        <p style={p}>
-          No. The ROI Calculator gives a conservative estimate based on the information
-          you provide. Actual savings depend on your workflow, integration quality, and
-          adoption.
-        </p>
-      </>
-    ),
-  },
-];
+  return [
+    {
+      id: 'getting-started',
+      title: g.title,
+      body: (
+        <>
+          <SectionLede icon={<IconRocket />}>{g.lede}</SectionLede>
+          <Takeaways heading={takeawaysHeading} items={[g.take1, g.take2, g.take3]} />
+          <h3 style={h3}>{g.firstActionsTitle}</h3>
+          <ul style={ul}><Li t={g.fa1} /><Li t={g.fa2} /><Li t={g.fa3} /></ul>
+          <h3 style={h3}>{g.leadMagnetsTitle}</h3>
+          <ul style={ul}><Li t={g.lm1} /><Li t={g.lm2} /></ul>
+          <P t={g.publicLinks} />
+          <h3 style={h3}>{g.inviteTitle}</h3>
+          <P t={g.inviteBody} />
+          <h3 style={h3}>{g.flowTitle}</h3>
+          <FlowDiagram steps={[g.flowStep1, g.flowStep2, g.flowStep3, g.flowStep4, g.flowStep5]} caption={g.flowCaption} />
+        </>
+      ),
+    },
+    {
+      id: 'audit-vs-report',
+      title: av.title,
+      body: (
+        <>
+          <h3 style={h3}>{av.inShortTitle}</h3>
+          <ul style={ul}><Li t={av.inShort1} /><Li t={av.inShort2} /></ul>
+          <Callout variant="info"><RichText t={av.calloutSubmit} /></Callout>
+          <h3 style={h3}>{av.whatIsAuditTitle}</h3>
+          <ul style={ul}><Li t={av.wa1} /><Li t={av.wa2} /><Li t={av.wa3} /></ul>
+          <Callout variant="note"><RichText t={av.calloutEditable} /></Callout>
+          <h3 style={h3}>{av.whatIsReportTitle}</h3>
+          <ul style={ul}><Li t={av.wr1} /><Li t={av.wr2} /><Li t={av.wr3} /></ul>
+          <FlowDiagram steps={[av.flowStep1, av.flowStep2, av.flowStep3, av.flowStep4, av.flowStep5]} caption={av.flowCaption} />
+          <Callout variant="note"><RichText t={av.calloutFlow} /></Callout>
+          <P t={av.closing} />
+        </>
+      ),
+    },
+    {
+      id: 'reports-workspaces',
+      title: rw.title,
+      body: (
+        <>
+          <P t={rw.p1} />
+          <FlowDiagram steps={[rw.flowStep1, rw.flowStep2]} caption={rw.flowCaption} />
+          <Callout variant="warning"><RichText t={rw.calloutWarn} /></Callout>
+          <Callout variant="note"><RichText t={rw.calloutNote} /></Callout>
+        </>
+      ),
+    },
+    {
+      id: 'filling-the-audit',
+      title: fa.title,
+      body: (
+        <>
+          <P t={fa.p1} />
+          <Callout variant="info"><RichText t={fa.calloutInfo} /></Callout>
+          <ul style={ul}><Li t={fa.li1} /><Li t={fa.li2} /><Li t={fa.li3} /></ul>
+        </>
+      ),
+    },
+    {
+      id: 'agents',
+      title: ag.title,
+      body: (
+        <>
+          <SectionLede icon={<IconAgent />}>{ag.lede}</SectionLede>
+          <Takeaways heading={takeawaysHeading} items={[ag.take1, ag.take2, ag.take3]} />
+          <Chips items={AGENT_CHIPS} />
+          <h3 style={h3}>{ag.catalogTitle}</h3>
+          <ul style={ul}>
+            {[ag.cat1, ag.cat2, ag.cat3, ag.cat4, ag.cat5, ag.cat6, ag.cat7, ag.cat8, ag.cat9, ag.cat10].map((desc, i) => (
+              <li key={i} style={li}><strong>{AGENT_NAMES[i]}</strong> — <RichText t={desc} /></li>
+            ))}
+          </ul>
+          <h3 style={h3}>{ag.sourceBadgeTitle}</h3>
+          <P t={ag.sourceBadgeBody} />
+          <h3 style={h3}>{ag.planBadgeTitle}</h3>
+          <P t={ag.planBadgeBody} />
+          <h3 style={h3}>{ag.getAgentTitle}</h3>
+          <P t={ag.getAgentBody} />
+        </>
+      ),
+    },
+    {
+      id: 'tokens',
+      title: tk.title,
+      body: (
+        <>
+          <P t={tk.intro} />
+          <h3 style={h3}>{tk.howTitle}</h3>
+          <ul style={ul}><Li t={tk.how1} /><Li t={tk.how2} /><Li t={tk.how3} /><Li t={tk.how4} /><Li t={tk.how5} /></ul>
+          <h3 style={h3}>{tk.packsTitle}</h3>
+          <P t={tk.packsBody} />
+          <h3 style={h3}>{tk.balanceTitle}</h3>
+          <P t={tk.balanceBody} />
+          <h3 style={h3}>{tk.runOutTitle}</h3>
+          <P t={tk.runOutBody} />
+        </>
+      ),
+    },
+    {
+      id: 'billing',
+      title: bl.title,
+      body: (
+        <>
+          <SectionLede icon={<IconBilling />}>{bl.lede}</SectionLede>
+          <Takeaways heading={takeawaysHeading} items={[bl.take1, bl.take2, bl.take3]} />
+          <Chips items={['Free', 'Starter', 'Professional', 'Enterprise']} />
+          <h3 style={h3}>{bl.currencyTitle}</h3>
+          <P t={bl.currencyBody} />
+          <h3 style={h3}>{bl.subscribingTitle}</h3>
+          <P t={bl.subscribingBody} />
+          <h3 style={h3}>{bl.manageTitle}</h3>
+          <P t={bl.manageBody} />
+          <h3 style={h3}>{bl.invoicesTitle}</h3>
+          <P t={bl.invoicesBody} />
+          <h3 style={h3}>{bl.freeTitle}</h3>
+          <P t={bl.freeBody} />
+        </>
+      ),
+    },
+    {
+      id: 'diagnostic',
+      title: dg.title,
+      body: (
+        <>
+          <P t={dg.intro} />
+          <h3 style={h3}>{dg.accessTitle}</h3>
+          <P t={dg.accessBody} />
+          <h3 style={h3}>{dg.getTitle}</h3>
+          <ul style={ul}><Li t={dg.get1} /><Li t={dg.get2} /><Li t={dg.get3} /><Li t={dg.get4} /></ul>
+          <h3 style={h3}>{dg.privacyTitle}</h3>
+          <P t={dg.privacyBody} />
+        </>
+      ),
+    },
+    {
+      id: 'roi-calculator',
+      title: roi.title,
+      body: (
+        <>
+          <P t={roi.intro} />
+          <h3 style={h3}>{roi.accessTitle}</h3>
+          <P t={roi.accessBody} />
+          <h3 style={h3}>{roi.inputsTitle}</h3>
+          <ul style={ul}><Li t={roi.in1} /><Li t={roi.in2} /><Li t={roi.in3} /><Li t={roi.in4} /></ul>
+          <h3 style={h3}>{roi.outputsTitle}</h3>
+          <ul style={ul}><Li t={roi.out1} /><Li t={roi.out2} /><Li t={roi.out3} /><Li t={roi.out4} /><Li t={roi.out5} /></ul>
+          <h3 style={h3}>{roi.aboutTitle}</h3>
+          <P t={roi.aboutBody} />
+        </>
+      ),
+    },
+    {
+      id: 'team',
+      title: tm.title,
+      body: (
+        <>
+          <P t={tm.intro} />
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>{tm.thRole}</th>
+                <th style={thStyle}>{tm.thManageWorkspace}</th>
+                <th style={thStyle}>{tm.thManageBilling}</th>
+                <th style={thStyle}>{tm.thRunAudits}</th>
+                <th style={thStyle}>{tm.thViewReports}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style={tdStyle}><strong>Owner</strong></td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td></tr>
+              <tr><td style={tdStyle}><strong>Admin</strong></td><td style={tdStyle}>✓</td><td style={tdStyle}>—</td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td></tr>
+              <tr><td style={tdStyle}><strong>Billing</strong></td><td style={tdStyle}>—</td><td style={tdStyle}>✓</td><td style={tdStyle}>—</td><td style={tdStyle}>—</td></tr>
+              <tr><td style={tdStyle}><strong>Member</strong></td><td style={tdStyle}>—</td><td style={tdStyle}>—</td><td style={tdStyle}>✓</td><td style={tdStyle}>✓</td></tr>
+              <tr><td style={tdStyle}><strong>Client</strong></td><td style={tdStyle}>—</td><td style={tdStyle}>—</td><td style={tdStyle}>—</td><td style={tdStyle}>{tm.limited}</td></tr>
+            </tbody>
+          </table>
+          <h3 style={h3}>{tm.inviteTitle}</h3>
+          <P t={tm.inviteBody} />
+          <h3 style={h3}>{tm.rolesTitle}</h3>
+          <P t={tm.rolesBody} />
+        </>
+      ),
+    },
+    {
+      id: 'settings',
+      title: st.title,
+      body: (
+        <>
+          <SectionLede icon={<IconSettings />}>{st.lede}</SectionLede>
+          <Takeaways heading={takeawaysHeading} items={[st.take1, st.take2, st.take3]} />
+          <h3 style={h3}>{st.profileTitle}</h3>
+          <P t={st.profileBody} />
+          <h3 style={h3}>{st.orgTitle}</h3>
+          <P t={st.orgBody} />
+          <h3 style={h3}>{st.themeTitle}</h3>
+          <P t={st.themeBody} />
+          <h3 style={h3}>{st.languageTitle}</h3>
+          <P t={st.languageBody} />
+          <h3 style={h3}>{st.currencyTitle}</h3>
+          <P t={st.currencyBody} />
+          <h3 style={h3}>{st.emailTitle}</h3>
+          <P t={st.emailBody} />
+        </>
+      ),
+    },
+    {
+      id: 'settings-analytics',
+      title: an.title,
+      body: (
+        <>
+          <P t={an.intro} />
+          <div style={schemeRow}>
+            <ToggleOff />
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}><RichText t={an.offByDefault} /></span>
+          </div>
+          <h3 style={h3}>{an.collectedTitle}</h3>
+          <div style={schemeRow}>
+            <span style={{ color: 'var(--violet-text, #7C3AED)', display: 'inline-flex' }}><LockIcon /></span>
+            <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span style={chip}>{an.chipNoPersonal}</span>
+              <span style={chip}>{an.chipNoRecording}</span>
+              <span style={chip}>{an.chipNoAds}</span>
+            </span>
+          </div>
+          <P t={an.collectedBody} />
+          <h3 style={h3}>{an.optTitle}</h3>
+          <StepFlow steps={[an.opt1, an.opt2, an.opt3]} />
+          <h3 style={h3}>{an.dntTitle}</h3>
+          <P t={an.dntBody} />
+          <h3 style={h3}>{an.blockedTitle}</h3>
+          <P t={an.blockedBody} />
+        </>
+      ),
+    },
+    {
+      id: 'troubleshooting',
+      title: ts.title,
+      body: (
+        <>
+          <SectionLede icon={<IconAlert />}>{ts.lede}</SectionLede>
+          <Takeaways heading={takeawaysHeading} items={[ts.take1, ts.take2, ts.take3]} />
+          <h3 style={h3}>{ts.loadTitle}</h3>
+          <P t={ts.loadBody} />
+          <h3 style={h3}>{ts.signedOutTitle}</h3>
+          <P t={ts.signedOutBody} />
+          <h3 style={h3}>{ts.balanceTitle}</h3>
+          <P t={ts.balanceBody} />
+          <h3 style={h3}>{ts.balanceCheckoutTitle}</h3>
+          <P t={ts.balanceCheckoutBody} />
+          <h3 style={h3}>{ts.captchaTitle}</h3>
+          <P t={ts.captchaBody} />
+          <h3 style={h3}>{ts.syncTitle}</h3>
+          <P t={ts.syncBody} />
+          <h3 style={h3}>{ts.inviteTitle}</h3>
+          <P t={ts.inviteBody} />
+          <h3 style={h3}>{ts.roadmapTitle}</h3>
+          <P t={ts.roadmapBody} />
+          <h3 style={h3}>{ts.blankTitle}</h3>
+          <P t={ts.blankBody} />
+          <h3 style={h3}>{ts.emailTitle}</h3>
+          <P t={ts.emailBody} />
+        </>
+      ),
+    },
+    {
+      id: 'faq',
+      title: fq.title,
+      body: (
+        <>
+          <h3 style={h3}>{fq.q1}</h3><P t={fq.a1} />
+          <h3 style={h3}>{fq.q2}</h3><P t={fq.a2} />
+          <h3 style={h3}>{fq.q3}</h3><P t={fq.a3} />
+          <h3 style={h3}>{fq.q4}</h3><P t={fq.a4} />
+          <h3 style={h3}>{fq.q5}</h3><P t={fq.a5} />
+          <h3 style={h3}>{fq.q6}</h3><P t={fq.a6} />
+          <h3 style={h3}>{fq.q7}</h3><P t={fq.a7} />
+          <h3 style={h3}>{fq.q8}</h3><P t={fq.a8} />
+          <h3 style={h3}>{fq.q9}</h3><P t={fq.a9} />
+          <h3 style={h3}>{fq.q10}</h3><P t={fq.a10} />
+          <h3 style={h3}>{fq.q11}</h3><P t={fq.a11} />
+          <h3 style={h3}>{fq.q12}</h3><P t={fq.a12} />
+        </>
+      ),
+    },
+  ];
+}

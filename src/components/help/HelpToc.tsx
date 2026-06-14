@@ -7,6 +7,7 @@
  */
 
 import type { HelpSection } from '../../data/help';
+import { useLocale } from '../../context/LocaleContext';
 
 interface Props {
   sections: readonly HelpSection[];
@@ -15,8 +16,9 @@ interface Props {
 }
 
 export function HelpToc({ sections, activeId, onSelect }: Props) {
+  const tocAria = useLocale().help.header.tocAria;
   return (
-    <nav aria-label="Help sections" style={{
+    <nav aria-label={tocAria} style={{
       display: 'flex',
       flexDirection: 'column',
       gap: 2,
