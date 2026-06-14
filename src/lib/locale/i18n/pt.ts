@@ -275,4 +275,82 @@ export const pt: Dict = {
       "train.topics.incident": "Resposta a incidentes"
     }
   },
+  results: {
+    "insightCard": {
+      "whatThisMeans": "O que isto significa",
+      "whyItMatters": "Por que é importante",
+      "howItPlaysOut": "Como se traduz na prática",
+      "exampleHeading": "Exemplo — como uma empresa semelhante beneficia",
+      "illustrative": "(Ilustrativo.)",
+      "doThisNext": "Faça isto a seguir",
+      "doThisNextWithHeading": "Faça isto a seguir — {heading}",
+      "onceDone": "Após concluir: {outcome}",
+      "referencesPrefix": "Referências: {refs}"
+    },
+    "explained": {
+      "heading": "O que os seus resultados significam",
+      "subtitle": "Cada item abaixo explica o que encontrámos, por que é importante e qual o próximo passo mais rápido — com os pontos de pontuação que pode recuperar.",
+      "emptyTitle": "Nenhuma lacuna detetada — base sólida",
+      "emptyWhatItMeans": "As suas respostas não geraram quaisquer constatações — a sua prática de IA já cobre os aspetos essenciais que verificamos.",
+      "emptyWhyItMatters": "Isto é uma base sólida. Os próximos ganhos vêm de operar estes controlos de forma consistente e em escala.",
+      "emptyFlowInput": "boas práticas",
+      "emptyFlowProcess": "torná-las rotina",
+      "emptyFlowOutput": "controlos consistentes",
+      "emptyFlowGain": "confiança duradoura e escalável",
+      "emptyExample": "As equipas neste nível passam de “fazemos isto” para “isto funciona sozinho” — automatizando as partes manuais. (Ilustrativo.)",
+      "emptyDoNextHeading": "Leve à escala",
+      "emptyDoNextStep1": "Automatize os controlos que hoje executa manualmente.",
+      "emptyDoNextStep2": "Reaudite periodicamente para manter o nível.",
+      "ctaSeeAgentsForThis": "Ver agentes que podem fazer isto",
+      "ctaSeeRecommendedAgents": "Ver agentes recomendados",
+      "ctaOpenDesignGuide": "Abrir o guia de conceção",
+      "ptsToRecover": "−{n} pts a recuperar",
+      "priorityCritical": "Prioridade: Crítica",
+      "priorityHigh": "Prioridade: Alta",
+      "priorityMedium": "Prioridade: Média",
+      "priorityLow": "Prioridade: Baixa",
+      "effortBadge": "Esforço: {effort}",
+      "effortBadgeDefault": "Esforço: médio",
+      "timeframeBadge": "~{days} dias",
+      "timeframeBadgeDefault": "~30 dias"
+    },
+    "findings": {
+      "title": "Constatações",
+      "total": "{n} no total",
+      "empty": "✓ Nenhuma constatação detetada. Continue a desenvolver a maturidade através das recomendações à direita.",
+      "severityCritical": "Crítica",
+      "severityHigh": "Alta",
+      "severityMedium": "Média",
+      "severityLow": "Baixa",
+      "severityCount": "{label} ({count})",
+      "recommendationLink": "→ {count} recomendação{plural}"
+    },
+    "recommendations": {
+      "title": "Recomendações",
+      "actionsCount": "{n} ações",
+      "starterResource": "Recurso inicial recomendado",
+      "empty": "Nenhuma recomendação acionável de momento.",
+      "impactCritical": "Impacto crítico",
+      "impactHigh": "Impacto alto",
+      "impactMedium": "Impacto médio",
+      "impactLow": "Impacto baixo",
+      "timeframeDays": "{n}d",
+      "addressesFindings": "resolve {count} constatação{plural}"
+    },
+    "actionPlan": {
+      "title": "Plano de Ação Priorizado",
+      "roadmapNote": "O roteiro mostra quando entregar; o Plano de Ação mostra o que corrigir primeiro.",
+      "bandCriticalTitle": "Crítico",
+      "bandImportantTitle": "Importante",
+      "bandImportantSubtitle": "Curto prazo — resolver no trimestre atual.",
+      "bandImprovementTitle": "Melhoria",
+      "bandImprovementSubtitle": "Boa prática — agendar para maturidade.",
+      "itemCount": "{n} item{plural}",
+      "bandEmpty": "Nenhum item nesta faixa — nada acionável aqui por agora.",
+      "moreNotShown": "+{n} não apresentados",
+      "impactPill": "Impacto",
+      "effortPill": "Esforço",
+      "expectedOutcome": "Resultado esperado —"
+    }
+  },
 };

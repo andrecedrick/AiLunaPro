@@ -275,4 +275,82 @@ export const it: Dict = {
       "train.topics.incident": "Risposta agli incidenti"
     }
   },
+  results: {
+    "insightCard": {
+      "whatThisMeans": "Cosa significa",
+      "whyItMatters": "Perché è importante",
+      "howItPlaysOut": "Come si traduce in pratica",
+      "exampleHeading": "Esempio — come ne beneficia un'azienda simile",
+      "illustrative": "(A scopo illustrativo.)",
+      "doThisNext": "Cosa fare adesso",
+      "doThisNextWithHeading": "Cosa fare adesso — {heading}",
+      "onceDone": "Una volta completato: {outcome}",
+      "referencesPrefix": "Riferimenti: {refs}"
+    },
+    "explained": {
+      "heading": "Cosa significano i tuoi risultati",
+      "subtitle": "Ogni voce qui sotto spiega cosa abbiamo rilevato, perché è importante e il passo successivo più rapido — con i punti di punteggio che puoi recuperare.",
+      "emptyTitle": "Nessuna lacuna rilevata — base solida",
+      "emptyWhatItMeans": "Le tue risposte non hanno generato alcun rilievo — la tua pratica IA copre già le basi che verifichiamo.",
+      "emptyWhyItMatters": "È una base solida. I prossimi guadagni arrivano applicando questi controlli in modo coerente e su larga scala.",
+      "emptyFlowInput": "buone pratiche",
+      "emptyFlowProcess": "rendile abituali",
+      "emptyFlowOutput": "controlli coerenti",
+      "emptyFlowGain": "fiducia duratura e scalabile",
+      "emptyExample": "I team a questo livello passano dal “lo facciamo” al “funziona da solo” — automatizzando le parti manuali. (A scopo illustrativo.)",
+      "emptyDoNextHeading": "Scalalo",
+      "emptyDoNextStep1": "Automatizza i controlli che oggi esegui manualmente.",
+      "emptyDoNextStep2": "Ripeti l'audit periodicamente per mantenere il livello.",
+      "ctaSeeAgentsForThis": "Vedi gli agenti che possono farlo",
+      "ctaSeeRecommendedAgents": "Vedi gli agenti consigliati",
+      "ctaOpenDesignGuide": "Apri la guida alla progettazione",
+      "ptsToRecover": "−{n} pt da recuperare",
+      "priorityCritical": "Priorità: Critica",
+      "priorityHigh": "Priorità: Alta",
+      "priorityMedium": "Priorità: Media",
+      "priorityLow": "Priorità: Bassa",
+      "effortBadge": "Impegno: {effort}",
+      "effortBadgeDefault": "Impegno: medio",
+      "timeframeBadge": "~{days} giorni",
+      "timeframeBadgeDefault": "~30 giorni"
+    },
+    "findings": {
+      "title": "Rilievi",
+      "total": "{n} in totale",
+      "empty": "✓ Nessun rilievo rilevato. Continua a far maturare la tua conformità seguendo le raccomandazioni a destra.",
+      "severityCritical": "Critico",
+      "severityHigh": "Alto",
+      "severityMedium": "Medio",
+      "severityLow": "Basso",
+      "severityCount": "{label} ({count})",
+      "recommendationLink": "→ {count} raccomandazione/i"
+    },
+    "recommendations": {
+      "title": "Raccomandazioni",
+      "actionsCount": "{n} azioni",
+      "starterResource": "Risorsa iniziale consigliata",
+      "empty": "Nessuna raccomandazione attuabile al momento.",
+      "impactCritical": "Impatto critico",
+      "impactHigh": "Impatto alto",
+      "impactMedium": "Impatto medio",
+      "impactLow": "Impatto basso",
+      "timeframeDays": "{n}g",
+      "addressesFindings": "affronta {count} rilievo/i"
+    },
+    "actionPlan": {
+      "title": "Piano d'azione prioritizzato",
+      "roadmapNote": "La roadmap indica quando rilasciare; il piano d'azione indica cosa correggere per primo.",
+      "bandCriticalTitle": "Critico",
+      "bandImportantTitle": "Importante",
+      "bandImportantSubtitle": "Breve termine — da affrontare nel trimestre in corso.",
+      "bandImprovementTitle": "Miglioramento",
+      "bandImprovementSubtitle": "Buona pratica — da pianificare per la maturità.",
+      "itemCount": "{n} voce/i",
+      "bandEmpty": "Nessuna voce in questa fascia — per ora niente di attuabile qui.",
+      "moreNotShown": "+{n} altri non mostrati",
+      "impactPill": "Impatto",
+      "effortPill": "Impegno",
+      "expectedOutcome": "Risultato atteso —"
+    }
+  },
 };

@@ -275,4 +275,82 @@ export const fr: Dict = {
       "train.topics.incident": "Réponse aux incidents"
     }
   },
+  results: {
+    "insightCard": {
+      "whatThisMeans": "Ce que cela signifie",
+      "whyItMatters": "Pourquoi c'est important",
+      "howItPlaysOut": "Comment cela se concrétise",
+      "exampleHeading": "Exemple — comment une entreprise similaire en profite",
+      "illustrative": "(À titre indicatif.)",
+      "doThisNext": "Étape suivante",
+      "doThisNextWithHeading": "Étape suivante — {heading}",
+      "onceDone": "Une fois terminé : {outcome}",
+      "referencesPrefix": "Références : {refs}"
+    },
+    "explained": {
+      "heading": "Ce que signifient vos résultats",
+      "subtitle": "Chaque élément ci-dessous explique ce que nous avons constaté, pourquoi c'est important et l'étape suivante la plus rapide — avec les points de score que vous pouvez récupérer.",
+      "emptyTitle": "Aucun écart détecté — base solide",
+      "emptyWhatItMeans": "Vos réponses n'ont déclenché aucun constat — votre pratique de l'IA couvre déjà les fondamentaux que nous vérifions.",
+      "emptyWhyItMatters": "C'est une base solide. Les prochains gains viendront de l'application cohérente et à grande échelle de ces contrôles.",
+      "emptyFlowInput": "bonnes pratiques",
+      "emptyFlowProcess": "les rendre systématiques",
+      "emptyFlowOutput": "contrôles cohérents",
+      "emptyFlowGain": "confiance durable et évolutive",
+      "emptyExample": "Les équipes à ce stade passent du « nous le faisons » au « cela tourne tout seul » — en automatisant les parties manuelles. (À titre indicatif.)",
+      "emptyDoNextHeading": "Passer à l'échelle",
+      "emptyDoNextStep1": "Automatisez les contrôles que vous effectuez aujourd'hui à la main.",
+      "emptyDoNextStep2": "Réauditez régulièrement pour tenir le cap.",
+      "ctaSeeAgentsForThis": "Voir les agents capables de le faire",
+      "ctaSeeRecommendedAgents": "Voir les agents recommandés",
+      "ctaOpenDesignGuide": "Ouvrir le guide de conception",
+      "ptsToRecover": "−{n} pts à récupérer",
+      "priorityCritical": "Priorité : Critique",
+      "priorityHigh": "Priorité : Élevée",
+      "priorityMedium": "Priorité : Moyenne",
+      "priorityLow": "Priorité : Faible",
+      "effortBadge": "Effort : {effort}",
+      "effortBadgeDefault": "Effort : moyen",
+      "timeframeBadge": "~{days} jours",
+      "timeframeBadgeDefault": "~30 jours"
+    },
+    "findings": {
+      "title": "Constats",
+      "total": "{n} au total",
+      "empty": "✓ Aucun constat déclenché. Continuez à renforcer votre maturité grâce aux recommandations à droite.",
+      "severityCritical": "Critique",
+      "severityHigh": "Élevée",
+      "severityMedium": "Moyenne",
+      "severityLow": "Faible",
+      "severityCount": "{label} ({count})",
+      "recommendationLink": "→ {count} recommandation{plural}"
+    },
+    "recommendations": {
+      "title": "Recommandations",
+      "actionsCount": "{n} actions",
+      "starterResource": "Ressource de départ recommandée",
+      "empty": "Aucune recommandation actionnable pour le moment.",
+      "impactCritical": "Impact critique",
+      "impactHigh": "Impact élevé",
+      "impactMedium": "Impact moyen",
+      "impactLow": "Impact faible",
+      "timeframeDays": "{n} j",
+      "addressesFindings": "traite {count} constat{plural}"
+    },
+    "actionPlan": {
+      "title": "Plan d'action priorisé",
+      "roadmapNote": "La feuille de route indique quand livrer ; le plan d'action indique quoi corriger en premier.",
+      "bandCriticalTitle": "Critique",
+      "bandImportantTitle": "Important",
+      "bandImportantSubtitle": "Court terme — à traiter dans le trimestre en cours.",
+      "bandImprovementTitle": "Amélioration",
+      "bandImprovementSubtitle": "Bonne pratique — à planifier pour la maturité.",
+      "itemCount": "{n} élément{plural}",
+      "bandEmpty": "Aucun élément dans cette catégorie — rien à traiter ici pour le moment.",
+      "moreNotShown": "+{n} autres non affichés",
+      "impactPill": "Impact",
+      "effortPill": "Effort",
+      "expectedOutcome": "Résultat attendu —"
+    }
+  },
 };

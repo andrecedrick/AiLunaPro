@@ -277,4 +277,82 @@ export const zh: Dict = {
       "train.topics.incident": "事件响应"
     }
   },
+  results: {
+    "insightCard": {
+      "whatThisMeans": "这意味着什么",
+      "whyItMatters": "为什么重要",
+      "howItPlaysOut": "实际如何体现",
+      "exampleHeading": "示例——同类企业如何从中受益",
+      "illustrative": "（仅供说明。）",
+      "doThisNext": "下一步行动",
+      "doThisNextWithHeading": "下一步行动——{heading}",
+      "onceDone": "完成后：{outcome}",
+      "referencesPrefix": "参考依据：{refs}"
+    },
+    "explained": {
+      "heading": "您的结果意味着什么",
+      "subtitle": "下面每一项都说明了我们的发现、为什么重要，以及最快的下一步——并标注您可以挽回的分数。",
+      "emptyTitle": "未触发任何缺口——基础扎实",
+      "emptyWhatItMeans": "您的回答未触发任何发现项——您的 AI 实践已涵盖我们检查的基本要点。",
+      "emptyWhyItMatters": "这是一个坚实的基础。下一步的提升来自持续且规模化地落实这些控制措施。",
+      "emptyFlowInput": "良好实践",
+      "emptyFlowProcess": "使其常态化",
+      "emptyFlowOutput": "稳定一致的控制",
+      "emptyFlowGain": "持久且可扩展的信任",
+      "emptyExample": "处于此阶段的团队正从“我们在做这件事”迈向“这件事自动运行”——将手动环节自动化。（仅供说明。）",
+      "emptyDoNextHeading": "规模化推进",
+      "emptyDoNextStep1": "将您今天手动执行的控制措施自动化。",
+      "emptyDoNextStep2": "定期重新审计以保持水准。",
+      "ctaSeeAgentsForThis": "查看可处理此项的智能体",
+      "ctaSeeRecommendedAgents": "查看推荐的智能体",
+      "ctaOpenDesignGuide": "打开设计指南",
+      "ptsToRecover": "可挽回 −{n} 分",
+      "priorityCritical": "优先级：严重",
+      "priorityHigh": "优先级：高",
+      "priorityMedium": "优先级：中",
+      "priorityLow": "优先级：低",
+      "effortBadge": "投入：{effort}",
+      "effortBadgeDefault": "投入：中等",
+      "timeframeBadge": "约 {days} 天",
+      "timeframeBadgeDefault": "约 30 天"
+    },
+    "findings": {
+      "title": "发现项",
+      "total": "共 {n} 项",
+      "empty": "✓ 未触发任何发现项。请通过右侧的建议持续提升成熟度。",
+      "severityCritical": "严重",
+      "severityHigh": "高",
+      "severityMedium": "中",
+      "severityLow": "低",
+      "severityCount": "{label}（{count}）",
+      "recommendationLink": "→ {count} 条建议"
+    },
+    "recommendations": {
+      "title": "建议",
+      "actionsCount": "{n} 项行动",
+      "starterResource": "推荐的入门资源",
+      "empty": "目前暂无可执行的建议。",
+      "impactCritical": "影响：严重",
+      "impactHigh": "影响：高",
+      "impactMedium": "影响：中",
+      "impactLow": "影响：低",
+      "timeframeDays": "{n} 天",
+      "addressesFindings": "解决 {count} 项发现"
+    },
+    "actionPlan": {
+      "title": "优先行动计划",
+      "roadmapNote": "路线图显示何时交付；行动计划显示应优先修复什么。",
+      "bandCriticalTitle": "严重",
+      "bandImportantTitle": "重要",
+      "bandImportantSubtitle": "短期——在本季度内处理。",
+      "bandImprovementTitle": "改进",
+      "bandImprovementSubtitle": "最佳实践——纳入成熟度规划。",
+      "itemCount": "{n} 项",
+      "bandEmpty": "此区间暂无条目——目前没有可执行的事项。",
+      "moreNotShown": "另有 {n} 项未显示",
+      "impactPill": "影响",
+      "effortPill": "投入",
+      "expectedOutcome": "预期成果——"
+    }
+  },
 };

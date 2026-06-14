@@ -2,6 +2,8 @@ import { Badge } from '../ui/Badge';
 import type { AuditResult, Effort, Impact } from '../../types/scoring';
 import { RegulatoryRefs } from './RegulatoryRefs';
 import { usePreferences } from '../../context/PreferencesContext';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import type { UserProfile } from '../../lib/preferences';
 
 /** J9 Phase B-lite: one external resource link per profile (static).
@@ -38,19 +40,15 @@ const IMPACT_FG: Record<Impact, string> = {
   low: 'var(--neutral-text)',
 };
 
-const IMPACT_LABEL: Record<Impact, string> = {
-  critical: 'Critical impact',
-  high: 'High impact',
-  medium: 'Medium impact',
-  low: 'Low impact',
-};
-
 interface Props {
   result: AuditResult;
 }
 
 export function RecommendationsList({ result }: Props) {
   const { userProfile } = usePreferences();
+  const R = useLocale().results.recommendations;
+  const impactLabel = (k: Impact): string =>
+    ({ critical: R.impactCritical, high: R.impactHigh, medium: R.impactMedium, low: R.impactLow })[k];
   const resource = PROFILE_RESOURCE[userProfile];
 
   // Order by impact, then by timeframe
@@ -84,10 +82,10 @@ export function RecommendationsList({ result }: Props) {
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
         <h3 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-          Recommendations
+          {R.title}
         </h3>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-          {ordered.length} actions
+          {format(R.actionsCount, { n: ordered.length })}
         </span>
       </div>
 
@@ -104,7 +102,7 @@ export function RecommendationsList({ result }: Props) {
           lineHeight: 1.5,
         }}
       >
-        <strong style={{ color: 'var(--text-primary)' }}>Recommended starter resource</strong> ·{' '}
+        <strong style={{ color: 'var(--text-primary)' }}>{R.starterResource}</strong> ·{' '}
         <a
           href={resource.href}
           target="_blank"
@@ -120,7 +118,7 @@ export function RecommendationsList({ result }: Props) {
 
       {ordered.length === 0 ? (
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-          No actionable recommendations at this time.
+          {R.empty}
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -180,7 +178,7 @@ export function RecommendationsList({ result }: Props) {
                       color: IMPACT_FG[r.impact],
                     }}
                   >
-                    {IMPACT_LABEL[r.impact]}
+                    {impactLabel(r.impact)}
                   </span>
                   <span
                     style={{
@@ -192,11 +190,11 @@ export function RecommendationsList({ result }: Props) {
                       borderRadius: 20,
                     }}
                   >
-                    {r.timeframeDays}d
+                    {format(R.timeframeDays, { n: r.timeframeDays })}
                   </span>
                   {linkedFindings.length > 0 && (
                     <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      addresses {linkedFindings.length} finding{linkedFindings.length === 1 ? '' : 's'}
+                      {format(R.addressesFindings, { count: linkedFindings.length, plural: linkedFindings.length === 1 ? '' : 's' })}
                     </span>
                   )}
                 </div>

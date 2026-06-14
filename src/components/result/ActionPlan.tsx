@@ -17,6 +17,8 @@
 import type { AuditResult, Recommendation, RegulatoryRef } from '../../types/scoring';
 import { buildActionPlan } from '../../lib/scoring/actionPlan';
 import { usePreferences } from '../../context/PreferencesContext';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import type { UserProfile } from '../../lib/preferences';
 
 const MAX_VISIBLE = 8;
@@ -117,6 +119,7 @@ function MetricPill({ label, value }: { label: string; value: string }) {
 }
 
 function RecRow({ r }: { r: Recommendation }) {
+  const A = useLocale().results.actionPlan;
   return (
     <div
       style={{
@@ -142,8 +145,8 @@ function RecRow({ r }: { r: Recommendation }) {
           {r.title}
         </h4>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <MetricPill label="Impact" value={r.impact} />
-          <MetricPill label="Effort" value={r.effort} />
+          <MetricPill label={A.impactPill} value={r.impact} />
+          <MetricPill label={A.effortPill} value={r.effort} />
         </div>
       </div>
 
@@ -159,7 +162,7 @@ function RecRow({ r }: { r: Recommendation }) {
 
       {r.expectedOutcome && (
         <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.55 }}>
-          <strong style={{ color: 'var(--text-secondary)' }}>Expected outcome —</strong> {r.expectedOutcome}
+          <strong style={{ color: 'var(--text-secondary)' }}>{A.expectedOutcome}</strong> {r.expectedOutcome}
         </p>
       )}
 
@@ -175,9 +178,14 @@ function RecRow({ r }: { r: Recommendation }) {
 }
 
 function Band({ band, items }: { band: BandConfig; items: Recommendation[] }) {
+  const A = useLocale().results.actionPlan;
   const total = items.length;
   const visible = items.slice(0, MAX_VISIBLE);
   const rest = total - visible.length;
+  // critical subtitle ("Strongly advised before production deployment.") is an
+  // advisory hedge — kept English, deferred with the regulatory batch.
+  const title = band.key === 'critical' ? A.bandCriticalTitle : band.key === 'important' ? A.bandImportantTitle : A.bandImprovementTitle;
+  const subtitle = band.key === 'important' ? A.bandImportantSubtitle : band.key === 'improvement' ? A.bandImprovementSubtitle : band.subtitle;
 
   return (
     <div style={{ marginBottom: 18 }}>
@@ -205,14 +213,14 @@ function Band({ band, items }: { band: BandConfig; items: Recommendation[] }) {
               color: band.accent,
             }}
           >
-            {band.title}
+            {title}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            {band.subtitle}
+            {subtitle}
           </div>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
-          {total} item{total === 1 ? '' : 's'}
+          {format(A.itemCount, { n: total, plural: total === 1 ? '' : 's' })}
         </div>
       </div>
 
@@ -228,7 +236,7 @@ function Band({ band, items }: { band: BandConfig; items: Recommendation[] }) {
             textAlign: 'center',
           }}
         >
-          No items in this band — nothing actionable here for now.
+          {A.bandEmpty}
         </div>
       ) : (
         <>
@@ -237,7 +245,7 @@ function Band({ band, items }: { band: BandConfig; items: Recommendation[] }) {
           ))}
           {rest > 0 && (
             <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '6px 0' }}>
-              +{rest} more not shown
+              {format(A.moreNotShown, { n: rest })}
             </div>
           )}
         </>
@@ -248,6 +256,7 @@ function Band({ band, items }: { band: BandConfig; items: Recommendation[] }) {
 
 export function ActionPlan({ result }: { result: AuditResult }) {
   const { userProfile } = usePreferences();
+  const A = useLocale().results.actionPlan;
   const plan = buildActionPlan(result);
 
   return (
@@ -263,7 +272,7 @@ export function ActionPlan({ result }: { result: AuditResult }) {
             letterSpacing: -0.3,
           }}
         >
-          Prioritized Action Plan
+          {A.title}
         </h2>
         <p
           style={{
@@ -277,7 +286,7 @@ export function ActionPlan({ result }: { result: AuditResult }) {
           {PROFILE_INTRO[userProfile]}
         </p>
         <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          Roadmap shows <strong>when</strong> to ship; Action Plan shows <strong>what to fix first</strong>.
+          {A.roadmapNote}
         </p>
       </div>
 

@@ -290,6 +290,84 @@ export const en = {
       "train.topics.incident": "Incident response"
     }
   },
+  results: {
+    "insightCard": {
+      "whatThisMeans": "What this means",
+      "whyItMatters": "Why it matters",
+      "howItPlaysOut": "How it plays out",
+      "exampleHeading": "Example — how a similar business benefits",
+      "illustrative": "(Illustrative.)",
+      "doThisNext": "Do this next",
+      "doThisNextWithHeading": "Do this next — {heading}",
+      "onceDone": "Once done: {outcome}",
+      "referencesPrefix": "References: {refs}"
+    },
+    "explained": {
+      "heading": "What your results mean",
+      "subtitle": "Each item below explains what we found, why it matters, and the fastest next step — with the score points you can recover.",
+      "emptyTitle": "No gaps triggered — strong foundation",
+      "emptyWhatItMeans": "Your answers didn’t trigger any findings — your AI practice already covers the basics we check.",
+      "emptyWhyItMatters": "That’s a solid base. The next gains come from operating these controls consistently and at scale.",
+      "emptyFlowInput": "good practices",
+      "emptyFlowProcess": "make them routine",
+      "emptyFlowOutput": "consistent controls",
+      "emptyFlowGain": "durable, scalable trust",
+      "emptyExample": "Teams here move from “we do this” to “this runs by itself” — automating the manual parts. (Illustrative.)",
+      "emptyDoNextHeading": "Scale it",
+      "emptyDoNextStep1": "Automate the controls you run by hand today.",
+      "emptyDoNextStep2": "Re-audit periodically to hold the line.",
+      "ctaSeeAgentsForThis": "See agents that can do this",
+      "ctaSeeRecommendedAgents": "See recommended agents",
+      "ctaOpenDesignGuide": "Open the design guide",
+      "ptsToRecover": "−{n} pts to recover",
+      "priorityCritical": "Priority: Critical",
+      "priorityHigh": "Priority: High",
+      "priorityMedium": "Priority: Medium",
+      "priorityLow": "Priority: Low",
+      "effortBadge": "Effort: {effort}",
+      "effortBadgeDefault": "Effort: medium",
+      "timeframeBadge": "~{days} days",
+      "timeframeBadgeDefault": "~30 days"
+    },
+    "findings": {
+      "title": "Findings",
+      "total": "{n} total",
+      "empty": "✓ No findings triggered. Keep building maturity through the recommendations on the right.",
+      "severityCritical": "Critical",
+      "severityHigh": "High",
+      "severityMedium": "Medium",
+      "severityLow": "Low",
+      "severityCount": "{label} ({count})",
+      "recommendationLink": "→ {count} recommendation{plural}"
+    },
+    "recommendations": {
+      "title": "Recommendations",
+      "actionsCount": "{n} actions",
+      "starterResource": "Recommended starter resource",
+      "empty": "No actionable recommendations at this time.",
+      "impactCritical": "Critical impact",
+      "impactHigh": "High impact",
+      "impactMedium": "Medium impact",
+      "impactLow": "Low impact",
+      "timeframeDays": "{n}d",
+      "addressesFindings": "addresses {count} finding{plural}"
+    },
+    "actionPlan": {
+      "title": "Prioritized Action Plan",
+      "roadmapNote": "Roadmap shows when to ship; Action Plan shows what to fix first.",
+      "bandCriticalTitle": "Critical",
+      "bandImportantTitle": "Important",
+      "bandImportantSubtitle": "Short-term — address in the current quarter.",
+      "bandImprovementTitle": "Improvement",
+      "bandImprovementSubtitle": "Best practice — schedule for maturity.",
+      "itemCount": "{n} item{plural}",
+      "bandEmpty": "No items in this band — nothing actionable here for now.",
+      "moreNotShown": "+{n} more not shown",
+      "impactPill": "Impact",
+      "effortPill": "Effort",
+      "expectedOutcome": "Expected outcome —"
+    }
+  },
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed

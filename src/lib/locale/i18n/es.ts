@@ -275,4 +275,82 @@ export const es: Dict = {
       "train.topics.incident": "Respuesta a incidentes"
     }
   },
+  results: {
+    "insightCard": {
+      "whatThisMeans": "Qué significa esto",
+      "whyItMatters": "Por qué es importante",
+      "howItPlaysOut": "Cómo se traduce en la práctica",
+      "exampleHeading": "Ejemplo — cómo se beneficia una empresa similar",
+      "illustrative": "(Ilustrativo.)",
+      "doThisNext": "Haz esto a continuación",
+      "doThisNextWithHeading": "Haz esto a continuación — {heading}",
+      "onceDone": "Una vez hecho: {outcome}",
+      "referencesPrefix": "Referencias: {refs}"
+    },
+    "explained": {
+      "heading": "Qué significan tus resultados",
+      "subtitle": "Cada elemento a continuación explica qué encontramos, por qué importa y el siguiente paso más rápido — con los puntos de puntuación que puedes recuperar.",
+      "emptyTitle": "Sin brechas detectadas — base sólida",
+      "emptyWhatItMeans": "Tus respuestas no generaron ningún hallazgo — tu práctica de IA ya cubre los aspectos básicos que verificamos.",
+      "emptyWhyItMatters": "Es una base sólida. Las próximas mejoras vienen de operar estos controles de forma constante y a escala.",
+      "emptyFlowInput": "buenas prácticas",
+      "emptyFlowProcess": "conviértelas en rutina",
+      "emptyFlowOutput": "controles constantes",
+      "emptyFlowGain": "confianza duradera y escalable",
+      "emptyExample": "Los equipos en este punto pasan de “lo hacemos” a “esto funciona solo” — automatizando las partes manuales. (Ilustrativo.)",
+      "emptyDoNextHeading": "Escálalo",
+      "emptyDoNextStep1": "Automatiza los controles que hoy ejecutas a mano.",
+      "emptyDoNextStep2": "Vuelve a auditar periódicamente para mantener el nivel.",
+      "ctaSeeAgentsForThis": "Ver agentes que pueden hacer esto",
+      "ctaSeeRecommendedAgents": "Ver agentes recomendados",
+      "ctaOpenDesignGuide": "Abrir la guía de diseño",
+      "ptsToRecover": "−{n} pts por recuperar",
+      "priorityCritical": "Prioridad: Crítica",
+      "priorityHigh": "Prioridad: Alta",
+      "priorityMedium": "Prioridad: Media",
+      "priorityLow": "Prioridad: Baja",
+      "effortBadge": "Esfuerzo: {effort}",
+      "effortBadgeDefault": "Esfuerzo: medio",
+      "timeframeBadge": "~{days} días",
+      "timeframeBadgeDefault": "~30 días"
+    },
+    "findings": {
+      "title": "Hallazgos",
+      "total": "{n} en total",
+      "empty": "✓ No se detectaron hallazgos. Sigue desarrollando tu madurez con las recomendaciones de la derecha.",
+      "severityCritical": "Crítica",
+      "severityHigh": "Alta",
+      "severityMedium": "Media",
+      "severityLow": "Baja",
+      "severityCount": "{label} ({count})",
+      "recommendationLink": "→ {count} recomendación{plural}"
+    },
+    "recommendations": {
+      "title": "Recomendaciones",
+      "actionsCount": "{n} acciones",
+      "starterResource": "Recurso inicial recomendado",
+      "empty": "No hay recomendaciones accionables en este momento.",
+      "impactCritical": "Impacto crítico",
+      "impactHigh": "Impacto alto",
+      "impactMedium": "Impacto medio",
+      "impactLow": "Impacto bajo",
+      "timeframeDays": "{n}d",
+      "addressesFindings": "aborda {count} hallazgo{plural}"
+    },
+    "actionPlan": {
+      "title": "Plan de acción priorizado",
+      "roadmapNote": "La hoja de ruta muestra cuándo lanzar; el Plan de acción muestra qué corregir primero.",
+      "bandCriticalTitle": "Crítico",
+      "bandImportantTitle": "Importante",
+      "bandImportantSubtitle": "Corto plazo — abordar en el trimestre actual.",
+      "bandImprovementTitle": "Mejora",
+      "bandImprovementSubtitle": "Buena práctica — programar para la madurez.",
+      "itemCount": "{n} elemento{plural}",
+      "bandEmpty": "Sin elementos en esta categoría — nada accionable aquí por ahora.",
+      "moreNotShown": "+{n} más no mostrados",
+      "impactPill": "Impacto",
+      "effortPill": "Esfuerzo",
+      "expectedOutcome": "Resultado esperado —"
+    }
+  },
 };

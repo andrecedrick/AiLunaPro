@@ -1,21 +1,20 @@
 import { Badge } from '../ui/Badge';
 import type { AuditResult, Severity } from '../../types/scoring';
 import { RegulatoryRefs } from './RegulatoryRefs';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 
 const SEVERITY_ORDER: Severity[] = ['critical', 'high', 'medium', 'low'];
-
-const SEVERITY_LABEL: Record<Severity, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
 
 interface Props {
   result: AuditResult;
 }
 
 export function FindingsList({ result }: Props) {
+  const F = useLocale().results.findings;
+  const sevLabel = (s: Severity): string =>
+    ({ critical: F.severityCritical, high: F.severityHigh, medium: F.severityMedium, low: F.severityLow })[s];
+
   if (result.findings.length === 0) {
     return (
       <section
@@ -29,10 +28,10 @@ export function FindingsList({ result }: Props) {
         }}
       >
         <h3 style={{ margin: '0 0 8px', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-          Findings
+          {F.title}
         </h3>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-          ✓ No findings triggered. Keep building maturity through the recommendations on the right.
+          {F.empty}
         </p>
       </section>
     );
@@ -51,10 +50,10 @@ export function FindingsList({ result }: Props) {
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
         <h3 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-          Findings
+          {F.title}
         </h3>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-          {result.findings.length} total
+          {format(F.total, { n: result.findings.length })}
         </span>
       </div>
 
@@ -73,7 +72,7 @@ export function FindingsList({ result }: Props) {
                 }}
               >
                 <Badge variant={sev}>
-                  {SEVERITY_LABEL[sev]} ({items.length})
+                  {format(F.severityCount, { label: sevLabel(sev), count: items.length })}
                 </Badge>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -130,8 +129,7 @@ export function FindingsList({ result }: Props) {
                           fontWeight: 600,
                         }}
                       >
-                        → {f.recommendationIds.length} recommendation
-                        {f.recommendationIds.length === 1 ? '' : 's'}
+                        {format(F.recommendationLink, { count: f.recommendationIds.length, plural: f.recommendationIds.length === 1 ? '' : 's' })}
                       </div>
                     )}
                     <RegulatoryRefs refs={f.regulatoryRefs} />

@@ -275,4 +275,82 @@ export const de: Dict = {
       "train.topics.incident": "Reaktion auf Vorfälle"
     }
   },
+  results: {
+    "insightCard": {
+      "whatThisMeans": "Was das bedeutet",
+      "whyItMatters": "Warum es wichtig ist",
+      "howItPlaysOut": "Wie es sich auswirkt",
+      "exampleHeading": "Beispiel — wie ein ähnliches Unternehmen profitiert",
+      "illustrative": "(Veranschaulichung.)",
+      "doThisNext": "Das ist der nächste Schritt",
+      "doThisNextWithHeading": "Das ist der nächste Schritt — {heading}",
+      "onceDone": "Nach Abschluss: {outcome}",
+      "referencesPrefix": "Referenzen: {refs}"
+    },
+    "explained": {
+      "heading": "Was Ihre Ergebnisse bedeuten",
+      "subtitle": "Jeder Punkt unten erklärt, was wir festgestellt haben, warum es wichtig ist und der schnellste nächste Schritt — mit den Score-Punkten, die Sie zurückgewinnen können.",
+      "emptyTitle": "Keine Lücken festgestellt — solide Grundlage",
+      "emptyWhatItMeans": "Ihre Antworten haben keine Befunde ausgelöst — Ihre KI-Praxis deckt die Grundlagen, die wir prüfen, bereits ab.",
+      "emptyWhyItMatters": "Das ist eine solide Basis. Die nächsten Fortschritte ergeben sich daraus, diese Kontrollen konsequent und im großen Maßstab anzuwenden.",
+      "emptyFlowInput": "gute Praktiken",
+      "emptyFlowProcess": "zur Routine machen",
+      "emptyFlowOutput": "konsistente Kontrollen",
+      "emptyFlowGain": "dauerhaftes, skalierbares Vertrauen",
+      "emptyExample": "Teams gehen hier von „wir machen das“ zu „das läuft von selbst“ über — und automatisieren die manuellen Teile. (Veranschaulichung.)",
+      "emptyDoNextHeading": "Skalieren Sie es",
+      "emptyDoNextStep1": "Automatisieren Sie die Kontrollen, die Sie heute manuell durchführen.",
+      "emptyDoNextStep2": "Auditieren Sie regelmäßig erneut, um das Niveau zu halten.",
+      "ctaSeeAgentsForThis": "Agenten ansehen, die das übernehmen können",
+      "ctaSeeRecommendedAgents": "Empfohlene Agenten ansehen",
+      "ctaOpenDesignGuide": "Design-Leitfaden öffnen",
+      "ptsToRecover": "−{n} Pkt. zurückzugewinnen",
+      "priorityCritical": "Priorität: Kritisch",
+      "priorityHigh": "Priorität: Hoch",
+      "priorityMedium": "Priorität: Mittel",
+      "priorityLow": "Priorität: Niedrig",
+      "effortBadge": "Aufwand: {effort}",
+      "effortBadgeDefault": "Aufwand: mittel",
+      "timeframeBadge": "~{days} Tage",
+      "timeframeBadgeDefault": "~30 Tage"
+    },
+    "findings": {
+      "title": "Befunde",
+      "total": "{n} insgesamt",
+      "empty": "✓ Keine Befunde ausgelöst. Bauen Sie Ihre Reife mit den Empfehlungen auf der rechten Seite weiter aus.",
+      "severityCritical": "Kritisch",
+      "severityHigh": "Hoch",
+      "severityMedium": "Mittel",
+      "severityLow": "Niedrig",
+      "severityCount": "{label} ({count})",
+      "recommendationLink": "→ {count} Empfehlung{plural}"
+    },
+    "recommendations": {
+      "title": "Empfehlungen",
+      "actionsCount": "{n} Maßnahmen",
+      "starterResource": "Empfohlene Einstiegsressource",
+      "empty": "Derzeit keine umsetzbaren Empfehlungen.",
+      "impactCritical": "Kritische Auswirkung",
+      "impactHigh": "Hohe Auswirkung",
+      "impactMedium": "Mittlere Auswirkung",
+      "impactLow": "Geringe Auswirkung",
+      "timeframeDays": "{n} T.",
+      "addressesFindings": "behebt {count} Befund{plural}"
+    },
+    "actionPlan": {
+      "title": "Priorisierter Aktionsplan",
+      "roadmapNote": "Die Roadmap zeigt, wann etwas ausgeliefert wird; der Aktionsplan zeigt, was zuerst behoben werden sollte.",
+      "bandCriticalTitle": "Kritisch",
+      "bandImportantTitle": "Wichtig",
+      "bandImportantSubtitle": "Kurzfristig — im laufenden Quartal angehen.",
+      "bandImprovementTitle": "Verbesserung",
+      "bandImprovementSubtitle": "Best Practice — für die Reife einplanen.",
+      "itemCount": "{n} Eintrag{plural}",
+      "bandEmpty": "Keine Einträge in diesem Bereich — hier gibt es vorerst nichts zu tun.",
+      "moreNotShown": "+{n} weitere nicht angezeigt",
+      "impactPill": "Auswirkung",
+      "effortPill": "Aufwand",
+      "expectedOutcome": "Erwartetes Ergebnis —"
+    }
+  },
 };

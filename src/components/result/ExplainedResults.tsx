@@ -1,4 +1,6 @@
 import { useRoute } from '../../context/RouteContext';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import type { AuditResult, Finding, Recommendation, Severity } from '../../types/scoring';
 import { getSectionNarrative, CATEGORY_VERB } from '../../lib/result/narrative';
 import { InsightCard, type InsightTone } from './InsightCard';
@@ -13,7 +15,6 @@ import { InsightCard, type InsightTone } from './InsightCard';
 const SEV_ORDER: Severity[] = ['critical', 'high', 'medium', 'low'];
 const SEV_TONE: Record<Severity, InsightTone> = { critical: 'critical', high: 'warning', medium: 'warning', low: 'info' };
 const SEV_ICON: Record<Severity, string> = { critical: '⛔', high: '⚠', medium: '•', low: 'ℹ' };
-const IMPACT_PRIORITY: Record<string, string> = { critical: 'Priority: Critical', high: 'Priority: High', medium: 'Priority: Medium', low: 'Priority: Low' };
 
 /** Split an authored sentence-y description into up to 3 deterministic steps. */
 function toSteps(rec: Recommendation | undefined): string[] {
@@ -24,34 +25,38 @@ function toSteps(rec: Recommendation | undefined): string[] {
 
 export function ExplainedResults({ result }: { result: AuditResult }) {
   const { navigate } = useRoute();
+  const T = useLocale();
+  const E = T.results.explained;
+  const priorityLabel = (k: string): string =>
+    ({ critical: E.priorityCritical, high: E.priorityHigh, medium: E.priorityMedium, low: E.priorityLow } as Record<string, string>)[k] ?? E.priorityMedium;
   const recById = new Map<string, Recommendation>(result.recommendations.map(r => [r.id, r]));
   const sectionByKey = new Map(result.sectionScores.map(s => [s.key, s]));
 
   const ordered = [...result.findings].sort((a, b) => SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity));
 
   const actions = (rec?: Recommendation) => [
-    { label: rec?.category === 'automate' ? 'See agents that can do this' : 'See recommended agents', onClick: () => navigate({ name: 'agents' }), primary: true },
-    { label: 'Open the design guide', onClick: () => navigate({ name: 'system-builder' }) },
+    { label: rec?.category === 'automate' ? E.ctaSeeAgentsForThis : E.ctaSeeRecommendedAgents, onClick: () => navigate({ name: 'agents' }), primary: true },
+    { label: E.ctaOpenDesignGuide, onClick: () => navigate({ name: 'system-builder' }) },
   ];
 
   return (
     <section style={{ marginTop: 8 }}>
       <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-        What your results mean
+        {E.heading}
       </h2>
       <p style={{ fontSize: 13.5, color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
-        Each item below explains what we found, why it matters, and the fastest next step — with the score points you can recover.
+        {E.subtitle}
       </p>
 
       {ordered.length === 0 ? (
         <InsightCard
-          tone="good" icon="✓" title="No gaps triggered — strong foundation"
+          tone="good" icon="✓" title={E.emptyTitle}
           metric={`${result.globalScore}/100`}
-          whatItMeans="Your answers didn’t trigger any findings — your AI practice already covers the basics we check."
-          whyItMatters="That’s a solid base. The next gains come from operating these controls consistently and at scale."
-          flow={{ input: 'good practices', process: 'make them routine', output: 'consistent controls', gain: 'durable, scalable trust' }}
-          example="Teams here move from “we do this” to “this runs by itself” — automating the manual parts. (Illustrative.)"
-          doNext={{ heading: 'Scale it', steps: ['Automate the controls you run by hand today.', 'Re-audit periodically to hold the line.'], actions: actions() }}
+          whatItMeans={E.emptyWhatItMeans}
+          whyItMatters={E.emptyWhyItMatters}
+          flow={{ input: E.emptyFlowInput, process: E.emptyFlowProcess, output: E.emptyFlowOutput, gain: E.emptyFlowGain }}
+          example={E.emptyExample}
+          doNext={{ heading: E.emptyDoNextHeading, steps: [E.emptyDoNextStep1, E.emptyDoNextStep2], actions: actions() }}
         />
       ) : (
         ordered.map((f: Finding) => {
@@ -60,9 +65,9 @@ export function ExplainedResults({ result }: { result: AuditResult }) {
           const recoverable = sec ? Math.max(0, Math.round(sec.weight * 100 - sec.contribution)) : 0;
           const nar = getSectionNarrative(f.sectionKey);
           const badges = [
-            IMPACT_PRIORITY[rec?.impact ?? f.severity] ?? 'Priority: Medium',
-            rec ? `Effort: ${rec.effort}` : 'Effort: medium',
-            rec ? `~${rec.timeframeDays} days` : '~30 days',
+            priorityLabel(rec?.impact ?? f.severity),
+            rec ? format(E.effortBadge, { effort: rec.effort }) : E.effortBadgeDefault,
+            rec ? format(E.timeframeBadge, { days: rec.timeframeDays }) : E.timeframeBadgeDefault,
           ];
           const refs = (f.regulatoryRefs ?? rec?.regulatoryRefs ?? []).map(r => `${r.framework.replace(/_/g, ' ')} ${r.ref}`);
           return (
@@ -71,13 +76,13 @@ export function ExplainedResults({ result }: { result: AuditResult }) {
               icon={SEV_ICON[f.severity]}
               tone={SEV_TONE[f.severity]}
               title={f.title}
-              metric={recoverable > 0 ? `−${recoverable} pts to recover` : f.severity}
+              metric={recoverable > 0 ? format(E.ptsToRecover, { n: recoverable }) : f.severity}
               whatItMeans={nar.whatItMeans}
               whyItMatters={rec?.whyItMatters ?? nar.whyItMatters}
               flow={nar.flow}
               example={nar.example}
               doNext={{
-                heading: rec ? CATEGORY_VERB[rec.category] : 'Do this next',
+                heading: rec ? CATEGORY_VERB[rec.category] : T.results.insightCard.doThisNext,
                 badges,
                 steps: toSteps(rec).length ? toSteps(rec) : [f.description],
                 outcome: rec?.expectedOutcome,

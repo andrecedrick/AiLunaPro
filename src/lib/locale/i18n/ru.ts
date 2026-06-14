@@ -276,4 +276,82 @@ export const ru: Dict = {
       "train.topics.incident": "Реагирование на инциденты"
     }
   },
+  results: {
+    "insightCard": {
+      "whatThisMeans": "Что это значит",
+      "whyItMatters": "Почему это важно",
+      "howItPlaysOut": "Как это проявляется",
+      "exampleHeading": "Пример — как выигрывает похожий бизнес",
+      "illustrative": "(Для иллюстрации.)",
+      "doThisNext": "Сделайте дальше",
+      "doThisNextWithHeading": "Сделайте дальше — {heading}",
+      "onceDone": "По завершении: {outcome}",
+      "referencesPrefix": "Источники: {refs}"
+    },
+    "explained": {
+      "heading": "Что означают ваши результаты",
+      "subtitle": "Каждый пункт ниже объясняет, что мы обнаружили, почему это важно и какой самый быстрый следующий шаг — с указанием баллов, которые можно вернуть.",
+      "emptyTitle": "Пробелов не выявлено — прочный фундамент",
+      "emptyWhatItMeans": "Ваши ответы не вызвали ни одного замечания — ваша практика работы с ИИ уже охватывает базовые проверяемые нами аспекты.",
+      "emptyWhyItMatters": "Это надёжная основа. Следующий прирост приходит от последовательного и масштабного применения этих мер контроля.",
+      "emptyFlowInput": "хорошие практики",
+      "emptyFlowProcess": "сделать их рутиной",
+      "emptyFlowOutput": "стабильные меры контроля",
+      "emptyFlowGain": "устойчивое, масштабируемое доверие",
+      "emptyExample": "Команды на этом этапе переходят от «мы это делаем» к «это работает само по себе», автоматизируя ручные операции. (Для иллюстрации.)",
+      "emptyDoNextHeading": "Масштабируйте",
+      "emptyDoNextStep1": "Автоматизируйте меры контроля, которые сегодня выполняете вручную.",
+      "emptyDoNextStep2": "Периодически проводите повторный аудит, чтобы удержать планку.",
+      "ctaSeeAgentsForThis": "Посмотреть агентов, которые это умеют",
+      "ctaSeeRecommendedAgents": "Посмотреть рекомендованных агентов",
+      "ctaOpenDesignGuide": "Открыть руководство по проектированию",
+      "ptsToRecover": "−{n} баллов к возврату",
+      "priorityCritical": "Приоритет: критический",
+      "priorityHigh": "Приоритет: высокий",
+      "priorityMedium": "Приоритет: средний",
+      "priorityLow": "Приоритет: низкий",
+      "effortBadge": "Усилия: {effort}",
+      "effortBadgeDefault": "Усилия: средние",
+      "timeframeBadge": "~{days} дн.",
+      "timeframeBadgeDefault": "~30 дн."
+    },
+    "findings": {
+      "title": "Замечания",
+      "total": "всего: {n}",
+      "empty": "✓ Замечаний не выявлено. Продолжайте повышать зрелость с помощью рекомендаций справа.",
+      "severityCritical": "Критические",
+      "severityHigh": "Высокие",
+      "severityMedium": "Средние",
+      "severityLow": "Низкие",
+      "severityCount": "{label} ({count})",
+      "recommendationLink": "→ рекомендаций: {count}"
+    },
+    "recommendations": {
+      "title": "Рекомендации",
+      "actionsCount": "действий: {n}",
+      "starterResource": "Рекомендованный стартовый ресурс",
+      "empty": "На данный момент нет применимых рекомендаций.",
+      "impactCritical": "Критический эффект",
+      "impactHigh": "Высокий эффект",
+      "impactMedium": "Средний эффект",
+      "impactLow": "Низкий эффект",
+      "timeframeDays": "{n} дн.",
+      "addressesFindings": "устраняет замечаний: {count}"
+    },
+    "actionPlan": {
+      "title": "Приоритизированный план действий",
+      "roadmapNote": "Дорожная карта показывает, когда выпускать; план действий показывает, что исправить в первую очередь.",
+      "bandCriticalTitle": "Критические",
+      "bandImportantTitle": "Важные",
+      "bandImportantSubtitle": "Краткосрочные — решить в текущем квартале.",
+      "bandImprovementTitle": "Улучшения",
+      "bandImprovementSubtitle": "Лучшая практика — запланировать для повышения зрелости.",
+      "itemCount": "пунктов: {n}",
+      "bandEmpty": "В этой категории нет пунктов — сейчас здесь делать нечего.",
+      "moreNotShown": "+ ещё {n} не показано",
+      "impactPill": "Эффект",
+      "effortPill": "Усилия",
+      "expectedOutcome": "Ожидаемый результат —"
+    }
+  },
 };
