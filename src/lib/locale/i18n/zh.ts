@@ -470,4 +470,60 @@ export const zh: Dict = {
       }
     }
   },
+  dashboard: {
+    "analytics": {
+      "title": "评分趋势",
+      "subtitle": "AI 成熟度评分随时间变化",
+      "empty": {
+        "title": "多次审计后将显示趋势",
+        "hint": "在本工作区提交多次审计后，系统将根据您的真实历史记录在此绘制 AI 成熟度评分图表。"
+      }
+    },
+    "automation": {
+      "title": "自动化机会",
+      "subtitle": "为您的 AI 使用情况量身定制",
+      "empty": {
+        "title": "运行审计以获取量身定制的机会",
+        "hint": "自动化机会源自您的审计答案和 AI 清单。完成一次审计并添加您的 AI 工具，即可在此查看建议。"
+      }
+    },
+    "businessImpact": {
+      "title": "业务影响",
+      "subtitle": "来自您的合规计划的可衡量成果",
+      "empty": {
+        "title": "随着计划成熟，将显示影响指标",
+        "hint": "持续运行审计以积累记录。风险降低、治理进展和节省的时间将根据您的真实历史记录计算得出——并非估算值。"
+      }
+    },
+    "recentReports": {
+      "title": "近期报告",
+      "countOne": "已生成 {n} 份报告",
+      "countOther": "已生成 {n} 份报告",
+      "viewAll": "查看全部 →",
+      "empty": {
+        "title": "暂无报告",
+        "hint": "从已提交的审计生成报告——它将显示在此处以及本工作区的“报告”下。"
+      }
+    },
+    "kpi": {
+      "auditsSubmitted": "已提交的审计",
+      "reportsGenerated": "已生成的报告",
+      "aiToolsRegistered": "已注册的 AI 工具",
+      "loadErrorSuffix": " — 无法加载"
+    },
+    "maturity": {
+      "rung": {
+        "initial": "初始级",
+        "managed": "受管理级",
+        "defined": "已定义级",
+        "advanced": "高级",
+        "optimal": "最优级"
+      }
+    },
+    "cta": {
+      "poweredBy": "由 Luna AI 提供支持",
+      "scheduleDemo": "预约演示",
+      "startFreeTrial": "开始免费试用 →"
+    }
+  },
 };

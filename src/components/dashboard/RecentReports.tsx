@@ -5,6 +5,8 @@ import { useToast } from '../../hooks/useToast';
 import { useReports } from '../../context/ReportsContext';
 import { formatDate } from '../../utils/formatters';
 import { EmptyState } from './EmptyState';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 
 function riskColor(risk: RiskLevel): string {
   const map: Record<RiskLevel, string> = {
@@ -146,6 +148,7 @@ export function RecentReports() {
   const { navigate } = useRoute();
   const { showToast } = useToast();
   const { reports } = useReports();
+  const D = useLocale().dashboard.recentReports;
 
   // Real reports for the active workspace, newest first, top 3 (4th grid cell
   // is the export card).
@@ -194,10 +197,10 @@ export function RecentReports() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-            Recent Reports
+            {D.title}
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-            {reports.length} report{reports.length === 1 ? '' : 's'} generated
+            {format(reports.length === 1 ? D.countOne : D.countOther, { n: reports.length })}
           </div>
         </div>
         <button
@@ -208,7 +211,7 @@ export function RecentReports() {
             cursor: 'pointer', background: 'transparent', border: 'none', padding: 0, fontFamily: 'inherit',
           }}
         >
-          View all →
+          {D.viewAll}
         </button>
       </div>
 
@@ -216,8 +219,8 @@ export function RecentReports() {
         {cards.length === 0 ? (
           <div style={{ gridColumn: '1 / 4' }}>
             <EmptyState
-              title="No reports yet"
-              hint="Generate a report from a submitted audit — it appears here and under Reports for this workspace."
+              title={D.empty.title}
+              hint={D.empty.hint}
             />
           </div>
         ) : (

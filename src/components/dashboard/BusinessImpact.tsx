@@ -1,4 +1,5 @@
 import { EmptyState } from './EmptyState';
+import { useLocale } from '../../context/LocaleContext';
 
 /**
  * Business Impact — measured outcomes from the compliance programme.
@@ -8,6 +9,7 @@ import { EmptyState } from './EmptyState';
  * fabricated numbers would mislead — honest empty-state until real metrics land.
  */
 export function BusinessImpact() {
+  const D = useLocale().dashboard.businessImpact;
   return (
     <div
       style={{
@@ -21,15 +23,15 @@ export function BusinessImpact() {
     >
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-          Business Impact
+          {D.title}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-          Measured outcomes from your compliance programme
+          {D.subtitle}
         </div>
       </div>
       <EmptyState
-        title="Impact metrics appear as your programme matures"
-        hint="Run audits over time to build a track record. Risk reduction, governance progress, and time saved will be computed from your real history — no estimates."
+        title={D.empty.title}
+        hint={D.empty.hint}
       />
     </div>
   );

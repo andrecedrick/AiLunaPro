@@ -1,4 +1,5 @@
 import { EmptyState } from './EmptyState';
+import { useLocale } from '../../context/LocaleContext';
 
 /**
  * Automation Opportunities — tailored AI automation suggestions.
@@ -8,6 +9,7 @@ import { EmptyState } from './EmptyState';
  * pointing the user to run an audit (which drives real recommendations).
  */
 export function AutomationOpportunities() {
+  const D = useLocale().dashboard.automation;
   return (
     <div
       style={{
@@ -21,15 +23,15 @@ export function AutomationOpportunities() {
     >
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-          Automation Opportunities
+          {D.title}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-          Tailored to your AI usage
+          {D.subtitle}
         </div>
       </div>
       <EmptyState
-        title="Run an audit to get tailored opportunities"
-        hint="Automation opportunities are derived from your audit answers and AI registry. Complete an audit and add your AI tools to see suggestions here."
+        title={D.empty.title}
+        hint={D.empty.hint}
       />
     </div>
   );

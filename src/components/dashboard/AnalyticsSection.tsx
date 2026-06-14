@@ -1,4 +1,5 @@
 import { EmptyState } from './EmptyState';
+import { useLocale } from '../../context/LocaleContext';
 
 /**
  * Analytics — AI maturity score trend over time.
@@ -9,6 +10,7 @@ import { EmptyState } from './EmptyState';
  * history exists to chart.
  */
 export function AnalyticsSection() {
+  const D = useLocale().dashboard.analytics;
   return (
     <div
       style={{
@@ -22,15 +24,15 @@ export function AnalyticsSection() {
     >
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-          Score Trend
+          {D.title}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-          AI maturity score over time
+          {D.subtitle}
         </div>
       </div>
       <EmptyState
-        title="Trends appear after multiple audits"
-        hint="Once you've submitted several audits in this workspace, your AI maturity score will be charted here from your real history."
+        title={D.empty.title}
+        hint={D.empty.hint}
       />
     </div>
   );

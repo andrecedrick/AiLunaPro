@@ -468,4 +468,60 @@ export const de: Dict = {
       }
     }
   },
+  dashboard: {
+    "analytics": {
+      "title": "Score-Trend",
+      "subtitle": "KI-Reifegrad im Zeitverlauf",
+      "empty": {
+        "title": "Trends erscheinen nach mehreren Audits",
+        "hint": "Sobald Sie mehrere Audits in diesem Workspace eingereicht haben, wird Ihr KI-Reifegrad hier aus Ihrem echten Verlauf grafisch dargestellt."
+      }
+    },
+    "automation": {
+      "title": "Automatisierungspotenziale",
+      "subtitle": "Zugeschnitten auf Ihre KI-Nutzung",
+      "empty": {
+        "title": "Führen Sie ein Audit durch, um maßgeschneiderte Potenziale zu erhalten",
+        "hint": "Automatisierungspotenziale werden aus Ihren Audit-Antworten und Ihrem KI-Register abgeleitet. Schließen Sie ein Audit ab und fügen Sie Ihre KI-Tools hinzu, um hier Vorschläge zu sehen."
+      }
+    },
+    "businessImpact": {
+      "title": "Geschäftlicher Nutzen",
+      "subtitle": "Messbare Ergebnisse aus Ihrem Compliance-Programm",
+      "empty": {
+        "title": "Nutzenkennzahlen erscheinen, sobald Ihr Programm reift",
+        "hint": "Führen Sie im Lauf der Zeit Audits durch, um einen Leistungsnachweis aufzubauen. Risikoreduzierung, Governance-Fortschritt und eingesparte Zeit werden aus Ihrem echten Verlauf berechnet – keine Schätzungen."
+      }
+    },
+    "recentReports": {
+      "title": "Aktuelle Berichte",
+      "countOne": "{n} Bericht erstellt",
+      "countOther": "{n} Berichte erstellt",
+      "viewAll": "Alle anzeigen →",
+      "empty": {
+        "title": "Noch keine Berichte",
+        "hint": "Erstellen Sie einen Bericht aus einem eingereichten Audit – er erscheint hier und unter Berichte für diesen Workspace."
+      }
+    },
+    "kpi": {
+      "auditsSubmitted": "Eingereichte Audits",
+      "reportsGenerated": "Erstellte Berichte",
+      "aiToolsRegistered": "Registrierte KI-Tools",
+      "loadErrorSuffix": " — konnte nicht geladen werden"
+    },
+    "maturity": {
+      "rung": {
+        "initial": "Initial",
+        "managed": "Gesteuert",
+        "defined": "Definiert",
+        "advanced": "Fortgeschritten",
+        "optimal": "Optimal"
+      }
+    },
+    "cta": {
+      "poweredBy": "Unterstützt von Luna AI",
+      "scheduleDemo": "Demo vereinbaren",
+      "startFreeTrial": "Kostenlos testen →"
+    }
+  },
 };

@@ -468,4 +468,60 @@ export const es: Dict = {
       }
     }
   },
+  dashboard: {
+    "analytics": {
+      "title": "Tendencia de la puntuación",
+      "subtitle": "Puntuación de madurez de IA a lo largo del tiempo",
+      "empty": {
+        "title": "Las tendencias aparecen tras varias auditorías",
+        "hint": "Una vez que hayas enviado varias auditorías en este espacio de trabajo, tu puntuación de madurez de IA se representará aquí a partir de tu historial real."
+      }
+    },
+    "automation": {
+      "title": "Oportunidades de automatización",
+      "subtitle": "Adaptadas a tu uso de la IA",
+      "empty": {
+        "title": "Realiza una auditoría para obtener oportunidades personalizadas",
+        "hint": "Las oportunidades de automatización se derivan de tus respuestas de auditoría y de tu registro de IA. Completa una auditoría y añade tus herramientas de IA para ver sugerencias aquí."
+      }
+    },
+    "businessImpact": {
+      "title": "Impacto empresarial",
+      "subtitle": "Resultados medidos de tu programa de cumplimiento",
+      "empty": {
+        "title": "Las métricas de impacto aparecen a medida que tu programa madura",
+        "hint": "Realiza auditorías a lo largo del tiempo para crear un historial. La reducción de riesgos, el progreso de la gobernanza y el tiempo ahorrado se calcularán a partir de tu historial real, sin estimaciones."
+      }
+    },
+    "recentReports": {
+      "title": "Informes recientes",
+      "countOne": "{n} informe generado",
+      "countOther": "{n} informes generados",
+      "viewAll": "Ver todos →",
+      "empty": {
+        "title": "Aún no hay informes",
+        "hint": "Genera un informe a partir de una auditoría enviada: aparecerá aquí y en Informes para este espacio de trabajo."
+      }
+    },
+    "kpi": {
+      "auditsSubmitted": "Auditorías enviadas",
+      "reportsGenerated": "Informes generados",
+      "aiToolsRegistered": "Herramientas de IA registradas",
+      "loadErrorSuffix": " — no se pudo cargar"
+    },
+    "maturity": {
+      "rung": {
+        "initial": "Inicial",
+        "managed": "Gestionado",
+        "defined": "Definido",
+        "advanced": "Avanzado",
+        "optimal": "Óptimo"
+      }
+    },
+    "cta": {
+      "poweredBy": "Con tecnología de Luna AI",
+      "scheduleDemo": "Programar demo",
+      "startFreeTrial": "Iniciar prueba gratuita →"
+    }
+  },
 };

@@ -468,4 +468,60 @@ export const fr: Dict = {
       }
     }
   },
+  dashboard: {
+    "analytics": {
+      "title": "Évolution du score",
+      "subtitle": "Score de maturité IA au fil du temps",
+      "empty": {
+        "title": "Les tendances apparaissent après plusieurs audits",
+        "hint": "Une fois plusieurs audits soumis dans cet espace de travail, votre score de maturité IA sera représenté ici à partir de votre historique réel."
+      }
+    },
+    "automation": {
+      "title": "Opportunités d'automatisation",
+      "subtitle": "Adaptées à votre usage de l'IA",
+      "empty": {
+        "title": "Lancez un audit pour obtenir des opportunités sur mesure",
+        "hint": "Les opportunités d'automatisation sont déduites de vos réponses d'audit et de votre registre IA. Réalisez un audit et ajoutez vos outils IA pour voir des suggestions ici."
+      }
+    },
+    "businessImpact": {
+      "title": "Impact métier",
+      "subtitle": "Résultats mesurés de votre programme de conformité",
+      "empty": {
+        "title": "Les indicateurs d'impact apparaissent à mesure que votre programme évolue",
+        "hint": "Réalisez des audits au fil du temps pour constituer un historique. La réduction des risques, l'avancement de la gouvernance et le temps gagné seront calculés à partir de votre historique réel — sans estimations."
+      }
+    },
+    "recentReports": {
+      "title": "Rapports récents",
+      "countOne": "{n} rapport généré",
+      "countOther": "{n} rapports générés",
+      "viewAll": "Tout afficher →",
+      "empty": {
+        "title": "Aucun rapport pour l'instant",
+        "hint": "Générez un rapport à partir d'un audit soumis — il apparaît ici et sous Rapports pour cet espace de travail."
+      }
+    },
+    "kpi": {
+      "auditsSubmitted": "Audits soumis",
+      "reportsGenerated": "Rapports générés",
+      "aiToolsRegistered": "Outils IA enregistrés",
+      "loadErrorSuffix": " — échec du chargement"
+    },
+    "maturity": {
+      "rung": {
+        "initial": "Initial",
+        "managed": "Géré",
+        "defined": "Défini",
+        "advanced": "Avancé",
+        "optimal": "Optimal"
+      }
+    },
+    "cta": {
+      "poweredBy": "Propulsé par Luna AI",
+      "scheduleDemo": "Planifier une démo",
+      "startFreeTrial": "Démarrer l'essai gratuit →"
+    }
+  },
 };

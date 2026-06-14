@@ -4,6 +4,7 @@ import { useRegistry } from '../../context/RegistryContext';
 import { useAuth } from '../../context/AuthContext';
 import { resolveLayer } from '../../lib/featureFlags';
 import { fsListAudits } from '../../lib/audit/firestoreAuditService';
+import { useLocale } from '../../context/LocaleContext';
 
 /**
  * KPI cards — REAL counts only (no fabricated trend deltas or progress bars).
@@ -41,6 +42,7 @@ export function KPICards() {
   const { session } = useAuth();
   const { reports } = useReports();
   const { items }   = useRegistry();
+  const K = useLocale().dashboard.kpi;
   const orgId = session?.orgId ?? '';
   const isFirebase = resolveLayer('audit') === 'firebase';
 
@@ -59,9 +61,9 @@ export function KPICards() {
 
   // value === null + !error → still loading ('…'); error → '—' + explanatory note.
   const cards = [
-    { id: 'audit',  label: 'Audits submitted',  value: auditCount,    color: '#7C3AED', error: auditError },
-    { id: 'report', label: 'Reports generated', value: reports.length, color: '#3B82F6', error: false },
-    { id: 'tool',   label: 'AI tools registered', value: items.length,  color: '#10B981', error: false },
+    { id: 'audit',  label: K.auditsSubmitted,  value: auditCount,    color: '#7C3AED', error: auditError },
+    { id: 'report', label: K.reportsGenerated, value: reports.length, color: '#3B82F6', error: false },
+    { id: 'tool',   label: K.aiToolsRegistered, value: items.length,  color: '#10B981', error: false },
   ];
 
   return (
@@ -95,7 +97,7 @@ export function KPICards() {
               {kpi.value === null ? (kpi.error ? '—' : '…') : kpi.value}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, fontWeight: 500 }}>
-              {kpi.label}{kpi.error ? " — couldn't load" : ''}
+              {kpi.label}{kpi.error ? K.loadErrorSuffix : ''}
             </div>
           </div>
         </div>

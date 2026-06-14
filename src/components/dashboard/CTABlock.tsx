@@ -3,6 +3,7 @@ import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
 import { useBilling } from '../../context/BillingContext';
 import { useToast } from '../../hooks/useToast';
+import { useLocale } from '../../context/LocaleContext';
 import { submitDemoRequest } from '../../lib/leads/demoRequestClient';
 
 export function CTABlock() {
@@ -10,6 +11,7 @@ export function CTABlock() {
   const { isAuthenticated, session } = useAuth();
   const { hasActiveSubscription } = useBilling();
   const { showToast } = useToast();
+  const D = useLocale().dashboard.cta;
   const [demoOpen, setDemoOpen] = useState(false);
 
   const handleStartTrial = () => {
@@ -81,7 +83,7 @@ export function CTABlock() {
             marginBottom: 14,
           }}
         >
-          ✨ Powered by Luna AI
+          ✨ {D.poweredBy}
         </div>
         <h2
           style={{
@@ -127,7 +129,7 @@ export function CTABlock() {
             whiteSpace: 'nowrap',
           }}
         >
-          Schedule Demo
+          {D.scheduleDemo}
         </button>
         <button
           type="button"
@@ -145,7 +147,7 @@ export function CTABlock() {
             whiteSpace: 'nowrap',
           }}
         >
-          Start Free Trial →
+          {D.startFreeTrial}
         </button>
       </div>
     </div>

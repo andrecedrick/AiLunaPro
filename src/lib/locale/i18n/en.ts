@@ -483,6 +483,62 @@ export const en = {
       }
     }
   },
+  dashboard: {
+    "analytics": {
+      "title": "Score Trend",
+      "subtitle": "AI maturity score over time",
+      "empty": {
+        "title": "Trends appear after multiple audits",
+        "hint": "Once you've submitted several audits in this workspace, your AI maturity score will be charted here from your real history."
+      }
+    },
+    "automation": {
+      "title": "Automation Opportunities",
+      "subtitle": "Tailored to your AI usage",
+      "empty": {
+        "title": "Run an audit to get tailored opportunities",
+        "hint": "Automation opportunities are derived from your audit answers and AI registry. Complete an audit and add your AI tools to see suggestions here."
+      }
+    },
+    "businessImpact": {
+      "title": "Business Impact",
+      "subtitle": "Measured outcomes from your compliance programme",
+      "empty": {
+        "title": "Impact metrics appear as your programme matures",
+        "hint": "Run audits over time to build a track record. Risk reduction, governance progress, and time saved will be computed from your real history — no estimates."
+      }
+    },
+    "recentReports": {
+      "title": "Recent Reports",
+      "countOne": "{n} report generated",
+      "countOther": "{n} reports generated",
+      "viewAll": "View all →",
+      "empty": {
+        "title": "No reports yet",
+        "hint": "Generate a report from a submitted audit — it appears here and under Reports for this workspace."
+      }
+    },
+    "kpi": {
+      "auditsSubmitted": "Audits submitted",
+      "reportsGenerated": "Reports generated",
+      "aiToolsRegistered": "AI tools registered",
+      "loadErrorSuffix": " — couldn't load"
+    },
+    "maturity": {
+      "rung": {
+        "initial": "Initial",
+        "managed": "Managed",
+        "defined": "Defined",
+        "advanced": "Advanced",
+        "optimal": "Optimal"
+      }
+    },
+    "cta": {
+      "poweredBy": "Powered by Luna AI",
+      "scheduleDemo": "Schedule Demo",
+      "startFreeTrial": "Start Free Trial →"
+    }
+  },
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed

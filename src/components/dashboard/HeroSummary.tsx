@@ -2,6 +2,7 @@ import { useRoute } from '../../context/RouteContext';
 import { useAudit } from '../../context/AuditContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
+import { useLocale } from '../../context/LocaleContext';
 import { ROLE } from '../../types/auth';
 
 /* ── Radial Score Gauge ─────────────────────────────────────── */
@@ -103,6 +104,7 @@ export function HeroSummary() {
   const { draft }     = useAudit();
   const { session }   = useAuth();
   const { showToast } = useToast();
+  const rung = useLocale().dashboard.maturity.rung;
 
   const handleContinueAudit = () => {
     if (!ROLE.canUseFeatures(session?.role)) {
@@ -261,11 +263,11 @@ export function HeroSummary() {
             marginTop: 4,
           }}
         >
-          <span>Initial</span>
-          <span>Managed</span>
-          <span>Defined</span>
-          <span>Advanced</span>
-          <span>Optimal</span>
+          <span>{rung.initial}</span>
+          <span>{rung.managed}</span>
+          <span>{rung.defined}</span>
+          <span>{rung.advanced}</span>
+          <span>{rung.optimal}</span>
         </div>
       </HeroCard>
 
