@@ -2459,4 +2459,92 @@ export const zh: Dict = {
       "website": "网站"
     }
   },
+  diagnosticQuestions: {
+    "byId": {
+      "ai_usage": {
+        "label": "贵组织目前如何使用 AI？",
+        "options": {
+          "none": "我们尚未使用 AI",
+          "individual": "部分员工个人使用 AI",
+          "team": "多个团队使用 AI 工具",
+          "structured": "AI 已用于规范化的工作流程"
+        }
+      },
+      "process_automation": {
+        "label": "目前有多少重复性工作已实现自动化？",
+        "options": {
+          "none": "几乎没有任何自动化",
+          "basic": "少数简单任务已自动化",
+          "moderate": "部分重要流程已自动化",
+          "advanced": "自动化已融入日常运营"
+        }
+      },
+      "data_readiness": {
+        "label": "贵企业的数据为 AI 使用做好了多少准备？",
+        "options": {
+          "scattered": "数据分散且难以访问",
+          "partial": "部分数据已整理",
+          "mostly_ready": "大部分关键数据已结构化",
+          "ready": "数据干净、易访问且定期更新"
+        }
+      },
+      "compliance_awareness": {
+        "label": "您为 AI 治理与合规做了多少准备？",
+        "options": {
+          "unknown": "我们尚未评估 AI 风险",
+          "basic": "我们了解 AI 风险但尚无流程",
+          "documented": "部分 AI 用例已记录在案",
+          "governed": "我们拥有清晰的 AI 治理与审查流程"
+        }
+      },
+      "shadow_ai": {
+        "label": "您是否了解公司各处使用了哪些 AI 工具？",
+        "options": {
+          "no_visibility": "否，我们缺乏可见性",
+          "partial_visibility": "我们了解部分工具，但并非全部",
+          "mostly_visible": "我们跟踪大部分 AI 工具",
+          "full_inventory": "我们维护着清晰的 AI 工具清单"
+        }
+      },
+      "business_impact": {
+        "label": "您对 AI 带来的业务影响衡量得有多清晰？",
+        "options": {
+          "not_measured": "我们尚未对其进行衡量",
+          "qualitative": "我们仅有定性的反馈",
+          "some_metrics": "我们跟踪部分时间或成本节省",
+          "clear_roi": "我们衡量 ROI 与业务成果"
+        }
+      },
+      "team_skills": {
+        "label": "您的团队对负责任地使用 AI 有多大信心？",
+        "options": {
+          "low": "信心非常有限",
+          "basic": "基本熟悉",
+          "good": "对常见任务有较好信心",
+          "strong": "拥有成熟的负责任 AI 实践"
+        }
+      },
+      "implementation_priority": {
+        "label": "您当前的主要 AI 优先事项是什么？",
+        "options": {
+          "save_time": "节省重复性工作的时间",
+          "improve_sales": "提升销售或客户跟进",
+          "support_customers": "改善客户支持",
+          "compliance": "提升 AI 合规与治理",
+          "documents": "更快处理文档与报告"
+        }
+      }
+    }
+  },
+  roiWorkflows: {
+    "support": "客户支持",
+    "sales": "销售与潜在客户跟进",
+    "finance": "财务与开票",
+    "documents": "文档与合同",
+    "reporting": "报表与仪表盘",
+    "admin": "行政事务",
+    "compliance": "合规与治理",
+    "marketing": "营销与内容",
+    "hr": "人力资源与人事运营"
+  },
 };

@@ -2457,4 +2457,92 @@ export const de: Dict = {
       "website": "Website"
     }
   },
+  diagnosticQuestions: {
+    "byId": {
+      "ai_usage": {
+        "label": "Wie wird KI derzeit in Ihrer Organisation eingesetzt?",
+        "options": {
+          "none": "Wir nutzen noch keine KI",
+          "individual": "Einzelne Personen nutzen KI individuell",
+          "team": "Mehrere Teams nutzen KI-Tools",
+          "structured": "KI wird in strukturierten Workflows eingesetzt"
+        }
+      },
+      "process_automation": {
+        "label": "Wie viel Ihrer wiederkehrenden Arbeit ist heute automatisiert?",
+        "options": {
+          "none": "Fast nichts ist automatisiert",
+          "basic": "Einige einfache Aufgaben sind automatisiert",
+          "moderate": "Einige wichtige Workflows sind automatisiert",
+          "advanced": "Automatisierung gehört zum Tagesgeschäft"
+        }
+      },
+      "data_readiness": {
+        "label": "Wie gut sind Ihre Geschäftsdaten für die KI-Nutzung vorbereitet?",
+        "options": {
+          "scattered": "Daten sind verstreut und schwer zugänglich",
+          "partial": "Einige Daten sind organisiert",
+          "mostly_ready": "Die meisten wichtigen Daten sind strukturiert",
+          "ready": "Daten sind sauber, zugänglich und regelmäßig aktualisiert"
+        }
+      },
+      "compliance_awareness": {
+        "label": "Wie gut sind Sie auf KI-Governance und Compliance vorbereitet?",
+        "options": {
+          "unknown": "Wir haben KI-Risiken noch nicht bewertet",
+          "basic": "Wir kennen die KI-Risiken, haben aber keinen Prozess",
+          "documented": "Einige KI-Anwendungsfälle sind dokumentiert",
+          "governed": "Wir haben klare KI-Governance- und Prüfprozesse"
+        }
+      },
+      "shadow_ai": {
+        "label": "Wissen Sie, welche KI-Tools im gesamten Unternehmen genutzt werden?",
+        "options": {
+          "no_visibility": "Nein, wir haben keinen Überblick",
+          "partial_visibility": "Wir kennen einige Tools, aber nicht alle",
+          "mostly_visible": "Wir verfolgen die meisten KI-Tools",
+          "full_inventory": "Wir führen ein klares Inventar der KI-Tools"
+        }
+      },
+      "business_impact": {
+        "label": "Wie klar messen Sie den geschäftlichen Nutzen von KI?",
+        "options": {
+          "not_measured": "Wir messen ihn noch nicht",
+          "qualitative": "Wir haben nur qualitatives Feedback",
+          "some_metrics": "Wir erfassen einige Zeit- oder Kosteneinsparungen",
+          "clear_roi": "Wir messen ROI und Geschäftsergebnisse"
+        }
+      },
+      "team_skills": {
+        "label": "Wie sicher sind Ihre Teams im verantwortungsvollen Einsatz von KI?",
+        "options": {
+          "low": "Sehr begrenzte Sicherheit",
+          "basic": "Grundlegende Vertrautheit",
+          "good": "Gute Sicherheit bei gängigen Aufgaben",
+          "strong": "Starke Praktiken für verantwortungsvolle KI"
+        }
+      },
+      "implementation_priority": {
+        "label": "Was ist derzeit Ihre wichtigste KI-Priorität?",
+        "options": {
+          "save_time": "Zeit bei wiederkehrender Arbeit sparen",
+          "improve_sales": "Vertrieb oder Kundennachverfolgung verbessern",
+          "support_customers": "Kundensupport verbessern",
+          "compliance": "KI-Compliance und Governance verbessern",
+          "documents": "Dokumente und Berichte schneller verarbeiten"
+        }
+      }
+    }
+  },
+  roiWorkflows: {
+    "support": "Kundensupport",
+    "sales": "Vertrieb und Lead-Nachverfolgung",
+    "finance": "Finanzen und Rechnungsstellung",
+    "documents": "Dokumente und Verträge",
+    "reporting": "Reporting und Dashboards",
+    "admin": "Administrative Arbeit",
+    "compliance": "Compliance und Governance",
+    "marketing": "Marketing und Content",
+    "hr": "HR und Personalwesen"
+  },
 };

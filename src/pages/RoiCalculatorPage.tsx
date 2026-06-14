@@ -213,7 +213,7 @@ export function RoiCalculatorPage() {
                 >
                   <option value="">{T.publicTools.roi.form.workflowPlaceholderOption}</option>
                   {WORKFLOW_VALUES.map(w => (
-                    <option key={w} value={w}>{WORKFLOW_LABELS[w]}</option>
+                    <option key={w} value={w}>{(T.roiWorkflows as Record<string, string>)[w] ?? WORKFLOW_LABELS[w]}</option>
                   ))}
                 </select>
               </Field>

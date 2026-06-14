@@ -2457,4 +2457,92 @@ export const pt: Dict = {
       "website": "Site"
     }
   },
+  diagnosticQuestions: {
+    "byId": {
+      "ai_usage": {
+        "label": "Como a IA é usada atualmente na sua organização?",
+        "options": {
+          "none": "Ainda não usamos IA",
+          "individual": "Algumas pessoas usam IA individualmente",
+          "team": "Várias equipes usam ferramentas de IA",
+          "structured": "A IA é usada em fluxos de trabalho estruturados"
+        }
+      },
+      "process_automation": {
+        "label": "Quanto do seu trabalho repetitivo está automatizado hoje?",
+        "options": {
+          "none": "Quase nada está automatizado",
+          "basic": "Algumas tarefas simples estão automatizadas",
+          "moderate": "Alguns fluxos de trabalho importantes estão automatizados",
+          "advanced": "A automação faz parte das operações diárias"
+        }
+      },
+      "data_readiness": {
+        "label": "Quão preparados estão os dados da sua empresa para o uso de IA?",
+        "options": {
+          "scattered": "Os dados estão dispersos e difíceis de acessar",
+          "partial": "Alguns dados estão organizados",
+          "mostly_ready": "A maioria dos dados essenciais está estruturada",
+          "ready": "Os dados estão limpos, acessíveis e atualizados com frequência"
+        }
+      },
+      "compliance_awareness": {
+        "label": "Quão preparado você está para a governança e conformidade de IA?",
+        "options": {
+          "unknown": "Ainda não avaliamos os riscos de IA",
+          "basic": "Conhecemos os riscos de IA, mas não temos processo",
+          "documented": "Alguns casos de uso de IA estão documentados",
+          "governed": "Temos governança e processos de revisão de IA claros"
+        }
+      },
+      "shadow_ai": {
+        "label": "Você sabe quais ferramentas de IA são usadas em toda a empresa?",
+        "options": {
+          "no_visibility": "Não, não temos visibilidade",
+          "partial_visibility": "Conhecemos algumas ferramentas, mas não todas",
+          "mostly_visible": "Monitoramos a maioria das ferramentas de IA",
+          "full_inventory": "Mantemos um inventário claro de ferramentas de IA"
+        }
+      },
+      "business_impact": {
+        "label": "Com que clareza você mede o impacto da IA no negócio?",
+        "options": {
+          "not_measured": "Ainda não medimos",
+          "qualitative": "Temos apenas feedback qualitativo",
+          "some_metrics": "Acompanhamos alguma economia de tempo ou custo",
+          "clear_roi": "Medimos o ROI e os resultados de negócio"
+        }
+      },
+      "team_skills": {
+        "label": "Quão confiantes estão suas equipes em usar IA de forma responsável?",
+        "options": {
+          "low": "Confiança muito limitada",
+          "basic": "Familiaridade básica",
+          "good": "Boa confiança para tarefas comuns",
+          "strong": "Práticas sólidas de IA responsável"
+        }
+      },
+      "implementation_priority": {
+        "label": "Qual é a sua principal prioridade com IA neste momento?",
+        "options": {
+          "save_time": "Economizar tempo em trabalho repetitivo",
+          "improve_sales": "Melhorar as vendas ou o acompanhamento de clientes",
+          "support_customers": "Melhorar o atendimento ao cliente",
+          "compliance": "Melhorar a conformidade e a governança de IA",
+          "documents": "Processar documentos e relatórios mais rápido"
+        }
+      }
+    }
+  },
+  roiWorkflows: {
+    "support": "Atendimento ao cliente",
+    "sales": "Vendas e acompanhamento de leads",
+    "finance": "Finanças e faturamento",
+    "documents": "Documentos e contratos",
+    "reporting": "Relatórios e dashboards",
+    "admin": "Trabalho administrativo",
+    "compliance": "Conformidade e governança",
+    "marketing": "Marketing e conteúdo",
+    "hr": "RH e gestão de pessoas"
+  },
 };

@@ -52,6 +52,9 @@ interface FormErrors {
 export function DiagnosticPage() {
   const { navigate } = useRoute();
   const T = useLocale();
+  // Localized diagnostic question + option labels (data-driven content), keyed
+  // by question id / option value; falls back to the raw English data.
+  const DQ = T.diagnosticQuestions.byId as Record<string, { label: string; options: Record<string, string> }>;
 
   // Answers state — keyed by question.id. B2.4: an unfinished run is restored
   // from localStorage so abandoning the flow never loses progress (client-side
@@ -189,7 +192,7 @@ export function DiagnosticPage() {
                     fontSize: 15, fontWeight: 600, color: 'var(--text-primary)',
                     marginBottom: 12, lineHeight: 1.4,
                   }}>
-                    {q.label}
+                    {DQ[q.id]?.label ?? q.label}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {q.options.map(opt => {
@@ -214,7 +217,7 @@ export function DiagnosticPage() {
                             onChange={() => onChangeAnswer(q.id, opt.value)}
                             style={{ accentColor: 'var(--violet)', cursor: 'pointer' }}
                           />
-                          <span>{opt.label}</span>
+                          <span>{DQ[q.id]?.options?.[opt.value] ?? opt.label}</span>
                         </label>
                       );
                     })}

@@ -2457,4 +2457,92 @@ export const it: Dict = {
       "website": "Sito web"
     }
   },
+  diagnosticQuestions: {
+    "byId": {
+      "ai_usage": {
+        "label": "Come viene utilizzata l'AI attualmente nella tua organizzazione?",
+        "options": {
+          "none": "Non utilizziamo ancora l'AI",
+          "individual": "Alcune persone usano l'AI a livello individuale",
+          "team": "Diversi team usano strumenti di AI",
+          "structured": "L'AI è integrata in flussi di lavoro strutturati"
+        }
+      },
+      "process_automation": {
+        "label": "Quanto del lavoro ripetitivo è oggi automatizzato?",
+        "options": {
+          "none": "Quasi nulla è automatizzato",
+          "basic": "Poche attività semplici sono automatizzate",
+          "moderate": "Alcuni flussi di lavoro importanti sono automatizzati",
+          "advanced": "L'automazione fa parte delle operazioni quotidiane"
+        }
+      },
+      "data_readiness": {
+        "label": "Quanto sono pronti i tuoi dati aziendali per l'uso dell'AI?",
+        "options": {
+          "scattered": "I dati sono frammentati e difficili da consultare",
+          "partial": "Una parte dei dati è organizzata",
+          "mostly_ready": "La maggior parte dei dati chiave è strutturata",
+          "ready": "I dati sono puliti, accessibili e aggiornati regolarmente"
+        }
+      },
+      "compliance_awareness": {
+        "label": "Quanto sei preparato sulla governance e la conformità dell'AI?",
+        "options": {
+          "unknown": "Non abbiamo ancora valutato i rischi dell'AI",
+          "basic": "Conosciamo i rischi dell'AI ma non abbiamo un processo",
+          "documented": "Alcuni casi d'uso dell'AI sono documentati",
+          "governed": "Abbiamo processi chiari di governance e revisione dell'AI"
+        }
+      },
+      "shadow_ai": {
+        "label": "Sai quali strumenti di AI vengono utilizzati in azienda?",
+        "options": {
+          "no_visibility": "No, non abbiamo visibilità",
+          "partial_visibility": "Conosciamo alcuni strumenti ma non tutti",
+          "mostly_visible": "Monitoriamo la maggior parte degli strumenti di AI",
+          "full_inventory": "Manteniamo un inventario chiaro degli strumenti di AI"
+        }
+      },
+      "business_impact": {
+        "label": "Con quanta chiarezza misuri l'impatto dell'AI sul business?",
+        "options": {
+          "not_measured": "Non lo misuriamo ancora",
+          "qualitative": "Abbiamo solo riscontri qualitativi",
+          "some_metrics": "Monitoriamo alcuni risparmi di tempo o di costi",
+          "clear_roi": "Misuriamo il ROI e i risultati di business"
+        }
+      },
+      "team_skills": {
+        "label": "Quanto si sentono sicuri i tuoi team nell'usare l'AI in modo responsabile?",
+        "options": {
+          "low": "Fiducia molto limitata",
+          "basic": "Familiarità di base",
+          "good": "Buona sicurezza nelle attività comuni",
+          "strong": "Solide pratiche di AI responsabile"
+        }
+      },
+      "implementation_priority": {
+        "label": "Qual è la tua principale priorità sull'AI in questo momento?",
+        "options": {
+          "save_time": "Risparmiare tempo sul lavoro ripetitivo",
+          "improve_sales": "Migliorare le vendite o il follow-up con i clienti",
+          "support_customers": "Migliorare l'assistenza clienti",
+          "compliance": "Migliorare la conformità e la governance dell'AI",
+          "documents": "Elaborare documenti e report più velocemente"
+        }
+      }
+    }
+  },
+  roiWorkflows: {
+    "support": "Assistenza clienti",
+    "sales": "Vendite e follow-up dei lead",
+    "finance": "Finanza e fatturazione",
+    "documents": "Documenti e contratti",
+    "reporting": "Reportistica e dashboard",
+    "admin": "Attività amministrative",
+    "compliance": "Conformità e governance",
+    "marketing": "Marketing e contenuti",
+    "hr": "Risorse umane e gestione del personale"
+  },
 };

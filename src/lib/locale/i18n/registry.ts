@@ -38,11 +38,34 @@ export function localeDir(locale: Language): Dir {
   return LOCALE_REGISTRY[locale]?.dir ?? 'ltr';
 }
 
-/** Load a locale's catalog; falls back to English on any failure. */
+/**
+ * Load a locale's catalog.
+ *
+ * On failure to load a NON-English locale, the dominant cause is a STALE OPEN
+ * TAB after a redeploy: the old bundle requests an old locale-chunk URL, which
+ * Cloudflare's SPA fallback answers with index.html (served as JS) → import
+ * fails. Silently returning English there is misleading — the user picked a
+ * language and gets English with no explanation (the recurring "still in
+ * English after deploy" symptom). So we run the SAME deterministic recovery the
+ * route chunks use (lazyWithRetry → recoverIfStaleBundle): if this tab is
+ * provably stale (running build id ≠ server /version.json), force ONE reload to
+ * fetch the fresh assets — which include the up-to-date locale catalog. Only
+ * when staleness can't be proven (genuine offline / blocked request) do we fall
+ * back to English so the app still renders.
+ */
 export async function loadDict(locale: Language): Promise<Dict> {
   try {
     return await LOCALE_REGISTRY[locale].load();
   } catch {
+    if (locale !== 'en') {
+      try {
+        const { recoverIfStaleBundle } = await import('../../routing/staleBundle');
+        if (await recoverIfStaleBundle()) {
+          // Provably stale → a reload is in flight; suspend so no English flash.
+          return await new Promise<Dict>(() => { /* page is reloading */ });
+        }
+      } catch { /* recovery unavailable — fall through to the English fallback */ }
+    }
     return en;
   }
 }

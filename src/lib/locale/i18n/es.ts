@@ -2457,4 +2457,92 @@ export const es: Dict = {
       "website": "Sitio web"
     }
   },
+  diagnosticQuestions: {
+    "byId": {
+      "ai_usage": {
+        "label": "¿Cómo se usa la IA actualmente en tu organización?",
+        "options": {
+          "none": "Todavía no usamos IA",
+          "individual": "Algunas personas usan IA de forma individual",
+          "team": "Varios equipos usan herramientas de IA",
+          "structured": "La IA se usa en flujos de trabajo estructurados"
+        }
+      },
+      "process_automation": {
+        "label": "¿Qué parte de tu trabajo repetitivo está automatizada hoy?",
+        "options": {
+          "none": "Casi nada está automatizado",
+          "basic": "Hay algunas tareas sencillas automatizadas",
+          "moderate": "Algunos flujos de trabajo importantes están automatizados",
+          "advanced": "La automatización forma parte de las operaciones diarias"
+        }
+      },
+      "data_readiness": {
+        "label": "¿Hasta qué punto están tus datos preparados para usar IA?",
+        "options": {
+          "scattered": "Los datos están dispersos y son difíciles de consultar",
+          "partial": "Algunos datos están organizados",
+          "mostly_ready": "La mayoría de los datos clave están estructurados",
+          "ready": "Los datos están limpios, accesibles y se actualizan con regularidad"
+        }
+      },
+      "compliance_awareness": {
+        "label": "¿Hasta qué punto estás preparado para la gobernanza y el cumplimiento en IA?",
+        "options": {
+          "unknown": "Todavía no hemos evaluado los riesgos de la IA",
+          "basic": "Conocemos los riesgos de la IA, pero no tenemos ningún proceso",
+          "documented": "Algunos casos de uso de IA están documentados",
+          "governed": "Tenemos procesos claros de gobernanza y revisión de la IA"
+        }
+      },
+      "shadow_ai": {
+        "label": "¿Sabes qué herramientas de IA se usan en toda la empresa?",
+        "options": {
+          "no_visibility": "No, no tenemos visibilidad",
+          "partial_visibility": "Conocemos algunas herramientas, pero no todas",
+          "mostly_visible": "Hacemos seguimiento de la mayoría de las herramientas de IA",
+          "full_inventory": "Mantenemos un inventario claro de las herramientas de IA"
+        }
+      },
+      "business_impact": {
+        "label": "¿Con qué claridad mides el impacto de la IA en el negocio?",
+        "options": {
+          "not_measured": "Todavía no lo medimos",
+          "qualitative": "Solo tenemos opiniones cualitativas",
+          "some_metrics": "Hacemos seguimiento de algún ahorro de tiempo o coste",
+          "clear_roi": "Medimos el ROI y los resultados de negocio"
+        }
+      },
+      "team_skills": {
+        "label": "¿Qué nivel de confianza tienen tus equipos para usar la IA de forma responsable?",
+        "options": {
+          "low": "Confianza muy limitada",
+          "basic": "Familiaridad básica",
+          "good": "Buena confianza para tareas habituales",
+          "strong": "Prácticas sólidas de IA responsable"
+        }
+      },
+      "implementation_priority": {
+        "label": "¿Cuál es tu principal prioridad en IA ahora mismo?",
+        "options": {
+          "save_time": "Ahorrar tiempo en trabajo repetitivo",
+          "improve_sales": "Mejorar las ventas o el seguimiento de clientes",
+          "support_customers": "Mejorar la atención al cliente",
+          "compliance": "Mejorar el cumplimiento y la gobernanza en IA",
+          "documents": "Procesar documentos e informes más rápido"
+        }
+      }
+    }
+  },
+  roiWorkflows: {
+    "support": "Atención al cliente",
+    "sales": "Ventas y seguimiento de clientes potenciales",
+    "finance": "Finanzas y facturación",
+    "documents": "Documentos y contratos",
+    "reporting": "Informes y cuadros de mando",
+    "admin": "Trabajo administrativo",
+    "compliance": "Cumplimiento y gobernanza",
+    "marketing": "Marketing y contenidos",
+    "hr": "RR. HH. y gestión de personas"
+  },
 };

@@ -2457,4 +2457,92 @@ export const fr: Dict = {
       "website": "Site web"
     }
   },
+  diagnosticQuestions: {
+    "byId": {
+      "ai_usage": {
+        "label": "Comment l'IA est-elle utilisée aujourd'hui dans votre organisation ?",
+        "options": {
+          "none": "Nous n'utilisons pas encore l'IA",
+          "individual": "Certaines personnes utilisent l'IA individuellement",
+          "team": "Plusieurs équipes utilisent des outils d'IA",
+          "structured": "L'IA est intégrée à des workflows structurés"
+        }
+      },
+      "process_automation": {
+        "label": "Quelle part de vos tâches répétitives est automatisée aujourd'hui ?",
+        "options": {
+          "none": "Presque rien n'est automatisé",
+          "basic": "Quelques tâches simples sont automatisées",
+          "moderate": "Certains workflows importants sont automatisés",
+          "advanced": "L'automatisation fait partie du quotidien"
+        }
+      },
+      "data_readiness": {
+        "label": "Vos données métier sont-elles prêtes pour l'IA ?",
+        "options": {
+          "scattered": "Les données sont éparpillées et difficiles d'accès",
+          "partial": "Une partie des données est organisée",
+          "mostly_ready": "La plupart des données clés sont structurées",
+          "ready": "Les données sont propres, accessibles et mises à jour régulièrement"
+        }
+      },
+      "compliance_awareness": {
+        "label": "Êtes-vous prêt pour la gouvernance et la conformité de l'IA ?",
+        "options": {
+          "unknown": "Nous n'avons pas encore évalué les risques liés à l'IA",
+          "basic": "Nous connaissons les risques de l'IA mais sans processus",
+          "documented": "Certains cas d'usage de l'IA sont documentés",
+          "governed": "Nous avons une gouvernance et des processus de revue clairs pour l'IA"
+        }
+      },
+      "shadow_ai": {
+        "label": "Savez-vous quels outils d'IA sont utilisés dans l'entreprise ?",
+        "options": {
+          "no_visibility": "Non, nous n'avons aucune visibilité",
+          "partial_visibility": "Nous connaissons certains outils, mais pas tous",
+          "mostly_visible": "Nous suivons la plupart des outils d'IA",
+          "full_inventory": "Nous tenons un inventaire clair des outils d'IA"
+        }
+      },
+      "business_impact": {
+        "label": "Mesurez-vous clairement l'impact métier de l'IA ?",
+        "options": {
+          "not_measured": "Nous ne le mesurons pas encore",
+          "qualitative": "Nous avons uniquement des retours qualitatifs",
+          "some_metrics": "Nous suivons certains gains de temps ou de coûts",
+          "clear_roi": "Nous mesurons le ROI et les résultats métier"
+        }
+      },
+      "team_skills": {
+        "label": "Vos équipes utilisent-elles l'IA de façon responsable et en confiance ?",
+        "options": {
+          "low": "Confiance très limitée",
+          "basic": "Familiarité de base",
+          "good": "Bonne confiance pour les tâches courantes",
+          "strong": "Solides pratiques d'IA responsable"
+        }
+      },
+      "implementation_priority": {
+        "label": "Quelle est votre principale priorité IA en ce moment ?",
+        "options": {
+          "save_time": "Gagner du temps sur les tâches répétitives",
+          "improve_sales": "Améliorer les ventes ou le suivi client",
+          "support_customers": "Améliorer le support client",
+          "compliance": "Améliorer la conformité et la gouvernance de l'IA",
+          "documents": "Traiter documents et rapports plus rapidement"
+        }
+      }
+    }
+  },
+  roiWorkflows: {
+    "support": "Support client",
+    "sales": "Ventes et suivi des prospects",
+    "finance": "Finance et facturation",
+    "documents": "Documents et contrats",
+    "reporting": "Reporting et tableaux de bord",
+    "admin": "Tâches administratives",
+    "compliance": "Conformité et gouvernance",
+    "marketing": "Marketing et contenu",
+    "hr": "RH et gestion du personnel"
+  },
 };

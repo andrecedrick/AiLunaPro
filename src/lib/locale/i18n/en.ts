@@ -2472,6 +2472,94 @@ export const en = {
       "website": "website"
     }
   },
+  diagnosticQuestions: {
+    "byId": {
+      "ai_usage": {
+        "label": "How is AI currently used in your organization?",
+        "options": {
+          "none": "We do not use AI yet",
+          "individual": "Some people use AI individually",
+          "team": "Several teams use AI tools",
+          "structured": "AI is used in structured workflows"
+        }
+      },
+      "process_automation": {
+        "label": "How much of your repetitive work is automated today?",
+        "options": {
+          "none": "Almost nothing is automated",
+          "basic": "A few simple tasks are automated",
+          "moderate": "Some important workflows are automated",
+          "advanced": "Automation is part of daily operations"
+        }
+      },
+      "data_readiness": {
+        "label": "How ready is your business data for AI use?",
+        "options": {
+          "scattered": "Data is scattered and hard to access",
+          "partial": "Some data is organized",
+          "mostly_ready": "Most key data is structured",
+          "ready": "Data is clean, accessible, and regularly updated"
+        }
+      },
+      "compliance_awareness": {
+        "label": "How prepared are you for AI governance and compliance?",
+        "options": {
+          "unknown": "We have not assessed AI risks yet",
+          "basic": "We are aware of AI risks but have no process",
+          "documented": "Some AI use cases are documented",
+          "governed": "We have clear AI governance and review processes"
+        }
+      },
+      "shadow_ai": {
+        "label": "Do you know which AI tools are used across the company?",
+        "options": {
+          "no_visibility": "No, we do not have visibility",
+          "partial_visibility": "We know some tools but not all",
+          "mostly_visible": "We track most AI tools",
+          "full_inventory": "We maintain a clear AI tool inventory"
+        }
+      },
+      "business_impact": {
+        "label": "How clearly do you measure the business impact of AI?",
+        "options": {
+          "not_measured": "We do not measure it yet",
+          "qualitative": "We have qualitative feedback only",
+          "some_metrics": "We track some time or cost savings",
+          "clear_roi": "We measure ROI and business outcomes"
+        }
+      },
+      "team_skills": {
+        "label": "How confident are your teams in using AI responsibly?",
+        "options": {
+          "low": "Very limited confidence",
+          "basic": "Basic familiarity",
+          "good": "Good confidence for common tasks",
+          "strong": "Strong responsible AI practices"
+        }
+      },
+      "implementation_priority": {
+        "label": "What is your main AI priority right now?",
+        "options": {
+          "save_time": "Save time on repetitive work",
+          "improve_sales": "Improve sales or customer follow-up",
+          "support_customers": "Improve customer support",
+          "compliance": "Improve AI compliance and governance",
+          "documents": "Process documents and reports faster"
+        }
+      }
+    }
+  },
+  roiWorkflows: {
+    "support": "Customer support",
+    "sales": "Sales and lead follow-up",
+    "finance": "Finance and invoicing",
+    "documents": "Documents and contracts",
+    "reporting": "Reporting and dashboards",
+    "admin": "Administrative work",
+    "compliance": "Compliance and governance",
+    "marketing": "Marketing and content",
+    "hr": "HR and people operations"
+  },
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed
