@@ -7,14 +7,19 @@
  */
 
 /**
- * UI language preference. App is currently rendered in English only;
- * setting another value persists the user's preference for when full
- * i18n lands. Picker labels in Sidebar + Settings show in their native
- * spelling (Français, Español, etc.) regardless of selection.
+ * UI language preference. Shell + Preferences UI are translated (B6.0/B6.5);
+ * areas not yet migrated fall back to English. Picker labels show each
+ * language in its native spelling (Français, Русский, 中文, …).
+ *
+ * To add a language: extend this union + the three label/value maps below,
+ * create `src/lib/locale/i18n/<code>.ts` (typed `: Dict`), and add one row to
+ * `LOCALE_REGISTRY` (src/lib/locale/i18n/registry.ts). The compiler enforces
+ * completeness on every step. PDFs render only Latin-script locales; RU/ZH/AR
+ * fall back to English in PDFs (see `pdfLocale`).
  */
-export type Language = 'en' | 'fr' | 'es' | 'de' | 'it' | 'pt';
+export type Language = 'en' | 'fr' | 'es' | 'de' | 'it' | 'pt' | 'ru' | 'zh';
 
-export const LANGUAGE_VALUES: readonly Language[] = ['en', 'fr', 'es', 'de', 'it', 'pt'];
+export const LANGUAGE_VALUES: readonly Language[] = ['en', 'fr', 'es', 'de', 'it', 'pt', 'ru', 'zh'];
 
 export const LANGUAGE_LABELS: Record<Language, string> = {
   en: 'English',
@@ -23,6 +28,8 @@ export const LANGUAGE_LABELS: Record<Language, string> = {
   de: 'Deutsch',
   it: 'Italiano',
   pt: 'Português',
+  ru: 'Русский',
+  zh: '中文',
 };
 
 /** Short ISO-style labels — used in the compact sidebar widget. */
@@ -33,6 +40,8 @@ export const LANGUAGE_SHORT_LABELS: Record<Language, string> = {
   de: 'DE',
   it: 'IT',
   pt: 'PT',
+  ru: 'RU',
+  zh: 'ZH',
 };
 
 export function isLanguage(v: unknown): v is Language {

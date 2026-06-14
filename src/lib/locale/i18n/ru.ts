@@ -1,0 +1,55 @@
+/** B6.5 — Russian dictionary. Typed `: Dict` ⇒ compile-time completeness.
+ *  LTR. Neutral UI chrome only (no regulatory/disclaimer copy — see en.ts).
+ *  Cyrillic renders natively in the UI; PDFs fall back to English (pdfLocale). */
+import type { Dict } from './en';
+
+export const ru: Dict = {
+  nav: {
+    dashboard:             'Панель',
+    'new-audit':           'Новый аудит',
+    reports:               'Отчёты',
+    'audit-history':       'История аудитов',
+    'audit-express-run':   'Запустить Audit Express',
+    'audit-express-saved': 'Сохранённые аудиты',
+    registry:              'Реестр ИИ',
+    'system-builder':      'Конструктор систем',
+    agents:                'Агенты',
+    team:                  'Команда',
+    settings:              'Настройки',
+    billing:               'Оплата',
+    help:                  'Помощь',
+  },
+  shell: {
+    complianceSuite:  'Пакет соответствия',
+    signOut:          'Выйти',
+    workspaces:       'Рабочие пространства',
+    createWorkspace:  'Создать рабочее пространство',
+    searchWorkspaces: 'Поиск пространства…',
+    language:         'Язык',
+    currency:         'Валюта',
+  },
+  settings: {
+    title:               'Настройки',
+    themeTitle:          'Тема',
+    themeHint:           'Выберите внешний вид AiLunaPro. Применяется сразу.',
+    light:               'Светлая',
+    dark:                'Тёмная',
+    languageTitle:       'Язык',
+    languageHint:        'Используется для интерфейса и писем. Перевод выходит по разделам; непереведённые части остаются на английском.',
+    currencyTitle:       'Валюта по умолчанию',
+    currencyHint:        'Только для отображения. Оплата и пакеты токенов остаются в USD.',
+    profileTitle:        'Профиль',
+    profileHint:         'Настраивает тон рекомендаций и стартовый ресурс. Никогда не меняет оценку, выводы и нормативные сопоставления.',
+    notificationsTitle:  'Уведомления по эл. почте',
+    notificationsHint:   'Выберите, какие письма получать. Настройка отправителя появится позже.',
+    weeklyDigest:        'Еженедельная сводка соответствия',
+    weeklyDigestDesc:    'Сводка новых выводов и решённых задач каждый понедельник.',
+    reportReady:         'Отчёт готов',
+    reportReadyDesc:     'Сообщить по почте, когда запрошенный отчёт сформирован.',
+    teamActivity:        'Активность команды',
+    teamActivityDesc:    'Приглашения, изменения ролей и удаления участников в моих пространствах.',
+    langToast:           'Язык: {value}',
+    currencyToast:       'Валюта: {value}',
+    profileToast:        'Профиль: {value}',
+  },
+};
