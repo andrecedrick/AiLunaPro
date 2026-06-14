@@ -16,12 +16,15 @@
  *   - Auth-gated like other content routes (sits inside the dashboard shell).
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Disclaimer } from '../components/result/Disclaimer';
 import type { RegulatoryRef } from '../types/scoring';
 import {
   readBuilderStep, saveBuilderStep, readBuilderTicks, saveBuilderTicks, tickKey,
 } from '../lib/systemBuilder/builderState';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
+import type { Dict } from '../lib/locale/i18n/en';
 
 interface BuilderStep {
   key: string;
@@ -32,151 +35,147 @@ interface BuilderStep {
   refs: RegulatoryRef[];
 }
 
-const BUILDER_STEPS: BuilderStep[] = [
-  {
-    key: 'purpose',
-    title: '1. Purpose & risk classification',
-    intro:
-      "Pin down what the system is for, who it affects, and how risky it is before you build anything. This anchors every later decision.",
-    checklist: [
-      'Write a one-sentence intended purpose (no jargon).',
-      'List affected persons or groups (users, customers, third parties).',
-      'Classify risk tier: unacceptable / high (Annex III) / limited / minimal — or GPAI.',
-      'Document use-case scope and the boundary (what is out of scope).',
-      'List foreseeable misuse / off-label use and what you will refuse to do.',
-    ],
-    questions: [
-      'Who has the authority to deploy or pause this system?',
-      'What happens — concretely — if the system gets it wrong?',
-      'Which legal rights, safety conditions, or freedoms could be affected?',
-    ],
-    refs: [
-      { framework: 'EU_AI_ACT',   ref: 'Art. 6 / Annex III', note: 'High-risk classification' },
-      { framework: 'EU_AI_ACT',   ref: 'Art. 5',             note: 'Prohibited practices' },
-      { framework: 'NIST_AI_RMF', ref: 'MAP-1' },
-      { framework: 'ISO_42001',   ref: 'cl. 6.1' },
-    ],
-  },
-  {
-    key: 'data',
-    title: '2. Data governance',
-    intro:
-      "If your data is wrong, the system is wrong. Inventory it, classify it, justify why you hold it, and watch for bias.",
-    checklist: [
-      'Build a data inventory: source, owner, sensitivity, retention.',
-      'Establish a lawful basis (GDPR Art. 6) for every category processed.',
-      'Document quality: relevance, representativeness, gaps, known biases.',
-      'Apply data minimisation: collect only what you need; retain only as long as needed.',
-      'Plan periodic bias reviews and corrective action paths.',
-    ],
-    questions: [
-      'Where did each dataset come from, and who is accountable for it?',
-      'Does the dataset include sensitive categories (Art. 9 GDPR)? On what basis?',
-      'What bias signals will you measure, and against what baseline?',
-    ],
-    refs: [
-      { framework: 'EU_AI_ACT',   ref: 'Art. 10',          note: 'Data and data governance' },
-      { framework: 'GDPR',        ref: 'Art. 5 / 6 / 9',   note: 'Principles + lawful basis + special categories' },
-      { framework: 'NIST_AI_RMF', ref: 'GOVERN-5' },
-      { framework: 'ISO_42001',   ref: 'cl. 6.1.3' },
-    ],
-  },
-  {
-    key: 'model',
-    title: '3. Model selection & validation',
-    intro:
-      "Pick the smallest model that works. Validate it the way attackers and users will actually use it. Document what it cannot do.",
-    checklist: [
-      'Justify the choice of model size / family vs the actual use case.',
-      'Define accuracy + robustness targets and how you will measure them.',
-      'Run adversarial / red-team testing (prompt injection, jailbreaks, biased outputs).',
-      'Document known failure modes and explicit non-uses.',
-      'Version every model artefact and ship change notes with deployments.',
-    ],
-    questions: [
-      'Why this model, and what cheaper alternative did you rule out?',
-      'What does the system look like when it is wrong — and how do you know?',
-      'Is your test set representative of production traffic?',
-    ],
-    refs: [
-      { framework: 'EU_AI_ACT',   ref: 'Art. 15',     note: 'Accuracy, robustness, cybersecurity' },
-      { framework: 'NIST_AI_RMF', ref: 'MEASURE-2' },
-      { framework: 'ISO_42001',   ref: 'cl. 8.2' },
-    ],
-  },
-  {
-    key: 'oversight',
-    title: '4. Human oversight',
-    intro:
-      "Decide how humans stay in control of consequential outcomes. Make sure the controls actually work under pressure.",
-    checklist: [
-      'Choose oversight mode per decision type: in-loop, on-loop, or out-of-loop.',
-      'Name reviewers and document SLAs for high-stakes decisions.',
-      'Provide override / pause / kill-switch controls the reviewer can use.',
-      'Write an escalation runbook (who is paged, with what context).',
-      'Log every override / pause for post-incident review.',
-    ],
-    questions: [
-      'Who reviews high-stakes outputs — and do they have the time and context to do it?',
-      'Can a single operator stop the system without a meeting?',
-      'How do you avoid rubber-stamping ("automation complacency")?',
-    ],
-    refs: [
-      { framework: 'EU_AI_ACT',   ref: 'Art. 14',     note: 'Human oversight' },
-      { framework: 'NIST_AI_RMF', ref: 'MANAGE-2' },
-      { framework: 'ISO_42001',   ref: 'cl. 8.3' },
-    ],
-  },
-  {
-    key: 'monitoring',
-    title: '5. Monitoring & incidents',
-    intro:
-      "Post-deployment monitoring is non-optional. Drift is silent. Incidents are not.",
-    checklist: [
-      'Define post-deployment monitoring metrics (accuracy, latency, harm, drift).',
-      'Implement drift detection on inputs and outputs.',
-      'Log incidents to a single queue with severity and owner.',
-      'Document reporting paths (regulator, customer, internal).',
-      'Schedule periodic re-evaluation (quarterly minimum).',
-    ],
-    questions: [
-      'What single metric, if it moves, tells you to pause the system?',
-      'Who gets paged at 3am, and what runbook do they open?',
-      'When did you last rehearse an AI incident scenario?',
-    ],
-    refs: [
-      { framework: 'EU_AI_ACT',   ref: 'Art. 72',     note: 'Post-market monitoring' },
-      { framework: 'EU_AI_ACT',   ref: 'Art. 73',     note: 'Serious incident reporting' },
-      { framework: 'NIST_AI_RMF', ref: 'MANAGE-4' },
-      { framework: 'ISO_42001',   ref: 'cl. 9.1' },
-    ],
-  },
-  {
-    key: 'docs',
-    title: '6. Documentation & transparency',
-    intro:
-      "Write down what the system is, what it is not, and what users need to know. Refresh on every material change.",
-    checklist: [
-      'Maintain technical documentation per Art. 11 (purpose, data, training, eval, risks).',
-      'Publish a model / system card per system; refresh on every release.',
-      'Add a user-facing AI disclosure on every customer surface.',
-      'Update privacy notices to reflect AI processing.',
-      'Keep training records for staff who operate the system.',
-    ],
-    questions: [
-      'What do end-users need to know to use this system responsibly?',
-      'What would an external auditor need on day one?',
-      'How fresh is the model / system card right now?',
-    ],
-    refs: [
-      { framework: 'EU_AI_ACT',   ref: 'Art. 11',       note: 'Technical documentation' },
-      { framework: 'EU_AI_ACT',   ref: 'Art. 13',       note: 'Transparency to deployer' },
-      { framework: 'EU_AI_ACT',   ref: 'Art. 50',       note: 'Transparency to natural persons' },
-      { framework: 'NIST_AI_RMF', ref: 'GOVERN-1.6' },
-      { framework: 'ISO_42001',   ref: 'cl. 8.4 / 8.5' },
-    ],
-  },
-];
+function buildSteps(t: Dict['systemBuilder']): BuilderStep[] {
+  return [
+    {
+      key: 'purpose',
+      title: t.steps.purpose.title,
+      intro: t.steps.purpose.intro,
+      checklist: [
+        t.steps.purpose.checklist.c1,
+        t.steps.purpose.checklist.c2,
+        t.steps.purpose.checklist.c3,
+        t.steps.purpose.checklist.c4,
+        t.steps.purpose.checklist.c5,
+      ],
+      questions: [
+        t.steps.purpose.questions.q1,
+        t.steps.purpose.questions.q2,
+        t.steps.purpose.questions.q3,
+      ],
+      refs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 6 / Annex III', note: 'High-risk classification' },
+        { framework: 'EU_AI_ACT',   ref: 'Art. 5',             note: 'Prohibited practices' },
+        { framework: 'NIST_AI_RMF', ref: 'MAP-1' },
+        { framework: 'ISO_42001',   ref: 'cl. 6.1' },
+      ],
+    },
+    {
+      key: 'data',
+      title: t.steps.data.title,
+      intro: t.steps.data.intro,
+      checklist: [
+        t.steps.data.checklist.c1,
+        t.steps.data.checklist.c2,
+        t.steps.data.checklist.c3,
+        t.steps.data.checklist.c4,
+        t.steps.data.checklist.c5,
+      ],
+      questions: [
+        t.steps.data.questions.q1,
+        t.steps.data.questions.q2,
+        t.steps.data.questions.q3,
+      ],
+      refs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 10',          note: 'Data and data governance' },
+        { framework: 'GDPR',        ref: 'Art. 5 / 6 / 9',   note: 'Principles + lawful basis + special categories' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-5' },
+        { framework: 'ISO_42001',   ref: 'cl. 6.1.3' },
+      ],
+    },
+    {
+      key: 'model',
+      title: t.steps.model.title,
+      intro: t.steps.model.intro,
+      checklist: [
+        t.steps.model.checklist.c1,
+        t.steps.model.checklist.c2,
+        t.steps.model.checklist.c3,
+        t.steps.model.checklist.c4,
+        t.steps.model.checklist.c5,
+      ],
+      questions: [
+        t.steps.model.questions.q1,
+        t.steps.model.questions.q2,
+        t.steps.model.questions.q3,
+      ],
+      refs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 15',     note: 'Accuracy, robustness, cybersecurity' },
+        { framework: 'NIST_AI_RMF', ref: 'MEASURE-2' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.2' },
+      ],
+    },
+    {
+      key: 'oversight',
+      title: t.steps.oversight.title,
+      intro: t.steps.oversight.intro,
+      checklist: [
+        t.steps.oversight.checklist.c1,
+        t.steps.oversight.checklist.c2,
+        t.steps.oversight.checklist.c3,
+        t.steps.oversight.checklist.c4,
+        t.steps.oversight.checklist.c5,
+      ],
+      questions: [
+        t.steps.oversight.questions.q1,
+        t.steps.oversight.questions.q2,
+        t.steps.oversight.questions.q3,
+      ],
+      refs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 14',     note: 'Human oversight' },
+        { framework: 'NIST_AI_RMF', ref: 'MANAGE-2' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.3' },
+      ],
+    },
+    {
+      key: 'monitoring',
+      title: t.steps.monitoring.title,
+      intro: t.steps.monitoring.intro,
+      checklist: [
+        t.steps.monitoring.checklist.c1,
+        t.steps.monitoring.checklist.c2,
+        t.steps.monitoring.checklist.c3,
+        t.steps.monitoring.checklist.c4,
+        t.steps.monitoring.checklist.c5,
+      ],
+      questions: [
+        t.steps.monitoring.questions.q1,
+        t.steps.monitoring.questions.q2,
+        t.steps.monitoring.questions.q3,
+      ],
+      refs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 72',     note: 'Post-market monitoring' },
+        { framework: 'EU_AI_ACT',   ref: 'Art. 73',     note: 'Serious incident reporting' },
+        { framework: 'NIST_AI_RMF', ref: 'MANAGE-4' },
+        { framework: 'ISO_42001',   ref: 'cl. 9.1' },
+      ],
+    },
+    {
+      key: 'docs',
+      title: t.steps.docs.title,
+      intro: t.steps.docs.intro,
+      checklist: [
+        t.steps.docs.checklist.c1,
+        t.steps.docs.checklist.c2,
+        t.steps.docs.checklist.c3,
+        t.steps.docs.checklist.c4,
+        t.steps.docs.checklist.c5,
+      ],
+      questions: [
+        t.steps.docs.questions.q1,
+        t.steps.docs.questions.q2,
+        t.steps.docs.questions.q3,
+      ],
+      refs: [
+        { framework: 'EU_AI_ACT',   ref: 'Art. 11',       note: 'Technical documentation' },
+        { framework: 'EU_AI_ACT',   ref: 'Art. 13',       note: 'Transparency to deployer' },
+        { framework: 'EU_AI_ACT',   ref: 'Art. 50',       note: 'Transparency to natural persons' },
+        { framework: 'NIST_AI_RMF', ref: 'GOVERN-1.6' },
+        { framework: 'ISO_42001',   ref: 'cl. 8.4 / 8.5' },
+      ],
+    },
+  ];
+}
 
 const FRAMEWORK_LABEL: Record<RegulatoryRef['framework'], string> = {
   EU_AI_ACT:   'EU AI Act',
@@ -247,6 +246,8 @@ function StepNavItem({
 }
 
 export function SystemBuilderPage() {
+  const T = useLocale();
+  const BUILDER_STEPS = useMemo(() => buildSteps(T.systemBuilder), [T]);
   // B3: restore the last visited step + checklist ticks from localStorage.
   const [stepIdx, setStepIdxRaw] = useState(() => Math.min(readBuilderStep(), BUILDER_STEPS.length - 1));
   const [ticks, setTicks] = useState(() => readBuilderTicks());
@@ -284,12 +285,10 @@ export function SystemBuilderPage() {
             letterSpacing: -0.5,
           }}
         >
-          AI System Builder
+          {T.systemBuilder.chrome.pageTitle}
         </h1>
         <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.55, maxWidth: 720 }}>
-          A pre-deployment design guide. Walk through six dimensions — purpose &amp; risk,
-          data, model, oversight, monitoring, documentation — to design an AI system
-          responsibly. Your step and checklist ticks are saved on this device only.
+          {T.systemBuilder.chrome.pageIntro}
         </p>
       </div>
 
@@ -327,7 +326,7 @@ export function SystemBuilderPage() {
               padding: '6px 10px 10px',
             }}
           >
-            Design steps
+            {T.systemBuilder.chrome.designSteps}
           </div>
           {BUILDER_STEPS.map((s, i) => (
             <StepNavItem
@@ -378,7 +377,7 @@ export function SystemBuilderPage() {
                 marginBottom: 8,
               }}
             >
-              Checklist <span style={{ color: 'var(--violet-text)' }}>· {doneCount}/{step.checklist.length} done</span>
+              {T.systemBuilder.chrome.checklist} <span style={{ color: 'var(--violet-text)' }}>{format(T.systemBuilder.chrome.doneSuffix, { doneCount, total: step.checklist.length })}</span>
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {step.checklist.map((c, i) => {
@@ -405,7 +404,7 @@ export function SystemBuilderPage() {
                 marginBottom: 8,
               }}
             >
-              Key questions
+              {T.systemBuilder.chrome.keyQuestions}
             </h3>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.65 }}>
               {step.questions.map((q, i) => (
@@ -427,7 +426,7 @@ export function SystemBuilderPage() {
                 marginBottom: 8,
               }}
             >
-              References (advisory, not legal advice)
+              {T.systemBuilder.chrome.references}
             </h3>
             <div style={{ display: 'flex', flexWrap: 'wrap' }}>
               {step.refs.map((r, i) => (
@@ -464,11 +463,11 @@ export function SystemBuilderPage() {
                 fontFamily: 'var(--font-body)',
               }}
             >
-              ← Previous step
+              {T.systemBuilder.chrome.previousStep}
             </button>
 
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Step {stepIdx + 1} of {BUILDER_STEPS.length}
+              {format(T.systemBuilder.chrome.stepOf, { n: stepIdx + 1, total: BUILDER_STEPS.length })}
             </div>
 
             {/* Final step: a disabled "Next" reads as "blocked" when the truth
@@ -487,7 +486,7 @@ export function SystemBuilderPage() {
                   fontFamily: 'var(--font-body)',
                 }}
               >
-                ✓ End of the guide — all six dimensions covered
+                {T.systemBuilder.chrome.endOfGuide}
               </div>
             ) : (
               <button
@@ -505,7 +504,7 @@ export function SystemBuilderPage() {
                   fontFamily: 'var(--font-body)',
                 }}
               >
-                Next step →
+                {T.systemBuilder.chrome.nextStep}
               </button>
             )}
           </div>

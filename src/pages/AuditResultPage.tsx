@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAudit } from '../context/AuditContext';
 import { useReports } from '../context/ReportsContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
 
 /**
@@ -29,10 +31,17 @@ import { JourneyNext } from '../components/journey/JourneyNext';
 export function AuditResultPage() {
   const { draft } = useAudit();
   const { reports, createReport } = useReports();
+  const T = useLocale();
 
   const result = useMemo(() => computeAuditResult(draft.answers), [draft.answers]);
 
   const submittedAt = formatDate(draft.submittedAt || draft.updatedAt, 'datetime');
+
+  // The submission-ID line wraps the raw draft id in a <code> element, so we
+  // split the localized template around the {id} placeholder and render each
+  // side separately (keeping the id verbatim, never translated).
+  const [submissionIdBefore, submissionIdAfter] =
+    T.auditResultPage.header.submissionId.split('{id}');
 
   // Auto-report (flag-gated, default OFF). On a submitted audit, create a report
   // snapshot once if none exists for this draft. Guarded to fire at most once.
@@ -65,7 +74,7 @@ export function AuditResultPage() {
             marginBottom: 12,
           }}
         >
-          ✓ {draft.status === 'submitted' ? 'Audit submitted' : 'Audit preview'}
+          ✓ {draft.status === 'submitted' ? T.auditResultPage.header.badge.submitted : T.auditResultPage.header.badge.preview}
         </div>
         <h1
           style={{
@@ -77,7 +86,7 @@ export function AuditResultPage() {
             letterSpacing: -0.5,
           }}
         >
-          Audit Result
+          {T.auditResultPage.header.title}
         </h1>
         <p
           style={{
@@ -86,11 +95,11 @@ export function AuditResultPage() {
             color: 'var(--text-muted)',
           }}
         >
-          Submission ID&nbsp;
+          {format(submissionIdBefore, {})}
           <code style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)' }}>
             {draft.id}
           </code>
-          &nbsp;·&nbsp;{submittedAt}
+          {format(submissionIdAfter, { submittedAt })}
         </p>
       </div>
 
@@ -119,11 +128,21 @@ export function AuditResultPage() {
           System Builder CTA with a guided proposal; deterministic, reversible). */}
       <JourneyNext
         summary={{
-          headline: 'Here is what your audit means',
+          headline: T.auditResultPage.journeyNext.headline,
           lines: [
-            `Overall score ${result.globalScore}/100 — ${result.riskLevel} risk.`,
-            `${result.findings.length} finding${result.findings.length === 1 ? '' : 's'} across ${result.recommendations.length} recommended action${result.recommendations.length === 1 ? '' : 's'}.`,
-            `AI maturity: level ${result.maturityLevel} of 5.`,
+            format(T.auditResultPage.journeyNext.summary.overallScore, {
+              score: result.globalScore,
+              risk: result.riskLevel,
+            }),
+            format(
+              result.findings.length === 1 && result.recommendations.length === 1
+                ? T.auditResultPage.journeyNext.summary.findingsSingular
+                : T.auditResultPage.journeyNext.summary.findingsPlural,
+              { n: result.findings.length, m: result.recommendations.length },
+            ),
+            format(T.auditResultPage.journeyNext.summary.maturity, {
+              level: result.maturityLevel,
+            }),
           ],
         }}
       />

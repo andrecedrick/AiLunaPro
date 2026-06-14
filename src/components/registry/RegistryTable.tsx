@@ -1,4 +1,5 @@
 import { Badge } from '../ui/Badge';
+import { useLocale } from '../../context/LocaleContext';
 import { OVERSIGHT_LABEL, APPROVAL_LABEL } from '../../data/mockRegistry';
 import { formatDate } from '@/utils/formatters';
 import type {
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function RegistryTable({ items, onRowClick }: Props) {
+  const T = useLocale();
   return (
     <div
       style={{
@@ -41,12 +43,12 @@ export function RegistryTable({ items, onRowClick }: Props) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)' }}>
         <thead>
           <tr style={{ background: 'var(--surface-2)' }}>
-            <Th>Tool</Th>
-            <Th>Department</Th>
-            <Th>Risk</Th>
-            <Th>Approval</Th>
-            <Th>Oversight</Th>
-            <Th>Review date</Th>
+            <Th>{T.registry.table.tool}</Th>
+            <Th>{T.registry.table.department}</Th>
+            <Th>{T.registry.table.risk}</Th>
+            <Th>{T.registry.table.approval}</Th>
+            <Th>{T.registry.table.oversight}</Th>
+            <Th>{T.registry.table.reviewDate}</Th>
           </tr>
         </thead>
         <tbody>
@@ -104,7 +106,7 @@ export function RegistryTable({ items, onRowClick }: Props) {
                 </span>
               </Td>
               <Td>
-                <Badge variant={RISK_BADGE[item.riskLevel]}>{item.riskLevel}</Badge>
+                <Badge variant={RISK_BADGE[item.riskLevel]}>{T.registry.filters.risk[item.riskLevel]}</Badge>
               </Td>
               <Td>
                 <Badge variant={APPROVAL_BADGE[item.approvalStatus]}>

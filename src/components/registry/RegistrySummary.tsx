@@ -1,3 +1,4 @@
+import { useLocale } from '../../context/LocaleContext';
 import type { RegistryItem } from '../../types/registry';
 
 interface Props {
@@ -5,6 +6,7 @@ interface Props {
 }
 
 export function RegistrySummary({ items }: Props) {
+  const T = useLocale();
   const total = items.length;
   const approved = items.filter(i => i.approvalStatus === 'approved').length;
   const pending = items.filter(i =>
@@ -25,23 +27,23 @@ export function RegistrySummary({ items }: Props) {
       }}
     >
       <Stat
-        label="Total tools"
+        label={T.registry.summary.totalTools}
         value={String(total)}
         accent="var(--violet-text)"
       />
       <Stat
-        label="Approved"
+        label={T.registry.summary.approved}
         value={String(approved)}
         sub={`${approvedPct}%`}
         accent="var(--green-text)"
       />
       <Stat
-        label="Pending review"
+        label={T.registry.summary.pendingReview}
         value={String(pending)}
         accent="var(--amber-text)"
       />
       <Stat
-        label="High-risk"
+        label={T.registry.summary.highRisk}
         value={String(highRisk)}
         accent="var(--red-text)"
       />

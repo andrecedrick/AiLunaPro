@@ -104,18 +104,19 @@ export function HeroSummary() {
   const { draft }     = useAudit();
   const { session }   = useAuth();
   const { showToast } = useToast();
-  const rung = useLocale().dashboard.maturity.rung;
+  const T = useLocale();
+  const rung = T.dashboard.maturity.rung;
 
   const handleContinueAudit = () => {
     if (!ROLE.canUseFeatures(session?.role)) {
-      showToast('You do not have permission to continue audits.', 'warning');
+      showToast(T.dashboardHome.hero.toast.noPermission, 'warning');
       return;
     }
     const draftHasContent = draft.status === 'draft' && Object.keys(draft.answers).length > 0;
     if (draftHasContent) {
       navigate({ name: 'audit/new' });
     } else {
-      showToast('No draft audit found — starting a new audit.', 'info');
+      showToast(T.dashboardHome.hero.toast.noDraft, 'info');
       navigate({ name: 'audit/new' });
     }
   };
@@ -137,7 +138,7 @@ export function HeroSummary() {
               color: 'var(--text-primary)',
             }}
           >
-            Compliance Score
+            {T.dashboardHome.hero.scoreLabel}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
             +8 points vs last quarter
@@ -170,7 +171,7 @@ export function HeroSummary() {
             letterSpacing: 0.8,
           }}
         >
-          Current Risk Level
+          {T.dashboardHome.hero.riskLabel}
         </div>
         <div
           style={{
@@ -219,7 +220,7 @@ export function HeroSummary() {
             letterSpacing: 0.8,
           }}
         >
-          AI Maturity Level
+          {T.dashboardHome.hero.maturityLabel}
         </div>
         <div
           style={{
@@ -282,7 +283,7 @@ export function HeroSummary() {
             letterSpacing: 0.8,
           }}
         >
-          Recommended Next Step
+          {T.dashboardHome.hero.nextStepLabel}
         </div>
         <div
           style={{
@@ -293,10 +294,10 @@ export function HeroSummary() {
             marginTop: 4,
           }}
         >
-          Complete HR Screening Tool Audit
+          {T.dashboardHome.hero.nextStepTitle}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          This audit is 60% complete. Finishing it will boost your compliance score by an estimated +7 points.
+          {T.dashboardHome.hero.nextStepBody}
         </div>
         <div style={{ marginTop: 'auto', paddingTop: 12 }}>
           <button
@@ -315,7 +316,7 @@ export function HeroSummary() {
               fontFamily: 'var(--font-body)',
             }}
           >
-            Continue Audit →
+            {T.dashboardHome.hero.continueAudit}
           </button>
         </div>
       </HeroCard>

@@ -1080,6 +1080,1237 @@ export const en = {
       "a12": "No. The ROI Calculator gives a conservative estimate based on the information you provide. Actual savings depend on your workflow, integration quality, and adoption."
     }
   },
+  systemBuilder: {
+    "chrome": {
+      "pageTitle": "AI System Builder",
+      "pageIntro": "A pre-deployment design guide. Walk through six dimensions — purpose & risk, data, model, oversight, monitoring, documentation — to design an AI system responsibly. Your step and checklist ticks are saved on this device only.",
+      "designSteps": "Design steps",
+      "checklist": "Checklist",
+      "doneSuffix": "· {doneCount}/{total} done",
+      "keyQuestions": "Key questions",
+      "references": "References (advisory, not legal advice)",
+      "previousStep": "← Previous step",
+      "nextStep": "Next step →",
+      "stepOf": "Step {n} of {total}",
+      "endOfGuide": "✓ End of the guide — all six dimensions covered"
+    },
+    "steps": {
+      "purpose": {
+        "title": "1. Purpose & risk classification",
+        "intro": "Pin down what the system is for, who it affects, and how risky it is before you build anything. This anchors every later decision.",
+        "checklist": {
+          "c1": "Write a one-sentence intended purpose (no jargon).",
+          "c2": "List affected persons or groups (users, customers, third parties).",
+          "c3": "Classify risk tier: unacceptable / high (Annex III) / limited / minimal — or GPAI.",
+          "c4": "Document use-case scope and the boundary (what is out of scope).",
+          "c5": "List foreseeable misuse / off-label use and what you will refuse to do."
+        },
+        "questions": {
+          "q1": "Who has the authority to deploy or pause this system?",
+          "q2": "What happens — concretely — if the system gets it wrong?",
+          "q3": "Which legal rights, safety conditions, or freedoms could be affected?"
+        }
+      },
+      "data": {
+        "title": "2. Data governance",
+        "intro": "If your data is wrong, the system is wrong. Inventory it, classify it, justify why you hold it, and watch for bias.",
+        "checklist": {
+          "c1": "Build a data inventory: source, owner, sensitivity, retention.",
+          "c2": "Establish a lawful basis (GDPR Art. 6) for every category processed.",
+          "c3": "Document quality: relevance, representativeness, gaps, known biases.",
+          "c4": "Apply data minimisation: collect only what you need; retain only as long as needed.",
+          "c5": "Plan periodic bias reviews and corrective action paths."
+        },
+        "questions": {
+          "q1": "Where did each dataset come from, and who is accountable for it?",
+          "q2": "Does the dataset include sensitive categories (Art. 9 GDPR)? On what basis?",
+          "q3": "What bias signals will you measure, and against what baseline?"
+        }
+      },
+      "model": {
+        "title": "3. Model selection & validation",
+        "intro": "Pick the smallest model that works. Validate it the way attackers and users will actually use it. Document what it cannot do.",
+        "checklist": {
+          "c1": "Justify the choice of model size / family vs the actual use case.",
+          "c2": "Define accuracy + robustness targets and how you will measure them.",
+          "c3": "Run adversarial / red-team testing (prompt injection, jailbreaks, biased outputs).",
+          "c4": "Document known failure modes and explicit non-uses.",
+          "c5": "Version every model artefact and ship change notes with deployments."
+        },
+        "questions": {
+          "q1": "Why this model, and what cheaper alternative did you rule out?",
+          "q2": "What does the system look like when it is wrong — and how do you know?",
+          "q3": "Is your test set representative of production traffic?"
+        }
+      },
+      "oversight": {
+        "title": "4. Human oversight",
+        "intro": "Decide how humans stay in control of consequential outcomes. Make sure the controls actually work under pressure.",
+        "checklist": {
+          "c1": "Choose oversight mode per decision type: in-loop, on-loop, or out-of-loop.",
+          "c2": "Name reviewers and document SLAs for high-stakes decisions.",
+          "c3": "Provide override / pause / kill-switch controls the reviewer can use.",
+          "c4": "Write an escalation runbook (who is paged, with what context).",
+          "c5": "Log every override / pause for post-incident review."
+        },
+        "questions": {
+          "q1": "Who reviews high-stakes outputs — and do they have the time and context to do it?",
+          "q2": "Can a single operator stop the system without a meeting?",
+          "q3": "How do you avoid rubber-stamping (\"automation complacency\")?"
+        }
+      },
+      "monitoring": {
+        "title": "5. Monitoring & incidents",
+        "intro": "Post-deployment monitoring is non-optional. Drift is silent. Incidents are not.",
+        "checklist": {
+          "c1": "Define post-deployment monitoring metrics (accuracy, latency, harm, drift).",
+          "c2": "Implement drift detection on inputs and outputs.",
+          "c3": "Log incidents to a single queue with severity and owner.",
+          "c4": "Document reporting paths (regulator, customer, internal).",
+          "c5": "Schedule periodic re-evaluation (quarterly minimum)."
+        },
+        "questions": {
+          "q1": "What single metric, if it moves, tells you to pause the system?",
+          "q2": "Who gets paged at 3am, and what runbook do they open?",
+          "q3": "When did you last rehearse an AI incident scenario?"
+        }
+      },
+      "docs": {
+        "title": "6. Documentation & transparency",
+        "intro": "Write down what the system is, what it is not, and what users need to know. Refresh on every material change.",
+        "checklist": {
+          "c1": "Maintain technical documentation per Art. 11 (purpose, data, training, eval, risks).",
+          "c2": "Publish a model / system card per system; refresh on every release.",
+          "c3": "Add a user-facing AI disclosure on every customer surface.",
+          "c4": "Update privacy notices to reflect AI processing.",
+          "c5": "Keep training records for staff who operate the system."
+        },
+        "questions": {
+          "q1": "What do end-users need to know to use this system responsibly?",
+          "q2": "What would an external auditor need on day one?",
+          "q3": "How fresh is the model / system card right now?"
+        }
+      }
+    }
+  },
+  registry: {
+    "page": {
+      "title": "AI Registry",
+      "subtitle": "Track every AI tool used across your organization — purpose, data, oversight, and mitigations. The registry feeds your audits and reports.",
+      "designGuideLink": "Designing a new system? Open the design guide →",
+      "addTool": "+ Add tool",
+      "loading": "Loading registry…",
+      "error": "Failed to load registry. Refresh to retry."
+    },
+    "summary": {
+      "totalTools": "Total tools",
+      "approved": "Approved",
+      "pendingReview": "Pending review",
+      "highRisk": "High-risk"
+    },
+    "filters": {
+      "searchPlaceholder": "Search tools, purpose, notes…",
+      "allDepartments": "All departments",
+      "allRisks": "All risks",
+      "allApproval": "All approval",
+      "clear": "Clear filters",
+      "risk": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      }
+    },
+    "table": {
+      "tool": "Tool",
+      "department": "Department",
+      "risk": "Risk",
+      "approval": "Approval",
+      "oversight": "Oversight",
+      "reviewDate": "Review date"
+    },
+    "empty": {
+      "noItems": {
+        "title": "No AI tools in the registry yet",
+        "body": "Track every AI tool used across your organization — purpose, data, oversight, and mitigations. The registry feeds your audits and reports.",
+        "action": "+ Add your first tool"
+      },
+      "noMatches": {
+        "title": "No tools match these filters",
+        "body": "Try widening the filters, or clear them to see the full registry.",
+        "action": "Clear filters"
+      }
+    },
+    "modal": {
+      "titleAdd": "Add AI tool",
+      "titleEdit": "Edit AI tool",
+      "subtitleAdd": "Track an AI tool used by your team. All fields can be edited later.",
+      "subtitleEdit": "Update what your team knows about this tool. Changes save immediately to the local registry.",
+      "fields": {
+        "toolName": "Tool name",
+        "purpose": "Purpose",
+        "dataTypes": "Data types processed",
+        "mitigations": "Mitigations",
+        "notes": "Notes",
+        "department": "Department",
+        "approvalStatus": "Approval status",
+        "riskLevel": "Risk level",
+        "humanOversight": "Human oversight",
+        "nextReviewDate": "Next review date"
+      },
+      "placeholders": {
+        "toolName": "e.g. Customer support copilot",
+        "purpose": "What does this tool do?",
+        "mitigation": "Add a mitigation and press Enter",
+        "notes": "Vendor, residency, owner, anything worth recording…"
+      },
+      "riskOptions": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "reviewDateHint": "Leave empty if no review is scheduled.",
+      "auditTrail": "Created {createdDate} · Last updated {updatedDate}",
+      "removeMitigationAria": "Remove mitigation {index}",
+      "requiredError": "Required",
+      "deleteConfirm": "Remove \"{toolName}\" from the registry? This cannot be undone.",
+      "buttons": {
+        "delete": "Delete tool",
+        "cancel": "Cancel",
+        "addToRegistry": "Add to registry",
+        "saveChanges": "Save changes"
+      }
+    }
+  },
+  savedAudits: {
+    "list": {
+      "title": "Saved Audit Express",
+      "subtitle": "Your saved Audit Express snapshots. Download the PDF or remove a saved result.",
+      "runAuditExpress": "Run Audit Express",
+      "loading": "Loading…",
+      "empty": {
+        "prefix": "No saved audits yet. Use",
+        "runLink": "Run Audit Express",
+        "suffix": "to create one."
+      },
+      "meta": {
+        "engineLabel": "engine",
+        "engineFallback": "n/a",
+        "confidenceLabel": "confidence"
+      }
+    },
+    "actions": {
+      "view": "View",
+      "rename": "Rename",
+      "delete": "Delete",
+      "download": "Download PDF",
+      "save": "Save",
+      "cancel": "Cancel",
+      "busy": "…"
+    },
+    "fields": {
+      "titleAriaLabel": "Audit title",
+      "viewDetailsTooltip": "View details"
+    },
+    "errors": {
+      "load": "Could not load your saved audits. Please try again.",
+      "tokensInsufficient": "Not enough tokens to export. Buy tokens to continue.",
+      "download": "Download failed. Please try again.",
+      "delete": "Delete failed. Please try again.",
+      "rename": "Could not rename. Please try again."
+    },
+    "pdfLimitModal": {
+      "ariaLabel": "PDF export limit",
+      "title": "You’ve used your {freeCount} free PDF exports",
+      "body": "Downloading more PDFs requires tokens ({tokenCost} tokens per export).",
+      "useTokens": "Use tokens & download",
+      "useTokensBusy": "…",
+      "buyTokens": "Upgrade or buy tokens",
+      "cancel": "Cancel"
+    },
+    "detail": {
+      "backToList": "← Saved Audits",
+      "loading": "Loading…",
+      "meta": {
+        "engineLabel": "engine",
+        "engineFallback": "n/a",
+        "confidenceLabel": "confidence"
+      },
+      "rename": "Rename",
+      "save": "Save",
+      "cancel": "Cancel",
+      "titleAriaLabel": "Audit title",
+      "busy": "…",
+      "notRecomputed": "This audit could not be recomputed.",
+      "downloadPdf": "Download PDF",
+      "downloadPdfBusy": "Preparing…",
+      "backToSaved": "Back to Saved Audits"
+    },
+    "detailErrors": {
+      "notFound": "This audit no longer exists.",
+      "load": "Could not load this audit. Please try again.",
+      "rename": "Could not rename. Please try again.",
+      "tokensInsufficient": "Not enough tokens. Buy tokens to continue.",
+      "sharingDisabled": "Sharing is disabled for this audit.",
+      "createShareLink": "Could not create a share link. Please try again.",
+      "revokeShareLink": "Could not revoke the link. Please try again.",
+      "updateSharing": "Could not update sharing. Please try again."
+    },
+    "recommendedAgents": {
+      "heading": "Recommended agents",
+      "exploreAll": "Explore all agents →",
+      "disclaimer": "Indicative matches based on this audit. Review fit before adopting.",
+      "meta": {
+        "hoursSaved": "~{hours} h/mo saved",
+        "plan": "{plan} plan",
+        "setup": "{complexity} setup"
+      }
+    },
+    "share": {
+      "heading": "Shareable link",
+      "description": "A signed, no-login link to this audit's PDF. Creating or regenerating counts toward your PDF exports.",
+      "generateNewLink": "Generate new link",
+      "shareLink": "Share link",
+      "working": "Working…",
+      "revoke": "Revoke",
+      "enableSharing": "Enable sharing",
+      "disableSharing": "Disable sharing",
+      "copy": "Copy",
+      "copied": "Copied",
+      "expires": "Expires {date}.",
+      "activeLinkExists": "An active link exists (expires {date}). Generate a new link to view the URL again — this revokes the old one.",
+      "disabledNotice": "Sharing is disabled — existing links no longer work.",
+      "limitModalActionLabel": "Use tokens & create link"
+    },
+    "shareStatus": {
+      "notShared": "Not shared",
+      "active": "Active",
+      "expired": "Expired",
+      "revoked": "Revoked",
+      "disabled": "Disabled"
+    }
+  },
+  auditHistory: {
+    "header": {
+      "title": "Audit history",
+      "subtitle": "Submitted audits for this workspace. Generate a report to create a shareable snapshot."
+    },
+    "states": {
+      "loading": "Loading audit history…",
+      "error": "Could not load audit history. Try again later."
+    },
+    "empty": {
+      "title": "No submitted audits yet",
+      "description": "Submitted audits appear here for this workspace. Run a New Audit to get started.",
+      "startAudit": "+ Start an audit"
+    },
+    "columns": {
+      "submitted": "Submitted",
+      "score": "Score",
+      "risk": "Risk",
+      "findings": "Findings"
+    },
+    "row": {
+      "scoreOutOf": "/100",
+      "generateReport": "Generate report"
+    },
+    "toast": {
+      "reportGenerated": "Report generated"
+    }
+  },
+  reportsPages: {
+    "list": {
+      "title": "Reports",
+      "intro": "Generated reports are snapshots of an audit at a point in time. Each one is exportable, shareable, and stays stable when you start a new audit.",
+      "generateFromDraft": "+ Generate from current draft",
+      "startNewAudit": "Start a new audit",
+      "loading": "Loading reports…",
+      "errorMessage": "No reports loaded yet. This can happen if the workspace is new or if Firestore is unreachable.",
+      "retry": "Retry",
+      "traceabilityHint": "Reports are point-in-time snapshots saved to your workspace. The detail view recomputes the full result from each report's answer snapshot — so historical reports stay accurate even after the scoring rules evolve."
+    },
+    "detail": {
+      "loading": "Loading report…",
+      "notFoundTitle": "Report not found",
+      "notFoundBody": "This report no longer exists or has been deleted.",
+      "backToReports": "← Back to reports",
+      "rename": {
+        "titleAriaLabel": "Report title",
+        "saving": "…",
+        "saveTitle": "Save title",
+        "cancel": "Cancel",
+        "renameButton": "Rename"
+      },
+      "download": {
+        "preparing": "Preparing…",
+        "downloadPdf": "⬇ Download PDF"
+      },
+      "errors": {
+        "tokensInsufficientExport": "Not enough tokens to export. Buy tokens to continue.",
+        "downloadFailed": "Download failed. Please try again.",
+        "renameForbidden": "Only owners or admins can rename reports.",
+        "renameFailed": "Could not rename. Please try again.",
+        "tokensInsufficient": "Not enough tokens. Buy tokens to continue.",
+        "shareDisabled": "Sharing is disabled for this report.",
+        "shareForbidden": "Only owners or admins can share reports.",
+        "shareCreateFailed": "Could not create a share link. Please try again.",
+        "revokeFailed": "Could not revoke the link. Please try again.",
+        "toggleSharingFailed": "Could not update sharing. Please try again."
+      },
+      "share": {
+        "heading": "Shareable link",
+        "description": "A signed, no-login link to this report's PDF. Creating or regenerating counts toward your PDF exports.",
+        "working": "Working…",
+        "generateNewLink": "Generate new link",
+        "revoke": "Revoke",
+        "shareLink": "Share link",
+        "enableSharing": "Enable sharing",
+        "disableSharing": "Disable sharing",
+        "copied": "Copied",
+        "copy": "Copy",
+        "expires": "Expires {date}.",
+        "activeLinkExists": "An active link exists (expires {date}). Generate a new link to view the URL again — this revokes the old one.",
+        "disabledNotice": "Sharing is disabled — existing links no longer work.",
+        "useTokensAndCreateLink": "Use tokens & create link"
+      },
+      "status": {
+        "notShared": "Not shared",
+        "active": "Active",
+        "expired": "Expired",
+        "revoked": "Revoked",
+        "disabled": "Disabled"
+      },
+      "footer": {
+        "openAssistancePlan": "Open assistance plan",
+        "deleteReport": "Delete report",
+        "deleteConfirm": "Delete this report? This cannot be undone."
+      },
+      "metadata": {
+        "heading": "Metadata",
+        "reportId": "Report ID",
+        "sourceDraft": "Source draft",
+        "status": "Status",
+        "weakestSection": "Weakest section",
+        "frameworks": "Frameworks"
+      }
+    },
+    "share": {
+      "unavailableTitle": "Shared report unavailable",
+      "backToReports": "← Back to reports",
+      "copySuccess": "Share link copied.",
+      "copyFailure": "Could not copy link. Try again.",
+      "banner": {
+        "label": "🔗 Shared report — read-only view",
+        "description": "Read-only view for people in your workspace, opened from the in-app share link. Internal action buttons are hidden.",
+        "copyShareLink": "🔗 Copy share link",
+        "backToInternalView": "← Back to internal view"
+      },
+      "topline": {
+        "kicker": "AI Compliance Report",
+        "score": "Score",
+        "scoreOutOf": "/100",
+        "generated": "Generated {date}"
+      },
+      "poweredBy": "Powered by AiLunaPro · Compliance Suite"
+    }
+  },
+  tokensPage: {
+    "header": {
+      "title": "Tokens",
+      "subtitle": "Track usage, monitor your monthly allocation, and buy top-ups when needed."
+    },
+    "locked": {
+      "title": "Tokens unavailable",
+      "clientMessage": "Tokens are not visible from a client account.",
+      "workspaceMessage": "Tokens are unavailable for this workspace.",
+      "backToDashboard": "Back to dashboard"
+    },
+    "webhook": {
+      "notice": "Payment received. Waiting for Stripe webhook to update your token balance.",
+      "refreshBalance": "Refresh balance"
+    },
+    "balance": {
+      "loading": "Loading balance…",
+      "empty": "No token balance yet. It will be created on your first audit.",
+      "statBalance": "Balance",
+      "statMonthlyAllocation": "Monthly allocation",
+      "statConsumed": "Consumed",
+      "statRollover": "Rollover",
+      "statTopups": "Top-ups",
+      "cycleEnds": "Cycle ends: {cycleEnd}",
+      "lastReset": "Last reset: {lastReset}"
+    },
+    "packs": {
+      "sectionTitle": "Buy more tokens",
+      "sectionNote": "Token packs are currently billed in USD. Top-up tokens never expire.",
+      "readOnlyNotice": "You can view tokens but only owners, admins, and billing managers can buy packs.",
+      "starterLabel": "Starter",
+      "starterBlurb": "Top off a low cycle.",
+      "proLabel": "Pro",
+      "proBlurb": "Most common refill.",
+      "maxLabel": "Max",
+      "maxBlurb": "Big workload boost.",
+      "tokensUnit": "tokens",
+      "amountPrefix": "+{amount}",
+      "buyPack": "Buy pack",
+      "redirecting": "Redirecting…",
+      "readOnlyButton": "Read-only"
+    },
+    "usage": {
+      "sectionTitle": "Recent usage",
+      "loading": "Loading usage…",
+      "empty": "No usage yet.",
+      "colDate": "Date",
+      "colModule": "Module",
+      "colAction": "Action",
+      "colTokens": "Tokens",
+      "colStatus": "Status",
+      "tokensSpent": "−{tokens}"
+    },
+    "toasts": {
+      "purchaseCompleted": "Token purchase completed. Your balance will update shortly.",
+      "purchaseCancelled": "Token purchase cancelled.",
+      "buyForbidden": "Only owners, admins, or billing managers can buy token packs."
+    }
+  },
+  billingPage: {
+    "header": {
+      "title": "Billing",
+      "subtitle": "Manage your plan, usage, and invoices.",
+      "readOnlyBadge": "Read-only view."
+    },
+    "plans": {
+      "bestValueBadge": "Best value",
+      "priceApprox": "{approx}{suffix} approx · billed in USD",
+      "cta": {
+        "redirecting": "Redirecting…",
+        "currentPlan": "Current plan",
+        "freeCurrent": "Free — current",
+        "startForFree": "Start for free",
+        "subscribe": "Subscribe"
+      },
+      "free": {
+        "description": "Try the platform with limited access.",
+        "features": {
+          "limitedAuditAccess": "Limited audit access",
+          "basicDashboard": "Basic dashboard",
+          "demoReports": "Demo reports",
+          "communitySupport": "Community support"
+        }
+      },
+      "starter": {
+        "description": "Run real audits on your own.",
+        "features": {
+          "coreAuditWorkflow": "Core audit workflow",
+          "basicComplianceReports": "Basic compliance reports",
+          "starterAuditVolume": "Starter audit volume",
+          "essentialAiRecommendations": "Essential AI recommendations",
+          "emailSupport": "Email support"
+        }
+      },
+      "professional": {
+        "description": "For growing teams running advanced audits.",
+        "features": {
+          "higherAuditVolume": "Higher audit volume",
+          "advancedReports": "Advanced reports",
+          "teamCollaboration": "Team collaboration",
+          "priorityAiRecommendations": "Priority AI recommendations",
+          "prioritySupport": "Priority support"
+        }
+      },
+      "enterprise": {
+        "description": "Organization-grade governance & control.",
+        "features": {
+          "highestAuditVolume": "Highest audit volume",
+          "advancedTeamManagement": "Advanced team management",
+          "organizationControls": "Organization controls",
+          "customBranding": "Custom branding",
+          "dedicatedSupport": "Dedicated support",
+          "enterpriseReadyGovernance": "Enterprise-ready governance"
+        }
+      }
+    },
+    "pricingSection": {
+      "currencyBadge": {
+        "detected": "Billing currency detected from your region: {currency} {symbol}",
+        "default": "Billing currency: {currency} {symbol}"
+      },
+      "secureCheckoutBadge": "Secure checkout powered by Stripe",
+      "heading": "Choose the plan that fits your audit workflow",
+      "subheadingPrefix": "Start in Stripe test mode. No real charges are made — use test card",
+      "subheadingSuffix": "."
+    },
+    "currentPlan": {
+      "label": "Current plan",
+      "statusNoSubscription": "No subscription",
+      "freePlanNote": "Free plan — no active subscription",
+      "paidPlanSummary": "${price}/mo · billed {billingCycle}",
+      "renews": " · Renews {date}",
+      "cancelsAtPeriodEnd": "⚠ Cancels at period end ({date})",
+      "billedInCurrency": "Your active subscription is billed in {currency}.",
+      "resumePlan": "Resume plan",
+      "cancelPlan": "Cancel plan"
+    },
+    "billingActions": {
+      "title": "Billing actions",
+      "manageSubscription": "Manage subscription",
+      "managePaymentMethods": "Manage payment methods",
+      "loading": "Loading…",
+      "paymentMethodsHint": "Update card, set default, remove — handled securely by Stripe.",
+      "noCustomerYet": "No Stripe customer yet. Payment methods become available after your first subscription or token purchase.",
+      "portalError": "Unable to open Stripe portal. Verify Worker is running."
+    },
+    "tokens": {
+      "title": "Tokens",
+      "balance": "{balance} / {allocation} this cycle",
+      "balanceLoading": "Token balance loading…",
+      "manageTokens": "Manage tokens"
+    },
+    "usage": {
+      "sectionTitle": "Usage this period",
+      "auditsLabel": "Audits",
+      "seatsLabel": "Seats",
+      "unlimitedValue": "{used} / ∞",
+      "boundedValue": "{used} / {limit}",
+      "periodRange": "Period: {start} – {end}"
+    },
+    "invoices": {
+      "sectionTitle": "Invoices",
+      "empty": "No invoices yet.",
+      "loading": "Loading invoices…",
+      "emptyAfterFirstCycle": "Invoices will appear here after your first billing cycle.",
+      "tableHeaders": {
+        "date": "Date",
+        "description": "Description",
+        "amount": "Amount",
+        "status": "Status",
+        "invoiceNumber": "Invoice number",
+        "actions": "Actions"
+      },
+      "statusUnknown": "unknown",
+      "actionView": "View",
+      "actionPdf": "PDF",
+      "managedInStripeNote": "Payment method and billing details are managed securely in Stripe."
+    },
+    "mockPlans": {
+      "sectionTitle": "Plans",
+      "currentBadge": "Current",
+      "free": "Free",
+      "priceSuffix": "/mo",
+      "switch": "Switch",
+      "contactOwnerToChange": "Contact owner to change plan"
+    },
+    "mockConfirm": {
+      "title": "Switch to {plan}",
+      "body": "This is a mock action — no real charge will occur.",
+      "cancel": "Cancel",
+      "confirm": "Confirm (mock)"
+    },
+    "locked": {
+      "title": "Billing access restricted",
+      "subtitle": "Contact your workspace owner to view or manage billing.",
+      "backToDashboard": "Back to dashboard",
+      "contactWorkspaceOwner": "Contact workspace owner",
+      "askOwnerToast": "Ask your workspace owner for billing access."
+    },
+    "success": {
+      "headline": {
+        "failed": "Sync failed",
+        "active": "Your {plan} plan is active",
+        "activating": "Thank you — your subscription is being activated"
+      },
+      "subtext": {
+        "failedFallback": "We could not finalize your subscription automatically.",
+        "redirecting": "Redirecting you to Billing…",
+        "syncing": "We are syncing your subscription with Stripe."
+      },
+      "pill": {
+        "failed": "Sync failed",
+        "activated": "Subscription activated",
+        "syncing": "Syncing subscription…",
+        "almostDone": "Almost done…"
+      },
+      "backToBilling": "Back to Billing",
+      "retrySync": "Retry sync",
+      "errors": {
+        "stillProcessing": "Payment is still being processed. Please wait a moment and try again.",
+        "sessionInvalid": "This checkout session is no longer valid. Please start a new subscription.",
+        "notSignedIn": "You are not signed in. Please sign in and retry.",
+        "orgLinkFailed": "Could not link this subscription to your organization. Please contact support.",
+        "generic": "Something went wrong while activating your subscription.",
+        "noSessionDetected": "We could not detect your checkout session. Please return to Billing and try again."
+      }
+    }
+  },
+  teamPage: {
+    "header": {
+      "title": "Team",
+      "subtitlePrefix": "Manage who has access to",
+      "subtitleSuffix": "and what they can do.",
+      "subtitleFallbackOrg": "your workspace",
+      "inviteButton": "+ Invite member"
+    },
+    "stats": {
+      "totalMembers": "Total members",
+      "active": "Active",
+      "pendingInvites": "Pending invites",
+      "adminsAndOwners": "Admins & owners"
+    },
+    "filters": {
+      "all": "All",
+      "owners": "Owners",
+      "admins": "Admins",
+      "billing": "Billing",
+      "members": "Members",
+      "clients": "Clients",
+      "pending": "Pending"
+    },
+    "roles": {
+      "owner": "Owners",
+      "admin": "Admins",
+      "billing": "Billing",
+      "member": "Members",
+      "client": "Clients"
+    },
+    "emptyState": {
+      "noMembers": "No members in this workspace yet.",
+      "noMatch": "No members match the \"{filter}\" filter."
+    },
+    "confirm": {
+      "cancelInvite": "Cancel this pending invite?",
+      "regenerateLink": "Regenerate invite link? The old link will stop working.",
+      "removeMember": "Remove this member from the workspace? This cannot be undone."
+    },
+    "toast": {
+      "cancelFailed": "Cancel failed",
+      "newLinkCopied": "New invite link copied to clipboard.",
+      "regenerateFailed": "Regenerate failed",
+      "roleUpdateFailed": "Role update failed",
+      "memberRemoved": "Member removed.",
+      "removeFailed": "Remove failed",
+      "memberDisabled": "Member disabled.",
+      "disableFailed": "Disable failed",
+      "disableUnavailableMock": "Disable not available on mock layer.",
+      "memberEnabled": "Member enabled.",
+      "enableFailed": "Enable failed",
+      "enableUnavailableMock": "Enable not available on mock layer."
+    },
+    "pendingInvites": {
+      "heading": "Pending invites ({count})",
+      "tableHeaders": {
+        "email": "Email",
+        "role": "Role",
+        "expires": "Expires",
+        "actions": "Actions"
+      },
+      "copyLink": "Copy link",
+      "regenerateLink": "Regenerate link",
+      "cancel": "Cancel",
+      "linkHiddenNote": "Link hidden for security. Click Regenerate link to issue a new one."
+    },
+    "rolesLegend": {
+      "lead": "**About roles —**",
+      "owners": "**Owners** manage billing and workspace settings.",
+      "admins": "**Admins** manage organization users.",
+      "billing": "**Billing** users manage invoices and subscription.",
+      "members": "**Members** can use audit features.",
+      "clients": "**Clients** have limited viewer access."
+    },
+    "footerHint": "Invitations are mock-only for now. Real email delivery and Firebase Auth will replace this layer in the backend phase."
+  },
+  orgCreate: {
+    "heading": "Create a workspace",
+    "subtitle": {
+      "signedIn": "Signed in as {email}",
+      "anonymous": "Set up a new organisation workspace"
+    },
+    "form": {
+      "nameLabel": "Workspace name",
+      "namePlaceholder": "e.g. Acme Corp",
+      "planLabel": "Plan"
+    },
+    "planDesc": {
+      "free": "Up to 3 audits, 1 seat",
+      "starter": "10 audits, 5 seats",
+      "professional": "Unlimited audits, 20 seats",
+      "enterprise": "Custom limits, SSO, SLA"
+    },
+    "submit": {
+      "idle": "Create workspace",
+      "loading": "Creating workspace…"
+    },
+    "backToDashboard": "← Back to dashboard"
+  },
+  auditResultPage: {
+    "header": {
+      "badge": {
+        "submitted": "Audit submitted",
+        "preview": "Audit preview"
+      },
+      "title": "Audit Result",
+      "submissionId": "Submission ID {id} · {submittedAt}"
+    },
+    "journeyNext": {
+      "headline": "Here is what your audit means",
+      "summary": {
+        "overallScore": "Overall score {score}/100 — {risk} risk.",
+        "findingsSingular": "{n} finding across {m} recommended action.",
+        "findingsPlural": "{n} findings across {m} recommended actions.",
+        "maturity": "AI maturity: level {level} of 5."
+      }
+    }
+  },
+  assistancePage: {
+    "header": {
+      "badge": "✨ Guided action plan",
+      "title": "Your Action Plan",
+      "intro": "We translated your audit answers into a sequenced, contextual plan. Read through each section below — every claim links back to your data.",
+      "score": "Score {globalScore} / 100",
+      "backToResult": "← Back to result"
+    },
+    "detected": {
+      "eyebrow": "01 · Diagnosis",
+      "title": "What we detected",
+      "topIssuesLabel": "Top issues identified",
+      "noIssues": "✓ No issues to surface — the audit cleared every rule.",
+      "weakestAreaLabel": "Weakest area",
+      "weakestAreaScore": "{score}%",
+      "weakestAreaHint": "Closing this section's gap is the highest-leverage move on your global score.",
+      "noWeakArea": "No weak area detected."
+    },
+    "priorities": {
+      "eyebrow": "02 · Priorities",
+      "title": "What you should fix first",
+      "intro": "Out of {count} recommended actions, these three give you the highest return relative to effort. Each links back to the findings it closes.",
+      "whyItMattersLabel": "Why it matters: ",
+      "expectedOutcomeLabel": "Expected outcome: ",
+      "impactBadge": "{impact} impact",
+      "timeframeDays": "{days}d",
+      "closesFindingsOne": "closes {count} finding",
+      "closesFindingsOther": "closes {count} findings",
+      "startWithThis": "Start with this →",
+      "startWithThisTooltip": "Coming post-J2",
+      "mostLeverage": "Most leverage for the effort"
+    },
+    "operatingModel": {
+      "eyebrow": "03 · Operating model",
+      "title": "What to automate or structure",
+      "intro": "Each item below has a primary mode of execution. Automating where you should structure (or vice versa) is a common failure pattern.",
+      "categories": {
+        "automate": {
+          "eyebrow": "Tools & systems",
+          "title": "Automate",
+          "tagline": "Items where the leverage comes from the system, not the human."
+        },
+        "structure": {
+          "eyebrow": "Policy & governance",
+          "title": "Structure",
+          "tagline": "Items that need formal ownership, policy, or framework alignment."
+        },
+        "process": {
+          "eyebrow": "Recurring motion",
+          "title": "Operate",
+          "tagline": "Items that are processes you keep running on a cadence."
+        },
+        "train": {
+          "eyebrow": "People",
+          "title": "Train",
+          "tagline": "Items that change behaviour through education."
+        }
+      },
+      "actionsCountOne": "{count} action",
+      "actionsCountOther": "{count} actions",
+      "timeframeDays": "{days}d",
+      "emptyColumn": "Nothing here right now."
+    },
+    "whyItMatters": {
+      "eyebrow": "04 · Context",
+      "title": "Why this matters",
+      "frameworksReferenced": "Frameworks referenced in this assessment"
+    },
+    "impact": {
+      "eyebrow": "05 · Impact",
+      "title": "Expected business impact",
+      "ifTop3": "If you complete the top 3 actions",
+      "scoreLift": "Your projected global score moves from {currentScore} to {projectedScore}. This is a directional simulation based on the findings each action closes — actual movement depends on execution depth.",
+      "projectedLabel": "Projected",
+      "deltaPts": "+{delta} pts",
+      "noChange": "no change",
+      "toneHighLift": "High lift",
+      "toneSteadyGain": "Steady gain",
+      "toneHoldTheLine": "Hold the line",
+      "outcomes": {
+        "auditReadinessTitle": "Audit-readiness",
+        "auditReadinessHigh": "You move from \"incomplete\" to \"defensible\" in a security questionnaire.",
+        "auditReadinessSteady": "Existing posture documented and easier to reference in audits.",
+        "incidentExposureTitle": "Incident exposure",
+        "incidentExposureHigh": "Reduced blast-radius and faster mean time to contain when AI causes harm.",
+        "incidentExposureSteady": "Predictable response and clearer ownership for AI-specific incidents.",
+        "customerTrustTitle": "Customer trust",
+        "customerTrustHigh": "Disclosure, model cards, and explainability give your support and sales teams clear answers.",
+        "internalVelocityTitle": "Internal velocity",
+        "internalVelocitySteady": "Builders ship faster when policy and review paths are unambiguous."
+      },
+      "disclaimer": "The projected score is a directional simulation computed from finding coverage and section weights. It is not a guarantee."
+    },
+    "nextStep": {
+      "eyebrow": "06 · Recommended",
+      "title": "Your next step",
+      "nextOneThing": "Next 1 thing",
+      "savedAt": "Saved locally at {timestamp}.",
+      "localOnlyNote": "We'll keep this plan available locally — no upload, no account upgrade required. Come back whenever your team is ready to act.",
+      "ctas": {
+        "saveDefault": "✓ Save this action plan",
+        "saved": "✓ Saved",
+        "reminderSet": "✓ Reminder set",
+        "exported": "✓ Exported",
+        "remind7Day": "⏰ Set 7-day reminder",
+        "remind30Day": "⏰ Set 30-day reminder",
+        "remind60Day": "⏰ Set 60-day reminder",
+        "remindQuarterly": "⏰ Set quarterly check-in",
+        "exportPlan": "⬇ Export plan"
+      }
+    },
+    "narrative": {
+      "whyItMatters": {
+        "regHighStakes": "You operate in a context that regulators already treat as high-stakes. The EU AI Act, GDPR, and sector-specific rules (HIPAA-equivalents, financial-services frameworks) all apply additional duties when AI processes sensitive data or makes consequential decisions about people.",
+        "customerFacingTransparency": "Your AI is customer-facing, which means transparency obligations apply (EU AI Act Article 50, consumer protection rules) and the reputational stakes are higher than for internal tools.",
+        "internalBaseline": "Even for internal AI use, recognised frameworks (ISO/IEC 42001, NIST AI RMF) increasingly act as a baseline for vendor due diligence and enterprise deals.",
+        "riskInactionHigh": "At your current risk band, the cost of inaction is asymmetric. A single incident — a model leaking data, an unfair decision, an outage with no runbook — is materially more expensive than the fixes recommended below.",
+        "riskInactionMedium": "You are in a defensible middle band. The risk now is plateauing: organisations that stop here typically slip backwards as their AI footprint grows. Closing the medium-severity gaps locks in the current posture.",
+        "riskInactionLow": "You already have meaningful posture. The risk is regression as your AI footprint scales. Ongoing investment is mostly maintenance, documentation, and gradual deepening.",
+        "weakestSection": "Your weakest area is **{title}** ({score}%). Strengthening it directly increases the global score, but more importantly it removes the path of least resistance for an incident.",
+        "commercialEnabler": "Enterprise buyers and regulated customers increasingly ask for AI governance evidence in security questionnaires. Many of the items in your action plan double as commercial enablers, not just compliance work."
+      },
+      "riskOneLiner": {
+        "low": "You are in good shape — focus shifts to maintenance and continuous improvement.",
+        "medium": "You have a defensible baseline, but with material gaps that are worth closing soon.",
+        "high": "You have several gaps that materially raise your exposure. Prioritise the actions below.",
+        "critical": "You have one or more critical gaps. The highest-priority items should be addressed within days, not weeks."
+      },
+      "contextChips": {
+        "highRiskIndustry": "High-risk industry",
+        "sensitiveData": "Sensitive data in scope",
+        "customerFacing": "Customer-facing AI",
+        "missionCritical": "Mission-critical scope",
+        "standardProfile": "Standard risk profile"
+      },
+      "nextStep": {
+        "criticalHeadline": "Address the critical finding within the next 7 days",
+        "criticalRationaleFallback": "It is the most material item in your action plan.",
+        "highHeadline": "Start with the 30-day quick wins",
+        "highRationaleFallback": "High-risk posture responds quickly to a small number of targeted actions. Pick three quick wins from the roadmap and own them this month.",
+        "mediumHeadline": "Solidify your governance foundations",
+        "mediumRationale": "You are past the initial scramble. The next compounding move is to formalise what you do informally — a written policy, a recognised framework, documented escalation. This is what makes audits and enterprise deals routine.",
+        "lowHeadline": "Move from compliant to optimised",
+        "lowRationale": "Your posture is strong. The leverage now is documentation and continuous improvement — model cards, training refreshes, and integrating AI scenarios into your incident-response rehearsals."
+      }
+    }
+  },
+  dashboardHome: {
+    "hero": {
+      "scoreLabel": "Compliance Score",
+      "riskLabel": "Current Risk Level",
+      "maturityLabel": "AI Maturity Level",
+      "nextStepLabel": "Recommended Next Step",
+      "nextStepTitle": "Complete HR Screening Tool Audit",
+      "nextStepBody": "This audit is 60% complete. Finishing it will boost your compliance score by an estimated +7 points.",
+      "continueAudit": "Continue Audit →",
+      "toast": {
+        "noPermission": "You do not have permission to continue audits.",
+        "noDraft": "No draft audit found — starting a new audit."
+      }
+    },
+    "recentReports": {
+      "card": {
+        "share": "Share",
+        "view": "View"
+      },
+      "export": {
+        "title": "Export Options",
+        "blurb": "Export your compliance data in multiple formats for stakeholders.",
+        "exportAs": "Export as {fmt}"
+      },
+      "toast": {
+        "reportNotAvailable": "Report not available yet.",
+        "shareLinkCopied": "Share link copied.",
+        "shareLinkFailed": "Could not copy link. Try again.",
+        "noReportsToExport": "No reports to export yet.",
+        "csvDownloaded": "CSV downloaded.",
+        "jsonDownloaded": "JSON downloaded."
+      }
+    },
+    "cta": {
+      "heading": "Ready to achieve full AI compliance?",
+      "body": "Join organizations using AiLunaPro to automate their compliance workflows, reduce risk, and build trust with stakeholders.",
+      "toast": {
+        "alreadyActivePlan": "You already have an active plan.",
+        "demoRequestSent": "Demo request sent. We'll review it and get back to you."
+      },
+      "demoModal": {
+        "title": "Schedule a demo",
+        "subtitle": "Tell us a bit about your team and we'll be in touch.",
+        "placeholderFullName": "Full name",
+        "placeholderWorkEmail": "Work email",
+        "placeholderCompany": "Company",
+        "placeholderMessage": "What would you like to discuss?",
+        "privacyNote": "We only use these details to respond to your request.",
+        "cancel": "Cancel",
+        "submit": "Request demo",
+        "submitting": "Sending…",
+        "errorFallback": "Could not send your request. Please try again."
+      }
+    }
+  },
+  agentsPages: {
+    "list": {
+      "title": "Agents",
+      "intro": "Find AI agents that fit your workflow. AiLunaPro all-in-one agents are highlighted.",
+      "locked": {
+        "title": "Agents are not available for client accounts",
+        "backToDashboard": "Back to dashboard"
+      },
+      "filters": {
+        "industryLabel": "Industry",
+        "integrationLabel": "Integration",
+        "allIndustries": "All industries",
+        "allIntegrations": "All integrations",
+        "clearFilters": "Clear filters",
+        "clearRecommendationsHint": "Clear recommendations to use filters."
+      },
+      "loading": "Loading agents…",
+      "emptyFiltered": "No agents match the selected filters.",
+      "sections": {
+        "topRecommendations": "Top recommendations",
+        "otherAgents": "Other agents"
+      },
+      "rankBadge": "#{rank}",
+      "scorePts": "{score} pts",
+      "whyToggleOne": "Why? ({count} reason)",
+      "whyToggleOther": "Why? ({count} reasons)"
+    },
+    "recommendPanel": {
+      "title": "Personalize my recommendations",
+      "subtitle": "Add a few preferences to rank agents that fit your context.",
+      "fields": {
+        "industry": "Industry",
+        "companySize": "Company size",
+        "targetWorkflow": "Target workflow",
+        "subscriptionPlan": "Subscription plan",
+        "currentMaturity": "Current AI maturity",
+        "integrations": "Integrations (comma-separated, max 10)"
+      },
+      "placeholders": {
+        "industry": "e.g. retail, saas, healthcare",
+        "integrations": "e.g. hubspot, slack, email"
+      },
+      "selectNone": "—",
+      "companySizeOptions": {
+        "solo": "Solo",
+        "sme": "SME",
+        "enterprise": "Enterprise"
+      },
+      "maturityOptions": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "workflowOptions": {
+        "support": "Customer support",
+        "sales": "Sales and lead follow-up",
+        "finance": "Finance and invoicing",
+        "documents": "Documents and contracts",
+        "reporting": "Reporting and dashboards",
+        "admin": "Administrative work",
+        "compliance": "Compliance and governance",
+        "marketing": "Marketing and content",
+        "hr": "HR and people operations"
+      },
+      "helperText": "Add at least one preference to personalize recommendations.",
+      "submit": "Recommend agents",
+      "submitting": "Computing…",
+      "clearRecommendations": "Clear recommendations"
+    },
+    "card": {
+      "external": "External",
+      "savesPerMonth": "⏱ Saves ~{hours} h / month",
+      "moreIntegrations": "+{count}",
+      "viewDetails": "View details",
+      "getThisAgent": "Get this agent"
+    },
+    "detail": {
+      "lockedNotice": "Agents are not available for client accounts.",
+      "backToAgents": "← Back to agents",
+      "loading": "Loading…",
+      "errors": {
+        "missingAgentId": "Missing agent id",
+        "missingOrgContext": "Missing org context"
+      },
+      "pills": {
+        "external": "External",
+        "minPlanSuffix": "{plan}+",
+        "tokens": "Tokens · {profile}",
+        "setup": "Setup · {complexity}",
+        "recommendedAllInOne": "Recommended All-in-One",
+        "compliance": "Compliance",
+        "audit": "Audit"
+      },
+      "cta": "Get this agent →",
+      "sections": {
+        "overview": "Overview",
+        "problemSolved": "Problem solved",
+        "bestFit": "Best fit",
+        "integrations": "Integrations",
+        "expectedRoi": "Expected ROI",
+        "pricing": "Pricing"
+      },
+      "bestFit": {
+        "industries": "Industries",
+        "companySize": "Company size",
+        "minBudget": "Min budget",
+        "minBudgetValue": "${amount}/mo"
+      },
+      "roi": {
+        "timeSaved": "Time saved",
+        "timeSavedValue": "{hours} h/mo",
+        "costSaved": "Cost saved",
+        "costSavedValue": "${amount}/mo",
+        "payback": "Payback",
+        "paybackValue": "{months} months"
+      },
+      "pricing": {
+        "modelPrefix": "Model: **{model}**",
+        "install": " · Install: ${amount}",
+        "monthly": " · Monthly: ${amount}",
+        "onRequest": " · Pricing on request"
+      }
+    }
+  },
+  publicTools: {
+    "diagnostic": {
+      "header": {
+        "title": "AI Maturity Diagnostic",
+        "subtitle": "Answer 8 short questions. Get your AI maturity score and see which AiLunaPro agents fit your stage.",
+        "freeLine": "Free · No account required · Takes about 2 minutes"
+      },
+      "resumeNotice": "Welcome back — we restored your previous answers so you can pick up where you left off.",
+      "questionLegend": "Question {n} / {total}",
+      "leadCapture": {
+        "heading": "Where should we send your result?",
+        "emailLabel": "Email",
+        "requiredMark": "*",
+        "emailPlaceholder": "you@company.com",
+        "companyNameLabel": "Company name",
+        "optionalMark": "(optional)",
+        "companyNamePlaceholder": "Acme Corp",
+        "helperText": "We only use this information to generate your diagnostic and follow up about relevant AI services. No account is required.",
+        "consentLabel": "I agree to receive my AI diagnostic result and relevant follow-up information from AiLunaPro. I understand that my answers and email will be processed to generate and store this diagnostic result, and that I can request deletion of my data at any time."
+      },
+      "submit": {
+        "loading": "Computing your result…",
+        "idle": "Get my AI maturity score"
+      },
+      "signInPrompt": "Already have an account?",
+      "signInLink": "Sign in",
+      "errors": {
+        "answers": "Please answer every question.",
+        "email": "Please enter a valid email address.",
+        "consent": "You must accept to receive your result.",
+        "captchaLoading": "Captcha is loading — please wait."
+      },
+      "buckets": {
+        "low": {
+          "title": "Your AI maturity is emerging",
+          "message": "Your organization is at an early stage. Start with simple automation, an AI usage inventory, and practical support agents."
+        },
+        "medium": {
+          "title": "Your AI maturity is developing",
+          "message": "You already have some AI foundations. The next step is to structure usage, measure ROI, and improve document and reporting workflows."
+        },
+        "high": {
+          "title": "Your AI maturity is advanced",
+          "message": "You are ready to scale AI with stronger governance, compliance, reporting, and specialized automation."
+        }
+      },
+      "result": {
+        "scoreLabel": "Your AI maturity score",
+        "scoreUnit": "/100",
+        "recommendedAgentsHeading": "Recommended AiLunaPro agents",
+        "agentCardBrand": "AiLunaPro",
+        "agentCardCta": "Get this agent",
+        "ctaHeading": "Want a deeper audit and your full action plan?",
+        "ctaBody": "Create a free AiLunaPro workspace to access the full audit, registry, and agent catalog.",
+        "ctaButton": "Create your free account ↗",
+        "ctaFootnote": "Continues on **dashboard.ailunapro.com** — the AiLuna platform for AI agents and solutions, the next step after your audit.",
+        "retakeButton": "Take the diagnostic again"
+      }
+    },
+    "roi": {
+      "header": {
+        "title": "AI ROI Calculator",
+        "subtitle": "Estimate the time and money you can save with AiLunaPro AI agents.",
+        "freeLine": "Free · No account required · Takes about 1 minute · USD"
+      },
+      "resumeNotice": "Welcome back — we restored your previous inputs so you can pick up where you left off.",
+      "form": {
+        "teamLegend": "Your team",
+        "teamSizeLabel": "Team size",
+        "teamSizePlaceholder": "e.g. 10",
+        "monthlyHoursLabel": "Monthly hours your team spends on repetitive work",
+        "monthlyHoursPlaceholder": "e.g. 80",
+        "hourlyCostLabel": "Average hourly cost (USD)",
+        "targetWorkflowLabel": "Target workflow",
+        "workflowPlaceholderOption": "Select a workflow…"
+      },
+      "leadCapture": {
+        "legend": "Where should we send your estimate?",
+        "emailLabel": "Email",
+        "emailPlaceholder": "you@company.com",
+        "companyNameLabel": "Company name",
+        "optionalMark": "(optional)",
+        "companyNamePlaceholder": "Acme Corp",
+        "helperText": "We only use this information to generate your estimate and follow up about relevant AI services. No account is required.",
+        "consentLabel": "I agree to receive my AI ROI estimate and relevant follow-up information from AiLunaPro. I understand that my answers and email will be processed to generate and store this estimate, and that I can request deletion of my data at any time."
+      },
+      "requiredMark": "*",
+      "submit": {
+        "loading": "Calculating…",
+        "idle": "Calculate my ROI"
+      },
+      "signInPrompt": "Already have an account?",
+      "signInLink": "Sign in",
+      "errors": {
+        "teamSize": "Team size must be an integer between 1 and 10000.",
+        "hours": "Monthly hours must be a number between 0 and 10000.",
+        "cost": "Hourly cost must be a number between 1 and 1000 USD.",
+        "workflow": "Please select a workflow.",
+        "email": "Please enter a valid email address.",
+        "consent": "You must accept to receive your estimate.",
+        "captchaLoading": "Captcha is loading — please wait."
+      },
+      "result": {
+        "monthlySavingsLabel": "Estimated monthly savings",
+        "monthlySavingsUnit": "/mo",
+        "yearlySavingsLabel": "Yearly savings",
+        "timeSavedLabel": "Time saved",
+        "timeSavedValue": "{hours} h/mo",
+        "paybackLabel": "Payback",
+        "paybackValue": "{months} months",
+        "paybackEmpty": "—",
+        "disclaimer": "This is an estimate based on the information you provided and conservative automation assumptions. Actual savings may vary.",
+        "pricingNote": "Payback assumes a reference agent cost of $99/month; actual pricing varies by agent.",
+        "recommendedAgentsHeading": "Recommended AiLunaPro agents",
+        "agentCardBrand": "AiLunaPro",
+        "agentCardCta": "Get this agent",
+        "ctaHeading": "Want a deeper analysis and your full action plan?",
+        "ctaBody": "Create a free AiLunaPro workspace to access the full audit, registry, and agent catalog.",
+        "ctaButton": "Create your free account ↗",
+        "ctaFootnote": "Continues on **dashboard.ailunapro.com** — the AiLuna platform for AI agents and solutions, the next step after your audit.",
+        "rerunButton": "Run another calculation"
+      }
+    }
+  },
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed

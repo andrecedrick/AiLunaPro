@@ -11,6 +11,8 @@
 
 import { useMemo, useState } from 'react';
 import { recommendAgents, friendlyRecommendError } from '../../lib/recommendation/recommendClient';
+import { useLocale } from '../../context/LocaleContext';
+import type { Dict } from '../../lib/locale/i18n';
 import type {
   CompanySize,
   Maturity,
@@ -20,17 +22,19 @@ import type {
   Workflow,
 } from '../../types/recommendation';
 
-const WORKFLOWS: { value: Workflow; label: string }[] = [
-  { value: 'support',    label: 'Customer support' },
-  { value: 'sales',      label: 'Sales and lead follow-up' },
-  { value: 'finance',    label: 'Finance and invoicing' },
-  { value: 'documents',  label: 'Documents and contracts' },
-  { value: 'reporting',  label: 'Reporting and dashboards' },
-  { value: 'admin',      label: 'Administrative work' },
-  { value: 'compliance', label: 'Compliance and governance' },
-  { value: 'marketing',  label: 'Marketing and content' },
-  { value: 'hr',         label: 'HR and people operations' },
-];
+function buildWorkflows(t: Dict['agentsPages']): { value: Workflow; label: string }[] {
+  return [
+    { value: 'support',    label: t.recommendPanel.workflowOptions.support },
+    { value: 'sales',      label: t.recommendPanel.workflowOptions.sales },
+    { value: 'finance',    label: t.recommendPanel.workflowOptions.finance },
+    { value: 'documents',  label: t.recommendPanel.workflowOptions.documents },
+    { value: 'reporting',  label: t.recommendPanel.workflowOptions.reporting },
+    { value: 'admin',      label: t.recommendPanel.workflowOptions.admin },
+    { value: 'compliance', label: t.recommendPanel.workflowOptions.compliance },
+    { value: 'marketing',  label: t.recommendPanel.workflowOptions.marketing },
+    { value: 'hr',         label: t.recommendPanel.workflowOptions.hr },
+  ];
+}
 
 interface Props {
   orgId:                string;
@@ -40,6 +44,8 @@ interface Props {
 }
 
 export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props) {
+  const T = useLocale();
+  const WORKFLOWS = useMemo(() => buildWorkflows(T.agentsPages), [T]);
   const [open, setOpen] = useState(true);
 
   const [industry, setIndustry]                 = useState('');
@@ -132,10 +138,10 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
       >
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Personalize my recommendations
+            {T.agentsPages.recommendPanel.title}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            Add a few preferences to rank agents that fit your context.
+            {T.agentsPages.recommendPanel.subtitle}
           </div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"
@@ -152,59 +158,59 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
             gap:                 12,
             marginBottom:        14,
           }}>
-            <Field label="Industry">
+            <Field label={T.agentsPages.recommendPanel.fields.industry}>
               <input
                 type="text" maxLength={40}
                 value={industry}
                 onChange={e => setIndustry(e.target.value)}
-                placeholder="e.g. retail, saas, healthcare"
+                placeholder={T.agentsPages.recommendPanel.placeholders.industry}
                 style={inputStyle()}
               />
             </Field>
-            <Field label="Company size">
+            <Field label={T.agentsPages.recommendPanel.fields.companySize}>
               <select value={companySize} onChange={e => setCompanySize(e.target.value as CompanySize | '')} style={inputStyle()}>
-                <option value="">—</option>
-                <option value="solo">Solo</option>
-                <option value="sme">SME</option>
-                <option value="enterprise">Enterprise</option>
+                <option value="">{T.agentsPages.recommendPanel.selectNone}</option>
+                <option value="solo">{T.agentsPages.recommendPanel.companySizeOptions.solo}</option>
+                <option value="sme">{T.agentsPages.recommendPanel.companySizeOptions.sme}</option>
+                <option value="enterprise">{T.agentsPages.recommendPanel.companySizeOptions.enterprise}</option>
               </select>
             </Field>
-            <Field label="Target workflow">
+            <Field label={T.agentsPages.recommendPanel.fields.targetWorkflow}>
               <select value={targetWorkflow} onChange={e => setTargetWorkflow(e.target.value as Workflow | '')} style={inputStyle()}>
-                <option value="">—</option>
+                <option value="">{T.agentsPages.recommendPanel.selectNone}</option>
                 {WORKFLOWS.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
               </select>
             </Field>
-            <Field label="Subscription plan">
+            <Field label={T.agentsPages.recommendPanel.fields.subscriptionPlan}>
               <select value={subscriptionPlan} onChange={e => setSubscriptionPlan(e.target.value as MinPlan | '')} style={inputStyle()}>
-                <option value="">—</option>
+                <option value="">{T.agentsPages.recommendPanel.selectNone}</option>
                 <option value="free">Free</option>
                 <option value="starter">Starter</option>
                 <option value="professional">Professional</option>
                 <option value="enterprise">Enterprise</option>
               </select>
             </Field>
-            <Field label="Current AI maturity">
+            <Field label={T.agentsPages.recommendPanel.fields.currentMaturity}>
               <select value={currentMaturity} onChange={e => setCurrentMaturity(e.target.value as Maturity | '')} style={inputStyle()}>
-                <option value="">—</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                <option value="">{T.agentsPages.recommendPanel.selectNone}</option>
+                <option value="low">{T.agentsPages.recommendPanel.maturityOptions.low}</option>
+                <option value="medium">{T.agentsPages.recommendPanel.maturityOptions.medium}</option>
+                <option value="high">{T.agentsPages.recommendPanel.maturityOptions.high}</option>
               </select>
             </Field>
-            <Field label="Integrations (comma-separated, max 10)">
+            <Field label={T.agentsPages.recommendPanel.fields.integrations}>
               <input
                 type="text"
                 value={integrationsRaw}
                 onChange={e => setIntegrationsRaw(e.target.value)}
-                placeholder="e.g. hubspot, slack, email"
+                placeholder={T.agentsPages.recommendPanel.placeholders.integrations}
                 style={inputStyle()}
               />
             </Field>
           </div>
 
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px' }}>
-            Add at least one preference to personalize recommendations.
+            {T.agentsPages.recommendPanel.helperText}
           </p>
 
           {error && (
@@ -232,7 +238,7 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
                 fontFamily:   'inherit',
               }}
             >
-              {submitting ? 'Computing…' : 'Recommend agents'}
+              {submitting ? T.agentsPages.recommendPanel.submitting : T.agentsPages.recommendPanel.submit}
             </button>
             {hasResults && (
               <button
@@ -250,7 +256,7 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
                   fontFamily:   'inherit',
                 }}
               >
-                Clear recommendations
+                {T.agentsPages.recommendPanel.clearRecommendations}
               </button>
             )}
           </div>

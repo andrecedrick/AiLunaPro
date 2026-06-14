@@ -1,4 +1,5 @@
 import { SectionTitle } from './SectionTitle';
+import { useLocale } from '../../context/LocaleContext';
 import type { AuditResult } from '../../types/scoring';
 import { getWhyItMattersNarrative } from '../../lib/scoring/assistance';
 
@@ -19,6 +20,7 @@ function renderInline(text: string) {
 
 export function WhyItMatters({ result }: { result: AuditResult }) {
   const paragraphs = getWhyItMattersNarrative(result);
+  const T = useLocale();
 
   return (
     <section
@@ -32,7 +34,7 @@ export function WhyItMatters({ result }: { result: AuditResult }) {
         transition: 'background 0.2s, border-color 0.2s',
       }}
     >
-      <SectionTitle eyebrow="04 · Context" title="Why this matters" />
+      <SectionTitle eyebrow={T.assistancePage.whyItMatters.eyebrow} title={T.assistancePage.whyItMatters.title} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {paragraphs.map((p, i) => (
@@ -66,7 +68,7 @@ export function WhyItMatters({ result }: { result: AuditResult }) {
         <ReferenceChip>ISO/IEC 42001</ReferenceChip>
         <ReferenceChip>NIST AI RMF</ReferenceChip>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', alignSelf: 'center' }}>
-          Frameworks referenced in this assessment
+          {T.assistancePage.whyItMatters.frameworksReferenced}
         </span>
       </div>
     </section>

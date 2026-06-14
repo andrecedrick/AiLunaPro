@@ -23,18 +23,38 @@ import {
 import { useToast } from '../hooks/useToast';
 import { buildInviteLink } from '../lib/team/invitationsService';
 import type { Invitation } from '../types/invitation';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
+import type { Dict } from '../lib/locale/i18n/en';
 
 type RoleFilter = 'all' | UserRole | 'pending';
 
-const FILTER_OPTIONS: { id: RoleFilter; label: string }[] = [
-  { id: 'all',     label: 'All' },
-  { id: 'owner',   label: 'Owners' },
-  { id: 'admin',   label: 'Admins' },
-  { id: 'billing', label: 'Billing' },
-  { id: 'member',  label: 'Members' },
-  { id: 'client',  label: 'Clients' },
-  { id: 'pending', label: 'Pending' },
-];
+function buildFilterOptions(t: Dict['teamPage']): { id: RoleFilter; label: string }[] {
+  return [
+    { id: 'all',     label: t.filters.all },
+    { id: 'owner',   label: t.filters.owners },
+    { id: 'admin',   label: t.filters.admins },
+    { id: 'billing', label: t.filters.billing },
+    { id: 'member',  label: t.filters.members },
+    { id: 'client',  label: t.filters.clients },
+    { id: 'pending', label: t.filters.pending },
+  ];
+}
+
+/* Inline rich-text: renders **bold** markers. Deterministic, no markdown lib.
+ * Markers are preserved verbatim across translations. */
+function RichText({ t }: { t: string }) {
+  const parts = t.split(/(\*\*.+?\*\*)/g);
+  return (
+    <>
+      {parts.map((seg, i) => {
+        if (!seg) return null;
+        if (seg.startsWith('**') && seg.endsWith('**')) return <strong key={i}>{seg.slice(2, -2)}</strong>;
+        return <span key={i}>{seg}</span>;
+      })}
+    </>
+  );
+}
 
 function StatCard({
   label,
@@ -89,6 +109,8 @@ export function TeamPage() {
   const [filter,     setFilter]     = useState<RoleFilter>('all');
   const [pendingInvites, setPendingInvites] = useState<Invitation[]>([]);
   const { showToast } = useToast();
+  const T = useLocale();
+  const FILTER_OPTIONS = useMemo(() => buildFilterOptions(T.teamPage), [T]);
 
   const orgId = session?.orgId ?? '';
   const isFirebaseLayer = resolveLayer('auth') === 'firebase';
@@ -148,14 +170,14 @@ export function TeamPage() {
 
   const handleCancelInvite = async (inviteId: string) => {
     if (!orgId) return;
-    if (!confirm('Cancel this pending invite?')) return;
+    if (!confirm(T.teamPage.confirm.cancelInvite)) return;
     try {
       const idToken = await getIdToken();
       await apiCancelInvite(orgId, inviteId, idToken);
       clearInviteLink(inviteId);
       void reloadInvites();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Cancel failed', 'error');
+      showToast(err instanceof Error ? err.message : T.teamPage.toast.cancelFailed, 'error');
     }
   };
 
@@ -169,7 +191,7 @@ export function TeamPage() {
 
   const handleRegenerateLink = async (inviteId: string) => {
     if (!orgId) return;
-    if (!confirm('Regenerate invite link? The old link will stop working.')) return;
+    if (!confirm(T.teamPage.confirm.regenerateLink)) return;
     try {
       const idToken = await getIdToken();
       const r = await apiRegenerateInvite(orgId, inviteId, idToken);
@@ -177,10 +199,10 @@ export function TeamPage() {
       cacheInviteLink(r.inviteId, newLink);
       // Copy to clipboard immediately so admin doesn't lose it
       try { await navigator.clipboard.writeText(newLink); } catch { /* ignore */ }
-      showToast('New invite link copied to clipboard.', 'success');
+      showToast(T.teamPage.toast.newLinkCopied, 'success');
       void reloadInvites();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Regenerate failed', 'error');
+      showToast(err instanceof Error ? err.message : T.teamPage.toast.regenerateFailed, 'error');
     }
   };
 
@@ -212,7 +234,7 @@ export function TeamPage() {
               letterSpacing: -0.5,
             }}
           >
-            Team
+            {T.teamPage.header.title}
           </h1>
           <p
             style={{
@@ -223,16 +245,16 @@ export function TeamPage() {
               maxWidth: 560,
             }}
           >
-            Manage who has access to{' '}
+            {T.teamPage.header.subtitlePrefix}{' '}
             <strong style={{ color: 'var(--text-secondary)' }}>
-              {session?.org.name ?? 'your workspace'}
+              {session?.org.name ?? T.teamPage.header.subtitleFallbackOrg}
             </strong>{' '}
-            and what they can do.
+            {T.teamPage.header.subtitleSuffix}
           </p>
         </div>
         {canManage && (
           <Button variant="primary" size="lg" onClick={() => setInviteOpen(true)}>
-            + Invite member
+            {T.teamPage.header.inviteButton}
           </Button>
         )}
       </div>
@@ -246,10 +268,10 @@ export function TeamPage() {
           marginBottom: 22,
         }}
       >
-        <StatCard label="Total members"   value={stats.total}   color="var(--violet-text)" />
-        <StatCard label="Active"          value={stats.active}  color="var(--green)" />
-        <StatCard label="Pending invites" value={stats.pending} color="var(--amber)" />
-        <StatCard label="Admins & owners" value={stats.admins}  color="var(--blue)" />
+        <StatCard label={T.teamPage.stats.totalMembers}   value={stats.total}   color="var(--violet-text)" />
+        <StatCard label={T.teamPage.stats.active}          value={stats.active}  color="var(--green)" />
+        <StatCard label={T.teamPage.stats.pendingInvites} value={stats.pending} color="var(--amber)" />
+        <StatCard label={T.teamPage.stats.adminsAndOwners} value={stats.admins}  color="var(--blue)" />
       </div>
 
       {/* Filter chips */}
@@ -290,8 +312,8 @@ export function TeamPage() {
           }}
         >
           {orgMembers.length === 0
-            ? 'No members in this workspace yet.'
-            : `No members match the "${FILTER_OPTIONS.find(f => f.id === filter)?.label}" filter.`}
+            ? T.teamPage.emptyState.noMembers
+            : format(T.teamPage.emptyState.noMatch, { filter: FILTER_OPTIONS.find(f => f.id === filter)?.label ?? '' })}
         </div>
       ) : (
         <TeamTable
@@ -306,21 +328,21 @@ export function TeamPage() {
                 await apiChangeRole(orgId, userId, role, idToken);
                 // Reload via window event — AuthContext listener should pick up Firestore change
               } catch (err) {
-                showToast(err instanceof Error ? err.message : 'Role update failed', 'error');
+                showToast(err instanceof Error ? err.message : T.teamPage.toast.roleUpdateFailed, 'error');
               }
             } else {
               updateMemberRole(userId, role);
             }
           }}
           onRemove={async (userId) => {
-            if (!confirm('Remove this member from the workspace? This cannot be undone.')) return;
+            if (!confirm(T.teamPage.confirm.removeMember)) return;
             if (isFirebaseLayer && orgId) {
               try {
                 const idToken = await getIdToken();
                 await apiRemoveMember(orgId, userId, idToken);
-                showToast('Member removed.', 'success');
+                showToast(T.teamPage.toast.memberRemoved, 'success');
               } catch (err) {
-                showToast(err instanceof Error ? err.message : 'Remove failed', 'error');
+                showToast(err instanceof Error ? err.message : T.teamPage.toast.removeFailed, 'error');
               }
             } else {
               handleRemove(userId);
@@ -331,12 +353,12 @@ export function TeamPage() {
               try {
                 const idToken = await getIdToken();
                 await apiDisableMember(orgId, userId, idToken);
-                showToast('Member disabled.', 'success');
+                showToast(T.teamPage.toast.memberDisabled, 'success');
               } catch (err) {
-                showToast(err instanceof Error ? err.message : 'Disable failed', 'error');
+                showToast(err instanceof Error ? err.message : T.teamPage.toast.disableFailed, 'error');
               }
             } else {
-              showToast('Disable not available on mock layer.', 'info');
+              showToast(T.teamPage.toast.disableUnavailableMock, 'info');
             }
           }}
           onEnable={async (userId) => {
@@ -344,12 +366,12 @@ export function TeamPage() {
               try {
                 const idToken = await getIdToken();
                 await apiEnableMember(orgId, userId, idToken);
-                showToast('Member enabled.', 'success');
+                showToast(T.teamPage.toast.memberEnabled, 'success');
               } catch (err) {
-                showToast(err instanceof Error ? err.message : 'Enable failed', 'error');
+                showToast(err instanceof Error ? err.message : T.teamPage.toast.enableFailed, 'error');
               }
             } else {
-              showToast('Enable not available on mock layer.', 'info');
+              showToast(T.teamPage.toast.enableUnavailableMock, 'info');
             }
           }}
         />
@@ -367,12 +389,12 @@ export function TeamPage() {
             fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
             textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10,
           }}>
-            Pending invites ({pendingInvites.length})
+            {format(T.teamPage.pendingInvites.heading, { count: pendingInvites.length })}
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Email', 'Role', 'Expires', 'Actions'].map(h => (
+                {[T.teamPage.pendingInvites.tableHeaders.email, T.teamPage.pendingInvites.tableHeaders.role, T.teamPage.pendingInvites.tableHeaders.expires, T.teamPage.pendingInvites.tableHeaders.actions].map(h => (
                   <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.6 }}>{h}</th>
                 ))}
               </tr>
@@ -395,7 +417,7 @@ export function TeamPage() {
                             onClick={() => void handleCopyInviteLink(inv.id)}
                             style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', cursor: 'pointer', fontWeight: 600 }}
                           >
-                            Copy link
+                            {T.teamPage.pendingInvites.copyLink}
                           </button>
                         ) : (
                           canManage && (
@@ -404,7 +426,7 @@ export function TeamPage() {
                               onClick={() => void handleRegenerateLink(inv.id)}
                               style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
                             >
-                              Regenerate link
+                              {T.teamPage.pendingInvites.regenerateLink}
                             </button>
                           )
                         )}
@@ -414,13 +436,13 @@ export function TeamPage() {
                             onClick={() => void handleCancelInvite(inv.id)}
                             style={{ padding: '4px 10px', fontSize: 11, borderRadius: 6, border: '1px solid var(--red-text)', background: 'transparent', color: 'var(--red-text)', cursor: 'pointer' }}
                           >
-                            Cancel
+                            {T.teamPage.pendingInvites.cancel}
                           </button>
                         )}
                       </div>
                       {!cachedLink && (
                         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic', maxWidth: 280 }}>
-                          Link hidden for security. Click Regenerate link to issue a new one.
+                          {T.teamPage.pendingInvites.linkHiddenNote}
                         </div>
                       )}
                     </td>
@@ -440,12 +462,12 @@ export function TeamPage() {
         borderRadius: 12,
         fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6,
       }}>
-        <strong style={{ color: 'var(--text-secondary)' }}>About roles —</strong>{' '}
-        <strong>Owners</strong> manage billing and workspace settings.{' '}
-        <strong>Admins</strong> manage organization users.{' '}
-        <strong>Billing</strong> users manage invoices and subscription.{' '}
-        <strong>Members</strong> can use audit features.{' '}
-        <strong>Clients</strong> have limited viewer access.
+        <span style={{ color: 'var(--text-secondary)' }}><RichText t={T.teamPage.rolesLegend.lead} /></span>{' '}
+        <RichText t={T.teamPage.rolesLegend.owners} />{' '}
+        <RichText t={T.teamPage.rolesLegend.admins} />{' '}
+        <RichText t={T.teamPage.rolesLegend.billing} />{' '}
+        <RichText t={T.teamPage.rolesLegend.members} />{' '}
+        <RichText t={T.teamPage.rolesLegend.clients} />
       </div>
 
       {/* Footer hint */}
@@ -458,7 +480,7 @@ export function TeamPage() {
           lineHeight: 1.5,
         }}
       >
-        Invitations are mock-only for now. Real email delivery and Firebase Auth will replace this layer in the backend phase.
+        {T.teamPage.footerHint}
       </p>
 
       {/* Invite modal */}

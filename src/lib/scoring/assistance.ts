@@ -11,6 +11,8 @@ import type {
   RiskLevel,
   Severity,
 } from '../../types/scoring';
+import type { Dict } from '../locale/i18n/en';
+import { EN } from '../locale/i18n';
 import { auditSections } from '../../data/mockAuditQuestions';
 import { SECTION_WEIGHTS } from './rules';
 
@@ -177,7 +179,11 @@ export interface NextStep {
   ctas: { label: string; kind: 'save' | 'remind' | 'export' | 'browse' }[];
 }
 
-export function getNextStep(result: AuditResult): NextStep {
+export function getNextStep(
+  result: AuditResult,
+  t: Dict['assistancePage'] = EN.assistancePage,
+): NextStep {
+  const cta = t.nextStep.ctas;
   // Critical finding present → address that specific one within 7 days
   const critical = result.findings.find(f => f.severity === 'critical');
   if (critical) {
@@ -188,9 +194,9 @@ export function getNextStep(result: AuditResult): NextStep {
       rationale: `"${critical.title}" is the single highest-priority gap. ${rec ? rec.expectedOutcome ?? rec.description : 'It is the most material item in your action plan.'}`,
       primaryRecId: rec?.id,
       ctas: [
-        { label: '✓ Save this action plan', kind: 'save' },
-        { label: '⏰ Set 7-day reminder', kind: 'remind' },
-        { label: '⬇ Export plan', kind: 'export' },
+        { label: cta.saveDefault, kind: 'save' },
+        { label: cta.remind7Day, kind: 'remind' },
+        { label: cta.exportPlan, kind: 'export' },
       ],
     };
   }
@@ -206,9 +212,9 @@ export function getNextStep(result: AuditResult): NextStep {
         : 'High-risk posture responds quickly to a small number of targeted actions. Pick three quick wins from the roadmap and own them this month.',
       primaryRecId: first?.id,
       ctas: [
-        { label: '✓ Save this action plan', kind: 'save' },
-        { label: '⏰ Set 30-day reminder', kind: 'remind' },
-        { label: '⬇ Export plan', kind: 'export' },
+        { label: cta.saveDefault, kind: 'save' },
+        { label: cta.remind30Day, kind: 'remind' },
+        { label: cta.exportPlan, kind: 'export' },
       ],
     };
   }
@@ -220,9 +226,9 @@ export function getNextStep(result: AuditResult): NextStep {
       rationale:
         'You are past the initial scramble. The next compounding move is to formalise what you do informally — a written policy, a recognised framework, documented escalation. This is what makes audits and enterprise deals routine.',
       ctas: [
-        { label: '✓ Save this action plan', kind: 'save' },
-        { label: '⏰ Set 60-day reminder', kind: 'remind' },
-        { label: '⬇ Export plan', kind: 'export' },
+        { label: cta.saveDefault, kind: 'save' },
+        { label: cta.remind60Day, kind: 'remind' },
+        { label: cta.exportPlan, kind: 'export' },
       ],
     };
   }
@@ -233,9 +239,9 @@ export function getNextStep(result: AuditResult): NextStep {
     rationale:
       'Your posture is strong. The leverage now is documentation and continuous improvement — model cards, training refreshes, and integrating AI scenarios into your incident-response rehearsals.',
     ctas: [
-      { label: '✓ Save this action plan', kind: 'save' },
-      { label: '⏰ Set quarterly check-in', kind: 'remind' },
-      { label: '⬇ Export plan', kind: 'export' },
+      { label: cta.saveDefault, kind: 'save' },
+      { label: cta.remindQuarterly, kind: 'remind' },
+      { label: cta.exportPlan, kind: 'export' },
     ],
   };
 }

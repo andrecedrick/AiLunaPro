@@ -11,6 +11,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
 import { fetchAgents } from '../lib/agents/agentsClient';
 import type { AgentCatalogEntry } from '../types/agents';
 import { AgentCard } from '../components/agents/AgentCard';
@@ -19,17 +21,18 @@ import type { RecommendationResult } from '../types/recommendation';
 
 function LockedView() {
   const { navigate } = useRoute();
+  const T = useLocale();
   return (
     <div style={{ padding: 40, textAlign: 'center' }}>
       <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-        Agents are not available for client accounts
+        {T.agentsPages.list.locked.title}
       </div>
       <button
         type="button"
         onClick={() => navigate({ name: 'dashboard' })}
         style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
       >
-        Back to dashboard
+        {T.agentsPages.list.locked.backToDashboard}
       </button>
     </div>
   );
@@ -38,6 +41,7 @@ function LockedView() {
 export function AgentsPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
+  const T = useLocale();
   const role  = session?.role;
   const orgId = session?.orgId ?? null;
 
@@ -126,10 +130,10 @@ export function AgentsPage() {
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-          Agents
+          {T.agentsPages.list.title}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-          Find AI agents that fit your workflow. AiLunaPro all-in-one agents are highlighted.
+          {T.agentsPages.list.intro}
         </p>
       </div>
 
@@ -152,7 +156,7 @@ export function AgentsPage() {
         position: 'relative',
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>Industry</label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{T.agentsPages.list.filters.industryLabel}</label>
           <select
             value={industry}
             disabled={recMode}
@@ -163,12 +167,12 @@ export function AgentsPage() {
               cursor: recMode ? 'not-allowed' : 'pointer',
             }}
           >
-            <option value="">All industries</option>
+            <option value="">{T.agentsPages.list.filters.allIndustries}</option>
             {industries.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>Integration</label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{T.agentsPages.list.filters.integrationLabel}</label>
           <select
             value={integration}
             disabled={recMode}
@@ -179,7 +183,7 @@ export function AgentsPage() {
               cursor: recMode ? 'not-allowed' : 'pointer',
             }}
           >
-            <option value="">All integrations</option>
+            <option value="">{T.agentsPages.list.filters.allIntegrations}</option>
             {integrations.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
         </div>
@@ -193,7 +197,7 @@ export function AgentsPage() {
               color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
           >
-            Clear filters
+            {T.agentsPages.list.filters.clearFilters}
           </button>
         )}
         {recMode && (
@@ -202,7 +206,7 @@ export function AgentsPage() {
             fontSize: 12, color: 'var(--text-muted)',
             marginLeft: 'auto',
           }}>
-            Clear recommendations to use filters.
+            {T.agentsPages.list.filters.clearRecommendationsHint}
           </div>
         )}
       </div>
@@ -210,7 +214,7 @@ export function AgentsPage() {
       {/* Body */}
       {loading && (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-          Loading agents…
+          {T.agentsPages.list.loading}
         </div>
       )}
       {error && !loading && (
@@ -220,14 +224,14 @@ export function AgentsPage() {
       )}
       {!loading && !error && agents && !recMode && filtered.length === 0 && (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-          No agents match the selected filters.
+          {T.agentsPages.list.emptyFiltered}
         </div>
       )}
 
       {/* K3A: recommendation mode — top 3 grouped + others below */}
       {!loading && !error && recMode && agents && (
         <>
-          <SectionHeading>Top recommendations</SectionHeading>
+          <SectionHeading>{T.agentsPages.list.sections.topRecommendations}</SectionHeading>
           <div style={gridStyle()}>
             {topThree.map(a => {
               const meta = recommendationMap.get(a.agentId);
@@ -245,7 +249,7 @@ export function AgentsPage() {
           </div>
           {otherAgents.length > 0 && (
             <>
-              <SectionHeading style={{ marginTop: 22 }}>Other agents</SectionHeading>
+              <SectionHeading style={{ marginTop: 22 }}>{T.agentsPages.list.sections.otherAgents}</SectionHeading>
               <div style={gridStyle()}>
                 {otherAgents.map(a => (
                   <AgentCard
@@ -311,6 +315,7 @@ function RecommendedAgentCard({
   reasons: string[];
   onOpen:  (id: string) => void;
 }) {
+  const T = useLocale();
   return (
     <div style={{ position: 'relative' }}>
       {/* Rank + score chip */}
@@ -333,7 +338,7 @@ function RecommendedAgentCard({
           letterSpacing: 0.4,
           textTransform: 'uppercase',
         }}>
-          #{rank}
+          {format(T.agentsPages.list.rankBadge, { rank })}
         </span>
         <span style={{
           background:    'rgba(124,58,237,0.10)',
@@ -343,7 +348,7 @@ function RecommendedAgentCard({
           padding:       '3px 8px',
           borderRadius:  999,
         }}>
-          {score} pts
+          {format(T.agentsPages.list.scorePts, { score })}
         </span>
       </div>
 
@@ -365,7 +370,7 @@ function RecommendedAgentCard({
             cursor:     'pointer',
             userSelect: 'none',
           }}>
-            Why? ({reasons.length} reason{reasons.length === 1 ? '' : 's'})
+            {format(reasons.length === 1 ? T.agentsPages.list.whyToggleOne : T.agentsPages.list.whyToggleOther, { count: reasons.length })}
           </summary>
           <ul style={{ margin: '8px 0 0 18px', padding: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             {reasons.map((r, i) => <li key={i}>{r}</li>)}

@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useReports } from '../context/ReportsContext';
 import { useRoute } from '../context/RouteContext';
 import { useToast } from '../hooks/useToast';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
 import { Button } from '../components/ui/Button';
 import { ResultHero } from '../components/result/ResultHero';
@@ -34,6 +36,7 @@ export function ReportSharePage() {
   const { route, navigate } = useRoute();
   const { getReport, recordExport } = useReports();
   const { showToast } = useToast();
+  const T = useLocale();
 
   const reportId = route.name === 'reports/share' ? route.reportId : '';
   const report = getReport(reportId);
@@ -46,10 +49,10 @@ export function ReportSharePage() {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, color: 'var(--text-primary)' }}>
-          Shared report unavailable
+          {T.reportsPages.share.unavailableTitle}
         </h2>
         <Button variant="primary" size="md" onClick={() => navigate({ name: 'reports' })}>
-          ← Back to reports
+          {T.reportsPages.share.backToReports}
         </Button>
       </div>
     );
@@ -67,7 +70,7 @@ export function ReportSharePage() {
     }
     recordExport(report.id, 'share-link', { url, clipboard: copied ? 'ok' : 'unavailable' });
     showToast(
-      copied ? 'Share link copied.' : 'Could not copy link. Try again.',
+      copied ? T.reportsPages.share.copySuccess : T.reportsPages.share.copyFailure,
       copied ? 'success' : 'warning',
     );
   };
@@ -107,6 +110,7 @@ export function ReportSharePage() {
 }
 
 function SharedBanner({ onCopy, onBack }: { onCopy: () => void; onBack: () => void }) {
+  const T = useLocale();
   return (
     <div
       className="shared-banner"
@@ -134,10 +138,10 @@ function SharedBanner({ onCopy, onBack }: { onCopy: () => void; onBack: () => vo
             opacity: 0.92,
           }}
         >
-          🔗 Shared report — read-only view
+          {T.reportsPages.share.banner.label}
         </div>
         <div style={{ fontSize: 13, marginTop: 4, opacity: 0.92 }}>
-          Read-only view for people in your workspace, opened from the in-app share link. Internal action buttons are hidden.
+          {T.reportsPages.share.banner.description}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -157,7 +161,7 @@ function SharedBanner({ onCopy, onBack }: { onCopy: () => void; onBack: () => vo
             backdropFilter: 'blur(4px)',
           }}
         >
-          🔗 Copy share link
+          {T.reportsPages.share.banner.copyShareLink}
         </button>
         <button
           type="button"
@@ -175,7 +179,7 @@ function SharedBanner({ onCopy, onBack }: { onCopy: () => void; onBack: () => vo
             backdropFilter: 'blur(4px)',
           }}
         >
-          ← Back to internal view
+          {T.reportsPages.share.banner.backToInternalView}
         </button>
       </div>
     </div>
@@ -183,6 +187,7 @@ function SharedBanner({ onCopy, onBack }: { onCopy: () => void; onBack: () => vo
 }
 
 function ReportTopline({ report }: { report: Report }) {
+  const T = useLocale();
   return (
     <div
       style={{
@@ -204,7 +209,7 @@ function ReportTopline({ report }: { report: Report }) {
           marginBottom: 4,
         }}
       >
-        AI Compliance Report
+        {T.reportsPages.share.topline.kicker}
       </div>
       <h1
         style={{
@@ -230,11 +235,11 @@ function ReportTopline({ report }: { report: Report }) {
         }}
       >
         <span>
-          Score{' '}
+          {T.reportsPages.share.topline.score}{' '}
           <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
             {report.scoreSnapshot}
           </strong>
-          /100
+          {T.reportsPages.share.topline.scoreOutOf}
         </span>
         <span
           style={{
@@ -250,7 +255,7 @@ function ReportTopline({ report }: { report: Report }) {
           {formatRiskLevel(report.riskSnapshot)}
         </span>
         <span style={{ color: 'var(--text-muted)' }}>
-          Generated {formatDate(report.createdAt, 'medium')}
+          {format(T.reportsPages.share.topline.generated, { date: formatDate(report.createdAt, 'medium') })}
         </span>
       </div>
     </div>
@@ -258,6 +263,7 @@ function ReportTopline({ report }: { report: Report }) {
 }
 
 function PoweredByFooter() {
+  const T = useLocale();
   return (
     <div
       style={{
@@ -270,7 +276,7 @@ function PoweredByFooter() {
         fontWeight: 600,
       }}
     >
-      Powered by AiLunaPro · Compliance Suite
+      {T.reportsPages.share.poweredBy}
     </div>
   );
 }

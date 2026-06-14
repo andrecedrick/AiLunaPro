@@ -3,6 +3,8 @@
  */
 
 import type { AgentCatalogEntry } from '../../types/agents';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 
 interface Props {
   agent:   AgentCatalogEntry;
@@ -17,6 +19,7 @@ const PLAN_LABEL: Record<AgentCatalogEntry['minPlan'], string> = {
 };
 
 export function AgentCard({ agent, onOpen }: Props) {
+  const T = useLocale();
   const isAiLuna = agent.source === 'ailunapro';
   return (
     <div
@@ -45,7 +48,7 @@ export function AgentCard({ agent, onOpen }: Props) {
           color:      isAiLuna ? '#fff'           : 'var(--text-muted)',
           textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap',
         }}>
-          {isAiLuna ? 'AiLunaPro' : 'External'}
+          {isAiLuna ? 'AiLunaPro' : T.agentsPages.card.external}
         </span>
         <span style={{
           fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
@@ -69,7 +72,7 @@ export function AgentCard({ agent, onOpen }: Props) {
 
       {agent.expectedRoi.timeSavedHoursPerMonth !== null && (
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
-          ⏱ Saves ~{agent.expectedRoi.timeSavedHoursPerMonth} h / month
+          {format(T.agentsPages.card.savesPerMonth, { hours: agent.expectedRoi.timeSavedHoursPerMonth })}
         </div>
       )}
 
@@ -85,7 +88,7 @@ export function AgentCard({ agent, onOpen }: Props) {
           ))}
           {agent.integrations.length > 4 && (
             <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-              +{agent.integrations.length - 4}
+              {format(T.agentsPages.card.moreIntegrations, { count: agent.integrations.length - 4 })}
             </span>
           )}
         </div>
@@ -101,7 +104,7 @@ export function AgentCard({ agent, onOpen }: Props) {
             color: 'var(--text-primary)', fontWeight: 600, fontSize: 12, cursor: 'pointer',
           }}
         >
-          View details
+          {T.agentsPages.card.viewDetails}
         </button>
         <a
           href={agent.affiliateUrl}
@@ -115,7 +118,7 @@ export function AgentCard({ agent, onOpen }: Props) {
             textAlign: 'center', textDecoration: 'none',
           }}
         >
-          Get this agent
+          {T.agentsPages.card.getThisAgent}
         </a>
       </div>
     </div>

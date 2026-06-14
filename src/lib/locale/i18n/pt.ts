@@ -1065,4 +1065,1235 @@ export const pt: Dict = {
       "a12": "Não. A Calculadora de ROI dá uma estimativa conservadora com base na informação que fornece. As poupanças reais dependem do seu fluxo de trabalho, da qualidade da integração e da adoção."
     }
   },
+  systemBuilder: {
+    "chrome": {
+      "pageTitle": "Construtor de Sistemas de IA",
+      "pageIntro": "Um guia de design pré-implementação. Percorra seis dimensões — finalidade e risco, dados, modelo, supervisão, monitorização, documentação — para conceber um sistema de IA de forma responsável. A sua etapa e marcações da checklist são guardadas apenas neste dispositivo.",
+      "designSteps": "Etapas de design",
+      "checklist": "Checklist",
+      "doneSuffix": "· {doneCount}/{total} concluídos",
+      "keyQuestions": "Perguntas-chave",
+      "references": "Referências (carácter consultivo, não aconselhamento jurídico)",
+      "previousStep": "← Etapa anterior",
+      "nextStep": "Etapa seguinte →",
+      "stepOf": "Etapa {n} de {total}",
+      "endOfGuide": "✓ Fim do guia — as seis dimensões abordadas"
+    },
+    "steps": {
+      "purpose": {
+        "title": "1. Finalidade e classificação de risco",
+        "intro": "Defina para que serve o sistema, quem afeta e qual o seu nível de risco antes de construir o que quer que seja. Isto serve de âncora a todas as decisões posteriores.",
+        "checklist": {
+          "c1": "Escreva uma finalidade prevista numa frase (sem jargão).",
+          "c2": "Liste as pessoas ou grupos afetados (utilizadores, clientes, terceiros).",
+          "c3": "Classifique o nível de risco: inaceitável / elevado (Annex III) / limitado / mínimo — ou GPAI.",
+          "c4": "Documente o âmbito do caso de uso e o seu limite (o que está fora do âmbito).",
+          "c5": "Liste o uso indevido previsível / uso fora do indicado e o que se recusará a fazer."
+        },
+        "questions": {
+          "q1": "Quem tem autoridade para implementar ou suspender este sistema?",
+          "q2": "O que acontece — concretamente — se o sistema errar?",
+          "q3": "Que direitos legais, condições de segurança ou liberdades poderão ser afetados?"
+        }
+      },
+      "data": {
+        "title": "2. Governação de dados",
+        "intro": "Se os seus dados estiverem errados, o sistema estará errado. Inventarie-os, classifique-os, justifique por que os detém e fique atento a enviesamentos.",
+        "checklist": {
+          "c1": "Crie um inventário de dados: origem, responsável, sensibilidade, retenção.",
+          "c2": "Estabeleça uma base legal (GDPR Art. 6) para cada categoria processada.",
+          "c3": "Documente a qualidade: relevância, representatividade, lacunas, enviesamentos conhecidos.",
+          "c4": "Aplique a minimização de dados: recolha apenas o necessário; retenha apenas o tempo necessário.",
+          "c5": "Planeie revisões periódicas de enviesamento e vias de ação corretiva."
+        },
+        "questions": {
+          "q1": "De onde veio cada conjunto de dados e quem é responsável por ele?",
+          "q2": "O conjunto de dados inclui categorias sensíveis (Art. 9 GDPR)? Com que base?",
+          "q3": "Que sinais de enviesamento vai medir e contra que referência?"
+        }
+      },
+      "model": {
+        "title": "3. Seleção e validação do modelo",
+        "intro": "Escolha o menor modelo que funcione. Valide-o da forma como os atacantes e os utilizadores realmente o vão usar. Documente o que ele não consegue fazer.",
+        "checklist": {
+          "c1": "Justifique a escolha da dimensão / família do modelo face ao caso de uso real.",
+          "c2": "Defina metas de precisão + robustez e como as vai medir.",
+          "c3": "Realize testes adversariais / de red-team (prompt injection, jailbreaks, resultados enviesados).",
+          "c4": "Documente os modos de falha conhecidos e os usos explicitamente proibidos.",
+          "c5": "Versione cada artefacto do modelo e inclua notas de alteração nas implementações."
+        },
+        "questions": {
+          "q1": "Porquê este modelo e que alternativa mais barata descartou?",
+          "q2": "Como se apresenta o sistema quando erra — e como é que o sabe?",
+          "q3": "O seu conjunto de testes é representativo do tráfego em produção?"
+        }
+      },
+      "oversight": {
+        "title": "4. Supervisão humana",
+        "intro": "Decida como os humanos mantêm o controlo sobre os resultados de impacto significativo. Garanta que os controlos funcionam mesmo sob pressão.",
+        "checklist": {
+          "c1": "Escolha o modo de supervisão por tipo de decisão: in-loop, on-loop ou out-of-loop.",
+          "c2": "Nomeie revisores e documente SLAs para decisões de elevado impacto.",
+          "c3": "Disponibilize controlos de substituição / pausa / kill-switch que o revisor possa usar.",
+          "c4": "Escreva um runbook de escalonamento (quem é acionado, com que contexto).",
+          "c5": "Registe cada substituição / pausa para revisão pós-incidente."
+        },
+        "questions": {
+          "q1": "Quem revê os resultados de elevado impacto — e tem o tempo e o contexto para o fazer?",
+          "q2": "Pode um único operador parar o sistema sem uma reunião?",
+          "q3": "Como evita a aprovação automática (\"complacência com a automação\")?"
+        }
+      },
+      "monitoring": {
+        "title": "5. Monitorização e incidentes",
+        "intro": "A monitorização pós-implementação não é opcional. A deriva é silenciosa. Os incidentes não.",
+        "checklist": {
+          "c1": "Defina métricas de monitorização pós-implementação (precisão, latência, dano, deriva).",
+          "c2": "Implemente deteção de deriva nas entradas e nas saídas.",
+          "c3": "Registe os incidentes numa única fila com gravidade e responsável.",
+          "c4": "Documente as vias de comunicação (regulador, cliente, interno).",
+          "c5": "Agende reavaliações periódicas (no mínimo trimestrais)."
+        },
+        "questions": {
+          "q1": "Que métrica isolada, ao mover-se, lhe indica que deve suspender o sistema?",
+          "q2": "Quem é acionado às 3 da manhã e que runbook abre?",
+          "q3": "Quando ensaiou pela última vez um cenário de incidente de IA?"
+        }
+      },
+      "docs": {
+        "title": "6. Documentação e transparência",
+        "intro": "Documente o que o sistema é, o que não é e o que os utilizadores precisam de saber. Atualize a cada alteração material.",
+        "checklist": {
+          "c1": "Mantenha documentação técnica conforme o Art. 11 (finalidade, dados, treino, avaliação, riscos).",
+          "c2": "Publique um cartão de modelo / sistema por sistema; atualize a cada versão.",
+          "c3": "Adicione uma divulgação de IA visível ao utilizador em cada superfície de cliente.",
+          "c4": "Atualize os avisos de privacidade para refletir o processamento de IA.",
+          "c5": "Mantenha registos de formação do pessoal que opera o sistema."
+        },
+        "questions": {
+          "q1": "O que precisam os utilizadores finais de saber para usar este sistema de forma responsável?",
+          "q2": "O que precisaria um auditor externo logo no primeiro dia?",
+          "q3": "Quão atualizado está o cartão de modelo / sistema neste momento?"
+        }
+      }
+    }
+  },
+  registry: {
+    "page": {
+      "title": "Registo de IA",
+      "subtitle": "Acompanhe todas as ferramentas de IA usadas na sua organização — finalidade, dados, supervisão e mitigações. O registo alimenta as suas auditorias e relatórios.",
+      "designGuideLink": "A conceber um novo sistema? Abrir o guia de design →",
+      "addTool": "+ Adicionar ferramenta",
+      "loading": "A carregar o registo…",
+      "error": "Falha ao carregar o registo. Atualize para tentar novamente."
+    },
+    "summary": {
+      "totalTools": "Total de ferramentas",
+      "approved": "Aprovadas",
+      "pendingReview": "Revisão pendente",
+      "highRisk": "Alto risco"
+    },
+    "filters": {
+      "searchPlaceholder": "Pesquisar ferramentas, finalidade, notas…",
+      "allDepartments": "Todos os departamentos",
+      "allRisks": "Todos os riscos",
+      "allApproval": "Todas as aprovações",
+      "clear": "Limpar filtros",
+      "risk": {
+        "low": "Baixo",
+        "medium": "Médio",
+        "high": "Alto",
+        "critical": "Crítico"
+      }
+    },
+    "table": {
+      "tool": "Ferramenta",
+      "department": "Departamento",
+      "risk": "Risco",
+      "approval": "Aprovação",
+      "oversight": "Supervisão",
+      "reviewDate": "Data de revisão"
+    },
+    "empty": {
+      "noItems": {
+        "title": "Ainda não existem ferramentas de IA no registo",
+        "body": "Acompanhe todas as ferramentas de IA usadas na sua organização — finalidade, dados, supervisão e mitigações. O registo alimenta as suas auditorias e relatórios.",
+        "action": "+ Adicionar a sua primeira ferramenta"
+      },
+      "noMatches": {
+        "title": "Nenhuma ferramenta corresponde a estes filtros",
+        "body": "Tente alargar os filtros ou limpe-os para ver o registo completo.",
+        "action": "Limpar filtros"
+      }
+    },
+    "modal": {
+      "titleAdd": "Adicionar ferramenta de IA",
+      "titleEdit": "Editar ferramenta de IA",
+      "subtitleAdd": "Acompanhe uma ferramenta de IA usada pela sua equipa. Todos os campos podem ser editados mais tarde.",
+      "subtitleEdit": "Atualize o que a sua equipa sabe sobre esta ferramenta. As alterações são guardadas de imediato no registo local.",
+      "fields": {
+        "toolName": "Nome da ferramenta",
+        "purpose": "Finalidade",
+        "dataTypes": "Tipos de dados processados",
+        "mitigations": "Mitigações",
+        "notes": "Notas",
+        "department": "Departamento",
+        "approvalStatus": "Estado de aprovação",
+        "riskLevel": "Nível de risco",
+        "humanOversight": "Supervisão humana",
+        "nextReviewDate": "Data da próxima revisão"
+      },
+      "placeholders": {
+        "toolName": "ex. Copiloto de apoio ao cliente",
+        "purpose": "O que faz esta ferramenta?",
+        "mitigation": "Adicione uma mitigação e prima Enter",
+        "notes": "Fornecedor, residência, responsável, qualquer coisa que valha a pena registar…"
+      },
+      "riskOptions": {
+        "low": "Baixo",
+        "medium": "Médio",
+        "high": "Alto",
+        "critical": "Crítico"
+      },
+      "reviewDateHint": "Deixe em branco se não houver revisão agendada.",
+      "auditTrail": "Criada {createdDate} · Última atualização {updatedDate}",
+      "removeMitigationAria": "Remover mitigação {index}",
+      "requiredError": "Obrigatório",
+      "deleteConfirm": "Remover \"{toolName}\" do registo? Esta ação não pode ser anulada.",
+      "buttons": {
+        "delete": "Eliminar ferramenta",
+        "cancel": "Cancelar",
+        "addToRegistry": "Adicionar ao registo",
+        "saveChanges": "Guardar alterações"
+      }
+    }
+  },
+  reportsPages: {
+    "list": {
+      "title": "Relatórios",
+      "intro": "Os relatórios gerados são instantâneos de uma auditoria num momento específico. Cada um é exportável, partilhável e permanece estável quando inicia uma nova auditoria.",
+      "generateFromDraft": "+ Gerar a partir do rascunho atual",
+      "startNewAudit": "Iniciar uma nova auditoria",
+      "loading": "A carregar relatórios…",
+      "errorMessage": "Ainda não há relatórios carregados. Isto pode acontecer se o espaço de trabalho for novo ou se o Firestore estiver inacessível.",
+      "retry": "Tentar novamente",
+      "traceabilityHint": "Os relatórios são instantâneos pontuais guardados no seu espaço de trabalho. A vista de detalhe recalcula o resultado completo a partir do instantâneo de respostas de cada relatório — por isso os relatórios históricos permanecem exatos mesmo depois de as regras de pontuação evoluírem."
+    },
+    "detail": {
+      "loading": "A carregar relatório…",
+      "notFoundTitle": "Relatório não encontrado",
+      "notFoundBody": "Este relatório já não existe ou foi eliminado.",
+      "backToReports": "← Voltar aos relatórios",
+      "rename": {
+        "titleAriaLabel": "Título do relatório",
+        "saving": "…",
+        "saveTitle": "Guardar título",
+        "cancel": "Cancelar",
+        "renameButton": "Renomear"
+      },
+      "download": {
+        "preparing": "A preparar…",
+        "downloadPdf": "⬇ Descarregar PDF"
+      },
+      "errors": {
+        "tokensInsufficientExport": "Tokens insuficientes para exportar. Compre tokens para continuar.",
+        "downloadFailed": "Falha ao descarregar. Tente novamente.",
+        "renameForbidden": "Apenas proprietários ou administradores podem renomear relatórios.",
+        "renameFailed": "Não foi possível renomear. Tente novamente.",
+        "tokensInsufficient": "Tokens insuficientes. Compre tokens para continuar.",
+        "shareDisabled": "A partilha está desativada para este relatório.",
+        "shareForbidden": "Apenas proprietários ou administradores podem partilhar relatórios.",
+        "shareCreateFailed": "Não foi possível criar uma ligação de partilha. Tente novamente.",
+        "revokeFailed": "Não foi possível revogar a ligação. Tente novamente.",
+        "toggleSharingFailed": "Não foi possível atualizar a partilha. Tente novamente."
+      },
+      "share": {
+        "heading": "Ligação partilhável",
+        "description": "Uma ligação assinada, sem início de sessão, para o PDF deste relatório. Criar ou regenerar conta para as suas exportações de PDF.",
+        "working": "A processar…",
+        "generateNewLink": "Gerar nova ligação",
+        "revoke": "Revogar",
+        "shareLink": "Ligação de partilha",
+        "enableSharing": "Ativar partilha",
+        "disableSharing": "Desativar partilha",
+        "copied": "Copiado",
+        "copy": "Copiar",
+        "expires": "Expira a {date}.",
+        "activeLinkExists": "Existe uma ligação ativa (expira a {date}). Gere uma nova ligação para ver o URL novamente — isto revoga a anterior.",
+        "disabledNotice": "A partilha está desativada — as ligações existentes já não funcionam.",
+        "useTokensAndCreateLink": "Usar tokens e criar ligação"
+      },
+      "status": {
+        "notShared": "Não partilhado",
+        "active": "Ativo",
+        "expired": "Expirado",
+        "revoked": "Revogado",
+        "disabled": "Desativado"
+      },
+      "footer": {
+        "openAssistancePlan": "Abrir plano de assistência",
+        "deleteReport": "Eliminar relatório",
+        "deleteConfirm": "Eliminar este relatório? Esta ação não pode ser anulada."
+      },
+      "metadata": {
+        "heading": "Metadados",
+        "reportId": "ID do relatório",
+        "sourceDraft": "Rascunho de origem",
+        "status": "Estado",
+        "weakestSection": "Secção mais fraca",
+        "frameworks": "Frameworks"
+      }
+    },
+    "share": {
+      "unavailableTitle": "Relatório partilhado indisponível",
+      "backToReports": "← Voltar aos relatórios",
+      "copySuccess": "Ligação de partilha copiada.",
+      "copyFailure": "Não foi possível copiar a ligação. Tente novamente.",
+      "banner": {
+        "label": "🔗 Relatório partilhado — vista só de leitura",
+        "description": "Vista só de leitura para pessoas do seu espaço de trabalho, aberta a partir da ligação de partilha na aplicação. Os botões de ação internos estão ocultos.",
+        "copyShareLink": "🔗 Copiar ligação de partilha",
+        "backToInternalView": "← Voltar à vista interna"
+      },
+      "topline": {
+        "kicker": "Relatório de Conformidade de IA",
+        "score": "Pontuação",
+        "scoreOutOf": "/100",
+        "generated": "Gerado a {date}"
+      },
+      "poweredBy": "Desenvolvido por AiLunaPro · Compliance Suite"
+    }
+  },
+  savedAudits: {
+    "list": {
+      "title": "Audit Express guardadas",
+      "subtitle": "Os seus instantâneos guardados do Audit Express. Descarregue o PDF ou remova um resultado guardado.",
+      "runAuditExpress": "Executar Audit Express",
+      "loading": "A carregar…",
+      "empty": {
+        "prefix": "Ainda não há auditorias guardadas. Use",
+        "runLink": "Executar Audit Express",
+        "suffix": "para criar uma."
+      },
+      "meta": {
+        "engineLabel": "motor",
+        "engineFallback": "n/d",
+        "confidenceLabel": "confiança"
+      }
+    },
+    "actions": {
+      "view": "Ver",
+      "rename": "Renomear",
+      "delete": "Eliminar",
+      "download": "Descarregar PDF",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "busy": "…"
+    },
+    "fields": {
+      "titleAriaLabel": "Título da auditoria",
+      "viewDetailsTooltip": "Ver detalhes"
+    },
+    "errors": {
+      "load": "Não foi possível carregar as suas auditorias guardadas. Tente novamente.",
+      "tokensInsufficient": "Tokens insuficientes para exportar. Compre tokens para continuar.",
+      "download": "Falha ao descarregar. Tente novamente.",
+      "delete": "Falha ao eliminar. Tente novamente.",
+      "rename": "Não foi possível renomear. Tente novamente."
+    },
+    "pdfLimitModal": {
+      "ariaLabel": "Limite de exportação de PDF",
+      "title": "Já utilizou as suas {freeCount} exportações de PDF gratuitas",
+      "body": "Descarregar mais PDFs requer tokens ({tokenCost} tokens por exportação).",
+      "useTokens": "Usar tokens e descarregar",
+      "useTokensBusy": "…",
+      "buyTokens": "Atualizar ou comprar tokens",
+      "cancel": "Cancelar"
+    },
+    "detail": {
+      "backToList": "← Auditorias guardadas",
+      "loading": "A carregar…",
+      "meta": {
+        "engineLabel": "motor",
+        "engineFallback": "n/d",
+        "confidenceLabel": "confiança"
+      },
+      "rename": "Renomear",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "titleAriaLabel": "Título da auditoria",
+      "busy": "…",
+      "notRecomputed": "Não foi possível recalcular esta auditoria.",
+      "downloadPdf": "Descarregar PDF",
+      "downloadPdfBusy": "A preparar…",
+      "backToSaved": "Voltar às auditorias guardadas"
+    },
+    "detailErrors": {
+      "notFound": "Esta auditoria já não existe.",
+      "load": "Não foi possível carregar esta auditoria. Tente novamente.",
+      "rename": "Não foi possível renomear. Tente novamente.",
+      "tokensInsufficient": "Tokens insuficientes. Compre tokens para continuar.",
+      "sharingDisabled": "A partilha está desativada para esta auditoria.",
+      "createShareLink": "Não foi possível criar uma ligação de partilha. Tente novamente.",
+      "revokeShareLink": "Não foi possível revogar a ligação. Tente novamente.",
+      "updateSharing": "Não foi possível atualizar a partilha. Tente novamente."
+    },
+    "recommendedAgents": {
+      "heading": "Agentes recomendados",
+      "exploreAll": "Explorar todos os agentes →",
+      "disclaimer": "Correspondências indicativas com base nesta auditoria. Avalie a adequação antes de adotar.",
+      "meta": {
+        "hoursSaved": "~{hours} h/mês poupadas",
+        "plan": "plano {plan}",
+        "setup": "configuração {complexity}"
+      }
+    },
+    "share": {
+      "heading": "Ligação partilhável",
+      "description": "Uma ligação assinada, sem início de sessão, para o PDF desta auditoria. Criar ou regenerar conta para as suas exportações de PDF.",
+      "generateNewLink": "Gerar nova ligação",
+      "shareLink": "Ligação de partilha",
+      "working": "A processar…",
+      "revoke": "Revogar",
+      "enableSharing": "Ativar partilha",
+      "disableSharing": "Desativar partilha",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "expires": "Expira a {date}.",
+      "activeLinkExists": "Existe uma ligação ativa (expira a {date}). Gere uma nova ligação para ver o URL novamente — isto revoga a anterior.",
+      "disabledNotice": "A partilha está desativada — as ligações existentes já não funcionam.",
+      "limitModalActionLabel": "Usar tokens e criar ligação"
+    },
+    "shareStatus": {
+      "notShared": "Não partilhado",
+      "active": "Ativo",
+      "expired": "Expirado",
+      "revoked": "Revogado",
+      "disabled": "Desativado"
+    }
+  },
+  billingPage: {
+    "header": {
+      "title": "Faturação",
+      "subtitle": "Faça a gestão do seu plano, utilização e faturas.",
+      "readOnlyBadge": "Vista só de leitura."
+    },
+    "plans": {
+      "bestValueBadge": "Melhor valor",
+      "priceApprox": "{approx}{suffix} aprox. · faturado em USD",
+      "cta": {
+        "redirecting": "A redirecionar…",
+        "currentPlan": "Plano atual",
+        "freeCurrent": "Free — atual",
+        "startForFree": "Começar gratuitamente",
+        "subscribe": "Subscrever"
+      },
+      "free": {
+        "description": "Experimente a plataforma com acesso limitado.",
+        "features": {
+          "limitedAuditAccess": "Acesso limitado a auditorias",
+          "basicDashboard": "Painel básico",
+          "demoReports": "Relatórios de demonstração",
+          "communitySupport": "Apoio da comunidade"
+        }
+      },
+      "starter": {
+        "description": "Realize auditorias reais por conta própria.",
+        "features": {
+          "coreAuditWorkflow": "Fluxo de auditoria essencial",
+          "basicComplianceReports": "Relatórios de conformidade básicos",
+          "starterAuditVolume": "Volume de auditorias Starter",
+          "essentialAiRecommendations": "Recomendações essenciais de AI",
+          "emailSupport": "Apoio por email"
+        }
+      },
+      "professional": {
+        "description": "Para equipas em crescimento que realizam auditorias avançadas.",
+        "features": {
+          "higherAuditVolume": "Maior volume de auditorias",
+          "advancedReports": "Relatórios avançados",
+          "teamCollaboration": "Colaboração em equipa",
+          "priorityAiRecommendations": "Recomendações de AI prioritárias",
+          "prioritySupport": "Apoio prioritário"
+        }
+      },
+      "enterprise": {
+        "description": "Governação e controlo ao nível da organização.",
+        "features": {
+          "highestAuditVolume": "Volume de auditorias mais elevado",
+          "advancedTeamManagement": "Gestão avançada de equipas",
+          "organizationControls": "Controlos da organização",
+          "customBranding": "Marca personalizada",
+          "dedicatedSupport": "Apoio dedicado",
+          "enterpriseReadyGovernance": "Governação pronta para empresas"
+        }
+      }
+    },
+    "pricingSection": {
+      "currencyBadge": {
+        "detected": "Moeda de faturação detetada a partir da sua região: {currency} {symbol}",
+        "default": "Moeda de faturação: {currency} {symbol}"
+      },
+      "secureCheckoutBadge": "Pagamento seguro através de Stripe",
+      "heading": "Escolha o plano que se adequa ao seu fluxo de auditoria",
+      "subheadingPrefix": "Comece no modo de teste do Stripe. Não são feitas cobranças reais — utilize o cartão de teste",
+      "subheadingSuffix": "."
+    },
+    "currentPlan": {
+      "label": "Plano atual",
+      "statusNoSubscription": "Sem subscrição",
+      "freePlanNote": "Plano Free — sem subscrição ativa",
+      "paidPlanSummary": "${price}/mês · faturado {billingCycle}",
+      "renews": " · Renova {date}",
+      "cancelsAtPeriodEnd": "⚠ Cancela no fim do período ({date})",
+      "billedInCurrency": "A sua subscrição ativa é faturada em {currency}.",
+      "resumePlan": "Retomar plano",
+      "cancelPlan": "Cancelar plano"
+    },
+    "billingActions": {
+      "title": "Ações de faturação",
+      "manageSubscription": "Gerir subscrição",
+      "managePaymentMethods": "Gerir métodos de pagamento",
+      "loading": "A carregar…",
+      "paymentMethodsHint": "Atualizar cartão, definir predefinido, remover — tratado de forma segura pela Stripe.",
+      "noCustomerYet": "Ainda não existe cliente Stripe. Os métodos de pagamento ficam disponíveis após a sua primeira subscrição ou compra de tokens.",
+      "portalError": "Não foi possível abrir o portal Stripe. Verifique se o Worker está em execução."
+    },
+    "tokens": {
+      "title": "Tokens",
+      "balance": "{balance} / {allocation} neste ciclo",
+      "balanceLoading": "A carregar o saldo de tokens…",
+      "manageTokens": "Gerir tokens"
+    },
+    "usage": {
+      "sectionTitle": "Utilização neste período",
+      "auditsLabel": "Auditorias",
+      "seatsLabel": "Lugares",
+      "unlimitedValue": "{used} / ∞",
+      "boundedValue": "{used} / {limit}",
+      "periodRange": "Período: {start} – {end}"
+    },
+    "invoices": {
+      "sectionTitle": "Faturas",
+      "empty": "Ainda não existem faturas.",
+      "loading": "A carregar faturas…",
+      "emptyAfterFirstCycle": "As faturas aparecerão aqui após o seu primeiro ciclo de faturação.",
+      "tableHeaders": {
+        "date": "Data",
+        "description": "Descrição",
+        "amount": "Montante",
+        "status": "Estado",
+        "invoiceNumber": "Número da fatura",
+        "actions": "Ações"
+      },
+      "statusUnknown": "desconhecido",
+      "actionView": "Ver",
+      "actionPdf": "PDF",
+      "managedInStripeNote": "O método de pagamento e os dados de faturação são geridos de forma segura na Stripe."
+    },
+    "mockPlans": {
+      "sectionTitle": "Planos",
+      "currentBadge": "Atual",
+      "free": "Free",
+      "priceSuffix": "/mês",
+      "switch": "Mudar",
+      "contactOwnerToChange": "Contacte o proprietário para mudar de plano"
+    },
+    "mockConfirm": {
+      "title": "Mudar para {plan}",
+      "body": "Esta é uma ação simulada — não ocorrerá nenhuma cobrança real.",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar (simulação)"
+    },
+    "locked": {
+      "title": "Acesso à faturação restrito",
+      "subtitle": "Contacte o proprietário do seu espaço de trabalho para ver ou gerir a faturação.",
+      "backToDashboard": "Voltar ao painel",
+      "contactWorkspaceOwner": "Contactar o proprietário do espaço de trabalho",
+      "askOwnerToast": "Peça acesso à faturação ao proprietário do seu espaço de trabalho."
+    },
+    "success": {
+      "headline": {
+        "failed": "Falha na sincronização",
+        "active": "O seu plano {plan} está ativo",
+        "activating": "Obrigado — a sua subscrição está a ser ativada"
+      },
+      "subtext": {
+        "failedFallback": "Não foi possível finalizar a sua subscrição automaticamente.",
+        "redirecting": "A redirecioná-lo para a Faturação…",
+        "syncing": "Estamos a sincronizar a sua subscrição com a Stripe."
+      },
+      "pill": {
+        "failed": "Falha na sincronização",
+        "activated": "Subscrição ativada",
+        "syncing": "A sincronizar subscrição…",
+        "almostDone": "Quase concluído…"
+      },
+      "backToBilling": "Voltar à Faturação",
+      "retrySync": "Tentar sincronizar novamente",
+      "errors": {
+        "stillProcessing": "O pagamento ainda está a ser processado. Aguarde um momento e tente novamente.",
+        "sessionInvalid": "Esta sessão de pagamento já não é válida. Inicie uma nova subscrição.",
+        "notSignedIn": "Não tem sessão iniciada. Inicie sessão e tente novamente.",
+        "orgLinkFailed": "Não foi possível associar esta subscrição à sua organização. Contacte o apoio.",
+        "generic": "Ocorreu um problema ao ativar a sua subscrição.",
+        "noSessionDetected": "Não foi possível detetar a sua sessão de pagamento. Volte à Faturação e tente novamente."
+      }
+    }
+  },
+  tokensPage: {
+    "header": {
+      "title": "Tokens",
+      "subtitle": "Acompanhe a utilização, monitorize a sua alocação mensal e compre recargas quando necessário."
+    },
+    "locked": {
+      "title": "Tokens indisponíveis",
+      "clientMessage": "Os tokens não são visíveis a partir de uma conta de cliente.",
+      "workspaceMessage": "Os tokens estão indisponíveis para este espaço de trabalho.",
+      "backToDashboard": "Voltar ao painel"
+    },
+    "webhook": {
+      "notice": "Pagamento recebido. A aguardar que o webhook da Stripe atualize o seu saldo de tokens.",
+      "refreshBalance": "Atualizar saldo"
+    },
+    "balance": {
+      "loading": "A carregar saldo…",
+      "empty": "Ainda não existe saldo de tokens. Será criado na sua primeira auditoria.",
+      "statBalance": "Saldo",
+      "statMonthlyAllocation": "Alocação mensal",
+      "statConsumed": "Consumido",
+      "statRollover": "Transitado",
+      "statTopups": "Recargas",
+      "cycleEnds": "O ciclo termina: {cycleEnd}",
+      "lastReset": "Última reposição: {lastReset}"
+    },
+    "packs": {
+      "sectionTitle": "Comprar mais tokens",
+      "sectionNote": "Os pacotes de tokens são atualmente faturados em USD. Os tokens de recarga nunca expiram.",
+      "readOnlyNotice": "Pode ver os tokens, mas apenas proprietários, administradores e gestores de faturação podem comprar pacotes.",
+      "starterLabel": "Starter",
+      "starterBlurb": "Reforce um ciclo em baixa.",
+      "proLabel": "Pro",
+      "proBlurb": "A recarga mais comum.",
+      "maxLabel": "Max",
+      "maxBlurb": "Reforço para grande carga de trabalho.",
+      "tokensUnit": "tokens",
+      "amountPrefix": "+{amount}",
+      "buyPack": "Comprar pacote",
+      "redirecting": "A redirecionar…",
+      "readOnlyButton": "Só de leitura"
+    },
+    "usage": {
+      "sectionTitle": "Utilização recente",
+      "loading": "A carregar utilização…",
+      "empty": "Ainda não existe utilização.",
+      "colDate": "Data",
+      "colModule": "Módulo",
+      "colAction": "Ação",
+      "colTokens": "Tokens",
+      "colStatus": "Estado",
+      "tokensSpent": "−{tokens}"
+    },
+    "toasts": {
+      "purchaseCompleted": "Compra de tokens concluída. O seu saldo será atualizado em breve.",
+      "purchaseCancelled": "Compra de tokens cancelada.",
+      "buyForbidden": "Apenas proprietários, administradores ou gestores de faturação podem comprar pacotes de tokens."
+    }
+  },
+  teamPage: {
+    "header": {
+      "title": "Equipa",
+      "subtitlePrefix": "Faça a gestão de quem tem acesso a",
+      "subtitleSuffix": "e do que podem fazer.",
+      "subtitleFallbackOrg": "o seu espaço de trabalho",
+      "inviteButton": "+ Convidar membro"
+    },
+    "stats": {
+      "totalMembers": "Total de membros",
+      "active": "Ativos",
+      "pendingInvites": "Convites pendentes",
+      "adminsAndOwners": "Administradores e proprietários"
+    },
+    "filters": {
+      "all": "Todos",
+      "owners": "Proprietários",
+      "admins": "Administradores",
+      "billing": "Faturação",
+      "members": "Membros",
+      "clients": "Clientes",
+      "pending": "Pendentes"
+    },
+    "roles": {
+      "owner": "Proprietários",
+      "admin": "Administradores",
+      "billing": "Faturação",
+      "member": "Membros",
+      "client": "Clientes"
+    },
+    "emptyState": {
+      "noMembers": "Ainda não há membros neste espaço de trabalho.",
+      "noMatch": "Nenhum membro corresponde ao filtro \"{filter}\"."
+    },
+    "confirm": {
+      "cancelInvite": "Cancelar este convite pendente?",
+      "regenerateLink": "Regenerar o link de convite? O link antigo deixará de funcionar.",
+      "removeMember": "Remover este membro do espaço de trabalho? Esta ação não pode ser anulada."
+    },
+    "toast": {
+      "cancelFailed": "Falha ao cancelar",
+      "newLinkCopied": "Novo link de convite copiado para a área de transferência.",
+      "regenerateFailed": "Falha ao regenerar",
+      "roleUpdateFailed": "Falha ao atualizar a função",
+      "memberRemoved": "Membro removido.",
+      "removeFailed": "Falha ao remover",
+      "memberDisabled": "Membro desativado.",
+      "disableFailed": "Falha ao desativar",
+      "disableUnavailableMock": "Desativar não está disponível na camada de simulação.",
+      "memberEnabled": "Membro ativado.",
+      "enableFailed": "Falha ao ativar",
+      "enableUnavailableMock": "Ativar não está disponível na camada de simulação."
+    },
+    "pendingInvites": {
+      "heading": "Convites pendentes ({count})",
+      "tableHeaders": {
+        "email": "Email",
+        "role": "Função",
+        "expires": "Expira",
+        "actions": "Ações"
+      },
+      "copyLink": "Copiar link",
+      "regenerateLink": "Regenerar link",
+      "cancel": "Cancelar",
+      "linkHiddenNote": "Link oculto por segurança. Clique em Regenerar link para emitir um novo."
+    },
+    "rolesLegend": {
+      "lead": "**Sobre as funções —**",
+      "owners": "Os **Proprietários** fazem a gestão da faturação e das definições do espaço de trabalho.",
+      "admins": "Os **Administradores** fazem a gestão dos utilizadores da organização.",
+      "billing": "Os utilizadores de **Faturação** fazem a gestão das faturas e da subscrição.",
+      "members": "Os **Membros** podem usar as funcionalidades de auditoria.",
+      "clients": "Os **Clientes** têm acesso limitado de visualização."
+    },
+    "footerHint": "Os convites são apenas simulados por agora. O envio real de emails e o Firebase Auth substituirão esta camada na fase de backend."
+  },
+  orgCreate: {
+    "heading": "Criar um espaço de trabalho",
+    "subtitle": {
+      "signedIn": "Sessão iniciada como {email}",
+      "anonymous": "Configure um novo espaço de trabalho da organização"
+    },
+    "form": {
+      "nameLabel": "Nome do espaço de trabalho",
+      "namePlaceholder": "ex.: Acme Corp",
+      "planLabel": "Plano"
+    },
+    "planDesc": {
+      "free": "Até 3 auditorias, 1 lugar",
+      "starter": "10 auditorias, 5 lugares",
+      "professional": "Auditorias ilimitadas, 20 lugares",
+      "enterprise": "Limites personalizados, SSO, SLA"
+    },
+    "submit": {
+      "idle": "Criar espaço de trabalho",
+      "loading": "A criar o espaço de trabalho…"
+    },
+    "backToDashboard": "← Voltar ao painel"
+  },
+  auditHistory: {
+    "header": {
+      "title": "Histórico de auditorias",
+      "subtitle": "Auditorias submetidas para este espaço de trabalho. Gere um relatório para criar um instantâneo partilhável."
+    },
+    "states": {
+      "loading": "A carregar o histórico de auditorias…",
+      "error": "Não foi possível carregar o histórico de auditorias. Tente novamente mais tarde."
+    },
+    "empty": {
+      "title": "Ainda não há auditorias submetidas",
+      "description": "As auditorias submetidas aparecem aqui para este espaço de trabalho. Execute uma Nova Auditoria para começar.",
+      "startAudit": "+ Iniciar uma auditoria"
+    },
+    "columns": {
+      "submitted": "Submetida",
+      "score": "Pontuação",
+      "risk": "Risco",
+      "findings": "Constatações"
+    },
+    "row": {
+      "scoreOutOf": "/100",
+      "generateReport": "Gerar relatório"
+    },
+    "toast": {
+      "reportGenerated": "Relatório gerado"
+    }
+  },
+  auditResultPage: {
+    "header": {
+      "badge": {
+        "submitted": "Auditoria submetida",
+        "preview": "Pré-visualização da auditoria"
+      },
+      "title": "Resultado da Auditoria",
+      "submissionId": "ID da submissão {id} · {submittedAt}"
+    },
+    "journeyNext": {
+      "headline": "Eis o que a sua auditoria significa",
+      "summary": {
+        "overallScore": "Pontuação geral {score}/100 — risco {risk}.",
+        "findingsSingular": "{n} constatação em {m} ação recomendada.",
+        "findingsPlural": "{n} constatações em {m} ações recomendadas.",
+        "maturity": "Maturidade de AI: nível {level} de 5."
+      }
+    }
+  },
+  agentsPages: {
+    "list": {
+      "title": "Agentes",
+      "intro": "Encontre agentes de AI que se adequam ao seu fluxo de trabalho. Os agentes tudo-em-um da AiLunaPro estão destacados.",
+      "locked": {
+        "title": "Os agentes não estão disponíveis para contas de cliente",
+        "backToDashboard": "Voltar ao painel"
+      },
+      "filters": {
+        "industryLabel": "Setor",
+        "integrationLabel": "Integração",
+        "allIndustries": "Todos os setores",
+        "allIntegrations": "Todas as integrações",
+        "clearFilters": "Limpar filtros",
+        "clearRecommendationsHint": "Limpe as recomendações para usar os filtros."
+      },
+      "loading": "A carregar agentes…",
+      "emptyFiltered": "Nenhum agente corresponde aos filtros selecionados.",
+      "sections": {
+        "topRecommendations": "Principais recomendações",
+        "otherAgents": "Outros agentes"
+      },
+      "rankBadge": "#{rank}",
+      "scorePts": "{score} pts",
+      "whyToggleOne": "Porquê? ({count} motivo)",
+      "whyToggleOther": "Porquê? ({count} motivos)"
+    },
+    "recommendPanel": {
+      "title": "Personalizar as minhas recomendações",
+      "subtitle": "Adicione algumas preferências para classificar os agentes que se adequam ao seu contexto.",
+      "fields": {
+        "industry": "Setor",
+        "companySize": "Dimensão da empresa",
+        "targetWorkflow": "Fluxo de trabalho-alvo",
+        "subscriptionPlan": "Plano de subscrição",
+        "currentMaturity": "Maturidade de AI atual",
+        "integrations": "Integrações (separadas por vírgulas, máx. 10)"
+      },
+      "placeholders": {
+        "industry": "ex.: retalho, saas, saúde",
+        "integrations": "ex.: hubspot, slack, email"
+      },
+      "selectNone": "—",
+      "companySizeOptions": {
+        "solo": "Individual",
+        "sme": "PME",
+        "enterprise": "Enterprise"
+      },
+      "maturityOptions": {
+        "low": "Baixa",
+        "medium": "Média",
+        "high": "Alta"
+      },
+      "workflowOptions": {
+        "support": "Apoio ao cliente",
+        "sales": "Vendas e seguimento de leads",
+        "finance": "Finanças e faturação",
+        "documents": "Documentos e contratos",
+        "reporting": "Relatórios e painéis",
+        "admin": "Trabalho administrativo",
+        "compliance": "Conformidade e governação",
+        "marketing": "Marketing e conteúdos",
+        "hr": "RH e gestão de pessoas"
+      },
+      "helperText": "Adicione pelo menos uma preferência para personalizar as recomendações.",
+      "submit": "Recomendar agentes",
+      "submitting": "A calcular…",
+      "clearRecommendations": "Limpar recomendações"
+    },
+    "card": {
+      "external": "Externo",
+      "savesPerMonth": "⏱ Poupa ~{hours} h / mês",
+      "moreIntegrations": "+{count}",
+      "viewDetails": "Ver detalhes",
+      "getThisAgent": "Obter este agente"
+    },
+    "detail": {
+      "lockedNotice": "Os agentes não estão disponíveis para contas de cliente.",
+      "backToAgents": "← Voltar aos agentes",
+      "loading": "A carregar…",
+      "errors": {
+        "missingAgentId": "ID do agente em falta",
+        "missingOrgContext": "Contexto da organização em falta"
+      },
+      "pills": {
+        "external": "Externo",
+        "minPlanSuffix": "{plan}+",
+        "tokens": "Tokens · {profile}",
+        "setup": "Configuração · {complexity}",
+        "recommendedAllInOne": "Tudo-em-Um Recomendado",
+        "compliance": "Conformidade",
+        "audit": "Auditoria"
+      },
+      "cta": "Obter este agente →",
+      "sections": {
+        "overview": "Visão geral",
+        "problemSolved": "Problema resolvido",
+        "bestFit": "Melhor adequação",
+        "integrations": "Integrações",
+        "expectedRoi": "ROI esperado",
+        "pricing": "Preços"
+      },
+      "bestFit": {
+        "industries": "Setores",
+        "companySize": "Dimensão da empresa",
+        "minBudget": "Orçamento mín.",
+        "minBudgetValue": "${amount}/mês"
+      },
+      "roi": {
+        "timeSaved": "Tempo poupado",
+        "timeSavedValue": "{hours} h/mês",
+        "costSaved": "Custo poupado",
+        "costSavedValue": "${amount}/mês",
+        "payback": "Retorno",
+        "paybackValue": "{months} meses"
+      },
+      "pricing": {
+        "modelPrefix": "Modelo: **{model}**",
+        "install": " · Instalação: ${amount}",
+        "monthly": " · Mensal: ${amount}",
+        "onRequest": " · Preço sob consulta"
+      }
+    }
+  },
+  assistancePage: {
+    "header": {
+      "badge": "✨ Plano de ação guiado",
+      "title": "O seu plano de ação",
+      "intro": "Traduzimos as suas respostas da auditoria num plano sequenciado e contextual. Leia cada secção abaixo — cada afirmação remete para os seus dados.",
+      "score": "Pontuação {globalScore} / 100",
+      "backToResult": "← Voltar ao resultado"
+    },
+    "detected": {
+      "eyebrow": "01 · Diagnóstico",
+      "title": "O que detetámos",
+      "topIssuesLabel": "Principais problemas identificados",
+      "noIssues": "✓ Nenhum problema a assinalar — a auditoria validou todas as regras.",
+      "weakestAreaLabel": "Área mais fraca",
+      "weakestAreaScore": "{score}%",
+      "weakestAreaHint": "Fechar a lacuna desta secção é a ação com maior impacto na sua pontuação global.",
+      "noWeakArea": "Nenhuma área fraca detetada."
+    },
+    "priorities": {
+      "eyebrow": "02 · Prioridades",
+      "title": "O que deve corrigir primeiro",
+      "intro": "Das {count} ações recomendadas, estas três oferecem o maior retorno face ao esforço. Cada uma remete para os achados que resolve.",
+      "whyItMattersLabel": "Por que é importante: ",
+      "expectedOutcomeLabel": "Resultado esperado: ",
+      "impactBadge": "impacto {impact}",
+      "timeframeDays": "{days}d",
+      "closesFindingsOne": "fecha {count} achado",
+      "closesFindingsOther": "fecha {count} achados",
+      "startWithThis": "Comece por aqui →",
+      "startWithThisTooltip": "Em breve, após o J2",
+      "mostLeverage": "Maior impacto para o esforço"
+    },
+    "operatingModel": {
+      "eyebrow": "03 · Modelo operacional",
+      "title": "O que automatizar ou estruturar",
+      "intro": "Cada item abaixo tem um modo principal de execução. Automatizar onde deveria estruturar (ou vice-versa) é um padrão de falha comum.",
+      "categories": {
+        "automate": {
+          "eyebrow": "Ferramentas e sistemas",
+          "title": "Automatizar",
+          "tagline": "Itens em que o impacto vem do sistema, não da pessoa."
+        },
+        "structure": {
+          "eyebrow": "Política e governança",
+          "title": "Estruturar",
+          "tagline": "Itens que requerem responsabilidade formal, política ou alinhamento com um framework."
+        },
+        "process": {
+          "eyebrow": "Movimento recorrente",
+          "title": "Operar",
+          "tagline": "Itens que são processos que mantém em execução com uma cadência."
+        },
+        "train": {
+          "eyebrow": "Pessoas",
+          "title": "Formar",
+          "tagline": "Itens que mudam comportamentos através da educação."
+        }
+      },
+      "actionsCountOne": "{count} ação",
+      "actionsCountOther": "{count} ações",
+      "timeframeDays": "{days}d",
+      "emptyColumn": "Nada aqui de momento."
+    },
+    "whyItMatters": {
+      "eyebrow": "04 · Contexto",
+      "title": "Por que isto é importante",
+      "frameworksReferenced": "Frameworks referenciados nesta avaliação"
+    },
+    "impact": {
+      "eyebrow": "05 · Impacto",
+      "title": "Impacto esperado no negócio",
+      "ifTop3": "Se concluir as 3 principais ações",
+      "scoreLift": "A sua pontuação global projetada passa de {currentScore} para {projectedScore}. Trata-se de uma simulação direcional baseada nos achados que cada ação resolve — a variação real depende da profundidade da execução.",
+      "projectedLabel": "Projetada",
+      "deltaPts": "+{delta} pts",
+      "noChange": "sem alteração",
+      "toneHighLift": "Grande ganho",
+      "toneSteadyGain": "Ganho constante",
+      "toneHoldTheLine": "Manter a posição",
+      "outcomes": {
+        "auditReadinessTitle": "Preparação para auditorias",
+        "auditReadinessHigh": "Passa de \"incompleto\" para \"defensável\" num questionário de segurança.",
+        "auditReadinessSteady": "Postura existente documentada e mais fácil de referenciar em auditorias.",
+        "incidentExposureTitle": "Exposição a incidentes",
+        "incidentExposureHigh": "Raio de impacto reduzido e tempo médio de contenção mais rápido quando a AI causa danos.",
+        "incidentExposureSteady": "Resposta previsível e responsabilidade mais clara para incidentes específicos de AI.",
+        "customerTrustTitle": "Confiança dos clientes",
+        "customerTrustHigh": "Divulgação, model cards e explicabilidade dão às suas equipas de suporte e vendas respostas claras.",
+        "internalVelocityTitle": "Velocidade interna",
+        "internalVelocitySteady": "Os builders entregam mais depressa quando os caminhos de política e revisão são inequívocos."
+      },
+      "disclaimer": "A pontuação projetada é uma simulação direcional calculada a partir da cobertura de achados e dos pesos das secções. Não constitui uma garantia."
+    },
+    "nextStep": {
+      "eyebrow": "06 · Recomendado",
+      "title": "O seu próximo passo",
+      "nextOneThing": "Próxima 1 coisa",
+      "savedAt": "Guardado localmente às {timestamp}.",
+      "localOnlyNote": "Manteremos este plano disponível localmente — sem upload, sem necessidade de atualizar a conta. Volte sempre que a sua equipa estiver pronta para agir.",
+      "ctas": {
+        "saveDefault": "✓ Guardar este plano de ação",
+        "saved": "✓ Guardado",
+        "reminderSet": "✓ Lembrete definido",
+        "exported": "✓ Exportado",
+        "remind7Day": "⏰ Definir lembrete de 7 dias",
+        "remind30Day": "⏰ Definir lembrete de 30 dias",
+        "remind60Day": "⏰ Definir lembrete de 60 dias",
+        "remindQuarterly": "⏰ Definir revisão trimestral",
+        "exportPlan": "⬇ Exportar plano"
+      }
+    },
+    "narrative": {
+      "whyItMatters": {
+        "regHighStakes": "Opera num contexto que os reguladores já tratam como de alto risco. O EU AI Act, o GDPR e as regras setoriais (equivalentes ao HIPAA, frameworks de serviços financeiros) impõem deveres adicionais quando a AI processa dados sensíveis ou toma decisões consequentes sobre pessoas.",
+        "customerFacingTransparency": "A sua AI está voltada para o cliente, o que significa que se aplicam obrigações de transparência (EU AI Act Article 50, regras de proteção do consumidor) e os riscos reputacionais são mais elevados do que nas ferramentas internas.",
+        "internalBaseline": "Mesmo no uso interno de AI, frameworks reconhecidos (ISO/IEC 42001, NIST AI RMF) funcionam cada vez mais como base de referência para a due diligence de fornecedores e os negócios empresariais.",
+        "riskInactionHigh": "Na sua faixa de risco atual, o custo da inação é assimétrico. Um único incidente — um modelo a divulgar dados, uma decisão injusta, uma indisponibilidade sem runbook — é materialmente mais dispendioso do que as correções recomendadas abaixo.",
+        "riskInactionMedium": "Encontra-se numa faixa intermédia defensável. O risco agora é estagnar: as organizações que param aqui costumam regredir à medida que a sua pegada de AI cresce. Fechar as lacunas de gravidade média consolida a postura atual.",
+        "riskInactionLow": "Já possui uma postura significativa. O risco é a regressão à medida que a sua pegada de AI escala. O investimento contínuo é sobretudo manutenção, documentação e aprofundamento gradual.",
+        "weakestSection": "A sua área mais fraca é **{title}** ({score}%). Reforçá-la aumenta diretamente a pontuação global, mas, mais importante ainda, remove o caminho de menor resistência para um incidente.",
+        "commercialEnabler": "Os compradores empresariais e os clientes regulados pedem cada vez mais provas de governança de AI nos questionários de segurança. Muitos dos itens do seu plano de ação funcionam também como facilitadores comerciais, e não apenas como trabalho de conformidade."
+      },
+      "riskOneLiner": {
+        "low": "Está em boa forma — o foco passa para a manutenção e a melhoria contínua.",
+        "medium": "Tem uma base defensável, mas com lacunas materiais que vale a pena fechar em breve.",
+        "high": "Tem várias lacunas que aumentam materialmente a sua exposição. Dê prioridade às ações abaixo.",
+        "critical": "Tem uma ou mais lacunas críticas. Os itens de maior prioridade devem ser tratados em dias, não em semanas."
+      },
+      "contextChips": {
+        "highRiskIndustry": "Setor de alto risco",
+        "sensitiveData": "Dados sensíveis no âmbito",
+        "customerFacing": "AI voltada para o cliente",
+        "missionCritical": "Âmbito de missão crítica",
+        "standardProfile": "Perfil de risco padrão"
+      },
+      "nextStep": {
+        "criticalHeadline": "Tratar o achado crítico nos próximos 7 dias",
+        "criticalRationaleFallback": "É o item mais material do seu plano de ação.",
+        "highHeadline": "Comece pelos ganhos rápidos de 30 dias",
+        "highRationaleFallback": "A postura de alto risco responde rapidamente a um pequeno número de ações direcionadas. Escolha três ganhos rápidos do roadmap e assuma a responsabilidade por eles este mês.",
+        "mediumHeadline": "Consolide as suas bases de governança",
+        "mediumRationale": "Já passou da fase de improviso inicial. O próximo passo cumulativo é formalizar o que faz informalmente — uma política escrita, um framework reconhecido, escalonamento documentado. É isto que torna as auditorias e os negócios empresariais rotineiros.",
+        "lowHeadline": "Passe de conforme a otimizado",
+        "lowRationale": "A sua postura é sólida. O impacto agora está na documentação e na melhoria contínua — model cards, reciclagem de formação e integração de cenários de AI nos seus ensaios de resposta a incidentes."
+      }
+    }
+  },
+  dashboardHome: {
+    "hero": {
+      "scoreLabel": "Pontuação de conformidade",
+      "riskLabel": "Nível de risco atual",
+      "maturityLabel": "Nível de maturidade de AI",
+      "nextStepLabel": "Próximo passo recomendado",
+      "nextStepTitle": "Concluir auditoria da HR Screening Tool",
+      "nextStepBody": "Esta auditoria está 60% concluída. Terminá-la aumentará a sua pontuação de conformidade em cerca de +7 pontos.",
+      "continueAudit": "Continuar auditoria →",
+      "toast": {
+        "noPermission": "Não tem permissão para continuar auditorias.",
+        "noDraft": "Nenhum rascunho de auditoria encontrado — a iniciar uma nova auditoria."
+      }
+    },
+    "recentReports": {
+      "card": {
+        "share": "Partilhar",
+        "view": "Ver"
+      },
+      "export": {
+        "title": "Opções de exportação",
+        "blurb": "Exporte os seus dados de conformidade em vários formatos para as partes interessadas.",
+        "exportAs": "Exportar como {fmt}"
+      },
+      "toast": {
+        "reportNotAvailable": "Relatório ainda não disponível.",
+        "shareLinkCopied": "Link de partilha copiado.",
+        "shareLinkFailed": "Não foi possível copiar o link. Tente novamente.",
+        "noReportsToExport": "Ainda não há relatórios para exportar.",
+        "csvDownloaded": "CSV transferido.",
+        "jsonDownloaded": "JSON transferido."
+      }
+    },
+    "cta": {
+      "heading": "Pronto para alcançar a conformidade total em AI?",
+      "body": "Junte-se às organizações que usam o AiLunaPro para automatizar os seus fluxos de conformidade, reduzir o risco e gerar confiança junto das partes interessadas.",
+      "toast": {
+        "alreadyActivePlan": "Já tem um plano ativo.",
+        "demoRequestSent": "Pedido de demonstração enviado. Vamos analisá-lo e entrar em contacto consigo."
+      },
+      "demoModal": {
+        "title": "Agendar uma demonstração",
+        "subtitle": "Conte-nos um pouco sobre a sua equipa e entraremos em contacto.",
+        "placeholderFullName": "Nome completo",
+        "placeholderWorkEmail": "Email profissional",
+        "placeholderCompany": "Empresa",
+        "placeholderMessage": "O que gostaria de discutir?",
+        "privacyNote": "Usamos estes dados apenas para responder ao seu pedido.",
+        "cancel": "Cancelar",
+        "submit": "Pedir demonstração",
+        "submitting": "A enviar…",
+        "errorFallback": "Não foi possível enviar o seu pedido. Tente novamente."
+      }
+    }
+  },
+  publicTools: {
+    "diagnostic": {
+      "header": {
+        "title": "Diagnóstico de Maturidade em AI",
+        "subtitle": "Responda a 8 perguntas curtas. Obtenha a sua pontuação de maturidade em AI e veja quais agentes da AiLunaPro se adequam ao seu estágio.",
+        "freeLine": "Gratuito · Não requer conta · Leva cerca de 2 minutos"
+      },
+      "resumeNotice": "Bem-vindo de volta — restauramos as suas respostas anteriores para que possa continuar de onde parou.",
+      "questionLegend": "Pergunta {n} / {total}",
+      "leadCapture": {
+        "heading": "Para onde devemos enviar o seu resultado?",
+        "emailLabel": "E-mail",
+        "requiredMark": "*",
+        "emailPlaceholder": "voce@empresa.com",
+        "companyNameLabel": "Nome da empresa",
+        "optionalMark": "(opcional)",
+        "companyNamePlaceholder": "Acme Corp",
+        "helperText": "Utilizamos estas informações apenas para gerar o seu diagnóstico e fazer o acompanhamento sobre serviços de AI relevantes. Não é necessária nenhuma conta.",
+        "consentLabel": "Concordo em receber o resultado do meu diagnóstico de AI e informações de acompanhamento relevantes da AiLunaPro. Compreendo que as minhas respostas e o meu e-mail serão processados para gerar e armazenar este resultado de diagnóstico, e que posso solicitar a eliminação dos meus dados a qualquer momento."
+      },
+      "submit": {
+        "loading": "A calcular o seu resultado…",
+        "idle": "Obter a minha pontuação de maturidade em AI"
+      },
+      "signInPrompt": "Já tem uma conta?",
+      "signInLink": "Iniciar sessão",
+      "errors": {
+        "answers": "Por favor, responda a todas as perguntas.",
+        "email": "Por favor, introduza um endereço de e-mail válido.",
+        "consent": "Tem de aceitar para receber o seu resultado.",
+        "captchaLoading": "O captcha está a carregar — por favor, aguarde."
+      },
+      "buckets": {
+        "low": {
+          "title": "A sua maturidade em AI está emergente",
+          "message": "A sua organização está num estágio inicial. Comece com automação simples, um inventário de uso de AI e agentes práticos de suporte."
+        },
+        "medium": {
+          "title": "A sua maturidade em AI está em desenvolvimento",
+          "message": "Já tem algumas bases de AI. O próximo passo é estruturar o uso, medir o ROI e melhorar os fluxos de trabalho de documentos e relatórios."
+        },
+        "high": {
+          "title": "A sua maturidade em AI está avançada",
+          "message": "Está pronto para escalar a AI com governação, conformidade, relatórios e automação especializada mais robustos."
+        }
+      },
+      "result": {
+        "scoreLabel": "A sua pontuação de maturidade em AI",
+        "scoreUnit": "/100",
+        "recommendedAgentsHeading": "Agentes recomendados da AiLunaPro",
+        "agentCardBrand": "AiLunaPro",
+        "agentCardCta": "Obter este agente",
+        "ctaHeading": "Quer uma auditoria mais aprofundada e o seu plano de ação completo?",
+        "ctaBody": "Crie um espaço de trabalho AiLunaPro gratuito para aceder à auditoria completa, ao registo e ao catálogo de agentes.",
+        "ctaButton": "Crie a sua conta gratuita ↗",
+        "ctaFootnote": "Continua em **dashboard.ailunapro.com** — a plataforma AiLuna de agentes e soluções de AI, o próximo passo após a sua auditoria.",
+        "retakeButton": "Refazer o diagnóstico"
+      }
+    },
+    "roi": {
+      "header": {
+        "title": "Calculadora de ROI de AI",
+        "subtitle": "Estime o tempo e o dinheiro que pode poupar com os agentes de AI da AiLunaPro.",
+        "freeLine": "Gratuito · Não requer conta · Leva cerca de 1 minuto · USD"
+      },
+      "resumeNotice": "Bem-vindo de volta — restauramos os seus dados anteriores para que possa continuar de onde parou.",
+      "form": {
+        "teamLegend": "A sua equipa",
+        "teamSizeLabel": "Tamanho da equipa",
+        "teamSizePlaceholder": "ex.: 10",
+        "monthlyHoursLabel": "Horas mensais que a sua equipa gasta em trabalho repetitivo",
+        "monthlyHoursPlaceholder": "ex.: 80",
+        "hourlyCostLabel": "Custo médio por hora (USD)",
+        "targetWorkflowLabel": "Fluxo de trabalho alvo",
+        "workflowPlaceholderOption": "Selecione um fluxo de trabalho…"
+      },
+      "leadCapture": {
+        "legend": "Para onde devemos enviar a sua estimativa?",
+        "emailLabel": "E-mail",
+        "emailPlaceholder": "voce@empresa.com",
+        "companyNameLabel": "Nome da empresa",
+        "optionalMark": "(opcional)",
+        "companyNamePlaceholder": "Acme Corp",
+        "helperText": "Utilizamos estas informações apenas para gerar a sua estimativa e fazer o acompanhamento sobre serviços de AI relevantes. Não é necessária nenhuma conta.",
+        "consentLabel": "Concordo em receber a minha estimativa de ROI de AI e informações de acompanhamento relevantes da AiLunaPro. Compreendo que as minhas respostas e o meu e-mail serão processados para gerar e armazenar esta estimativa, e que posso solicitar a eliminação dos meus dados a qualquer momento."
+      },
+      "requiredMark": "*",
+      "submit": {
+        "loading": "A calcular…",
+        "idle": "Calcular o meu ROI"
+      },
+      "signInPrompt": "Já tem uma conta?",
+      "signInLink": "Iniciar sessão",
+      "errors": {
+        "teamSize": "O tamanho da equipa tem de ser um número inteiro entre 1 e 10000.",
+        "hours": "As horas mensais têm de ser um número entre 0 e 10000.",
+        "cost": "O custo por hora tem de ser um número entre 1 e 1000 USD.",
+        "workflow": "Por favor, selecione um fluxo de trabalho.",
+        "email": "Por favor, introduza um endereço de e-mail válido.",
+        "consent": "Tem de aceitar para receber a sua estimativa.",
+        "captchaLoading": "O captcha está a carregar — por favor, aguarde."
+      },
+      "result": {
+        "monthlySavingsLabel": "Poupança mensal estimada",
+        "monthlySavingsUnit": "/mês",
+        "yearlySavingsLabel": "Poupança anual",
+        "timeSavedLabel": "Tempo poupado",
+        "timeSavedValue": "{hours} h/mês",
+        "paybackLabel": "Retorno",
+        "paybackValue": "{months} meses",
+        "paybackEmpty": "—",
+        "disclaimer": "Esta é uma estimativa baseada nas informações que forneceu e em pressupostos de automação conservadores. As poupanças reais podem variar.",
+        "pricingNote": "O retorno assume um custo de referência de agente de $99/mês; os preços reais variam por agente.",
+        "recommendedAgentsHeading": "Agentes recomendados da AiLunaPro",
+        "agentCardBrand": "AiLunaPro",
+        "agentCardCta": "Obter este agente",
+        "ctaHeading": "Quer uma análise mais aprofundada e o seu plano de ação completo?",
+        "ctaBody": "Crie um espaço de trabalho AiLunaPro gratuito para aceder à auditoria completa, ao registo e ao catálogo de agentes.",
+        "ctaButton": "Crie a sua conta gratuita ↗",
+        "ctaFootnote": "Continua em **dashboard.ailunapro.com** — a plataforma AiLuna de agentes e soluções de AI, o próximo passo após a sua auditoria.",
+        "rerunButton": "Executar outro cálculo"
+      }
+    }
+  },
 };

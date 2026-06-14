@@ -1,23 +1,30 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AuthCard } from '../components/auth/AuthCard';
 import { AuthInput, FormField } from '../components/auth/FormField';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
+import type { Dict } from '../lib/locale/i18n/en';
 import { validateOrgName } from '../utils/validators';
 import { postAuthRoute } from '../lib/journey/journeyState';
 import type { Organization } from '../types/auth';
 
-const PLANS: { value: Organization['plan']; label: string; desc: string }[] = [
-  { value: 'Free',         label: 'Free',         desc: 'Up to 3 audits, 1 seat' },
-  { value: 'Starter',      label: 'Starter',      desc: '10 audits, 5 seats' },
-  { value: 'Professional', label: 'Professional', desc: 'Unlimited audits, 20 seats' },
-  { value: 'Enterprise',   label: 'Enterprise',   desc: 'Custom limits, SSO, SLA' },
-];
+function buildPlans(t: Dict['orgCreate']): { value: Organization['plan']; label: string; desc: string }[] {
+  return [
+    { value: 'Free',         label: 'Free',         desc: t.planDesc.free },
+    { value: 'Starter',      label: 'Starter',      desc: t.planDesc.starter },
+    { value: 'Professional', label: 'Professional', desc: t.planDesc.professional },
+    { value: 'Enterprise',   label: 'Enterprise',   desc: t.planDesc.enterprise },
+  ];
+}
 
 export function OrgCreatePage() {
   const { createOrg, session } = useAuth();
   const { navigate } = useRoute();
+  const T = useLocale();
+  const PLANS = useMemo(() => buildPlans(T.orgCreate), [T]);
 
   const [name,    setName]    = useState('');
   const [plan,    setPlan]    = useState<Organization['plan']>('Free');
@@ -50,7 +57,7 @@ export function OrgCreatePage() {
           textAlign: 'center',
         }}
       >
-        Create a workspace
+        {T.orgCreate.heading}
       </h2>
       <p
         style={{
@@ -62,17 +69,17 @@ export function OrgCreatePage() {
         }}
       >
         {session
-          ? `Signed in as ${session.user.email}`
-          : 'Set up a new organisation workspace'}
+          ? format(T.orgCreate.subtitle.signedIn, { email: session.user.email })
+          : T.orgCreate.subtitle.anonymous}
       </p>
 
       <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <FormField label="Workspace name" error={error}>
+        <FormField label={T.orgCreate.form.nameLabel} error={error}>
           <AuthInput
             type="text"
             value={name}
             onChange={e => { setName(e.target.value); setError(''); }}
-            placeholder="e.g. Acme Corp"
+            placeholder={T.orgCreate.form.namePlaceholder}
             autoFocus
           />
         </FormField>
@@ -87,7 +94,7 @@ export function OrgCreatePage() {
               letterSpacing: 0.2,
             }}
           >
-            Plan
+            {T.orgCreate.form.planLabel}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {PLANS.map(p => {
@@ -143,7 +150,7 @@ export function OrgCreatePage() {
           disabled={loading}
           style={{ marginTop: 4 }}
         >
-          {loading ? 'Creating workspace…' : 'Create workspace'}
+          {loading ? T.orgCreate.submit.loading : T.orgCreate.submit.idle}
         </Button>
       </form>
 
@@ -160,7 +167,7 @@ export function OrgCreatePage() {
             onClick={() => navigate({ name: 'dashboard' })}
             style={{ color: 'var(--violet-text)', fontWeight: 600, cursor: 'pointer' }}
           >
-            ← Back to dashboard
+            {T.orgCreate.backToDashboard}
           </span>
         </p>
       )}

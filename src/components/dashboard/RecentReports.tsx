@@ -21,18 +21,19 @@ function riskColor(risk: RiskLevel): string {
 function ReportCard({ report }: { report: { id: string; title: string; date: string; status: ReportStatus; score: number; risk: RiskLevel } }) {
   const { navigate } = useRoute();
   const { showToast } = useToast();
+  const T = useLocale();
 
   const handleView = () => {
     if (report.id) navigate({ name: 'reports/detail', reportId: report.id });
-    else showToast('Report not available yet.', 'info');
+    else showToast(T.dashboardHome.recentReports.toast.reportNotAvailable, 'info');
   };
   const handleShare = async () => {
     const link = `${window.location.origin}/#/reports/share/${report.id}`;
     try {
       await navigator.clipboard.writeText(link);
-      showToast('Share link copied.', 'success');
+      showToast(T.dashboardHome.recentReports.toast.shareLinkCopied, 'success');
     } catch {
-      showToast('Could not copy link. Try again.', 'warning');
+      showToast(T.dashboardHome.recentReports.toast.shareLinkFailed, 'warning');
     }
   };
 
@@ -85,7 +86,7 @@ function ReportCard({ report }: { report: { id: string; title: string; date: str
 
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         {[
-          { label: 'Share',    svg: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></> },
+          { label: T.dashboardHome.recentReports.card.share,    svg: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></> },
         ].map(b => (
           <button
             key={b.label}
@@ -129,7 +130,7 @@ function ReportCard({ report }: { report: { id: string; title: string; date: str
             fontFamily: 'var(--font-body)',
           }}
         >
-          View
+          {T.dashboardHome.recentReports.card.view}
         </button>
       </div>
     </div>
@@ -148,7 +149,8 @@ export function RecentReports() {
   const { navigate } = useRoute();
   const { showToast } = useToast();
   const { reports } = useReports();
-  const D = useLocale().dashboard.recentReports;
+  const T = useLocale();
+  const D = T.dashboard.recentReports;
 
   // Real reports for the active workspace, newest first, top 3 (4th grid cell
   // is the export card).
@@ -168,18 +170,18 @@ export function RecentReports() {
 
   const handleExport = (fmt: 'CSV' | 'JSON') => {
     if (reports.length === 0) {
-      showToast('No reports to export yet.', 'info');
+      showToast(T.dashboardHome.recentReports.toast.noReportsToExport, 'info');
       return;
     }
     if (fmt === 'CSV') {
       const header = 'id,title,createdAt,status,score,risk\n';
       const rows = reports.map(r => `${r.id},${JSON.stringify(r.title)},${r.createdAt},${r.status},${r.scoreSnapshot},${r.riskSnapshot}`).join('\n');
       downloadBlob(header + rows, 'reports.csv', 'text/csv;charset=utf-8');
-      showToast('CSV downloaded.', 'success');
+      showToast(T.dashboardHome.recentReports.toast.csvDownloaded, 'success');
     }
     if (fmt === 'JSON') {
       downloadBlob(JSON.stringify(reports, null, 2), 'reports.json', 'application/json');
-      showToast('JSON downloaded.', 'success');
+      showToast(T.dashboardHome.recentReports.toast.jsonDownloaded, 'success');
     }
   };
 
@@ -240,10 +242,10 @@ export function RecentReports() {
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Export Options
+            {T.dashboardHome.recentReports.export.title}
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-            Export your compliance data in multiple formats for stakeholders.
+            {T.dashboardHome.recentReports.export.blurb}
           </div>
 
           {(['CSV', 'JSON'] as const).map(fmt => {
@@ -288,7 +290,7 @@ export function RecentReports() {
                 >
                   {fmt[0]}
                 </span>
-                Export as {fmt}
+                {format(T.dashboardHome.recentReports.export.exportAs, { fmt })}
               </button>
             );
           })}

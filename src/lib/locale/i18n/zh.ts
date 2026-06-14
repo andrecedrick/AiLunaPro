@@ -1067,4 +1067,1235 @@ export const zh: Dict = {
       "a12": "没有。ROI 计算器基于您提供的信息给出保守的估算。实际节省取决于您的工作流程、集成质量和采用程度。"
     }
   },
+  registry: {
+    "page": {
+      "title": "AI 注册表",
+      "subtitle": "追踪贵组织使用的每一个 AI 工具——用途、数据、监督与缓解措施。注册表为您的审计与报告提供数据来源。",
+      "designGuideLink": "正在设计一个新系统？打开设计指南 →",
+      "addTool": "+ 添加工具",
+      "loading": "正在加载注册表…",
+      "error": "加载注册表失败。刷新以重试。"
+    },
+    "summary": {
+      "totalTools": "工具总数",
+      "approved": "已批准",
+      "pendingReview": "待审查",
+      "highRisk": "高风险"
+    },
+    "filters": {
+      "searchPlaceholder": "搜索工具、用途、备注…",
+      "allDepartments": "所有部门",
+      "allRisks": "所有风险等级",
+      "allApproval": "所有审批状态",
+      "clear": "清除筛选",
+      "risk": {
+        "low": "低",
+        "medium": "中",
+        "high": "高",
+        "critical": "严重"
+      }
+    },
+    "table": {
+      "tool": "工具",
+      "department": "部门",
+      "risk": "风险",
+      "approval": "审批",
+      "oversight": "监督",
+      "reviewDate": "审查日期"
+    },
+    "empty": {
+      "noItems": {
+        "title": "注册表中尚无 AI 工具",
+        "body": "追踪贵组织使用的每一个 AI 工具——用途、数据、监督与缓解措施。注册表为您的审计与报告提供数据来源。",
+        "action": "+ 添加您的第一个工具"
+      },
+      "noMatches": {
+        "title": "没有工具符合这些筛选条件",
+        "body": "尝试放宽筛选条件，或清除筛选以查看完整注册表。",
+        "action": "清除筛选"
+      }
+    },
+    "modal": {
+      "titleAdd": "添加 AI 工具",
+      "titleEdit": "编辑 AI 工具",
+      "subtitleAdd": "追踪您团队使用的 AI 工具。所有字段均可稍后编辑。",
+      "subtitleEdit": "更新您团队对此工具的了解。更改会立即保存到本地注册表。",
+      "fields": {
+        "toolName": "工具名称",
+        "purpose": "用途",
+        "dataTypes": "处理的数据类型",
+        "mitigations": "缓解措施",
+        "notes": "备注",
+        "department": "部门",
+        "approvalStatus": "审批状态",
+        "riskLevel": "风险等级",
+        "humanOversight": "人工监督",
+        "nextReviewDate": "下次审查日期"
+      },
+      "placeholders": {
+        "toolName": "例如：客户支持副驾驶",
+        "purpose": "此工具的作用是什么？",
+        "mitigation": "添加一项缓解措施并按回车",
+        "notes": "供应商、数据驻留地、负责人，任何值得记录的内容…"
+      },
+      "riskOptions": {
+        "low": "低",
+        "medium": "中",
+        "high": "高",
+        "critical": "严重"
+      },
+      "reviewDateHint": "如未安排审查，请留空。",
+      "auditTrail": "创建于 {createdDate} · 最后更新于 {updatedDate}",
+      "removeMitigationAria": "移除缓解措施 {index}",
+      "requiredError": "必填",
+      "deleteConfirm": "将“{toolName}”从注册表中移除？此操作无法撤销。",
+      "buttons": {
+        "delete": "删除工具",
+        "cancel": "取消",
+        "addToRegistry": "添加到注册表",
+        "saveChanges": "保存更改"
+      }
+    }
+  },
+  systemBuilder: {
+    "chrome": {
+      "pageTitle": "AI 系统构建器",
+      "pageIntro": "一份部署前的设计指南。逐一审视六个维度——用途与风险、数据、模型、监督、监测、文档——以负责任的方式设计 AI 系统。您的步骤进度与清单勾选仅保存在本设备上。",
+      "designSteps": "设计步骤",
+      "checklist": "清单",
+      "doneSuffix": "· 已完成 {doneCount}/{total}",
+      "keyQuestions": "关键问题",
+      "references": "参考资料（仅供参考，不构成法律意见）",
+      "previousStep": "← 上一步",
+      "nextStep": "下一步 →",
+      "stepOf": "第 {n} 步，共 {total} 步",
+      "endOfGuide": "✓ 指南结束——六个维度已全部涵盖"
+    },
+    "steps": {
+      "purpose": {
+        "title": "1. 用途与风险分类",
+        "intro": "在构建任何东西之前，先明确系统的用途、它影响哪些人，以及它的风险有多高。这将为后续的每一项决策奠定基础。",
+        "checklist": {
+          "c1": "用一句话写明预期用途（不使用行话）。",
+          "c2": "列出受影响的个人或群体（用户、客户、第三方）。",
+          "c3": "对风险等级进行分类：不可接受 / 高风险（Annex III）/ 有限 / 极低——或 GPAI。",
+          "c4": "记录用例范围及其边界（哪些内容不在范围内）。",
+          "c5": "列出可预见的滥用 / 越界使用，以及您将拒绝执行的事项。"
+        },
+        "questions": {
+          "q1": "谁有权部署或暂停此系统？",
+          "q2": "如果系统出错，具体会发生什么？",
+          "q3": "哪些合法权利、安全条件或自由可能受到影响？"
+        }
+      },
+      "data": {
+        "title": "2. 数据治理",
+        "intro": "如果数据有误，系统就会出错。盘点数据、对其分类、说明持有理由，并警惕偏见。",
+        "checklist": {
+          "c1": "建立数据清单：来源、负责人、敏感度、保留期限。",
+          "c2": "为处理的每一类数据确立合法依据（GDPR Art. 6）。",
+          "c3": "记录数据质量：相关性、代表性、缺口、已知偏见。",
+          "c4": "践行数据最小化：仅收集所需数据；仅在必要时间内保留。",
+          "c5": "规划定期偏见审查及纠正措施路径。"
+        },
+        "questions": {
+          "q1": "每个数据集来自何处，由谁负责？",
+          "q2": "数据集是否包含敏感类别（Art. 9 GDPR）？依据是什么？",
+          "q3": "您将测量哪些偏见信号，以何种基线作为对照？"
+        }
+      },
+      "model": {
+        "title": "3. 模型选择与验证",
+        "intro": "选择能胜任的最小模型。以攻击者和用户实际使用的方式验证它。记录它无法做到的事情。",
+        "checklist": {
+          "c1": "针对实际用例，论证所选模型规模 / 系列的合理性。",
+          "c2": "定义准确性 + 鲁棒性目标，以及您将如何测量它们。",
+          "c3": "开展对抗 / 红队测试（提示注入、越狱、带偏见的输出）。",
+          "c4": "记录已知的失效模式与明确的禁用情形。",
+          "c5": "为每个模型工件标注版本，并在部署时附带变更说明。"
+        },
+        "questions": {
+          "q1": "为何选择此模型，您排除了哪个更便宜的替代方案？",
+          "q2": "系统出错时是什么样子——您又如何知晓？",
+          "q3": "您的测试集是否能代表生产环境的流量？"
+        }
+      },
+      "oversight": {
+        "title": "4. 人工监督",
+        "intro": "决定人类如何对重大结果保持掌控。确保这些控制措施在高压下真正有效。",
+        "checklist": {
+          "c1": "按决策类型选择监督模式：人在环内、人在环上或人在环外。",
+          "c2": "为高风险决策指定审查人员并记录 SLA。",
+          "c3": "提供审查人员可使用的覆盖 / 暂停 / 紧急停止控制。",
+          "c4": "编写升级处置手册（通知谁、附带何种背景信息）。",
+          "c5": "记录每一次覆盖 / 暂停，以供事后审查。"
+        },
+        "questions": {
+          "q1": "谁审查高风险输出——他们是否有时间和背景信息来完成审查？",
+          "q2": "单个操作员能否无需开会即可停止系统？",
+          "q3": "您如何避免走过场式批准（“自动化自满”）？"
+        }
+      },
+      "monitoring": {
+        "title": "5. 监测与事件",
+        "intro": "部署后的监测并非可选项。漂移是无声的，事件则不然。",
+        "checklist": {
+          "c1": "定义部署后的监测指标（准确性、延迟、危害、漂移）。",
+          "c2": "对输入和输出实施漂移检测。",
+          "c3": "将事件记录到单一队列，标注严重程度和负责人。",
+          "c4": "记录报告路径（监管机构、客户、内部）。",
+          "c5": "安排定期重新评估（至少每季度一次）。"
+        },
+        "questions": {
+          "q1": "哪一个指标一旦变动，就提示您应暂停系统？",
+          "q2": "凌晨三点谁会被通知，他们应打开哪份处置手册？",
+          "q3": "您上次演练 AI 事件场景是在什么时候？"
+        }
+      },
+      "docs": {
+        "title": "6. 文档与透明度",
+        "intro": "写明系统是什么、不是什么，以及用户需要知道什么。每次实质性变更后都要更新。",
+        "checklist": {
+          "c1": "按 Art. 11 维护技术文档（用途、数据、训练、评估、风险）。",
+          "c2": "为每个系统发布模型 / 系统说明卡；每次发布时更新。",
+          "c3": "在每个面向客户的界面上添加面向用户的 AI 披露说明。",
+          "c4": "更新隐私声明以反映 AI 处理活动。",
+          "c5": "为操作该系统的员工保留培训记录。"
+        },
+        "questions": {
+          "q1": "最终用户需要了解什么才能负责任地使用此系统？",
+          "q2": "外部审计员在第一天会需要哪些资料？",
+          "q3": "模型 / 系统说明卡目前的更新程度如何？"
+        }
+      }
+    }
+  },
+  reportsPages: {
+    "list": {
+      "title": "报告",
+      "intro": "生成的报告是审计在某一时间点的快照。每份报告均可导出、共享，并在您开始新的审计时保持稳定不变。",
+      "generateFromDraft": "+ 从当前草稿生成",
+      "startNewAudit": "开始新的审计",
+      "loading": "正在加载报告…",
+      "errorMessage": "尚未加载任何报告。如果工作区是新建的，或 Firestore 无法访问，可能会出现这种情况。",
+      "retry": "重试",
+      "traceabilityHint": "报告是保存到您工作区的时间点快照。详情视图会根据每份报告的答案快照重新计算完整结果——因此即使评分规则发生演变，历史报告仍保持准确。"
+    },
+    "detail": {
+      "loading": "正在加载报告…",
+      "notFoundTitle": "未找到报告",
+      "notFoundBody": "此报告已不存在或已被删除。",
+      "backToReports": "← 返回报告",
+      "rename": {
+        "titleAriaLabel": "报告标题",
+        "saving": "…",
+        "saveTitle": "保存标题",
+        "cancel": "取消",
+        "renameButton": "重命名"
+      },
+      "download": {
+        "preparing": "正在准备…",
+        "downloadPdf": "⬇ 下载 PDF"
+      },
+      "errors": {
+        "tokensInsufficientExport": "令牌不足，无法导出。请购买令牌以继续。",
+        "downloadFailed": "下载失败。请重试。",
+        "renameForbidden": "只有所有者或管理员才能重命名报告。",
+        "renameFailed": "无法重命名。请重试。",
+        "tokensInsufficient": "令牌不足。请购买令牌以继续。",
+        "shareDisabled": "此报告的共享功能已禁用。",
+        "shareForbidden": "只有所有者或管理员才能共享报告。",
+        "shareCreateFailed": "无法创建共享链接。请重试。",
+        "revokeFailed": "无法撤销链接。请重试。",
+        "toggleSharingFailed": "无法更新共享设置。请重试。"
+      },
+      "share": {
+        "heading": "可共享链接",
+        "description": "指向此报告 PDF 的已签名免登录链接。创建或重新生成会计入您的 PDF 导出次数。",
+        "working": "处理中…",
+        "generateNewLink": "生成新链接",
+        "revoke": "撤销",
+        "shareLink": "共享链接",
+        "enableSharing": "启用共享",
+        "disableSharing": "禁用共享",
+        "copied": "已复制",
+        "copy": "复制",
+        "expires": "于 {date} 过期。",
+        "activeLinkExists": "已存在有效链接（于 {date} 过期）。生成新链接可再次查看 URL——这将撤销旧链接。",
+        "disabledNotice": "共享已禁用——现有链接已不再有效。",
+        "useTokensAndCreateLink": "使用令牌并创建链接"
+      },
+      "status": {
+        "notShared": "未共享",
+        "active": "有效",
+        "expired": "已过期",
+        "revoked": "已撤销",
+        "disabled": "已禁用"
+      },
+      "footer": {
+        "openAssistancePlan": "打开协助计划",
+        "deleteReport": "删除报告",
+        "deleteConfirm": "删除此报告？此操作无法撤销。"
+      },
+      "metadata": {
+        "heading": "元数据",
+        "reportId": "报告 ID",
+        "sourceDraft": "源草稿",
+        "status": "状态",
+        "weakestSection": "最薄弱的部分",
+        "frameworks": "框架"
+      }
+    },
+    "share": {
+      "unavailableTitle": "共享报告不可用",
+      "backToReports": "← 返回报告",
+      "copySuccess": "共享链接已复制。",
+      "copyFailure": "无法复制链接。请重试。",
+      "banner": {
+        "label": "🔗 共享报告 — 只读视图",
+        "description": "面向您工作区中成员的只读视图，通过应用内共享链接打开。内部操作按钮已隐藏。",
+        "copyShareLink": "🔗 复制共享链接",
+        "backToInternalView": "← 返回内部视图"
+      },
+      "topline": {
+        "kicker": "AI 合规报告",
+        "score": "评分",
+        "scoreOutOf": "/100",
+        "generated": "生成于 {date}"
+      },
+      "poweredBy": "由 AiLunaPro 提供支持 · Compliance Suite"
+    }
+  },
+  savedAudits: {
+    "list": {
+      "title": "已保存的 Audit Express",
+      "subtitle": "您保存的 Audit Express 快照。下载 PDF 或删除已保存的结果。",
+      "runAuditExpress": "运行 Audit Express",
+      "loading": "正在加载…",
+      "empty": {
+        "prefix": "尚无已保存的审计。使用",
+        "runLink": "运行 Audit Express",
+        "suffix": "来创建一个。"
+      },
+      "meta": {
+        "engineLabel": "引擎",
+        "engineFallback": "不适用",
+        "confidenceLabel": "置信度"
+      }
+    },
+    "actions": {
+      "view": "查看",
+      "rename": "重命名",
+      "delete": "删除",
+      "download": "下载 PDF",
+      "save": "保存",
+      "cancel": "取消",
+      "busy": "…"
+    },
+    "fields": {
+      "titleAriaLabel": "审计标题",
+      "viewDetailsTooltip": "查看详情"
+    },
+    "errors": {
+      "load": "无法加载您已保存的审计。请重试。",
+      "tokensInsufficient": "令牌不足，无法导出。请购买令牌以继续。",
+      "download": "下载失败。请重试。",
+      "delete": "删除失败。请重试。",
+      "rename": "无法重命名。请重试。"
+    },
+    "pdfLimitModal": {
+      "ariaLabel": "PDF 导出限制",
+      "title": "您已用完 {freeCount} 次免费 PDF 导出",
+      "body": "下载更多 PDF 需要令牌（每次导出 {tokenCost} 个令牌）。",
+      "useTokens": "使用令牌并下载",
+      "useTokensBusy": "…",
+      "buyTokens": "升级或购买令牌",
+      "cancel": "取消"
+    },
+    "detail": {
+      "backToList": "← 已保存的审计",
+      "loading": "正在加载…",
+      "meta": {
+        "engineLabel": "引擎",
+        "engineFallback": "不适用",
+        "confidenceLabel": "置信度"
+      },
+      "rename": "重命名",
+      "save": "保存",
+      "cancel": "取消",
+      "titleAriaLabel": "审计标题",
+      "busy": "…",
+      "notRecomputed": "无法重新计算此审计。",
+      "downloadPdf": "下载 PDF",
+      "downloadPdfBusy": "正在准备…",
+      "backToSaved": "返回已保存的审计"
+    },
+    "detailErrors": {
+      "notFound": "此审计已不存在。",
+      "load": "无法加载此审计。请重试。",
+      "rename": "无法重命名。请重试。",
+      "tokensInsufficient": "令牌不足。请购买令牌以继续。",
+      "sharingDisabled": "此审计的共享功能已禁用。",
+      "createShareLink": "无法创建共享链接。请重试。",
+      "revokeShareLink": "无法撤销链接。请重试。",
+      "updateSharing": "无法更新共享设置。请重试。"
+    },
+    "recommendedAgents": {
+      "heading": "推荐的智能体",
+      "exploreAll": "探索所有智能体 →",
+      "disclaimer": "基于此审计的指示性匹配。采用前请评估适配性。",
+      "meta": {
+        "hoursSaved": "每月约节省 {hours} 小时",
+        "plan": "{plan} 套餐",
+        "setup": "{complexity} 配置"
+      }
+    },
+    "share": {
+      "heading": "可共享链接",
+      "description": "指向此审计 PDF 的已签名免登录链接。创建或重新生成会计入您的 PDF 导出次数。",
+      "generateNewLink": "生成新链接",
+      "shareLink": "共享链接",
+      "working": "处理中…",
+      "revoke": "撤销",
+      "enableSharing": "启用共享",
+      "disableSharing": "禁用共享",
+      "copy": "复制",
+      "copied": "已复制",
+      "expires": "于 {date} 过期。",
+      "activeLinkExists": "已存在有效链接（于 {date} 过期）。生成新链接可再次查看 URL——这将撤销旧链接。",
+      "disabledNotice": "共享已禁用——现有链接已不再有效。",
+      "limitModalActionLabel": "使用令牌并创建链接"
+    },
+    "shareStatus": {
+      "notShared": "未共享",
+      "active": "有效",
+      "expired": "已过期",
+      "revoked": "已撤销",
+      "disabled": "已禁用"
+    }
+  },
+  billingPage: {
+    "header": {
+      "title": "账单",
+      "subtitle": "管理您的套餐、用量和发票。",
+      "readOnlyBadge": "只读视图。"
+    },
+    "plans": {
+      "bestValueBadge": "超值之选",
+      "priceApprox": "约 {approx}{suffix} · 以 USD 计费",
+      "cta": {
+        "redirecting": "正在跳转…",
+        "currentPlan": "当前套餐",
+        "freeCurrent": "Free — 当前",
+        "startForFree": "免费开始",
+        "subscribe": "订阅"
+      },
+      "free": {
+        "description": "以受限权限试用平台。",
+        "features": {
+          "limitedAuditAccess": "受限的审计访问",
+          "basicDashboard": "基础仪表盘",
+          "demoReports": "演示报告",
+          "communitySupport": "社区支持"
+        }
+      },
+      "starter": {
+        "description": "独立运行真实审计。",
+        "features": {
+          "coreAuditWorkflow": "核心审计工作流",
+          "basicComplianceReports": "基础合规报告",
+          "starterAuditVolume": "Starter 审计额度",
+          "essentialAiRecommendations": "基础 AI 建议",
+          "emailSupport": "电子邮件支持"
+        }
+      },
+      "professional": {
+        "description": "面向运行进阶审计的成长型团队。",
+        "features": {
+          "higherAuditVolume": "更高审计额度",
+          "advancedReports": "进阶报告",
+          "teamCollaboration": "团队协作",
+          "priorityAiRecommendations": "优先 AI 建议",
+          "prioritySupport": "优先支持"
+        }
+      },
+      "enterprise": {
+        "description": "组织级治理与管控。",
+        "features": {
+          "highestAuditVolume": "最高审计额度",
+          "advancedTeamManagement": "进阶团队管理",
+          "organizationControls": "组织管控",
+          "customBranding": "自定义品牌",
+          "dedicatedSupport": "专属支持",
+          "enterpriseReadyGovernance": "企业级治理"
+        }
+      }
+    },
+    "pricingSection": {
+      "currencyBadge": {
+        "detected": "已根据您所在地区检测到计费货币：{currency} {symbol}",
+        "default": "计费货币：{currency} {symbol}"
+      },
+      "secureCheckoutBadge": "由 Stripe 提供安全结账",
+      "heading": "选择适合您审计工作流的套餐",
+      "subheadingPrefix": "在 Stripe 测试模式下开始。不会产生任何真实扣费 — 请使用测试卡",
+      "subheadingSuffix": "。"
+    },
+    "currentPlan": {
+      "label": "当前套餐",
+      "statusNoSubscription": "无订阅",
+      "freePlanNote": "Free 套餐 — 无有效订阅",
+      "paidPlanSummary": "${price}/月 · 按{billingCycle}计费",
+      "renews": " · 续订于 {date}",
+      "cancelsAtPeriodEnd": "⚠ 将在周期结束时取消（{date}）",
+      "billedInCurrency": "您的有效订阅以 {currency} 计费。",
+      "resumePlan": "恢复套餐",
+      "cancelPlan": "取消套餐"
+    },
+    "billingActions": {
+      "title": "账单操作",
+      "manageSubscription": "管理订阅",
+      "managePaymentMethods": "管理支付方式",
+      "loading": "加载中…",
+      "paymentMethodsHint": "更新卡片、设为默认、移除 — 均由 Stripe 安全处理。",
+      "noCustomerYet": "尚无 Stripe 客户。在您首次订阅或购买令牌后，支付方式即可使用。",
+      "portalError": "无法打开 Stripe 门户。请确认 Worker 正在运行。"
+    },
+    "tokens": {
+      "title": "令牌",
+      "balance": "本周期 {balance} / {allocation}",
+      "balanceLoading": "令牌余额加载中…",
+      "manageTokens": "管理令牌"
+    },
+    "usage": {
+      "sectionTitle": "本期用量",
+      "auditsLabel": "审计",
+      "seatsLabel": "席位",
+      "unlimitedValue": "{used} / ∞",
+      "boundedValue": "{used} / {limit}",
+      "periodRange": "周期：{start} – {end}"
+    },
+    "invoices": {
+      "sectionTitle": "发票",
+      "empty": "暂无发票。",
+      "loading": "正在加载发票…",
+      "emptyAfterFirstCycle": "发票将在您首个计费周期后显示于此。",
+      "tableHeaders": {
+        "date": "日期",
+        "description": "描述",
+        "amount": "金额",
+        "status": "状态",
+        "invoiceNumber": "发票编号",
+        "actions": "操作"
+      },
+      "statusUnknown": "未知",
+      "actionView": "查看",
+      "actionPdf": "PDF",
+      "managedInStripeNote": "支付方式和账单详情均由 Stripe 安全管理。"
+    },
+    "mockPlans": {
+      "sectionTitle": "套餐",
+      "currentBadge": "当前",
+      "free": "Free",
+      "priceSuffix": "/月",
+      "switch": "切换",
+      "contactOwnerToChange": "联系所有者以更改套餐"
+    },
+    "mockConfirm": {
+      "title": "切换至 {plan}",
+      "body": "这是模拟操作 — 不会产生任何真实扣费。",
+      "cancel": "取消",
+      "confirm": "确认（模拟）"
+    },
+    "locked": {
+      "title": "账单访问受限",
+      "subtitle": "请联系您的工作区所有者以查看或管理账单。",
+      "backToDashboard": "返回仪表盘",
+      "contactWorkspaceOwner": "联系工作区所有者",
+      "askOwnerToast": "请向您的工作区所有者申请账单访问权限。"
+    },
+    "success": {
+      "headline": {
+        "failed": "同步失败",
+        "active": "您的 {plan} 套餐已生效",
+        "activating": "感谢您 — 正在激活您的订阅"
+      },
+      "subtext": {
+        "failedFallback": "我们无法自动完成您的订阅。",
+        "redirecting": "正在将您跳转至账单页面…",
+        "syncing": "我们正在将您的订阅与 Stripe 同步。"
+      },
+      "pill": {
+        "failed": "同步失败",
+        "activated": "订阅已激活",
+        "syncing": "正在同步订阅…",
+        "almostDone": "即将完成…"
+      },
+      "backToBilling": "返回账单",
+      "retrySync": "重试同步",
+      "errors": {
+        "stillProcessing": "支付仍在处理中。请稍候片刻后重试。",
+        "sessionInvalid": "此结账会话已失效。请重新发起订阅。",
+        "notSignedIn": "您尚未登录。请登录后重试。",
+        "orgLinkFailed": "无法将此订阅关联到您的组织。请联系支持团队。",
+        "generic": "激活您的订阅时出现问题。",
+        "noSessionDetected": "我们无法检测到您的结账会话。请返回账单页面后重试。"
+      }
+    }
+  },
+  tokensPage: {
+    "header": {
+      "title": "令牌",
+      "subtitle": "跟踪用量、监控每月配额，并在需要时购买充值包。"
+    },
+    "locked": {
+      "title": "令牌不可用",
+      "clientMessage": "客户端账户无法查看令牌。",
+      "workspaceMessage": "此工作区无法使用令牌。",
+      "backToDashboard": "返回仪表盘"
+    },
+    "webhook": {
+      "notice": "已收到付款。正在等待 Stripe webhook 更新您的令牌余额。",
+      "refreshBalance": "刷新余额"
+    },
+    "balance": {
+      "loading": "正在加载余额…",
+      "empty": "尚无令牌余额。它将在您首次审计时创建。",
+      "statBalance": "余额",
+      "statMonthlyAllocation": "每月配额",
+      "statConsumed": "已消耗",
+      "statRollover": "结转",
+      "statTopups": "充值",
+      "cycleEnds": "周期结束：{cycleEnd}",
+      "lastReset": "上次重置：{lastReset}"
+    },
+    "packs": {
+      "sectionTitle": "购买更多令牌",
+      "sectionNote": "令牌包目前以 USD 计费。充值令牌永不过期。",
+      "readOnlyNotice": "您可以查看令牌，但只有所有者、管理员和账单管理员才能购买充值包。",
+      "starterLabel": "Starter",
+      "starterBlurb": "为额度偏低的周期补充。",
+      "proLabel": "Pro",
+      "proBlurb": "最常见的充值。",
+      "maxLabel": "Max",
+      "maxBlurb": "大型工作负载加成。",
+      "tokensUnit": "令牌",
+      "amountPrefix": "+{amount}",
+      "buyPack": "购买充值包",
+      "redirecting": "正在跳转…",
+      "readOnlyButton": "只读"
+    },
+    "usage": {
+      "sectionTitle": "近期用量",
+      "loading": "正在加载用量…",
+      "empty": "暂无用量。",
+      "colDate": "日期",
+      "colModule": "模块",
+      "colAction": "操作",
+      "colTokens": "令牌",
+      "colStatus": "状态",
+      "tokensSpent": "−{tokens}"
+    },
+    "toasts": {
+      "purchaseCompleted": "令牌购买已完成。您的余额将很快更新。",
+      "purchaseCancelled": "令牌购买已取消。",
+      "buyForbidden": "只有所有者、管理员或账单管理员才能购买令牌包。"
+    }
+  },
+  teamPage: {
+    "header": {
+      "title": "团队",
+      "subtitlePrefix": "管理谁可以访问",
+      "subtitleSuffix": "以及他们可以执行的操作。",
+      "subtitleFallbackOrg": "您的工作区",
+      "inviteButton": "+ 邀请成员"
+    },
+    "stats": {
+      "totalMembers": "成员总数",
+      "active": "活跃",
+      "pendingInvites": "待处理邀请",
+      "adminsAndOwners": "管理员和所有者"
+    },
+    "filters": {
+      "all": "全部",
+      "owners": "所有者",
+      "admins": "管理员",
+      "billing": "账单",
+      "members": "成员",
+      "clients": "客户",
+      "pending": "待处理"
+    },
+    "roles": {
+      "owner": "所有者",
+      "admin": "管理员",
+      "billing": "账单",
+      "member": "成员",
+      "client": "客户"
+    },
+    "emptyState": {
+      "noMembers": "此工作区暂无成员。",
+      "noMatch": "没有成员符合“{filter}”筛选条件。"
+    },
+    "confirm": {
+      "cancelInvite": "取消此待处理邀请？",
+      "regenerateLink": "重新生成邀请链接？旧链接将失效。",
+      "removeMember": "将此成员从工作区中移除？此操作无法撤销。"
+    },
+    "toast": {
+      "cancelFailed": "取消失败",
+      "newLinkCopied": "新的邀请链接已复制到剪贴板。",
+      "regenerateFailed": "重新生成失败",
+      "roleUpdateFailed": "角色更新失败",
+      "memberRemoved": "成员已移除。",
+      "removeFailed": "移除失败",
+      "memberDisabled": "成员已停用。",
+      "disableFailed": "停用失败",
+      "disableUnavailableMock": "模拟层不支持停用。",
+      "memberEnabled": "成员已启用。",
+      "enableFailed": "启用失败",
+      "enableUnavailableMock": "模拟层不支持启用。"
+    },
+    "pendingInvites": {
+      "heading": "待处理邀请（{count}）",
+      "tableHeaders": {
+        "email": "邮箱",
+        "role": "角色",
+        "expires": "过期时间",
+        "actions": "操作"
+      },
+      "copyLink": "复制链接",
+      "regenerateLink": "重新生成链接",
+      "cancel": "取消",
+      "linkHiddenNote": "出于安全考虑，链接已隐藏。点击“重新生成链接”以签发新链接。"
+    },
+    "rolesLegend": {
+      "lead": "**关于角色 —**",
+      "owners": "**所有者**管理账单和工作区设置。",
+      "admins": "**管理员**管理组织用户。",
+      "billing": "**账单**用户管理发票和订阅。",
+      "members": "**成员**可以使用审计功能。",
+      "clients": "**客户**拥有受限的查看访问权限。"
+    },
+    "footerHint": "目前邀请仅为模拟功能。在后端阶段，真实的邮件发送和 Firebase Auth 将取代此层。"
+  },
+  orgCreate: {
+    "heading": "创建工作区",
+    "subtitle": {
+      "signedIn": "已以 {email} 登录",
+      "anonymous": "设置新的组织工作区"
+    },
+    "form": {
+      "nameLabel": "工作区名称",
+      "namePlaceholder": "例如 Acme Corp",
+      "planLabel": "套餐"
+    },
+    "planDesc": {
+      "free": "最多 3 次审计，1 个席位",
+      "starter": "10 次审计，5 个席位",
+      "professional": "无限次审计，20 个席位",
+      "enterprise": "自定义限额、SSO、SLA"
+    },
+    "submit": {
+      "idle": "创建工作区",
+      "loading": "正在创建工作区…"
+    },
+    "backToDashboard": "← 返回仪表板"
+  },
+  auditHistory: {
+    "header": {
+      "title": "审计历史",
+      "subtitle": "此工作区已提交的审计。生成报告以创建可共享的快照。"
+    },
+    "states": {
+      "loading": "正在加载审计历史…",
+      "error": "无法加载审计历史。请稍后重试。"
+    },
+    "empty": {
+      "title": "暂无已提交的审计",
+      "description": "已提交的审计将显示在此工作区中。运行一次新审计即可开始。",
+      "startAudit": "+ 开始审计"
+    },
+    "columns": {
+      "submitted": "提交时间",
+      "score": "评分",
+      "risk": "风险",
+      "findings": "发现"
+    },
+    "row": {
+      "scoreOutOf": "/100",
+      "generateReport": "生成报告"
+    },
+    "toast": {
+      "reportGenerated": "报告已生成"
+    }
+  },
+  auditResultPage: {
+    "header": {
+      "badge": {
+        "submitted": "审计已提交",
+        "preview": "审计预览"
+      },
+      "title": "审计结果",
+      "submissionId": "提交 ID {id} · {submittedAt}"
+    },
+    "journeyNext": {
+      "headline": "以下是您的审计结果的含义",
+      "summary": {
+        "overallScore": "总分 {score}/100 — {risk} 风险。",
+        "findingsSingular": "{n} 项发现，涉及 {m} 项建议操作。",
+        "findingsPlural": "{n} 项发现，涉及 {m} 项建议操作。",
+        "maturity": "AI 成熟度：5 级中的第 {level} 级。"
+      }
+    }
+  },
+  agentsPages: {
+    "list": {
+      "title": "代理",
+      "intro": "查找适合您工作流程的 AI 代理。AiLunaPro 一体化代理已重点标出。",
+      "locked": {
+        "title": "客户账户无法使用代理",
+        "backToDashboard": "返回仪表板"
+      },
+      "filters": {
+        "industryLabel": "行业",
+        "integrationLabel": "集成",
+        "allIndustries": "所有行业",
+        "allIntegrations": "所有集成",
+        "clearFilters": "清除筛选条件",
+        "clearRecommendationsHint": "清除推荐以使用筛选条件。"
+      },
+      "loading": "正在加载代理…",
+      "emptyFiltered": "没有代理符合所选筛选条件。",
+      "sections": {
+        "topRecommendations": "热门推荐",
+        "otherAgents": "其他代理"
+      },
+      "rankBadge": "#{rank}",
+      "scorePts": "{score} 分",
+      "whyToggleOne": "原因？（{count} 条理由）",
+      "whyToggleOther": "原因？（{count} 条理由）"
+    },
+    "recommendPanel": {
+      "title": "个性化我的推荐",
+      "subtitle": "添加几项偏好设置，以便根据您的情况对代理进行排名。",
+      "fields": {
+        "industry": "行业",
+        "companySize": "公司规模",
+        "targetWorkflow": "目标工作流程",
+        "subscriptionPlan": "订阅套餐",
+        "currentMaturity": "当前 AI 成熟度",
+        "integrations": "集成（用逗号分隔，最多 10 个）"
+      },
+      "placeholders": {
+        "industry": "例如 零售、saas、医疗保健",
+        "integrations": "例如 hubspot、slack、email"
+      },
+      "selectNone": "—",
+      "companySizeOptions": {
+        "solo": "个人",
+        "sme": "中小企业",
+        "enterprise": "企业"
+      },
+      "maturityOptions": {
+        "low": "低",
+        "medium": "中",
+        "high": "高"
+      },
+      "workflowOptions": {
+        "support": "客户支持",
+        "sales": "销售和潜在客户跟进",
+        "finance": "财务和开票",
+        "documents": "文档和合同",
+        "reporting": "报告和仪表板",
+        "admin": "行政工作",
+        "compliance": "合规和治理",
+        "marketing": "营销和内容",
+        "hr": "人力资源和人员运营"
+      },
+      "helperText": "至少添加一项偏好以个性化推荐。",
+      "submit": "推荐代理",
+      "submitting": "正在计算…",
+      "clearRecommendations": "清除推荐"
+    },
+    "card": {
+      "external": "外部",
+      "savesPerMonth": "⏱ 每月节省约 {hours} 小时",
+      "moreIntegrations": "+{count}",
+      "viewDetails": "查看详情",
+      "getThisAgent": "获取此代理"
+    },
+    "detail": {
+      "lockedNotice": "客户账户无法使用代理。",
+      "backToAgents": "← 返回代理",
+      "loading": "正在加载…",
+      "errors": {
+        "missingAgentId": "缺少代理 id",
+        "missingOrgContext": "缺少组织上下文"
+      },
+      "pills": {
+        "external": "外部",
+        "minPlanSuffix": "{plan}+",
+        "tokens": "Tokens · {profile}",
+        "setup": "设置 · {complexity}",
+        "recommendedAllInOne": "推荐一体化方案",
+        "compliance": "合规",
+        "audit": "审计"
+      },
+      "cta": "获取此代理 →",
+      "sections": {
+        "overview": "概览",
+        "problemSolved": "解决的问题",
+        "bestFit": "最佳适配",
+        "integrations": "集成",
+        "expectedRoi": "预期 ROI",
+        "pricing": "定价"
+      },
+      "bestFit": {
+        "industries": "行业",
+        "companySize": "公司规模",
+        "minBudget": "最低预算",
+        "minBudgetValue": "${amount}/月"
+      },
+      "roi": {
+        "timeSaved": "节省时间",
+        "timeSavedValue": "{hours} 小时/月",
+        "costSaved": "节省成本",
+        "costSavedValue": "${amount}/月",
+        "payback": "回本周期",
+        "paybackValue": "{months} 个月"
+      },
+      "pricing": {
+        "modelPrefix": "模式：**{model}**",
+        "install": " · 安装：${amount}",
+        "monthly": " · 每月：${amount}",
+        "onRequest": " · 价格面议"
+      }
+    }
+  },
+  assistancePage: {
+    "header": {
+      "badge": "✨ 指导性行动计划",
+      "title": "您的行动计划",
+      "intro": "我们已将您的审计回答转化为一份按顺序排列、结合具体情境的计划。请逐一阅读下方各部分——每条结论都可追溯到您的数据。",
+      "score": "评分 {globalScore} / 100",
+      "backToResult": "← 返回结果"
+    },
+    "detected": {
+      "eyebrow": "01 · 诊断",
+      "title": "我们检测到的问题",
+      "topIssuesLabel": "识别出的首要问题",
+      "noIssues": "✓ 没有需要呈现的问题——审计通过了每一条规则。",
+      "weakestAreaLabel": "最薄弱的领域",
+      "weakestAreaScore": "{score}%",
+      "weakestAreaHint": "弥补这一部分的差距，是提升您整体评分中最具杠杆效应的举措。",
+      "noWeakArea": "未检测到薄弱领域。"
+    },
+    "priorities": {
+      "eyebrow": "02 · 优先事项",
+      "title": "您应当优先修复的内容",
+      "intro": "在 {count} 项推荐措施中，这三项相对于投入的精力能为您带来最高的回报。每项都可追溯到它所解决的发现事项。",
+      "whyItMattersLabel": "为何重要：",
+      "expectedOutcomeLabel": "预期成果：",
+      "impactBadge": "{impact} 影响",
+      "timeframeDays": "{days}天",
+      "closesFindingsOne": "解决 {count} 项发现",
+      "closesFindingsOther": "解决 {count} 项发现",
+      "startWithThis": "从这里开始 →",
+      "startWithThisTooltip": "J2 之后推出",
+      "mostLeverage": "投入产出比最高"
+    },
+    "operatingModel": {
+      "eyebrow": "03 · 运营模式",
+      "title": "应自动化或建立结构的内容",
+      "intro": "下方每个项目都有一种主要的执行方式。在应当建立结构的地方进行自动化（或反之），是一种常见的失败模式。",
+      "categories": {
+        "automate": {
+          "eyebrow": "工具与系统",
+          "title": "自动化",
+          "tagline": "杠杆来自系统而非人力的项目。"
+        },
+        "structure": {
+          "eyebrow": "政策与治理",
+          "title": "建立结构",
+          "tagline": "需要正式的责任归属、政策或框架对齐的项目。"
+        },
+        "process": {
+          "eyebrow": "周期性运转",
+          "title": "运营",
+          "tagline": "需要按固定节奏持续运行的流程类项目。"
+        },
+        "train": {
+          "eyebrow": "人员",
+          "title": "培训",
+          "tagline": "通过教育改变行为方式的项目。"
+        }
+      },
+      "actionsCountOne": "{count} 项措施",
+      "actionsCountOther": "{count} 项措施",
+      "timeframeDays": "{days}天",
+      "emptyColumn": "目前此处没有内容。"
+    },
+    "whyItMatters": {
+      "eyebrow": "04 · 背景",
+      "title": "为何这很重要",
+      "frameworksReferenced": "本次评估引用的框架"
+    },
+    "impact": {
+      "eyebrow": "05 · 影响",
+      "title": "预期的业务影响",
+      "ifTop3": "如果您完成排名前 3 的措施",
+      "scoreLift": "您预测的整体评分将从 {currentScore} 提升至 {projectedScore}。这是基于每项措施所解决发现事项的方向性模拟——实际变化取决于执行的深度。",
+      "projectedLabel": "预测值",
+      "deltaPts": "+{delta} 分",
+      "noChange": "无变化",
+      "toneHighLift": "大幅提升",
+      "toneSteadyGain": "稳步提升",
+      "toneHoldTheLine": "保持现状",
+      "outcomes": {
+        "auditReadinessTitle": "审计就绪度",
+        "auditReadinessHigh": "在安全问卷中，您将从“不完整”转变为“有据可依”。",
+        "auditReadinessSteady": "现有态势得到记录，在审计中更易于引用。",
+        "incidentExposureTitle": "事件暴露度",
+        "incidentExposureHigh": "当 AI 造成损害时，影响范围更小，平均遏制时间更短。",
+        "incidentExposureSteady": "针对 AI 特定事件的响应可预期，责任归属更清晰。",
+        "customerTrustTitle": "客户信任",
+        "customerTrustHigh": "披露说明、模型卡片和可解释性，能让您的支持和销售团队给出明确的答复。",
+        "internalVelocityTitle": "内部效率",
+        "internalVelocitySteady": "当政策与审查路径清晰明确时，开发者交付更快。"
+      },
+      "disclaimer": "预测评分是根据发现覆盖率和各部分权重计算得出的方向性模拟，并非保证。"
+    },
+    "nextStep": {
+      "eyebrow": "06 · 推荐",
+      "title": "您的下一步",
+      "nextOneThing": "接下来的 1 件事",
+      "savedAt": "已于 {timestamp} 在本地保存。",
+      "localOnlyNote": "我们会将此计划保留在本地以供查阅——无需上传，也无需升级账户。当您的团队准备好行动时，随时回来即可。",
+      "ctas": {
+        "saveDefault": "✓ 保存此行动计划",
+        "saved": "✓ 已保存",
+        "reminderSet": "✓ 已设置提醒",
+        "exported": "✓ 已导出",
+        "remind7Day": "⏰ 设置 7 天提醒",
+        "remind30Day": "⏰ 设置 30 天提醒",
+        "remind60Day": "⏰ 设置 60 天提醒",
+        "remindQuarterly": "⏰ 设置季度回访",
+        "exportPlan": "⬇ 导出计划"
+      }
+    },
+    "narrative": {
+      "whyItMatters": {
+        "regHighStakes": "您所处的领域已被监管机构视为高风险。当 AI 处理敏感数据或对人作出重大决策时，EU AI Act、GDPR 以及特定行业的规则（HIPAA 同等法规、金融服务框架）都会施加额外的义务。",
+        "customerFacingTransparency": "您的 AI 面向客户，这意味着透明度义务随之适用（EU AI Act Article 50、消费者保护规则），其声誉风险也高于内部工具。",
+        "internalBaseline": "即便是内部使用的 AI，公认的框架（ISO/IEC 42001、NIST AI RMF）也日益成为供应商尽职调查和企业级交易的基准。",
+        "riskInactionHigh": "在您当前的风险等级下，不作为的代价是不对称的。一次事件——模型泄露数据、不公平的决策、没有应急手册的中断——其代价远高于下方推荐的修复措施。",
+        "riskInactionMedium": "您处于一个有据可依的中间等级。当前的风险在于停滞不前：止步于此的组织通常会随着其 AI 应用规模的扩大而倒退。弥补中等严重性的差距可巩固当前的态势。",
+        "riskInactionLow": "您已具备相当扎实的态势。风险在于随着 AI 应用规模扩大而出现倒退。后续投入主要是维护、记录和逐步深化。",
+        "weakestSection": "您最薄弱的领域是 **{title}**（{score}%）。强化它会直接提升整体评分，但更重要的是，它能消除事件发生时阻力最小的路径。",
+        "commercialEnabler": "企业级买家和受监管的客户越来越多地在安全问卷中要求提供 AI 治理证据。您行动计划中的许多项目不仅是合规工作，同时也是商业上的助力。"
+      },
+      "riskOneLiner": {
+        "low": "您的状况良好——重心转向维护和持续改进。",
+        "medium": "您具备有据可依的基准，但仍存在值得尽快弥补的实质性差距。",
+        "high": "您存在若干差距，实质性地提高了您的暴露度。请优先处理下方的措施。",
+        "critical": "您存在一项或多项严重差距。最高优先级的项目应在几天内解决，而非几周。"
+      },
+      "contextChips": {
+        "highRiskIndustry": "高风险行业",
+        "sensitiveData": "范围内涉及敏感数据",
+        "customerFacing": "面向客户的 AI",
+        "missionCritical": "关键任务范围",
+        "standardProfile": "标准风险概况"
+      },
+      "nextStep": {
+        "criticalHeadline": "在接下来的 7 天内解决该严重发现事项",
+        "criticalRationaleFallback": "这是您行动计划中最具实质性的项目。",
+        "highHeadline": "从 30 天速赢项目开始",
+        "highRationaleFallback": "高风险态势会对少数有针对性的措施迅速作出反应。从路线图中挑选三个速赢项目，并在本月内负责落实。",
+        "mediumHeadline": "夯实您的治理基础",
+        "mediumRationale": "您已度过最初的手忙脚乱阶段。下一个能产生复利效应的举措，是将您非正式的做法正式化——书面政策、公认的框架、记录在案的升级流程。这正是让审计和企业级交易变得例行化的关键。",
+        "lowHeadline": "从合规迈向优化",
+        "lowRationale": "您的态势很强。如今的杠杆在于记录和持续改进——模型卡片、培训复训，以及将 AI 场景纳入您的事件响应演练。"
+      }
+    }
+  },
+  dashboardHome: {
+    "hero": {
+      "scoreLabel": "合规评分",
+      "riskLabel": "当前风险等级",
+      "maturityLabel": "AI 成熟度等级",
+      "nextStepLabel": "推荐的下一步",
+      "nextStepTitle": "完成 HR 筛选工具审计",
+      "nextStepBody": "此审计已完成 60%。完成它预计可将您的合规评分提升 +7 分。",
+      "continueAudit": "继续审计 →",
+      "toast": {
+        "noPermission": "您没有继续审计的权限。",
+        "noDraft": "未找到草稿审计——正在开始新的审计。"
+      }
+    },
+    "recentReports": {
+      "card": {
+        "share": "分享",
+        "view": "查看"
+      },
+      "export": {
+        "title": "导出选项",
+        "blurb": "以多种格式导出您的合规数据，供相关方使用。",
+        "exportAs": "导出为 {fmt}"
+      },
+      "toast": {
+        "reportNotAvailable": "报告尚不可用。",
+        "shareLinkCopied": "分享链接已复制。",
+        "shareLinkFailed": "无法复制链接。请重试。",
+        "noReportsToExport": "尚无可导出的报告。",
+        "csvDownloaded": "CSV 已下载。",
+        "jsonDownloaded": "JSON 已下载。"
+      }
+    },
+    "cta": {
+      "heading": "准备好实现全面的 AI 合规了吗？",
+      "body": "加入正在使用 AiLunaPro 的组织，自动化合规工作流程、降低风险，并赢得相关方的信任。",
+      "toast": {
+        "alreadyActivePlan": "您已拥有一个有效的方案。",
+        "demoRequestSent": "演示请求已发送。我们会进行审核并尽快与您联系。"
+      },
+      "demoModal": {
+        "title": "预约演示",
+        "subtitle": "向我们简单介绍一下您的团队，我们会与您联系。",
+        "placeholderFullName": "全名",
+        "placeholderWorkEmail": "工作邮箱",
+        "placeholderCompany": "公司",
+        "placeholderMessage": "您想讨论些什么？",
+        "privacyNote": "我们仅使用这些信息来回应您的请求。",
+        "cancel": "取消",
+        "submit": "请求演示",
+        "submitting": "发送中…",
+        "errorFallback": "无法发送您的请求。请重试。"
+      }
+    }
+  },
+  publicTools: {
+    "diagnostic": {
+      "header": {
+        "title": "AI 成熟度诊断",
+        "subtitle": "回答 8 个简短问题。获取您的 AI 成熟度评分，并了解哪些 AiLunaPro 智能体适合您当前的阶段。",
+        "freeLine": "免费 · 无需注册账户 · 约需 2 分钟"
+      },
+      "resumeNotice": "欢迎回来——我们已恢复您之前的回答，您可以从上次中断的地方继续。",
+      "questionLegend": "问题 {n} / {total}",
+      "leadCapture": {
+        "heading": "我们应将结果发送到哪里？",
+        "emailLabel": "电子邮箱",
+        "requiredMark": "*",
+        "emailPlaceholder": "you@company.com",
+        "companyNameLabel": "公司名称",
+        "optionalMark": "（选填）",
+        "companyNamePlaceholder": "Acme Corp",
+        "helperText": "我们仅使用此信息来生成您的诊断结果，并就相关 AI 服务进行后续跟进。无需注册账户。",
+        "consentLabel": "我同意接收我的 AI 诊断结果以及来自 AiLunaPro 的相关后续信息。我理解我的回答和电子邮箱将被处理，以生成并存储此诊断结果，并且我可以随时请求删除我的数据。"
+      },
+      "submit": {
+        "loading": "正在计算您的结果……",
+        "idle": "获取我的 AI 成熟度评分"
+      },
+      "signInPrompt": "已有账户？",
+      "signInLink": "登录",
+      "errors": {
+        "answers": "请回答每一个问题。",
+        "email": "请输入有效的电子邮箱地址。",
+        "consent": "您必须同意接收结果。",
+        "captchaLoading": "验证码正在加载——请稍候。"
+      },
+      "buckets": {
+        "low": {
+          "title": "您的 AI 成熟度处于起步阶段（Emerging）",
+          "message": "您的组织正处于早期阶段。建议从简单的自动化、AI 使用清单以及实用的支持型智能体入手。"
+        },
+        "medium": {
+          "title": "您的 AI 成熟度处于发展阶段（Developing）",
+          "message": "您已具备一定的 AI 基础。下一步是规范使用方式、衡量 ROI，并改进文档与报告工作流。"
+        },
+        "high": {
+          "title": "您的 AI 成熟度处于领先阶段（Advanced）",
+          "message": "您已准备好通过更强的治理、合规、报告和专业化自动化来扩展 AI。"
+        }
+      },
+      "result": {
+        "scoreLabel": "您的 AI 成熟度评分",
+        "scoreUnit": "/100",
+        "recommendedAgentsHeading": "推荐的 AiLunaPro 智能体",
+        "agentCardBrand": "AiLunaPro",
+        "agentCardCta": "获取此智能体",
+        "ctaHeading": "想要更深入的审计和完整的行动计划吗？",
+        "ctaBody": "创建一个免费的 AiLunaPro 工作区，即可访问完整的审计、登记册和智能体目录。",
+        "ctaButton": "创建您的免费账户 ↗",
+        "ctaFootnote": "继续前往 **dashboard.ailunapro.com**——面向 AI 智能体与解决方案的 AiLuna 平台，是您审计之后的下一步。",
+        "retakeButton": "重新进行诊断"
+      }
+    },
+    "roi": {
+      "header": {
+        "title": "AI ROI 计算器",
+        "subtitle": "估算使用 AiLunaPro AI 智能体可为您节省的时间和金钱。",
+        "freeLine": "免费 · 无需注册账户 · 约需 1 分钟 · USD"
+      },
+      "resumeNotice": "欢迎回来——我们已恢复您之前的输入，您可以从上次中断的地方继续。",
+      "form": {
+        "teamLegend": "您的团队",
+        "teamSizeLabel": "团队规模",
+        "teamSizePlaceholder": "例如 10",
+        "monthlyHoursLabel": "您的团队每月花在重复性工作上的小时数",
+        "monthlyHoursPlaceholder": "例如 80",
+        "hourlyCostLabel": "平均每小时成本（USD）",
+        "targetWorkflowLabel": "目标工作流",
+        "workflowPlaceholderOption": "选择一个工作流……"
+      },
+      "leadCapture": {
+        "legend": "我们应将您的估算结果发送到哪里？",
+        "emailLabel": "电子邮箱",
+        "emailPlaceholder": "you@company.com",
+        "companyNameLabel": "公司名称",
+        "optionalMark": "（选填）",
+        "companyNamePlaceholder": "Acme Corp",
+        "helperText": "我们仅使用此信息来生成您的估算结果，并就相关 AI 服务进行后续跟进。无需注册账户。",
+        "consentLabel": "我同意接收我的 AI ROI 估算结果以及来自 AiLunaPro 的相关后续信息。我理解我的回答和电子邮箱将被处理，以生成并存储此估算结果，并且我可以随时请求删除我的数据。"
+      },
+      "requiredMark": "*",
+      "submit": {
+        "loading": "正在计算……",
+        "idle": "计算我的 ROI"
+      },
+      "signInPrompt": "已有账户？",
+      "signInLink": "登录",
+      "errors": {
+        "teamSize": "团队规模必须是 1 到 10000 之间的整数。",
+        "hours": "每月小时数必须是 0 到 10000 之间的数字。",
+        "cost": "每小时成本必须是 1 到 1000 USD 之间的数字。",
+        "workflow": "请选择一个工作流。",
+        "email": "请输入有效的电子邮箱地址。",
+        "consent": "您必须同意接收估算结果。",
+        "captchaLoading": "验证码正在加载——请稍候。"
+      },
+      "result": {
+        "monthlySavingsLabel": "预计每月节省",
+        "monthlySavingsUnit": "/月",
+        "yearlySavingsLabel": "每年节省",
+        "timeSavedLabel": "节省的时间",
+        "timeSavedValue": "{hours} 小时/月",
+        "paybackLabel": "回本周期",
+        "paybackValue": "{months} 个月",
+        "paybackEmpty": "—",
+        "disclaimer": "这是基于您提供的信息和保守的自动化假设得出的估算。实际节省可能有所不同。",
+        "pricingNote": "回本周期假设参考智能体成本为 $99/月；实际定价因智能体而异。",
+        "recommendedAgentsHeading": "推荐的 AiLunaPro 智能体",
+        "agentCardBrand": "AiLunaPro",
+        "agentCardCta": "获取此智能体",
+        "ctaHeading": "想要更深入的分析和完整的行动计划吗？",
+        "ctaBody": "创建一个免费的 AiLunaPro 工作区，即可访问完整的审计、登记册和智能体目录。",
+        "ctaButton": "创建您的免费账户 ↗",
+        "ctaFootnote": "继续前往 **dashboard.ailunapro.com**——面向 AI 智能体与解决方案的 AiLuna 平台，是您审计之后的下一步。",
+        "rerunButton": "再进行一次计算"
+      }
+    }
+  },
 };

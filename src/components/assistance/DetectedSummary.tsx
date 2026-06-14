@@ -1,5 +1,7 @@
 import { Badge } from '../ui/Badge';
 import { SectionTitle } from './SectionTitle';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import type { AuditResult } from '../../types/scoring';
 import { getDetectedSummary } from '../../lib/scoring/assistance';
 
@@ -11,6 +13,7 @@ const TONE_BADGE = {
 
 export function DetectedSummary({ result }: { result: AuditResult }) {
   const summary = getDetectedSummary(result);
+  const T = useLocale();
 
   return (
     <section
@@ -24,7 +27,7 @@ export function DetectedSummary({ result }: { result: AuditResult }) {
         transition: 'background 0.2s, border-color 0.2s',
       }}
     >
-      <SectionTitle eyebrow="01 · Diagnosis" title="What we detected" />
+      <SectionTitle eyebrow={T.assistancePage.detected.eyebrow} title={T.assistancePage.detected.title} />
 
       <p
         style={{
@@ -92,11 +95,11 @@ export function DetectedSummary({ result }: { result: AuditResult }) {
               marginBottom: 10,
             }}
           >
-            Top issues identified
+            {T.assistancePage.detected.topIssuesLabel}
           </div>
           {summary.topIssues.length === 0 ? (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-              ✓ No issues to surface — the audit cleared every rule.
+              {T.assistancePage.detected.noIssues}
             </p>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -138,7 +141,7 @@ export function DetectedSummary({ result }: { result: AuditResult }) {
               marginBottom: 10,
             }}
           >
-            Weakest area
+            {T.assistancePage.detected.weakestAreaLabel}
           </div>
           {summary.weakestSection ? (
             <>
@@ -173,7 +176,7 @@ export function DetectedSummary({ result }: { result: AuditResult }) {
                         : 'var(--red-text)',
                   }}
                 >
-                  {summary.weakestSection.score}%
+                  {format(T.assistancePage.detected.weakestAreaScore, { score: summary.weakestSection.score })}
                 </span>
               </div>
               <div
@@ -202,12 +205,12 @@ export function DetectedSummary({ result }: { result: AuditResult }) {
                   lineHeight: 1.5,
                 }}
               >
-                Closing this section's gap is the highest-leverage move on your global score.
+                {T.assistancePage.detected.weakestAreaHint}
               </p>
             </>
           ) : (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-              No weak area detected.
+              {T.assistancePage.detected.noWeakArea}
             </p>
           )}
         </div>

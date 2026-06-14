@@ -13,6 +13,9 @@
 
 import { useMemo, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
+import type { Dict } from '../lib/locale/i18n/en';
 import { DIAGNOSTIC_QUESTIONS } from '../data/diagnostic-questions';
 import { submitDiagnostic, friendlyDiagnosticError } from '../lib/diagnostic/diagnosticClient';
 import type { DiagnosticResult, Bucket } from '../types/diagnostic';
@@ -22,20 +25,22 @@ import { track } from '../lib/analytics/track';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
-const BUCKET_COPY: Record<Bucket, { title: string; message: string }> = {
-  low: {
-    title:   'Your AI maturity is emerging',
-    message: 'Your organization is at an early stage. Start with simple automation, an AI usage inventory, and practical support agents.',
-  },
-  medium: {
-    title:   'Your AI maturity is developing',
-    message: 'You already have some AI foundations. The next step is to structure usage, measure ROI, and improve document and reporting workflows.',
-  },
-  high: {
-    title:   'Your AI maturity is advanced',
-    message: 'You are ready to scale AI with stronger governance, compliance, reporting, and specialized automation.',
-  },
-};
+function buildBucketCopy(t: Dict['publicTools']['diagnostic']): Record<Bucket, { title: string; message: string }> {
+  return {
+    low: {
+      title:   t.buckets.low.title,
+      message: t.buckets.low.message,
+    },
+    medium: {
+      title:   t.buckets.medium.title,
+      message: t.buckets.medium.message,
+    },
+    high: {
+      title:   t.buckets.high.title,
+      message: t.buckets.high.message,
+    },
+  };
+}
 
 interface FormErrors {
   general?: string;
@@ -46,6 +51,7 @@ interface FormErrors {
 
 export function DiagnosticPage() {
   const { navigate } = useRoute();
+  const T = useLocale();
 
   // Answers state — keyed by question.id. B2.4: an unfinished run is restored
   // from localStorage so abandoning the flow never loses progress (client-side
@@ -85,10 +91,10 @@ export function DiagnosticPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err: FormErrors = {};
-    if (!allAnswered)                                        err.answers = 'Please answer every question.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))           err.email   = 'Please enter a valid email address.';
-    if (!consent)                                            err.consent = 'You must accept to receive your result.';
-    if (turnstileToken === null)                             err.general = 'Captcha is loading — please wait.';
+    if (!allAnswered)                                        err.answers = T.publicTools.diagnostic.errors.answers;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))           err.email   = T.publicTools.diagnostic.errors.email;
+    if (!consent)                                            err.consent = T.publicTools.diagnostic.errors.consent;
+    if (turnstileToken === null)                             err.general = T.publicTools.diagnostic.errors.captchaLoading;
     setErrors(err);
     if (Object.keys(err).length > 0) return;
 
@@ -137,13 +143,13 @@ export function DiagnosticPage() {
             fontSize: 32, fontWeight: 800, color: 'var(--text-primary)',
             margin: '0 0 10px',
           }}>
-            AI Maturity Diagnostic
+            {T.publicTools.diagnostic.header.title}
           </h1>
           <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-            Answer 8 short questions. Get your AI maturity score and see which AiLunaPro agents fit your stage.
+            {T.publicTools.diagnostic.header.subtitle}
           </p>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0' }}>
-            Free · No account required · Takes about 2 minutes
+            {T.publicTools.diagnostic.header.freeLine}
           </p>
         </div>
 
@@ -157,7 +163,7 @@ export function DiagnosticPage() {
                 marginBottom: 14, padding: '10px 14px', borderRadius: 10, fontSize: 13,
                 background: 'var(--brand-tint-bg)', color: 'var(--text-primary)', border: '1px solid var(--violet)',
               }}>
-                Welcome back — we restored your previous answers so you can pick up where you left off.
+                {T.publicTools.diagnostic.resumeNotice}
               </div>
             )}
             {/* Questions */}
@@ -177,7 +183,7 @@ export function DiagnosticPage() {
                     padding: '0 8px', fontSize: 13, fontWeight: 700,
                     color: 'var(--violet-text)', textTransform: 'uppercase', letterSpacing: 0.5,
                   }}>
-                    Question {i + 1} / {DIAGNOSTIC_QUESTIONS.length}
+                    {format(T.publicTools.diagnostic.questionLegend, { n: i + 1, total: DIAGNOSTIC_QUESTIONS.length })}
                   </legend>
                   <div style={{
                     fontSize: 15, fontWeight: 600, color: 'var(--text-primary)',
@@ -232,18 +238,18 @@ export function DiagnosticPage() {
                 fontSize: 16, fontWeight: 700, color: 'var(--text-primary)',
                 margin: '0 0 14px',
               }}>
-                Where should we send your result?
+                {T.publicTools.diagnostic.leadCapture.heading}
               </h2>
 
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-                Email <span style={{ color: 'var(--red-text)' }}>*</span>
+                {T.publicTools.diagnostic.leadCapture.emailLabel} <span style={{ color: 'var(--red-text)' }}>{T.publicTools.diagnostic.leadCapture.requiredMark}</span>
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                placeholder={T.publicTools.diagnostic.leadCapture.emailPlaceholder}
                 style={{
                   width: '100%', padding: '10px 12px', fontSize: 14,
                   border: '1px solid var(--border)', borderRadius: 8,
@@ -257,13 +263,13 @@ export function DiagnosticPage() {
               )}
 
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-                Company name <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span>
+                {T.publicTools.diagnostic.leadCapture.companyNameLabel} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{T.publicTools.diagnostic.leadCapture.optionalMark}</span>
               </label>
               <input
                 type="text"
                 value={companyName}
                 onChange={e => setCompany(e.target.value)}
-                placeholder="Acme Corp"
+                placeholder={T.publicTools.diagnostic.leadCapture.companyNamePlaceholder}
                 maxLength={120}
                 style={{
                   width: '100%', padding: '10px 12px', fontSize: 14,
@@ -276,7 +282,7 @@ export function DiagnosticPage() {
 
               {/* Helper text above consent */}
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
-                We only use this information to generate your diagnostic and follow up about relevant AI services. No account is required.
+                {T.publicTools.diagnostic.leadCapture.helperText}
               </p>
 
               {/* Consent */}
@@ -288,7 +294,7 @@ export function DiagnosticPage() {
                   style={{ marginTop: 3, accentColor: 'var(--violet)' }}
                 />
                 <span>
-                  I agree to receive my AI diagnostic result and relevant follow-up information from AiLunaPro. I understand that my answers and email will be processed to generate and store this diagnostic result, and that I can request deletion of my data at any time.
+                  {T.publicTools.diagnostic.leadCapture.consentLabel}
                 </span>
               </label>
               {errors.consent && (
@@ -322,18 +328,18 @@ export function DiagnosticPage() {
                   transition: 'all 0.15s ease',
                 }}
               >
-                {submitting ? 'Computing your result…' : 'Get my AI maturity score'}
+                {submitting ? T.publicTools.diagnostic.submit.loading : T.publicTools.diagnostic.submit.idle}
               </button>
             </div>
 
             <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-              Already have an account?{' '}
+              {T.publicTools.diagnostic.signInPrompt}{' '}
               <button
                 type="button"
                 onClick={() => navigate({ name: 'login' })}
                 style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontWeight: 600, padding: 0 }}
               >
-                Sign in
+                {T.publicTools.diagnostic.signInLink}
               </button>
             </div>
           </form>
@@ -346,6 +352,8 @@ export function DiagnosticPage() {
 /* ── Result view ────────────────────────────────────────── */
 
 function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: () => void }) {
+  const T = useLocale();
+  const BUCKET_COPY = useMemo(() => buildBucketCopy(T.publicTools.diagnostic), [T]);
   const copy = BUCKET_COPY[result.bucket];
   const pct  = Math.max(0, Math.min(100, result.score));
   const ringColor =
@@ -365,13 +373,13 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
         marginBottom: 28,
       }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-          Your AI maturity score
+          {T.publicTools.diagnostic.result.scoreLabel}
         </div>
         <div style={{
           fontSize: 56, fontWeight: 800, color: ringColor,
           fontVariantNumeric: 'tabular-nums', lineHeight: 1.05,
         }}>
-          {pct}<span style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 600 }}>/100</span>
+          {pct}<span style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 600 }}>{T.publicTools.diagnostic.result.scoreUnit}</span>
         </div>
         <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
           {copy.title}
@@ -395,7 +403,7 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
           fontSize: 14, fontWeight: 700, color: 'var(--text-primary)',
           margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 0.5,
         }}>
-          Recommended AiLunaPro agents
+          {T.publicTools.diagnostic.result.recommendedAgentsHeading}
         </h2>
         <div style={{
           display: 'grid',
@@ -417,13 +425,13 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
               }}
             >
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: 'var(--violet-text)', textTransform: 'uppercase', marginBottom: 6 }}>
-                AiLunaPro
+                {T.publicTools.diagnostic.result.agentCardBrand}
               </div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
                 {humanizeSlug(slug)}
               </div>
               <div style={{ fontSize: 12, color: 'var(--violet-text)', fontWeight: 600 }}>
-                Get this agent
+                {T.publicTools.diagnostic.result.agentCardCta}
               </div>
             </a>
           ))}
@@ -437,10 +445,10 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
         textAlign: 'center',
       }}>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
-          Want a deeper audit and your full action plan?
+          {T.publicTools.diagnostic.result.ctaHeading}
         </div>
         <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>
-          Create a free AiLunaPro workspace to access the full audit, registry, and agent catalog.
+          {T.publicTools.diagnostic.result.ctaBody}
         </div>
         <a
           href={AFFILIATE_URL}
@@ -453,12 +461,13 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
             fontWeight: 700, fontSize: 14, textDecoration: 'none',
           }}
         >
-          Create your free account ↗
+          {T.publicTools.diagnostic.result.ctaButton}
         </a>
         {/* B2.1: the cross-platform step is deliberate — make it explicit. */}
         <div style={{ fontSize: 11.5, opacity: 0.7, marginTop: 10 }}>
-          Continues on <strong>dashboard.ailunapro.com</strong> — the AiLuna platform for AI agents
-          and solutions, the next step after your audit.
+          {T.publicTools.diagnostic.result.ctaFootnote
+            .split(/\*\*(.+?)\*\*/)
+            .map((seg, i) => (i % 2 === 1 ? <strong key={i}>{seg}</strong> : seg))}
         </div>
       </div>
 
@@ -472,7 +481,7 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
             textDecoration: 'underline',
           }}
         >
-          Take the diagnostic again
+          {T.publicTools.diagnostic.result.retakeButton}
         </button>
       </div>
     </div>

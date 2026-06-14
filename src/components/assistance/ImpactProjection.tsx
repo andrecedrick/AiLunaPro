@@ -1,25 +1,29 @@
 import { SectionTitle } from './SectionTitle';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
+import type { Dict } from '../../lib/locale/i18n/en';
 import type { AuditResult } from '../../types/scoring';
 import { estimateScoreLift, getTopActions } from '../../lib/scoring/assistance';
 
 /**
  * Qualitative outcome chips, each with a directional reasoning.
  */
-function qualitativeOutcomes(result: AuditResult) {
+function qualitativeOutcomes(result: AuditResult, t: Dict['assistancePage']) {
+  const o = t.impact.outcomes;
   const ctx = result.contextFlags;
   const out: { title: string; sub: string; tone: 'good' | 'better' | 'best' }[] = [];
 
   // Audit / regulator readiness
   if (result.findings.some(f => f.severity === 'critical' || f.severity === 'high')) {
     out.push({
-      title: 'Audit-readiness',
-      sub: 'You move from "incomplete" to "defensible" in a security questionnaire.',
+      title: o.auditReadinessTitle,
+      sub: o.auditReadinessHigh,
       tone: 'best',
     });
   } else {
     out.push({
-      title: 'Audit-readiness',
-      sub: 'Existing posture documented and easier to reference in audits.',
+      title: o.auditReadinessTitle,
+      sub: o.auditReadinessSteady,
       tone: 'better',
     });
   }
@@ -27,14 +31,14 @@ function qualitativeOutcomes(result: AuditResult) {
   // Incident risk
   if (ctx.sensitiveData || ctx.missionCritical) {
     out.push({
-      title: 'Incident exposure',
-      sub: 'Reduced blast-radius and faster mean time to contain when AI causes harm.',
+      title: o.incidentExposureTitle,
+      sub: o.incidentExposureHigh,
       tone: 'best',
     });
   } else {
     out.push({
-      title: 'Incident exposure',
-      sub: 'Predictable response and clearer ownership for AI-specific incidents.',
+      title: o.incidentExposureTitle,
+      sub: o.incidentExposureSteady,
       tone: 'better',
     });
   }
@@ -42,14 +46,14 @@ function qualitativeOutcomes(result: AuditResult) {
   // Customer trust
   if (ctx.customerFacing) {
     out.push({
-      title: 'Customer trust',
-      sub: 'Disclosure, model cards, and explainability give your support and sales teams clear answers.',
+      title: o.customerTrustTitle,
+      sub: o.customerTrustHigh,
       tone: 'best',
     });
   } else {
     out.push({
-      title: 'Internal velocity',
-      sub: 'Builders ship faster when policy and review paths are unambiguous.',
+      title: o.internalVelocityTitle,
+      sub: o.internalVelocitySteady,
       tone: 'better',
     });
   }
@@ -64,9 +68,10 @@ const TONE_STYLE = {
 } as const;
 
 export function ImpactProjection({ result }: { result: AuditResult }) {
+  const T = useLocale();
   const top = getTopActions(result, 3);
   const { projectedScore, delta } = estimateScoreLift(result, top);
-  const outcomes = qualitativeOutcomes(result);
+  const outcomes = qualitativeOutcomes(result, T.assistancePage);
   const willImprove = delta > 0;
 
   return (
@@ -81,7 +86,7 @@ export function ImpactProjection({ result }: { result: AuditResult }) {
         transition: 'background 0.2s, border-color 0.2s',
       }}
     >
-      <SectionTitle eyebrow="05 · Impact" title="Expected business impact" />
+      <SectionTitle eyebrow={T.assistancePage.impact.eyebrow} title={T.assistancePage.impact.title} />
 
       {/* Score lift card */}
       <div
@@ -108,7 +113,7 @@ export function ImpactProjection({ result }: { result: AuditResult }) {
               marginBottom: 6,
             }}
           >
-            If you complete the top 3 actions
+            {T.assistancePage.impact.ifTop3}
           </div>
           <p
             style={{
@@ -119,11 +124,10 @@ export function ImpactProjection({ result }: { result: AuditResult }) {
               maxWidth: 520,
             }}
           >
-            Your projected global score moves from{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>{result.globalScore}</strong> to{' '}
-            <strong style={{ color: 'var(--violet-text)' }}>{projectedScore}</strong>.
-            This is a directional simulation based on the findings each action closes —
-            actual movement depends on execution depth.
+            {format(T.assistancePage.impact.scoreLift, {
+              currentScore: result.globalScore,
+              projectedScore,
+            })}
           </p>
         </div>
         <div
@@ -137,7 +141,7 @@ export function ImpactProjection({ result }: { result: AuditResult }) {
           }}
         >
           <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>
-            Projected
+            {T.assistancePage.impact.projectedLabel}
           </div>
           <div
             style={{
@@ -159,7 +163,9 @@ export function ImpactProjection({ result }: { result: AuditResult }) {
               marginTop: 2,
             }}
           >
-            {willImprove ? `+${delta} pts` : 'no change'}
+            {willImprove
+              ? format(T.assistancePage.impact.deltaPts, { delta })
+              : T.assistancePage.impact.noChange}
           </div>
         </div>
       </div>
@@ -196,7 +202,11 @@ export function ImpactProjection({ result }: { result: AuditResult }) {
                 marginBottom: 8,
               }}
             >
-              {o.tone === 'best' ? 'High lift' : o.tone === 'better' ? 'Steady gain' : 'Hold the line'}
+              {o.tone === 'best'
+                ? T.assistancePage.impact.toneHighLift
+                : o.tone === 'better'
+                ? T.assistancePage.impact.toneSteadyGain
+                : T.assistancePage.impact.toneHoldTheLine}
             </span>
             <div
               style={{
@@ -225,8 +235,7 @@ export function ImpactProjection({ result }: { result: AuditResult }) {
           lineHeight: 1.5,
         }}
       >
-        The projected score is a directional simulation computed from finding
-        coverage and section weights. It is not a guarantee.
+        {T.assistancePage.impact.disclaimer}
       </p>
     </section>
   );

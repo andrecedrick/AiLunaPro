@@ -1,6 +1,8 @@
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { SectionTitle } from './SectionTitle';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import type { AuditResult, Effort, Impact } from '../../types/scoring';
 import { getTopActions } from '../../lib/scoring/assistance';
 
@@ -20,6 +22,7 @@ const IMPACT_FG: Record<Impact, string> = {
 
 export function PriorityActions({ result }: { result: AuditResult }) {
   const top = getTopActions(result, 3);
+  const T = useLocale();
 
   // For each top rec, count how many findings it addresses.
   const reverseIndex: Record<string, number> = {};
@@ -41,7 +44,7 @@ export function PriorityActions({ result }: { result: AuditResult }) {
         transition: 'background 0.2s, border-color 0.2s',
       }}
     >
-      <SectionTitle eyebrow="02 · Priorities" title="What you should fix first" />
+      <SectionTitle eyebrow={T.assistancePage.priorities.eyebrow} title={T.assistancePage.priorities.title} />
 
       <p
         style={{
@@ -51,7 +54,7 @@ export function PriorityActions({ result }: { result: AuditResult }) {
           lineHeight: 1.6,
         }}
       >
-        Out of {result.recommendations.length} recommended actions, these three give you the highest return relative to effort. Each links back to the findings it closes.
+        {format(T.assistancePage.priorities.intro, { count: result.recommendations.length })}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -139,7 +142,7 @@ export function PriorityActions({ result }: { result: AuditResult }) {
                         lineHeight: 1.55,
                       }}
                     >
-                      <strong style={{ color: 'var(--text-primary)' }}>Why it matters: </strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{T.assistancePage.priorities.whyItMattersLabel}</strong>
                       {rec.whyItMatters}
                     </p>
                   )}
@@ -153,7 +156,7 @@ export function PriorityActions({ result }: { result: AuditResult }) {
                         lineHeight: 1.55,
                       }}
                     >
-                      <strong style={{ color: 'var(--text-primary)' }}>Expected outcome: </strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{T.assistancePage.priorities.expectedOutcomeLabel}</strong>
                       {rec.expectedOutcome}
                     </p>
                   )}
@@ -180,7 +183,7 @@ export function PriorityActions({ result }: { result: AuditResult }) {
                         color: IMPACT_FG[rec.impact],
                       }}
                     >
-                      {rec.impact} impact
+                      {format(T.assistancePage.priorities.impactBadge, { impact: rec.impact })}
                     </span>
                     <span
                       style={{
@@ -192,7 +195,7 @@ export function PriorityActions({ result }: { result: AuditResult }) {
                         borderRadius: 20,
                       }}
                     >
-                      {rec.timeframeDays}d
+                      {format(T.assistancePage.priorities.timeframeDays, { days: rec.timeframeDays })}
                     </span>
                     {findingCount > 0 && (
                       <span
@@ -202,7 +205,12 @@ export function PriorityActions({ result }: { result: AuditResult }) {
                           fontWeight: 500,
                         }}
                       >
-                        closes {findingCount} finding{findingCount === 1 ? '' : 's'}
+                        {format(
+                          findingCount === 1
+                            ? T.assistancePage.priorities.closesFindingsOne
+                            : T.assistancePage.priorities.closesFindingsOther,
+                          { count: findingCount },
+                        )}
                       </span>
                     )}
                   </div>
@@ -213,9 +221,9 @@ export function PriorityActions({ result }: { result: AuditResult }) {
                 <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
                   {/* Behavior not yet implemented — disabled to avoid a dead
                       control misleading users. Wiring planned post-J2. */}
-                  <span title="Coming post-J2" style={{ display: 'inline-flex' }}>
+                  <span title={T.assistancePage.priorities.startWithThisTooltip} style={{ display: 'inline-flex' }}>
                     <Button variant="primary" size="sm" disabled>
-                      Start with this →
+                      {T.assistancePage.priorities.startWithThis}
                     </Button>
                   </span>
                   <span
@@ -225,7 +233,7 @@ export function PriorityActions({ result }: { result: AuditResult }) {
                       alignSelf: 'center',
                     }}
                   >
-                    Most leverage for the effort
+                    {T.assistancePage.priorities.mostLeverage}
                   </span>
                 </div>
               )}

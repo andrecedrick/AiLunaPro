@@ -1065,4 +1065,1235 @@ export const fr: Dict = {
       "a12": "Non. Le Calculateur de ROI fournit une estimation prudente basée sur les informations que vous fournissez. Les économies réelles dépendent de votre workflow, de la qualité de l'intégration et de l'adoption."
     }
   },
+  systemBuilder: {
+    "chrome": {
+      "pageTitle": "Concepteur de système d'IA",
+      "pageIntro": "Un guide de conception avant déploiement. Parcourez six dimensions — finalité et risque, données, modèle, supervision, surveillance, documentation — pour concevoir un système d'IA de façon responsable. Votre étape et les cases cochées de la checklist sont enregistrées sur cet appareil uniquement.",
+      "designSteps": "Étapes de conception",
+      "checklist": "Checklist",
+      "doneSuffix": "· {doneCount}/{total} terminées",
+      "keyQuestions": "Questions clés",
+      "references": "Références (à titre indicatif, pas un conseil juridique)",
+      "previousStep": "← Étape précédente",
+      "nextStep": "Étape suivante →",
+      "stepOf": "Étape {n} sur {total}",
+      "endOfGuide": "✓ Fin du guide — les six dimensions sont couvertes"
+    },
+    "steps": {
+      "purpose": {
+        "title": "1. Finalité et classification du risque",
+        "intro": "Définissez précisément à quoi sert le système, qui il affecte et son niveau de risque avant de construire quoi que ce soit. Cela ancre toutes les décisions ultérieures.",
+        "checklist": {
+          "c1": "Rédigez une finalité prévue en une phrase (sans jargon).",
+          "c2": "Listez les personnes ou groupes affectés (utilisateurs, clients, tiers).",
+          "c3": "Classez le niveau de risque : inacceptable / élevé (Annex III) / limité / minimal — ou GPAI.",
+          "c4": "Documentez le périmètre du cas d'usage et sa frontière (ce qui est hors périmètre).",
+          "c5": "Listez les usages détournés prévisibles / hors usage prévu et ce que vous refuserez de faire."
+        },
+        "questions": {
+          "q1": "Qui a l'autorité de déployer ou de suspendre ce système ?",
+          "q2": "Que se passe-t-il — concrètement — si le système se trompe ?",
+          "q3": "Quels droits légaux, conditions de sécurité ou libertés pourraient être affectés ?"
+        }
+      },
+      "data": {
+        "title": "2. Gouvernance des données",
+        "intro": "Si vos données sont erronées, le système l'est aussi. Inventoriez-les, classez-les, justifiez pourquoi vous les détenez et surveillez les biais.",
+        "checklist": {
+          "c1": "Constituez un inventaire des données : source, propriétaire, sensibilité, conservation.",
+          "c2": "Établissez une base légale (GDPR Art. 6) pour chaque catégorie traitée.",
+          "c3": "Documentez la qualité : pertinence, représentativité, lacunes, biais connus.",
+          "c4": "Appliquez la minimisation des données : ne collectez que le nécessaire ; ne conservez que le temps nécessaire.",
+          "c5": "Planifiez des revues périodiques des biais et des voies d'action corrective."
+        },
+        "questions": {
+          "q1": "D'où provient chaque jeu de données, et qui en est responsable ?",
+          "q2": "Le jeu de données inclut-il des catégories sensibles (Art. 9 GDPR) ? Sur quelle base ?",
+          "q3": "Quels signaux de biais allez-vous mesurer, et par rapport à quel référentiel ?"
+        }
+      },
+      "model": {
+        "title": "3. Sélection et validation du modèle",
+        "intro": "Choisissez le plus petit modèle qui fonctionne. Validez-le comme les attaquants et les utilisateurs s'en serviront réellement. Documentez ce qu'il ne peut pas faire.",
+        "checklist": {
+          "c1": "Justifiez le choix de la taille / famille de modèle face au cas d'usage réel.",
+          "c2": "Définissez des objectifs d'exactitude + de robustesse et la façon de les mesurer.",
+          "c3": "Menez des tests adverses / red-team (injection de prompt, jailbreaks, sorties biaisées).",
+          "c4": "Documentez les modes de défaillance connus et les non-usages explicites.",
+          "c5": "Versionnez chaque artefact de modèle et fournissez des notes de version avec les déploiements."
+        },
+        "questions": {
+          "q1": "Pourquoi ce modèle, et quelle alternative moins coûteuse avez-vous écartée ?",
+          "q2": "À quoi ressemble le système quand il se trompe — et comment le savez-vous ?",
+          "q3": "Votre jeu de test est-il représentatif du trafic de production ?"
+        }
+      },
+      "oversight": {
+        "title": "4. Supervision humaine",
+        "intro": "Décidez comment les humains gardent le contrôle des résultats à fort impact. Assurez-vous que les contrôles fonctionnent réellement sous pression.",
+        "checklist": {
+          "c1": "Choisissez le mode de supervision par type de décision : in-loop, on-loop ou out-of-loop.",
+          "c2": "Nommez les relecteurs et documentez des SLA pour les décisions à fort enjeu.",
+          "c3": "Fournissez des contrôles de neutralisation / pause / coupure d'urgence utilisables par le relecteur.",
+          "c4": "Rédigez un runbook d'escalade (qui est alerté, avec quel contexte).",
+          "c5": "Journalisez chaque neutralisation / pause pour une revue post-incident."
+        },
+        "questions": {
+          "q1": "Qui relit les sorties à fort enjeu — et a-t-il le temps et le contexte pour le faire ?",
+          "q2": "Un seul opérateur peut-il arrêter le système sans réunion ?",
+          "q3": "Comment évitez-vous la validation automatique (« complaisance vis-à-vis de l'automatisation ») ?"
+        }
+      },
+      "monitoring": {
+        "title": "5. Surveillance et incidents",
+        "intro": "La surveillance après déploiement n'est pas optionnelle. La dérive est silencieuse. Les incidents ne le sont pas.",
+        "checklist": {
+          "c1": "Définissez les métriques de surveillance post-déploiement (exactitude, latence, préjudice, dérive).",
+          "c2": "Mettez en place une détection de dérive sur les entrées et les sorties.",
+          "c3": "Journalisez les incidents dans une file unique avec gravité et propriétaire.",
+          "c4": "Documentez les voies de signalement (régulateur, client, interne).",
+          "c5": "Planifiez une réévaluation périodique (trimestrielle au minimum)."
+        },
+        "questions": {
+          "q1": "Quelle métrique unique, si elle bouge, vous indique de suspendre le système ?",
+          "q2": "Qui est alerté à 3h du matin, et quel runbook ouvre-t-il ?",
+          "q3": "Quand avez-vous répété pour la dernière fois un scénario d'incident d'IA ?"
+        }
+      },
+      "docs": {
+        "title": "6. Documentation et transparence",
+        "intro": "Consignez ce qu'est le système, ce qu'il n'est pas et ce que les utilisateurs doivent savoir. Mettez à jour à chaque changement substantiel.",
+        "checklist": {
+          "c1": "Tenez à jour une documentation technique selon l'Art. 11 (finalité, données, entraînement, évaluation, risques).",
+          "c2": "Publiez une fiche modèle / système par système ; mettez-la à jour à chaque release.",
+          "c3": "Ajoutez une mention IA à destination des utilisateurs sur chaque surface client.",
+          "c4": "Mettez à jour les notices de confidentialité pour refléter le traitement par IA.",
+          "c5": "Conservez les registres de formation du personnel qui exploite le système."
+        },
+        "questions": {
+          "q1": "Que doivent savoir les utilisateurs finaux pour utiliser ce système de façon responsable ?",
+          "q2": "De quoi un auditeur externe aurait-il besoin dès le premier jour ?",
+          "q3": "À quel point la fiche modèle / système est-elle à jour en ce moment ?"
+        }
+      }
+    }
+  },
+  registry: {
+    "page": {
+      "title": "Registre IA",
+      "subtitle": "Suivez chaque outil d'IA utilisé dans votre organisation — finalité, données, supervision et mesures d'atténuation. Le registre alimente vos audits et rapports.",
+      "designGuideLink": "Vous concevez un nouveau système ? Ouvrir le guide de conception →",
+      "addTool": "+ Ajouter un outil",
+      "loading": "Chargement du registre…",
+      "error": "Échec du chargement du registre. Actualisez pour réessayer."
+    },
+    "summary": {
+      "totalTools": "Total des outils",
+      "approved": "Approuvés",
+      "pendingReview": "En attente de revue",
+      "highRisk": "À risque élevé"
+    },
+    "filters": {
+      "searchPlaceholder": "Rechercher outils, finalité, notes…",
+      "allDepartments": "Tous les services",
+      "allRisks": "Tous les risques",
+      "allApproval": "Toutes les approbations",
+      "clear": "Effacer les filtres",
+      "risk": {
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé",
+        "critical": "Critique"
+      }
+    },
+    "table": {
+      "tool": "Outil",
+      "department": "Service",
+      "risk": "Risque",
+      "approval": "Approbation",
+      "oversight": "Supervision",
+      "reviewDate": "Date de revue"
+    },
+    "empty": {
+      "noItems": {
+        "title": "Aucun outil d'IA dans le registre pour l'instant",
+        "body": "Suivez chaque outil d'IA utilisé dans votre organisation — finalité, données, supervision et mesures d'atténuation. Le registre alimente vos audits et rapports.",
+        "action": "+ Ajouter votre premier outil"
+      },
+      "noMatches": {
+        "title": "Aucun outil ne correspond à ces filtres",
+        "body": "Essayez d'élargir les filtres, ou effacez-les pour voir le registre complet.",
+        "action": "Effacer les filtres"
+      }
+    },
+    "modal": {
+      "titleAdd": "Ajouter un outil d'IA",
+      "titleEdit": "Modifier l'outil d'IA",
+      "subtitleAdd": "Suivez un outil d'IA utilisé par votre équipe. Tous les champs peuvent être modifiés ultérieurement.",
+      "subtitleEdit": "Mettez à jour ce que votre équipe sait sur cet outil. Les modifications sont enregistrées immédiatement dans le registre local.",
+      "fields": {
+        "toolName": "Nom de l'outil",
+        "purpose": "Finalité",
+        "dataTypes": "Types de données traitées",
+        "mitigations": "Mesures d'atténuation",
+        "notes": "Notes",
+        "department": "Service",
+        "approvalStatus": "Statut d'approbation",
+        "riskLevel": "Niveau de risque",
+        "humanOversight": "Supervision humaine",
+        "nextReviewDate": "Date de la prochaine revue"
+      },
+      "placeholders": {
+        "toolName": "ex. Copilote de support client",
+        "purpose": "Que fait cet outil ?",
+        "mitigation": "Ajoutez une mesure d'atténuation et appuyez sur Entrée",
+        "notes": "Fournisseur, résidence des données, propriétaire, tout ce qui mérite d'être consigné…"
+      },
+      "riskOptions": {
+        "low": "Faible",
+        "medium": "Moyen",
+        "high": "Élevé",
+        "critical": "Critique"
+      },
+      "reviewDateHint": "Laissez vide si aucune revue n'est prévue.",
+      "auditTrail": "Créé le {createdDate} · Dernière mise à jour le {updatedDate}",
+      "removeMitigationAria": "Supprimer la mesure d'atténuation {index}",
+      "requiredError": "Requis",
+      "deleteConfirm": "Retirer « {toolName} » du registre ? Cette action est irréversible.",
+      "buttons": {
+        "delete": "Supprimer l'outil",
+        "cancel": "Annuler",
+        "addToRegistry": "Ajouter au registre",
+        "saveChanges": "Enregistrer les modifications"
+      }
+    }
+  },
+  reportsPages: {
+    "list": {
+      "title": "Rapports",
+      "intro": "Les rapports générés sont des instantanés d'un audit à un instant donné. Chacun est exportable, partageable et reste stable lorsque vous lancez un nouvel audit.",
+      "generateFromDraft": "+ Générer depuis le brouillon actuel",
+      "startNewAudit": "Lancer un nouvel audit",
+      "loading": "Chargement des rapports…",
+      "errorMessage": "Aucun rapport chargé pour le moment. Cela peut arriver si l'espace de travail est récent ou si Firestore est inaccessible.",
+      "retry": "Réessayer",
+      "traceabilityHint": "Les rapports sont des instantanés à un instant donné enregistrés dans votre espace de travail. La vue détaillée recalcule le résultat complet à partir de l'instantané des réponses de chaque rapport — ainsi les rapports historiques restent exacts même après l'évolution des règles de scoring."
+    },
+    "detail": {
+      "loading": "Chargement du rapport…",
+      "notFoundTitle": "Rapport introuvable",
+      "notFoundBody": "Ce rapport n'existe plus ou a été supprimé.",
+      "backToReports": "← Retour aux rapports",
+      "rename": {
+        "titleAriaLabel": "Titre du rapport",
+        "saving": "…",
+        "saveTitle": "Enregistrer le titre",
+        "cancel": "Annuler",
+        "renameButton": "Renommer"
+      },
+      "download": {
+        "preparing": "Préparation…",
+        "downloadPdf": "⬇ Télécharger le PDF"
+      },
+      "errors": {
+        "tokensInsufficientExport": "Tokens insuffisants pour exporter. Achetez des tokens pour continuer.",
+        "downloadFailed": "Échec du téléchargement. Veuillez réessayer.",
+        "renameForbidden": "Seuls les propriétaires ou les administrateurs peuvent renommer les rapports.",
+        "renameFailed": "Impossible de renommer. Veuillez réessayer.",
+        "tokensInsufficient": "Tokens insuffisants. Achetez des tokens pour continuer.",
+        "shareDisabled": "Le partage est désactivé pour ce rapport.",
+        "shareForbidden": "Seuls les propriétaires ou les administrateurs peuvent partager les rapports.",
+        "shareCreateFailed": "Impossible de créer un lien de partage. Veuillez réessayer.",
+        "revokeFailed": "Impossible de révoquer le lien. Veuillez réessayer.",
+        "toggleSharingFailed": "Impossible de mettre à jour le partage. Veuillez réessayer."
+      },
+      "share": {
+        "heading": "Lien partageable",
+        "description": "Un lien signé, sans connexion, vers le PDF de ce rapport. La création ou la régénération est décomptée de vos exports PDF.",
+        "working": "En cours…",
+        "generateNewLink": "Générer un nouveau lien",
+        "revoke": "Révoquer",
+        "shareLink": "Lien de partage",
+        "enableSharing": "Activer le partage",
+        "disableSharing": "Désactiver le partage",
+        "copied": "Copié",
+        "copy": "Copier",
+        "expires": "Expire le {date}.",
+        "activeLinkExists": "Un lien actif existe (expire le {date}). Générez un nouveau lien pour revoir l'URL — cela révoque l'ancien.",
+        "disabledNotice": "Le partage est désactivé — les liens existants ne fonctionnent plus.",
+        "useTokensAndCreateLink": "Utiliser des tokens et créer le lien"
+      },
+      "status": {
+        "notShared": "Non partagé",
+        "active": "Actif",
+        "expired": "Expiré",
+        "revoked": "Révoqué",
+        "disabled": "Désactivé"
+      },
+      "footer": {
+        "openAssistancePlan": "Ouvrir le plan d'assistance",
+        "deleteReport": "Supprimer le rapport",
+        "deleteConfirm": "Supprimer ce rapport ? Cette action est irréversible."
+      },
+      "metadata": {
+        "heading": "Métadonnées",
+        "reportId": "ID du rapport",
+        "sourceDraft": "Brouillon source",
+        "status": "Statut",
+        "weakestSection": "Section la plus faible",
+        "frameworks": "Cadres"
+      }
+    },
+    "share": {
+      "unavailableTitle": "Rapport partagé indisponible",
+      "backToReports": "← Retour aux rapports",
+      "copySuccess": "Lien de partage copié.",
+      "copyFailure": "Impossible de copier le lien. Réessayez.",
+      "banner": {
+        "label": "🔗 Rapport partagé — vue en lecture seule",
+        "description": "Vue en lecture seule pour les personnes de votre espace de travail, ouverte depuis le lien de partage in-app. Les boutons d'action internes sont masqués.",
+        "copyShareLink": "🔗 Copier le lien de partage",
+        "backToInternalView": "← Retour à la vue interne"
+      },
+      "topline": {
+        "kicker": "Rapport de conformité IA",
+        "score": "Score",
+        "scoreOutOf": "/100",
+        "generated": "Généré le {date}"
+      },
+      "poweredBy": "Propulsé par AiLunaPro · Compliance Suite"
+    }
+  },
+  savedAudits: {
+    "list": {
+      "title": "Audit Express enregistrés",
+      "subtitle": "Vos instantanés Audit Express enregistrés. Téléchargez le PDF ou supprimez un résultat enregistré.",
+      "runAuditExpress": "Lancer Audit Express",
+      "loading": "Chargement…",
+      "empty": {
+        "prefix": "Aucun audit enregistré pour le moment. Utilisez",
+        "runLink": "Lancer Audit Express",
+        "suffix": "pour en créer un."
+      },
+      "meta": {
+        "engineLabel": "moteur",
+        "engineFallback": "n/a",
+        "confidenceLabel": "confiance"
+      }
+    },
+    "actions": {
+      "view": "Voir",
+      "rename": "Renommer",
+      "delete": "Supprimer",
+      "download": "Télécharger le PDF",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "busy": "…"
+    },
+    "fields": {
+      "titleAriaLabel": "Titre de l'audit",
+      "viewDetailsTooltip": "Voir les détails"
+    },
+    "errors": {
+      "load": "Impossible de charger vos audits enregistrés. Veuillez réessayer.",
+      "tokensInsufficient": "Tokens insuffisants pour exporter. Achetez des tokens pour continuer.",
+      "download": "Échec du téléchargement. Veuillez réessayer.",
+      "delete": "Échec de la suppression. Veuillez réessayer.",
+      "rename": "Impossible de renommer. Veuillez réessayer."
+    },
+    "pdfLimitModal": {
+      "ariaLabel": "Limite d'export PDF",
+      "title": "Vous avez utilisé vos {freeCount} exports PDF gratuits",
+      "body": "Télécharger d'autres PDF nécessite des tokens ({tokenCost} tokens par export).",
+      "useTokens": "Utiliser des tokens et télécharger",
+      "useTokensBusy": "…",
+      "buyTokens": "Passer à un forfait supérieur ou acheter des tokens",
+      "cancel": "Annuler"
+    },
+    "detail": {
+      "backToList": "← Audits enregistrés",
+      "loading": "Chargement…",
+      "meta": {
+        "engineLabel": "moteur",
+        "engineFallback": "n/a",
+        "confidenceLabel": "confiance"
+      },
+      "rename": "Renommer",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "titleAriaLabel": "Titre de l'audit",
+      "busy": "…",
+      "notRecomputed": "Cet audit n'a pas pu être recalculé.",
+      "downloadPdf": "Télécharger le PDF",
+      "downloadPdfBusy": "Préparation…",
+      "backToSaved": "Retour aux audits enregistrés"
+    },
+    "detailErrors": {
+      "notFound": "Cet audit n'existe plus.",
+      "load": "Impossible de charger cet audit. Veuillez réessayer.",
+      "rename": "Impossible de renommer. Veuillez réessayer.",
+      "tokensInsufficient": "Tokens insuffisants. Achetez des tokens pour continuer.",
+      "sharingDisabled": "Le partage est désactivé pour cet audit.",
+      "createShareLink": "Impossible de créer un lien de partage. Veuillez réessayer.",
+      "revokeShareLink": "Impossible de révoquer le lien. Veuillez réessayer.",
+      "updateSharing": "Impossible de mettre à jour le partage. Veuillez réessayer."
+    },
+    "recommendedAgents": {
+      "heading": "Agents recommandés",
+      "exploreAll": "Explorer tous les agents →",
+      "disclaimer": "Correspondances indicatives basées sur cet audit. Vérifiez l'adéquation avant d'adopter.",
+      "meta": {
+        "hoursSaved": "~{hours} h/mois économisées",
+        "plan": "Forfait {plan}",
+        "setup": "Configuration {complexity}"
+      }
+    },
+    "share": {
+      "heading": "Lien partageable",
+      "description": "Un lien signé, sans connexion, vers le PDF de cet audit. La création ou la régénération est décomptée de vos exports PDF.",
+      "generateNewLink": "Générer un nouveau lien",
+      "shareLink": "Lien de partage",
+      "working": "En cours…",
+      "revoke": "Révoquer",
+      "enableSharing": "Activer le partage",
+      "disableSharing": "Désactiver le partage",
+      "copy": "Copier",
+      "copied": "Copié",
+      "expires": "Expire le {date}.",
+      "activeLinkExists": "Un lien actif existe (expire le {date}). Générez un nouveau lien pour revoir l'URL — cela révoque l'ancien.",
+      "disabledNotice": "Le partage est désactivé — les liens existants ne fonctionnent plus.",
+      "limitModalActionLabel": "Utiliser des tokens et créer le lien"
+    },
+    "shareStatus": {
+      "notShared": "Non partagé",
+      "active": "Actif",
+      "expired": "Expiré",
+      "revoked": "Révoqué",
+      "disabled": "Désactivé"
+    }
+  },
+  billingPage: {
+    "header": {
+      "title": "Facturation",
+      "subtitle": "Gérez votre forfait, votre utilisation et vos factures.",
+      "readOnlyBadge": "Vue en lecture seule."
+    },
+    "plans": {
+      "bestValueBadge": "Meilleur rapport qualité-prix",
+      "priceApprox": "{approx}{suffix} environ · facturé en USD",
+      "cta": {
+        "redirecting": "Redirection…",
+        "currentPlan": "Forfait actuel",
+        "freeCurrent": "Free — actuel",
+        "startForFree": "Commencer gratuitement",
+        "subscribe": "S'abonner"
+      },
+      "free": {
+        "description": "Essayez la plateforme avec un accès limité.",
+        "features": {
+          "limitedAuditAccess": "Accès limité aux audits",
+          "basicDashboard": "Tableau de bord de base",
+          "demoReports": "Rapports de démonstration",
+          "communitySupport": "Support communautaire"
+        }
+      },
+      "starter": {
+        "description": "Réalisez de vrais audits en autonomie.",
+        "features": {
+          "coreAuditWorkflow": "Flux d'audit principal",
+          "basicComplianceReports": "Rapports de conformité de base",
+          "starterAuditVolume": "Volume d'audits Starter",
+          "essentialAiRecommendations": "Recommandations AI essentielles",
+          "emailSupport": "Support par e-mail"
+        }
+      },
+      "professional": {
+        "description": "Pour les équipes en croissance menant des audits avancés.",
+        "features": {
+          "higherAuditVolume": "Volume d'audits supérieur",
+          "advancedReports": "Rapports avancés",
+          "teamCollaboration": "Collaboration en équipe",
+          "priorityAiRecommendations": "Recommandations AI prioritaires",
+          "prioritySupport": "Support prioritaire"
+        }
+      },
+      "enterprise": {
+        "description": "Gouvernance et contrôle à l'échelle de l'organisation.",
+        "features": {
+          "highestAuditVolume": "Volume d'audits le plus élevé",
+          "advancedTeamManagement": "Gestion d'équipe avancée",
+          "organizationControls": "Contrôles d'organisation",
+          "customBranding": "Image de marque personnalisée",
+          "dedicatedSupport": "Support dédié",
+          "enterpriseReadyGovernance": "Gouvernance prête pour l'entreprise"
+        }
+      }
+    },
+    "pricingSection": {
+      "currencyBadge": {
+        "detected": "Devise de facturation détectée depuis votre région : {currency} {symbol}",
+        "default": "Devise de facturation : {currency} {symbol}"
+      },
+      "secureCheckoutBadge": "Paiement sécurisé propulsé par Stripe",
+      "heading": "Choisissez le forfait adapté à votre flux d'audit",
+      "subheadingPrefix": "Démarrez en mode test Stripe. Aucun débit réel n'est effectué — utilisez la carte de test",
+      "subheadingSuffix": "."
+    },
+    "currentPlan": {
+      "label": "Forfait actuel",
+      "statusNoSubscription": "Aucun abonnement",
+      "freePlanNote": "Forfait Free — aucun abonnement actif",
+      "paidPlanSummary": "{price} $/mois · facturé {billingCycle}",
+      "renews": " · Se renouvelle le {date}",
+      "cancelsAtPeriodEnd": "⚠ Résiliation en fin de période ({date})",
+      "billedInCurrency": "Votre abonnement actif est facturé en {currency}.",
+      "resumePlan": "Reprendre le forfait",
+      "cancelPlan": "Annuler le forfait"
+    },
+    "billingActions": {
+      "title": "Actions de facturation",
+      "manageSubscription": "Gérer l'abonnement",
+      "managePaymentMethods": "Gérer les moyens de paiement",
+      "loading": "Chargement…",
+      "paymentMethodsHint": "Mettre à jour la carte, définir par défaut, supprimer — géré en toute sécurité par Stripe.",
+      "noCustomerYet": "Aucun client Stripe pour l'instant. Les moyens de paiement deviennent disponibles après votre premier abonnement ou achat de tokens.",
+      "portalError": "Impossible d'ouvrir le portail Stripe. Vérifiez que le Worker est en cours d'exécution."
+    },
+    "tokens": {
+      "title": "Tokens",
+      "balance": "{balance} / {allocation} ce cycle",
+      "balanceLoading": "Chargement du solde de tokens…",
+      "manageTokens": "Gérer les tokens"
+    },
+    "usage": {
+      "sectionTitle": "Utilisation sur cette période",
+      "auditsLabel": "Audits",
+      "seatsLabel": "Sièges",
+      "unlimitedValue": "{used} / ∞",
+      "boundedValue": "{used} / {limit}",
+      "periodRange": "Période : {start} – {end}"
+    },
+    "invoices": {
+      "sectionTitle": "Factures",
+      "empty": "Aucune facture pour l'instant.",
+      "loading": "Chargement des factures…",
+      "emptyAfterFirstCycle": "Les factures apparaîtront ici après votre premier cycle de facturation.",
+      "tableHeaders": {
+        "date": "Date",
+        "description": "Description",
+        "amount": "Montant",
+        "status": "Statut",
+        "invoiceNumber": "Numéro de facture",
+        "actions": "Actions"
+      },
+      "statusUnknown": "inconnu",
+      "actionView": "Afficher",
+      "actionPdf": "PDF",
+      "managedInStripeNote": "Le moyen de paiement et les informations de facturation sont gérés en toute sécurité dans Stripe."
+    },
+    "mockPlans": {
+      "sectionTitle": "Forfaits",
+      "currentBadge": "Actuel",
+      "free": "Free",
+      "priceSuffix": "/mois",
+      "switch": "Changer",
+      "contactOwnerToChange": "Contactez le propriétaire pour changer de forfait"
+    },
+    "mockConfirm": {
+      "title": "Passer à {plan}",
+      "body": "Ceci est une action fictive — aucun débit réel ne sera effectué.",
+      "cancel": "Annuler",
+      "confirm": "Confirmer (fictif)"
+    },
+    "locked": {
+      "title": "Accès à la facturation restreint",
+      "subtitle": "Contactez le propriétaire de votre espace de travail pour consulter ou gérer la facturation.",
+      "backToDashboard": "Retour au tableau de bord",
+      "contactWorkspaceOwner": "Contacter le propriétaire de l'espace de travail",
+      "askOwnerToast": "Demandez l'accès à la facturation au propriétaire de votre espace de travail."
+    },
+    "success": {
+      "headline": {
+        "failed": "Échec de la synchronisation",
+        "active": "Votre forfait {plan} est actif",
+        "activating": "Merci — votre abonnement est en cours d'activation"
+      },
+      "subtext": {
+        "failedFallback": "Nous n'avons pas pu finaliser votre abonnement automatiquement.",
+        "redirecting": "Redirection vers la Facturation…",
+        "syncing": "Nous synchronisons votre abonnement avec Stripe."
+      },
+      "pill": {
+        "failed": "Échec de la synchronisation",
+        "activated": "Abonnement activé",
+        "syncing": "Synchronisation de l'abonnement…",
+        "almostDone": "Presque terminé…"
+      },
+      "backToBilling": "Retour à la Facturation",
+      "retrySync": "Réessayer la synchronisation",
+      "errors": {
+        "stillProcessing": "Le paiement est toujours en cours de traitement. Veuillez patienter un instant et réessayer.",
+        "sessionInvalid": "Cette session de paiement n'est plus valide. Veuillez démarrer un nouvel abonnement.",
+        "notSignedIn": "Vous n'êtes pas connecté. Veuillez vous connecter et réessayer.",
+        "orgLinkFailed": "Impossible de lier cet abonnement à votre organisation. Veuillez contacter le support.",
+        "generic": "Une erreur s'est produite lors de l'activation de votre abonnement.",
+        "noSessionDetected": "Nous n'avons pas pu détecter votre session de paiement. Veuillez retourner à la Facturation et réessayer."
+      }
+    }
+  },
+  tokensPage: {
+    "header": {
+      "title": "Tokens",
+      "subtitle": "Suivez l'utilisation, surveillez votre allocation mensuelle et achetez des recharges au besoin."
+    },
+    "locked": {
+      "title": "Tokens indisponibles",
+      "clientMessage": "Les tokens ne sont pas visibles depuis un compte client.",
+      "workspaceMessage": "Les tokens sont indisponibles pour cet espace de travail.",
+      "backToDashboard": "Retour au tableau de bord"
+    },
+    "webhook": {
+      "notice": "Paiement reçu. En attente du webhook Stripe pour mettre à jour votre solde de tokens.",
+      "refreshBalance": "Actualiser le solde"
+    },
+    "balance": {
+      "loading": "Chargement du solde…",
+      "empty": "Aucun solde de tokens pour l'instant. Il sera créé lors de votre premier audit.",
+      "statBalance": "Solde",
+      "statMonthlyAllocation": "Allocation mensuelle",
+      "statConsumed": "Consommé",
+      "statRollover": "Report",
+      "statTopups": "Recharges",
+      "cycleEnds": "Fin du cycle : {cycleEnd}",
+      "lastReset": "Dernière réinitialisation : {lastReset}"
+    },
+    "packs": {
+      "sectionTitle": "Acheter plus de tokens",
+      "sectionNote": "Les packs de tokens sont actuellement facturés en USD. Les tokens de recharge n'expirent jamais.",
+      "readOnlyNotice": "Vous pouvez consulter les tokens, mais seuls les propriétaires, administrateurs et gestionnaires de facturation peuvent acheter des packs.",
+      "starterLabel": "Starter",
+      "starterBlurb": "Complétez un cycle faible.",
+      "proLabel": "Pro",
+      "proBlurb": "Recharge la plus courante.",
+      "maxLabel": "Max",
+      "maxBlurb": "Boost pour une grosse charge de travail.",
+      "tokensUnit": "tokens",
+      "amountPrefix": "+{amount}",
+      "buyPack": "Acheter le pack",
+      "redirecting": "Redirection…",
+      "readOnlyButton": "Lecture seule"
+    },
+    "usage": {
+      "sectionTitle": "Utilisation récente",
+      "loading": "Chargement de l'utilisation…",
+      "empty": "Aucune utilisation pour l'instant.",
+      "colDate": "Date",
+      "colModule": "Module",
+      "colAction": "Action",
+      "colTokens": "Tokens",
+      "colStatus": "Statut",
+      "tokensSpent": "−{tokens}"
+    },
+    "toasts": {
+      "purchaseCompleted": "Achat de tokens terminé. Votre solde sera mis à jour sous peu.",
+      "purchaseCancelled": "Achat de tokens annulé.",
+      "buyForbidden": "Seuls les propriétaires, administrateurs ou gestionnaires de facturation peuvent acheter des packs de tokens."
+    }
+  },
+  teamPage: {
+    "header": {
+      "title": "Équipe",
+      "subtitlePrefix": "Gérez qui a accès à",
+      "subtitleSuffix": "et ce que chacun peut faire.",
+      "subtitleFallbackOrg": "votre espace de travail",
+      "inviteButton": "+ Inviter un membre"
+    },
+    "stats": {
+      "totalMembers": "Total des membres",
+      "active": "Actifs",
+      "pendingInvites": "Invitations en attente",
+      "adminsAndOwners": "Admins et propriétaires"
+    },
+    "filters": {
+      "all": "Tous",
+      "owners": "Propriétaires",
+      "admins": "Admins",
+      "billing": "Facturation",
+      "members": "Membres",
+      "clients": "Clients",
+      "pending": "En attente"
+    },
+    "roles": {
+      "owner": "Propriétaires",
+      "admin": "Admins",
+      "billing": "Facturation",
+      "member": "Membres",
+      "client": "Clients"
+    },
+    "emptyState": {
+      "noMembers": "Aucun membre dans cet espace de travail pour l'instant.",
+      "noMatch": "Aucun membre ne correspond au filtre « {filter} »."
+    },
+    "confirm": {
+      "cancelInvite": "Annuler cette invitation en attente ?",
+      "regenerateLink": "Régénérer le lien d'invitation ? L'ancien lien cessera de fonctionner.",
+      "removeMember": "Retirer ce membre de l'espace de travail ? Cette action est irréversible."
+    },
+    "toast": {
+      "cancelFailed": "Échec de l'annulation",
+      "newLinkCopied": "Nouveau lien d'invitation copié dans le presse-papiers.",
+      "regenerateFailed": "Échec de la régénération",
+      "roleUpdateFailed": "Échec de la mise à jour du rôle",
+      "memberRemoved": "Membre retiré.",
+      "removeFailed": "Échec du retrait",
+      "memberDisabled": "Membre désactivé.",
+      "disableFailed": "Échec de la désactivation",
+      "disableUnavailableMock": "Désactivation indisponible sur la couche fictive.",
+      "memberEnabled": "Membre activé.",
+      "enableFailed": "Échec de l'activation",
+      "enableUnavailableMock": "Activation indisponible sur la couche fictive."
+    },
+    "pendingInvites": {
+      "heading": "Invitations en attente ({count})",
+      "tableHeaders": {
+        "email": "E-mail",
+        "role": "Rôle",
+        "expires": "Expire le",
+        "actions": "Actions"
+      },
+      "copyLink": "Copier le lien",
+      "regenerateLink": "Régénérer le lien",
+      "cancel": "Annuler",
+      "linkHiddenNote": "Lien masqué pour des raisons de sécurité. Cliquez sur Régénérer le lien pour en émettre un nouveau."
+    },
+    "rolesLegend": {
+      "lead": "**À propos des rôles —**",
+      "owners": "Les **propriétaires** gèrent la facturation et les paramètres de l'espace de travail.",
+      "admins": "Les **admins** gèrent les utilisateurs de l'organisation.",
+      "billing": "Les utilisateurs **facturation** gèrent les factures et l'abonnement.",
+      "members": "Les **membres** peuvent utiliser les fonctionnalités d'audit.",
+      "clients": "Les **clients** disposent d'un accès en lecture limité."
+    },
+    "footerHint": "Les invitations sont fictives pour l'instant. L'envoi réel d'e-mails et Firebase Auth remplaceront cette couche lors de la phase backend."
+  },
+  orgCreate: {
+    "heading": "Créer un espace de travail",
+    "subtitle": {
+      "signedIn": "Connecté en tant que {email}",
+      "anonymous": "Configurer un nouvel espace de travail d'organisation"
+    },
+    "form": {
+      "nameLabel": "Nom de l'espace de travail",
+      "namePlaceholder": "ex. Acme Corp",
+      "planLabel": "Plan"
+    },
+    "planDesc": {
+      "free": "Jusqu'à 3 audits, 1 siège",
+      "starter": "10 audits, 5 sièges",
+      "professional": "Audits illimités, 20 sièges",
+      "enterprise": "Limites personnalisées, SSO, SLA"
+    },
+    "submit": {
+      "idle": "Créer l'espace de travail",
+      "loading": "Création de l'espace de travail…"
+    },
+    "backToDashboard": "← Retour au tableau de bord"
+  },
+  auditHistory: {
+    "header": {
+      "title": "Historique des audits",
+      "subtitle": "Audits soumis pour cet espace de travail. Générez un rapport pour créer un instantané partageable."
+    },
+    "states": {
+      "loading": "Chargement de l'historique des audits…",
+      "error": "Impossible de charger l'historique des audits. Réessayez plus tard."
+    },
+    "empty": {
+      "title": "Aucun audit soumis pour l'instant",
+      "description": "Les audits soumis apparaissent ici pour cet espace de travail. Lancez un nouvel audit pour commencer.",
+      "startAudit": "+ Démarrer un audit"
+    },
+    "columns": {
+      "submitted": "Soumis le",
+      "score": "Score",
+      "risk": "Risque",
+      "findings": "Constats"
+    },
+    "row": {
+      "scoreOutOf": "/100",
+      "generateReport": "Générer le rapport"
+    },
+    "toast": {
+      "reportGenerated": "Rapport généré"
+    }
+  },
+  auditResultPage: {
+    "header": {
+      "badge": {
+        "submitted": "Audit soumis",
+        "preview": "Aperçu de l'audit"
+      },
+      "title": "Résultat de l'audit",
+      "submissionId": "ID de soumission {id} · {submittedAt}"
+    },
+    "journeyNext": {
+      "headline": "Voici ce que signifie votre audit",
+      "summary": {
+        "overallScore": "Score global {score}/100 — risque {risk}.",
+        "findingsSingular": "{n} constat sur {m} action recommandée.",
+        "findingsPlural": "{n} constats sur {m} actions recommandées.",
+        "maturity": "Maturité AI : niveau {level} sur 5."
+      }
+    }
+  },
+  agentsPages: {
+    "list": {
+      "title": "Agents",
+      "intro": "Trouvez les agents AI adaptés à votre flux de travail. Les agents tout-en-un AiLunaPro sont mis en avant.",
+      "locked": {
+        "title": "Les agents ne sont pas disponibles pour les comptes clients",
+        "backToDashboard": "Retour au tableau de bord"
+      },
+      "filters": {
+        "industryLabel": "Secteur",
+        "integrationLabel": "Intégration",
+        "allIndustries": "Tous les secteurs",
+        "allIntegrations": "Toutes les intégrations",
+        "clearFilters": "Effacer les filtres",
+        "clearRecommendationsHint": "Effacez les recommandations pour utiliser les filtres."
+      },
+      "loading": "Chargement des agents…",
+      "emptyFiltered": "Aucun agent ne correspond aux filtres sélectionnés.",
+      "sections": {
+        "topRecommendations": "Meilleures recommandations",
+        "otherAgents": "Autres agents"
+      },
+      "rankBadge": "#{rank}",
+      "scorePts": "{score} pts",
+      "whyToggleOne": "Pourquoi ? ({count} raison)",
+      "whyToggleOther": "Pourquoi ? ({count} raisons)"
+    },
+    "recommendPanel": {
+      "title": "Personnaliser mes recommandations",
+      "subtitle": "Ajoutez quelques préférences pour classer les agents adaptés à votre contexte.",
+      "fields": {
+        "industry": "Secteur",
+        "companySize": "Taille de l'entreprise",
+        "targetWorkflow": "Flux de travail ciblé",
+        "subscriptionPlan": "Plan d'abonnement",
+        "currentMaturity": "Maturité AI actuelle",
+        "integrations": "Intégrations (séparées par des virgules, max 10)"
+      },
+      "placeholders": {
+        "industry": "ex. retail, saas, santé",
+        "integrations": "ex. hubspot, slack, e-mail"
+      },
+      "selectNone": "—",
+      "companySizeOptions": {
+        "solo": "Solo",
+        "sme": "PME",
+        "enterprise": "Grande entreprise"
+      },
+      "maturityOptions": {
+        "low": "Faible",
+        "medium": "Moyenne",
+        "high": "Élevée"
+      },
+      "workflowOptions": {
+        "support": "Support client",
+        "sales": "Ventes et suivi des prospects",
+        "finance": "Finance et facturation",
+        "documents": "Documents et contrats",
+        "reporting": "Reporting et tableaux de bord",
+        "admin": "Travail administratif",
+        "compliance": "Conformité et gouvernance",
+        "marketing": "Marketing et contenu",
+        "hr": "RH et gestion du personnel"
+      },
+      "helperText": "Ajoutez au moins une préférence pour personnaliser les recommandations.",
+      "submit": "Recommander des agents",
+      "submitting": "Calcul en cours…",
+      "clearRecommendations": "Effacer les recommandations"
+    },
+    "card": {
+      "external": "Externe",
+      "savesPerMonth": "⏱ Économise ~{hours} h / mois",
+      "moreIntegrations": "+{count}",
+      "viewDetails": "Voir les détails",
+      "getThisAgent": "Obtenir cet agent"
+    },
+    "detail": {
+      "lockedNotice": "Les agents ne sont pas disponibles pour les comptes clients.",
+      "backToAgents": "← Retour aux agents",
+      "loading": "Chargement…",
+      "errors": {
+        "missingAgentId": "ID d'agent manquant",
+        "missingOrgContext": "Contexte d'organisation manquant"
+      },
+      "pills": {
+        "external": "Externe",
+        "minPlanSuffix": "{plan}+",
+        "tokens": "Tokens · {profile}",
+        "setup": "Configuration · {complexity}",
+        "recommendedAllInOne": "Tout-en-un recommandé",
+        "compliance": "Conformité",
+        "audit": "Audit"
+      },
+      "cta": "Obtenir cet agent →",
+      "sections": {
+        "overview": "Vue d'ensemble",
+        "problemSolved": "Problème résolu",
+        "bestFit": "Cas d'usage idéal",
+        "integrations": "Intégrations",
+        "expectedRoi": "ROI attendu",
+        "pricing": "Tarification"
+      },
+      "bestFit": {
+        "industries": "Secteurs",
+        "companySize": "Taille de l'entreprise",
+        "minBudget": "Budget minimum",
+        "minBudgetValue": "${amount}/mois"
+      },
+      "roi": {
+        "timeSaved": "Temps économisé",
+        "timeSavedValue": "{hours} h/mois",
+        "costSaved": "Coût économisé",
+        "costSavedValue": "${amount}/mois",
+        "payback": "Retour sur investissement",
+        "paybackValue": "{months} mois"
+      },
+      "pricing": {
+        "modelPrefix": "Modèle : **{model}**",
+        "install": " · Installation : ${amount}",
+        "monthly": " · Mensuel : ${amount}",
+        "onRequest": " · Tarif sur demande"
+      }
+    }
+  },
+  assistancePage: {
+    "header": {
+      "badge": "✨ Plan d'action guidé",
+      "title": "Votre plan d'action",
+      "intro": "Nous avons traduit vos réponses d'audit en un plan contextuel et séquencé. Parcourez chaque section ci-dessous — chaque affirmation renvoie à vos données.",
+      "score": "Score {globalScore} / 100",
+      "backToResult": "← Retour au résultat"
+    },
+    "detected": {
+      "eyebrow": "01 · Diagnostic",
+      "title": "Ce que nous avons détecté",
+      "topIssuesLabel": "Principaux problèmes identifiés",
+      "noIssues": "✓ Aucun problème à signaler — l'audit a validé toutes les règles.",
+      "weakestAreaLabel": "Domaine le plus faible",
+      "weakestAreaScore": "{score} %",
+      "weakestAreaHint": "Combler l'écart de cette section est l'action la plus déterminante pour votre score global.",
+      "noWeakArea": "Aucun domaine faible détecté."
+    },
+    "priorities": {
+      "eyebrow": "02 · Priorités",
+      "title": "Ce que vous devriez corriger en premier",
+      "intro": "Parmi les {count} actions recommandées, ces trois-là offrent le meilleur rapport bénéfice/effort. Chacune renvoie aux constats qu'elle résout.",
+      "whyItMattersLabel": "Pourquoi c'est important : ",
+      "expectedOutcomeLabel": "Résultat attendu : ",
+      "impactBadge": "Impact {impact}",
+      "timeframeDays": "{days} j",
+      "closesFindingsOne": "résout {count} constat",
+      "closesFindingsOther": "résout {count} constats",
+      "startWithThis": "Commencer par ceci →",
+      "startWithThisTooltip": "À venir après J2",
+      "mostLeverage": "Le meilleur levier pour l'effort fourni"
+    },
+    "operatingModel": {
+      "eyebrow": "03 · Modèle opérationnel",
+      "title": "Ce qu'il faut automatiser ou structurer",
+      "intro": "Chaque élément ci-dessous a un mode d'exécution principal. Automatiser là où il faudrait structurer (ou l'inverse) est un schéma d'échec courant.",
+      "categories": {
+        "automate": {
+          "eyebrow": "Outils & systèmes",
+          "title": "Automatiser",
+          "tagline": "Les éléments où le levier vient du système, pas de l'humain."
+        },
+        "structure": {
+          "eyebrow": "Politique & gouvernance",
+          "title": "Structurer",
+          "tagline": "Les éléments qui nécessitent une responsabilité formelle, une politique ou un alignement sur un cadre."
+        },
+        "process": {
+          "eyebrow": "Action récurrente",
+          "title": "Exploiter",
+          "tagline": "Les éléments qui sont des processus que vous maintenez à un rythme régulier."
+        },
+        "train": {
+          "eyebrow": "Personnes",
+          "title": "Former",
+          "tagline": "Les éléments qui font évoluer les comportements par la formation."
+        }
+      },
+      "actionsCountOne": "{count} action",
+      "actionsCountOther": "{count} actions",
+      "timeframeDays": "{days} j",
+      "emptyColumn": "Rien ici pour le moment."
+    },
+    "whyItMatters": {
+      "eyebrow": "04 · Contexte",
+      "title": "Pourquoi c'est important",
+      "frameworksReferenced": "Cadres référencés dans cette évaluation"
+    },
+    "impact": {
+      "eyebrow": "05 · Impact",
+      "title": "Impact business attendu",
+      "ifTop3": "Si vous réalisez les 3 actions prioritaires",
+      "scoreLift": "Votre score global projeté passe de {currentScore} à {projectedScore}. Il s'agit d'une simulation indicative basée sur les constats que chaque action résout — l'évolution réelle dépend de la profondeur d'exécution.",
+      "projectedLabel": "Projeté",
+      "deltaPts": "+{delta} pts",
+      "noChange": "aucun changement",
+      "toneHighLift": "Forte progression",
+      "toneSteadyGain": "Gain régulier",
+      "toneHoldTheLine": "Maintien du cap",
+      "outcomes": {
+        "auditReadinessTitle": "Préparation aux audits",
+        "auditReadinessHigh": "Vous passez d'« incomplet » à « défendable » dans un questionnaire de sécurité.",
+        "auditReadinessSteady": "Posture existante documentée et plus facile à référencer lors des audits.",
+        "incidentExposureTitle": "Exposition aux incidents",
+        "incidentExposureHigh": "Rayon d'impact réduit et délai moyen de confinement raccourci lorsque l'IA cause un préjudice.",
+        "incidentExposureSteady": "Réponse prévisible et responsabilités plus claires pour les incidents propres à l'IA.",
+        "customerTrustTitle": "Confiance des clients",
+        "customerTrustHigh": "La transparence, les fiches modèles et l'explicabilité donnent à vos équipes support et commerciales des réponses claires.",
+        "internalVelocityTitle": "Vélocité interne",
+        "internalVelocitySteady": "Les équipes livrent plus vite lorsque les politiques et les parcours de revue sont sans ambiguïté."
+      },
+      "disclaimer": "Le score projeté est une simulation indicative calculée à partir de la couverture des constats et de la pondération des sections. Ce n'est pas une garantie."
+    },
+    "nextStep": {
+      "eyebrow": "06 · Recommandé",
+      "title": "Votre prochaine étape",
+      "nextOneThing": "La prochaine chose à faire",
+      "savedAt": "Enregistré localement à {timestamp}.",
+      "localOnlyNote": "Nous conserverons ce plan disponible en local — aucun envoi, aucune mise à niveau de compte requise. Revenez quand votre équipe sera prête à agir.",
+      "ctas": {
+        "saveDefault": "✓ Enregistrer ce plan d'action",
+        "saved": "✓ Enregistré",
+        "reminderSet": "✓ Rappel défini",
+        "exported": "✓ Exporté",
+        "remind7Day": "⏰ Définir un rappel à 7 jours",
+        "remind30Day": "⏰ Définir un rappel à 30 jours",
+        "remind60Day": "⏰ Définir un rappel à 60 jours",
+        "remindQuarterly": "⏰ Définir un point trimestriel",
+        "exportPlan": "⬇ Exporter le plan"
+      }
+    },
+    "narrative": {
+      "whyItMatters": {
+        "regHighStakes": "Vous opérez dans un contexte que les régulateurs considèrent déjà comme sensible. L'EU AI Act, le GDPR et les règles sectorielles (équivalents HIPAA, cadres des services financiers) imposent tous des obligations supplémentaires lorsque l'IA traite des données sensibles ou prend des décisions lourdes de conséquences concernant des personnes.",
+        "customerFacingTransparency": "Votre IA est en contact direct avec les clients, ce qui signifie que des obligations de transparence s'appliquent (EU AI Act Article 50, règles de protection des consommateurs) et que les enjeux de réputation sont plus élevés que pour des outils internes.",
+        "internalBaseline": "Même pour un usage interne de l'IA, les cadres reconnus (ISO/IEC 42001, NIST AI RMF) servent de plus en plus de référence pour la due diligence fournisseurs et les contrats grands comptes.",
+        "riskInactionHigh": "À votre niveau de risque actuel, le coût de l'inaction est asymétrique. Un seul incident — un modèle qui fuit des données, une décision inéquitable, une panne sans procédure de reprise — coûte sensiblement plus cher que les correctifs recommandés ci-dessous.",
+        "riskInactionMedium": "Vous vous situez dans une fourchette intermédiaire défendable. Le risque, désormais, est le plafonnement : les organisations qui s'arrêtent là régressent généralement à mesure que leur empreinte IA s'étend. Combler les écarts de sévérité moyenne consolide la posture actuelle.",
+        "riskInactionLow": "Vous disposez déjà d'une posture solide. Le risque est la régression à mesure que votre empreinte IA croît. L'investissement continu relève surtout de la maintenance, de la documentation et d'un approfondissement progressif.",
+        "weakestSection": "Votre domaine le plus faible est **{title}** ({score} %). Le renforcer augmente directement le score global, mais surtout cela supprime la voie de moindre résistance pour un incident.",
+        "commercialEnabler": "Les acheteurs grands comptes et les clients réglementés exigent de plus en plus des preuves de gouvernance de l'IA dans les questionnaires de sécurité. Bon nombre des éléments de votre plan d'action sont aussi des leviers commerciaux, pas seulement du travail de conformité."
+      },
+      "riskOneLiner": {
+        "low": "Vous êtes en bonne posture — l'attention se déplace vers la maintenance et l'amélioration continue.",
+        "medium": "Vous disposez d'une base défendable, mais avec des écarts notables qu'il vaut la peine de combler rapidement.",
+        "high": "Vous présentez plusieurs écarts qui augmentent sensiblement votre exposition. Priorisez les actions ci-dessous.",
+        "critical": "Vous présentez un ou plusieurs écarts critiques. Les éléments les plus prioritaires devraient être traités en quelques jours, pas en quelques semaines."
+      },
+      "contextChips": {
+        "highRiskIndustry": "Secteur à haut risque",
+        "sensitiveData": "Données sensibles concernées",
+        "customerFacing": "IA en contact client",
+        "missionCritical": "Périmètre critique",
+        "standardProfile": "Profil de risque standard"
+      },
+      "nextStep": {
+        "criticalHeadline": "Traitez le constat critique dans les 7 prochains jours",
+        "criticalRationaleFallback": "C'est l'élément le plus déterminant de votre plan d'action.",
+        "highHeadline": "Commencez par les gains rapides à 30 jours",
+        "highRationaleFallback": "Une posture à haut risque réagit vite à un petit nombre d'actions ciblées. Choisissez trois gains rapides dans la feuille de route et prenez-les en charge ce mois-ci.",
+        "mediumHeadline": "Consolidez vos fondations de gouvernance",
+        "mediumRationale": "Vous avez dépassé la phase de débrouillage initial. Le prochain mouvement à effet cumulatif consiste à formaliser ce que vous faites de manière informelle — une politique écrite, un cadre reconnu, une escalade documentée. C'est ce qui rend les audits et les contrats grands comptes routiniers.",
+        "lowHeadline": "Passez de conforme à optimisé",
+        "lowRationale": "Votre posture est solide. Le levier, désormais, ce sont la documentation et l'amélioration continue — fiches modèles, mises à jour de formation et intégration de scénarios IA dans vos exercices de réponse aux incidents."
+      }
+    }
+  },
+  dashboardHome: {
+    "hero": {
+      "scoreLabel": "Score de conformité",
+      "riskLabel": "Niveau de risque actuel",
+      "maturityLabel": "Niveau de maturité IA",
+      "nextStepLabel": "Prochaine étape recommandée",
+      "nextStepTitle": "Terminer l'audit de l'outil de présélection RH",
+      "nextStepBody": "Cet audit est complété à 60 %. Le terminer augmentera votre score de conformité d'environ +7 points.",
+      "continueAudit": "Continuer l'audit →",
+      "toast": {
+        "noPermission": "Vous n'avez pas l'autorisation de continuer les audits.",
+        "noDraft": "Aucun audit en brouillon trouvé — démarrage d'un nouvel audit."
+      }
+    },
+    "recentReports": {
+      "card": {
+        "share": "Partager",
+        "view": "Afficher"
+      },
+      "export": {
+        "title": "Options d'export",
+        "blurb": "Exportez vos données de conformité dans plusieurs formats pour vos parties prenantes.",
+        "exportAs": "Exporter au format {fmt}"
+      },
+      "toast": {
+        "reportNotAvailable": "Rapport pas encore disponible.",
+        "shareLinkCopied": "Lien de partage copié.",
+        "shareLinkFailed": "Impossible de copier le lien. Réessayez.",
+        "noReportsToExport": "Aucun rapport à exporter pour le moment.",
+        "csvDownloaded": "CSV téléchargé.",
+        "jsonDownloaded": "JSON téléchargé."
+      }
+    },
+    "cta": {
+      "heading": "Prêt à atteindre une conformité IA complète ?",
+      "body": "Rejoignez les organisations qui utilisent AiLunaPro pour automatiser leurs workflows de conformité, réduire les risques et instaurer la confiance avec leurs parties prenantes.",
+      "toast": {
+        "alreadyActivePlan": "Vous avez déjà un forfait actif.",
+        "demoRequestSent": "Demande de démo envoyée. Nous l'examinerons et reviendrons vers vous."
+      },
+      "demoModal": {
+        "title": "Planifier une démo",
+        "subtitle": "Parlez-nous un peu de votre équipe et nous vous recontacterons.",
+        "placeholderFullName": "Nom complet",
+        "placeholderWorkEmail": "E-mail professionnel",
+        "placeholderCompany": "Entreprise",
+        "placeholderMessage": "De quoi souhaitez-vous discuter ?",
+        "privacyNote": "Nous utilisons ces informations uniquement pour répondre à votre demande.",
+        "cancel": "Annuler",
+        "submit": "Demander une démo",
+        "submitting": "Envoi…",
+        "errorFallback": "Impossible d'envoyer votre demande. Veuillez réessayer."
+      }
+    }
+  },
+  publicTools: {
+    "diagnostic": {
+      "header": {
+        "title": "Diagnostic de maturité IA",
+        "subtitle": "Répondez à 8 courtes questions. Obtenez votre score de maturité IA et découvrez quels agents AiLunaPro correspondent à votre niveau.",
+        "freeLine": "Gratuit · Aucun compte requis · Environ 2 minutes"
+      },
+      "resumeNotice": "Bon retour parmi nous — nous avons restauré vos réponses précédentes pour que vous puissiez reprendre là où vous vous êtes arrêté.",
+      "questionLegend": "Question {n} / {total}",
+      "leadCapture": {
+        "heading": "Où devons-nous envoyer votre résultat ?",
+        "emailLabel": "E-mail",
+        "requiredMark": "*",
+        "emailPlaceholder": "vous@entreprise.com",
+        "companyNameLabel": "Nom de l'entreprise",
+        "optionalMark": "(facultatif)",
+        "companyNamePlaceholder": "Acme Corp",
+        "helperText": "Nous utilisons uniquement ces informations pour générer votre diagnostic et assurer un suivi concernant les services IA pertinents. Aucun compte n'est requis.",
+        "consentLabel": "J'accepte de recevoir le résultat de mon diagnostic IA et les informations de suivi pertinentes d'AiLunaPro. Je comprends que mes réponses et mon e-mail seront traités pour générer et conserver ce résultat de diagnostic, et que je peux demander la suppression de mes données à tout moment."
+      },
+      "submit": {
+        "loading": "Calcul de votre résultat…",
+        "idle": "Obtenir mon score de maturité IA"
+      },
+      "signInPrompt": "Vous avez déjà un compte ?",
+      "signInLink": "Se connecter",
+      "errors": {
+        "answers": "Veuillez répondre à toutes les questions.",
+        "email": "Veuillez saisir une adresse e-mail valide.",
+        "consent": "Vous devez accepter pour recevoir votre résultat.",
+        "captchaLoading": "Le captcha se charge — veuillez patienter."
+      },
+      "buckets": {
+        "low": {
+          "title": "Votre maturité IA est émergente",
+          "message": "Votre organisation en est à un stade précoce. Commencez par une automatisation simple, un inventaire de vos usages de l'IA et des agents d'assistance pratiques."
+        },
+        "medium": {
+          "title": "Votre maturité IA se développe",
+          "message": "Vous disposez déjà de certaines bases en IA. La prochaine étape consiste à structurer les usages, mesurer le ROI et améliorer les flux de travail documentaires et de reporting."
+        },
+        "high": {
+          "title": "Votre maturité IA est avancée",
+          "message": "Vous êtes prêt à passer l'IA à l'échelle avec une gouvernance, une conformité, un reporting et une automatisation spécialisée renforcés."
+        }
+      },
+      "result": {
+        "scoreLabel": "Votre score de maturité IA",
+        "scoreUnit": "/100",
+        "recommendedAgentsHeading": "Agents AiLunaPro recommandés",
+        "agentCardBrand": "AiLunaPro",
+        "agentCardCta": "Obtenir cet agent",
+        "ctaHeading": "Vous souhaitez un audit plus approfondi et votre plan d'action complet ?",
+        "ctaBody": "Créez un espace de travail AiLunaPro gratuit pour accéder à l'audit complet, au registre et au catalogue d'agents.",
+        "ctaButton": "Créer votre compte gratuit ↗",
+        "ctaFootnote": "Se poursuit sur **dashboard.ailunapro.com** — la plateforme AiLuna pour les agents et solutions IA, l'étape suivante après votre audit.",
+        "retakeButton": "Refaire le diagnostic"
+      }
+    },
+    "roi": {
+      "header": {
+        "title": "Calculateur de ROI de l'IA",
+        "subtitle": "Estimez le temps et l'argent que vous pouvez économiser avec les agents IA AiLunaPro.",
+        "freeLine": "Gratuit · Aucun compte requis · Environ 1 minute · USD"
+      },
+      "resumeNotice": "Bon retour parmi nous — nous avons restauré vos saisies précédentes pour que vous puissiez reprendre là où vous vous êtes arrêté.",
+      "form": {
+        "teamLegend": "Votre équipe",
+        "teamSizeLabel": "Taille de l'équipe",
+        "teamSizePlaceholder": "ex. 10",
+        "monthlyHoursLabel": "Heures mensuelles que votre équipe consacre aux tâches répétitives",
+        "monthlyHoursPlaceholder": "ex. 80",
+        "hourlyCostLabel": "Coût horaire moyen (USD)",
+        "targetWorkflowLabel": "Flux de travail ciblé",
+        "workflowPlaceholderOption": "Sélectionnez un flux de travail…"
+      },
+      "leadCapture": {
+        "legend": "Où devons-nous envoyer votre estimation ?",
+        "emailLabel": "E-mail",
+        "emailPlaceholder": "vous@entreprise.com",
+        "companyNameLabel": "Nom de l'entreprise",
+        "optionalMark": "(facultatif)",
+        "companyNamePlaceholder": "Acme Corp",
+        "helperText": "Nous utilisons uniquement ces informations pour générer votre estimation et assurer un suivi concernant les services IA pertinents. Aucun compte n'est requis.",
+        "consentLabel": "J'accepte de recevoir mon estimation de ROI de l'IA et les informations de suivi pertinentes d'AiLunaPro. Je comprends que mes réponses et mon e-mail seront traités pour générer et conserver cette estimation, et que je peux demander la suppression de mes données à tout moment."
+      },
+      "requiredMark": "*",
+      "submit": {
+        "loading": "Calcul en cours…",
+        "idle": "Calculer mon ROI"
+      },
+      "signInPrompt": "Vous avez déjà un compte ?",
+      "signInLink": "Se connecter",
+      "errors": {
+        "teamSize": "La taille de l'équipe doit être un nombre entier compris entre 1 et 10000.",
+        "hours": "Les heures mensuelles doivent être un nombre compris entre 0 et 10000.",
+        "cost": "Le coût horaire doit être un nombre compris entre 1 et 1000 USD.",
+        "workflow": "Veuillez sélectionner un flux de travail.",
+        "email": "Veuillez saisir une adresse e-mail valide.",
+        "consent": "Vous devez accepter pour recevoir votre estimation.",
+        "captchaLoading": "Le captcha se charge — veuillez patienter."
+      },
+      "result": {
+        "monthlySavingsLabel": "Économies mensuelles estimées",
+        "monthlySavingsUnit": "/mois",
+        "yearlySavingsLabel": "Économies annuelles",
+        "timeSavedLabel": "Temps gagné",
+        "timeSavedValue": "{hours} h/mois",
+        "paybackLabel": "Amortissement",
+        "paybackValue": "{months} mois",
+        "paybackEmpty": "—",
+        "disclaimer": "Il s'agit d'une estimation fondée sur les informations que vous avez fournies et sur des hypothèses d'automatisation prudentes. Les économies réelles peuvent varier.",
+        "pricingNote": "L'amortissement suppose un coût d'agent de référence de $99/month ; le tarif réel varie selon l'agent.",
+        "recommendedAgentsHeading": "Agents AiLunaPro recommandés",
+        "agentCardBrand": "AiLunaPro",
+        "agentCardCta": "Obtenir cet agent",
+        "ctaHeading": "Vous souhaitez une analyse plus approfondie et votre plan d'action complet ?",
+        "ctaBody": "Créez un espace de travail AiLunaPro gratuit pour accéder à l'audit complet, au registre et au catalogue d'agents.",
+        "ctaButton": "Créer votre compte gratuit ↗",
+        "ctaFootnote": "Se poursuit sur **dashboard.ailunapro.com** — la plateforme AiLuna pour les agents et solutions IA, l'étape suivante après votre audit.",
+        "rerunButton": "Lancer un autre calcul"
+      }
+    }
+  },
 };

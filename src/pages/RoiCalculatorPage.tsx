@@ -15,6 +15,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
 import { WORKFLOW_LABELS, WORKFLOW_VALUES, type Workflow } from '../data/roi-config';
 import { submitRoi, friendlyRoiError } from '../lib/roi/roiClient';
 import type { RoiResult } from '../types/roi';
@@ -36,6 +38,7 @@ interface FormErrors {
 
 export function RoiCalculatorPage() {
   const { navigate } = useRoute();
+  const T = useLocale();
 
   // B2.4: restore an unfinished run from localStorage (client-side only).
   const saved = readFlowProgress('roi')?.state as { teamSize?: string; hours?: string; cost?: string; workflow?: string } | undefined;
@@ -73,22 +76,22 @@ export function RoiCalculatorPage() {
 
     const teamSizeNum = Number(teamSize);
     if (!Number.isFinite(teamSizeNum) || !Number.isInteger(teamSizeNum) || teamSizeNum < 1 || teamSizeNum > 10000) {
-      err.teamSize = 'Team size must be an integer between 1 and 10000.';
+      err.teamSize = T.publicTools.roi.errors.teamSize;
     }
     const hoursNum = Number(hours);
     if (!Number.isFinite(hoursNum) || hoursNum < 0 || hoursNum > 10000) {
-      err.hours = 'Monthly hours must be a number between 0 and 10000.';
+      err.hours = T.publicTools.roi.errors.hours;
     }
     const costNum = Number(cost);
     if (!Number.isFinite(costNum) || costNum < 1 || costNum > 1000) {
-      err.cost = 'Hourly cost must be a number between 1 and 1000 USD.';
+      err.cost = T.publicTools.roi.errors.cost;
     }
     if (!workflow || !(WORKFLOW_VALUES as readonly string[]).includes(workflow)) {
-      err.workflow = 'Please select a workflow.';
+      err.workflow = T.publicTools.roi.errors.workflow;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) err.email   = 'Please enter a valid email address.';
-    if (!consent)                                  err.consent = 'You must accept to receive your estimate.';
-    if (turnstileToken === null)                   err.general = 'Captcha is loading — please wait.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) err.email   = T.publicTools.roi.errors.email;
+    if (!consent)                                  err.consent = T.publicTools.roi.errors.consent;
+    if (turnstileToken === null)                   err.general = T.publicTools.roi.errors.captchaLoading;
 
     setErrors(err);
     if (Object.keys(err).length > 0) return;
@@ -146,13 +149,13 @@ export function RoiCalculatorPage() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>
-            AI ROI Calculator
+            {T.publicTools.roi.header.title}
           </h1>
           <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-            Estimate the time and money you can save with AiLunaPro AI agents.
+            {T.publicTools.roi.header.subtitle}
           </p>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0' }}>
-            Free · No account required · Takes about 1 minute · USD
+            {T.publicTools.roi.header.freeLine}
           </p>
         </div>
 
@@ -166,35 +169,35 @@ export function RoiCalculatorPage() {
                 marginBottom: 14, padding: '10px 14px', borderRadius: 10, fontSize: 13,
                 background: 'var(--brand-tint-bg)', color: 'var(--text-primary)', border: '1px solid var(--violet)',
               }}>
-                Welcome back — we restored your previous inputs so you can pick up where you left off.
+                {T.publicTools.roi.resumeNotice}
               </div>
             )}
             <fieldset style={fieldsetStyle()}>
-              <legend style={legendStyle()}>Your team</legend>
+              <legend style={legendStyle()}>{T.publicTools.roi.form.teamLegend}</legend>
 
-              <Field label="Team size" required error={errors.teamSize}>
+              <Field label={T.publicTools.roi.form.teamSizeLabel} required error={errors.teamSize}>
                 <input
                   type="number" inputMode="numeric" min={1} max={10000}
                   value={teamSize} onChange={e => setTeamSize(e.target.value)}
-                  placeholder="e.g. 10"
+                  placeholder={T.publicTools.roi.form.teamSizePlaceholder}
                   style={inputStyle()}
                 />
               </Field>
 
               <Field
-                label="Monthly hours your team spends on repetitive work"
+                label={T.publicTools.roi.form.monthlyHoursLabel}
                 required
                 error={errors.hours}
               >
                 <input
                   type="number" inputMode="decimal" min={0} max={10000} step={1}
                   value={hours} onChange={e => setHours(e.target.value)}
-                  placeholder="e.g. 80"
+                  placeholder={T.publicTools.roi.form.monthlyHoursPlaceholder}
                   style={inputStyle()}
                 />
               </Field>
 
-              <Field label="Average hourly cost (USD)" required error={errors.cost}>
+              <Field label={T.publicTools.roi.form.hourlyCostLabel} required error={errors.cost}>
                 <input
                   type="number" inputMode="decimal" min={1} max={1000} step={1}
                   value={cost} onChange={e => setCost(e.target.value)}
@@ -202,13 +205,13 @@ export function RoiCalculatorPage() {
                 />
               </Field>
 
-              <Field label="Target workflow" required error={errors.workflow}>
+              <Field label={T.publicTools.roi.form.targetWorkflowLabel} required error={errors.workflow}>
                 <select
                   value={workflow}
                   onChange={e => setWorkflow(e.target.value as Workflow | '')}
                   style={inputStyle()}
                 >
-                  <option value="">Select a workflow…</option>
+                  <option value="">{T.publicTools.roi.form.workflowPlaceholderOption}</option>
                   {WORKFLOW_VALUES.map(w => (
                     <option key={w} value={w}>{WORKFLOW_LABELS[w]}</option>
                   ))}
@@ -218,29 +221,29 @@ export function RoiCalculatorPage() {
 
             {/* Lead capture */}
             <fieldset style={fieldsetStyle()}>
-              <legend style={legendStyle()}>Where should we send your estimate?</legend>
+              <legend style={legendStyle()}>{T.publicTools.roi.leadCapture.legend}</legend>
 
-              <Field label="Email" required error={errors.email}>
+              <Field label={T.publicTools.roi.leadCapture.emailLabel} required error={errors.email}>
                 <input
                   type="email" required value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="you@company.com"
+                  placeholder={T.publicTools.roi.leadCapture.emailPlaceholder}
                   style={inputStyle()}
                 />
               </Field>
 
-              <Field label={<>Company name <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></>}>
+              <Field label={<>{T.publicTools.roi.leadCapture.companyNameLabel} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{T.publicTools.roi.leadCapture.optionalMark}</span></>}>
                 <input
                   type="text" value={companyName}
                   onChange={e => setCompany(e.target.value)}
-                  placeholder="Acme Corp"
+                  placeholder={T.publicTools.roi.leadCapture.companyNamePlaceholder}
                   maxLength={120}
                   style={inputStyle()}
                 />
               </Field>
 
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 10px', lineHeight: 1.5 }}>
-                We only use this information to generate your estimate and follow up about relevant AI services. No account is required.
+                {T.publicTools.roi.leadCapture.helperText}
               </p>
 
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -250,7 +253,7 @@ export function RoiCalculatorPage() {
                   style={{ marginTop: 3, accentColor: 'var(--violet)' }}
                 />
                 <span>
-                  I agree to receive my AI ROI estimate and relevant follow-up information from AiLunaPro. I understand that my answers and email will be processed to generate and store this estimate, and that I can request deletion of my data at any time.
+                  {T.publicTools.roi.leadCapture.consentLabel}
                 </span>
               </label>
               {errors.consent && (
@@ -282,18 +285,18 @@ export function RoiCalculatorPage() {
                   transition: 'all 0.15s ease',
                 }}
               >
-                {submitting ? 'Calculating…' : 'Calculate my ROI'}
+                {submitting ? T.publicTools.roi.submit.loading : T.publicTools.roi.submit.idle}
               </button>
             </div>
 
             <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-              Already have an account?{' '}
+              {T.publicTools.roi.signInPrompt}{' '}
               <button
                 type="button"
                 onClick={() => navigate({ name: 'login' })}
                 style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontWeight: 600, padding: 0 }}
               >
-                Sign in
+                {T.publicTools.roi.signInLink}
               </button>
             </div>
           </form>
@@ -306,6 +309,7 @@ export function RoiCalculatorPage() {
 /* ── Result view ────────────────────────────────────────── */
 
 function ResultView({ result, onReset }: { result: RoiResult; onReset: () => void }) {
+  const T = useLocale();
   const monthly = result.estimatedMonthlyCostSaved;
   const yearly  = result.estimatedYearlyCostSaved;
   const time    = result.estimatedTimeSavedHoursPerMonth;
@@ -321,19 +325,19 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
         textAlign: 'center', marginBottom: 22,
       }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>
-          Estimated monthly savings
+          {T.publicTools.roi.result.monthlySavingsLabel}
         </div>
         <div style={{
           fontSize: 56, fontWeight: 800, color: 'var(--green-text)',
           fontVariantNumeric: 'tabular-nums', lineHeight: 1.05,
         }}>
-          ${monthly.toLocaleString('en-US')}<span style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 600 }}>/mo</span>
+          ${monthly.toLocaleString('en-US')}<span style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 600 }}>{T.publicTools.roi.result.monthlySavingsUnit}</span>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 24, marginTop: 22 }}>
-          <Stat label="Yearly savings"  value={`$${yearly.toLocaleString('en-US')}`} />
-          <Stat label="Time saved"      value={`${time.toLocaleString('en-US')} h/mo`} />
-          <Stat label="Payback"         value={payback === null ? '—' : `${payback.toLocaleString('en-US')} months`} />
+          <Stat label={T.publicTools.roi.result.yearlySavingsLabel}  value={`$${yearly.toLocaleString('en-US')}`} />
+          <Stat label={T.publicTools.roi.result.timeSavedLabel}      value={format(T.publicTools.roi.result.timeSavedValue, { hours: time.toLocaleString('en-US') })} />
+          <Stat label={T.publicTools.roi.result.paybackLabel}         value={payback === null ? T.publicTools.roi.result.paybackEmpty : format(T.publicTools.roi.result.paybackValue, { months: payback.toLocaleString('en-US') })} />
         </div>
       </div>
 
@@ -344,10 +348,10 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
         fontSize: 12, lineHeight: 1.55,
       }}>
         <div>
-          This is an estimate based on the information you provided and conservative automation assumptions. Actual savings may vary.
+          {T.publicTools.roi.result.disclaimer}
         </div>
         <div style={{ marginTop: 4 }}>
-          Payback assumes a reference agent cost of $99/month; actual pricing varies by agent.
+          {T.publicTools.roi.result.pricingNote}
         </div>
       </div>
 
@@ -357,7 +361,7 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
           fontSize: 14, fontWeight: 700, color: 'var(--text-primary)',
           margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 0.5,
         }}>
-          Recommended AiLunaPro agents
+          {T.publicTools.roi.result.recommendedAgentsHeading}
         </h2>
         <div style={{
           display: 'grid',
@@ -379,13 +383,13 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
               }}
             >
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: 'var(--violet-text)', textTransform: 'uppercase', marginBottom: 6 }}>
-                AiLunaPro
+                {T.publicTools.roi.result.agentCardBrand}
               </div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
                 {humanizeSlug(slug)}
               </div>
               <div style={{ fontSize: 12, color: 'var(--violet-text)', fontWeight: 600 }}>
-                Get this agent
+                {T.publicTools.roi.result.agentCardCta}
               </div>
             </a>
           ))}
@@ -399,10 +403,10 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
         textAlign: 'center',
       }}>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
-          Want a deeper analysis and your full action plan?
+          {T.publicTools.roi.result.ctaHeading}
         </div>
         <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>
-          Create a free AiLunaPro workspace to access the full audit, registry, and agent catalog.
+          {T.publicTools.roi.result.ctaBody}
         </div>
         <a
           href={AFFILIATE_URL}
@@ -415,12 +419,13 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
             fontWeight: 700, fontSize: 14, textDecoration: 'none',
           }}
         >
-          Create your free account ↗
+          {T.publicTools.roi.result.ctaButton}
         </a>
         {/* B2.1: the cross-platform step is deliberate — make it explicit. */}
         <div style={{ fontSize: 11.5, opacity: 0.7, marginTop: 10 }}>
-          Continues on <strong>dashboard.ailunapro.com</strong> — the AiLuna platform for AI agents
-          and solutions, the next step after your audit.
+          {T.publicTools.roi.result.ctaFootnote
+            .split(/\*\*(.+?)\*\*/)
+            .map((seg, i) => (i % 2 === 1 ? <strong key={i}>{seg}</strong> : seg))}
         </div>
       </div>
 
@@ -434,7 +439,7 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
             textDecoration: 'underline',
           }}
         >
-          Run another calculation
+          {T.publicTools.roi.result.rerunButton}
         </button>
       </div>
     </div>
@@ -468,10 +473,11 @@ function inputStyle(): React.CSSProperties {
 }
 
 function Field({ label, required, error, children }: { label: React.ReactNode; required?: boolean; error?: string; children: React.ReactNode }) {
+  const T = useLocale();
   return (
     <div style={{ marginBottom: 12 }}>
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-        {label} {required && <span style={{ color: 'var(--red-text)' }}>*</span>}
+        {label} {required && <span style={{ color: 'var(--red-text)' }}>{T.publicTools.roi.requiredMark}</span>}
       </label>
       {children}
       {error && (

@@ -1,6 +1,7 @@
 import { useReports } from '../context/ReportsContext';
 import { useAudit } from '../context/AuditContext';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
 import { Button } from '../components/ui/Button';
 import { ReportsTable } from '../components/reports/ReportsTable';
@@ -10,6 +11,7 @@ export function ReportsListPage() {
   const { reports, createReport, status } = useReports();
   const { draft } = useAudit();
   const { navigate } = useRoute();
+  const T = useLocale();
 
   const draftHasContent =
     draft.status === 'draft' && Object.keys(draft.answers).length > 0;
@@ -44,7 +46,7 @@ export function ReportsListPage() {
               letterSpacing: -0.5,
             }}
           >
-            Reports
+            {T.reportsPages.list.title}
           </h1>
           <p
             style={{
@@ -55,19 +57,18 @@ export function ReportsListPage() {
               maxWidth: 620,
             }}
           >
-            Generated reports are snapshots of an audit at a point in time. Each one is exportable,
-            shareable, and stays stable when you start a new audit.
+            {T.reportsPages.list.intro}
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {draftHasContent && (
             <Button variant="primary" size="lg" onClick={handleGenerateFromDraft}>
-              + Generate from current draft
+              {T.reportsPages.list.generateFromDraft}
             </Button>
           )}
           <Button variant="secondary" size="lg" onClick={() => navigate({ name: 'audit/new' })}>
-            Start a new audit
+            {T.reportsPages.list.startNewAudit}
           </Button>
         </div>
       </div>
@@ -75,19 +76,19 @@ export function ReportsListPage() {
       {/* Body */}
       {status === 'loading' ? (
         <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-          Loading reports…
+          {T.reportsPages.list.loading}
         </p>
       ) : status === 'error' ? (
         <div style={{ padding: '40px 0', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '0 0 16px' }}>
-            No reports loaded yet. This can happen if the workspace is new or if Firestore is unreachable.
+            {T.reportsPages.list.errorMessage}
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button variant="primary" size="md" onClick={() => navigate({ name: 'audit/new' })}>
-              Start a new audit
+              {T.reportsPages.list.startNewAudit}
             </Button>
             <Button variant="secondary" size="md" onClick={() => window.location.reload()}>
-              Retry
+              {T.reportsPages.list.retry}
             </Button>
           </div>
         </div>
@@ -108,9 +109,7 @@ export function ReportsListPage() {
             lineHeight: 1.5,
           }}
         >
-          Reports are point-in-time snapshots saved to your workspace. The detail view recomputes the
-          full result from each report's answer snapshot — so historical reports stay accurate even
-          after the scoring rules evolve.
+          {T.reportsPages.list.traceabilityHint}
         </p>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
+import { useLocale } from '../context/LocaleContext';
 import { useRoute } from '../context/RouteContext';
 import { useRegistry } from '../context/RegistryContext';
 import { filterRegistry } from '../lib/registry/filterRegistry';
@@ -17,6 +18,7 @@ type ModalState =
   | { kind: 'edit'; itemId: string };
 
 export function RegistryPage() {
+  const T = useLocale();
   const { navigate } = useRoute();
   const { items, status, addItem, updateItem, deleteItem, getItem } = useRegistry();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -68,7 +70,7 @@ export function RegistryPage() {
               letterSpacing: -0.5,
             }}
           >
-            AI Registry
+            {T.registry.page.title}
           </h1>
           <p
             style={{
@@ -79,20 +81,19 @@ export function RegistryPage() {
               maxWidth: 640,
             }}
           >
-            Track every AI tool used across your organization — purpose, data, oversight, and
-            mitigations. The registry feeds your audits and reports.{' '}
+            {T.registry.page.subtitle}{' '}
             {/* B3: governance-side bridge to the design guide */}
             <button
               type="button"
               onClick={() => navigate({ name: 'system-builder' })}
               style={{ background: 'none', border: 'none', padding: 0, color: 'var(--violet-text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'underline' }}
             >
-              Designing a new system? Open the design guide →
+              {T.registry.page.designGuideLink}
             </button>
           </p>
         </div>
         <Button variant="primary" size="lg" onClick={() => setModal({ kind: 'add' })}>
-          + Add tool
+          {T.registry.page.addTool}
         </Button>
       </div>
 
@@ -116,7 +117,7 @@ export function RegistryPage() {
             color: 'var(--text-muted)',
           }}
         >
-          Loading registry…
+          {T.registry.page.loading}
         </div>
       ) : status === 'error' ? (
         <div
@@ -127,7 +128,7 @@ export function RegistryPage() {
             color: 'var(--red-text)',
           }}
         >
-          Failed to load registry. Refresh to retry.
+          {T.registry.page.error}
         </div>
       ) : items.length === 0 ? (
         <RegistryEmptyState

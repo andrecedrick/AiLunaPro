@@ -1,39 +1,33 @@
 import { SectionTitle } from './SectionTitle';
 import { Badge } from '../ui/Badge';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
+import type { Dict } from '../../lib/locale/i18n/en';
 import type { AuditResult, Recommendation, RecommendationCategory } from '../../types/scoring';
 import { getByCategory } from '../../lib/scoring/assistance';
 
-const CATEGORY_META: Record<
-  RecommendationCategory,
-  { eyebrow: string; title: string; tagline: string; accent: string }
-> = {
-  automate: {
-    eyebrow: 'Tools & systems',
-    title: 'Automate',
-    tagline: 'Items where the leverage comes from the system, not the human.',
-    accent: 'var(--blue-text)',
-  },
-  structure: {
-    eyebrow: 'Policy & governance',
-    title: 'Structure',
-    tagline: 'Items that need formal ownership, policy, or framework alignment.',
-    accent: 'var(--violet-text)',
-  },
-  process: {
-    eyebrow: 'Recurring motion',
-    title: 'Operate',
-    tagline: 'Items that are processes you keep running on a cadence.',
-    accent: 'var(--amber-text)',
-  },
-  train: {
-    eyebrow: 'People',
-    title: 'Train',
-    tagline: 'Items that change behaviour through education.',
-    accent: 'var(--green-text)',
-  },
+const CATEGORY_ACCENT: Record<RecommendationCategory, string> = {
+  automate: 'var(--blue-text)',
+  structure: 'var(--violet-text)',
+  process: 'var(--amber-text)',
+  train: 'var(--green-text)',
 };
 
+function categoryMeta(
+  category: RecommendationCategory,
+  t: Dict['assistancePage'],
+): { eyebrow: string; title: string; tagline: string; accent: string } {
+  const c = t.operatingModel.categories[category];
+  return {
+    eyebrow: c.eyebrow,
+    title: c.title,
+    tagline: c.tagline,
+    accent: CATEGORY_ACCENT[category],
+  };
+}
+
 export function AutomationStructure({ result }: { result: AuditResult }) {
+  const T = useLocale();
   const automate = getByCategory(result, 'automate');
   const structure = getByCategory(result, 'structure');
   const process = getByCategory(result, 'process');
@@ -51,7 +45,7 @@ export function AutomationStructure({ result }: { result: AuditResult }) {
         transition: 'background 0.2s, border-color 0.2s',
       }}
     >
-      <SectionTitle eyebrow="03 · Operating model" title="What to automate or structure" />
+      <SectionTitle eyebrow={T.assistancePage.operatingModel.eyebrow} title={T.assistancePage.operatingModel.title} />
       <p
         style={{
           margin: '0 0 18px',
@@ -60,8 +54,7 @@ export function AutomationStructure({ result }: { result: AuditResult }) {
           lineHeight: 1.6,
         }}
       >
-        Each item below has a primary mode of execution. Automating where you should
-        structure (or vice versa) is a common failure pattern.
+        {T.assistancePage.operatingModel.intro}
       </p>
 
       {/* Two-column primary: automate / structure */}
@@ -103,7 +96,8 @@ function CategoryColumn({
   items: Recommendation[];
   dense?: boolean;
 }) {
-  const meta = CATEGORY_META[category];
+  const T = useLocale();
+  const meta = categoryMeta(category, T.assistancePage);
 
   return (
     <div
@@ -158,7 +152,12 @@ function CategoryColumn({
               fontWeight: 600,
             }}
           >
-            {items.length} {items.length === 1 ? 'action' : 'actions'}
+            {format(
+              items.length === 1
+                ? T.assistancePage.operatingModel.actionsCountOne
+                : T.assistancePage.operatingModel.actionsCountOther,
+              { count: items.length },
+            )}
           </span>
         </div>
         {!dense && (
@@ -180,7 +179,7 @@ function CategoryColumn({
             textAlign: 'center',
           }}
         >
-          Nothing here right now.
+          {T.assistancePage.operatingModel.emptyColumn}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -219,7 +218,7 @@ function CategoryColumn({
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
                 <Badge variant={`effort-${rec.effort}` as 'effort-low' | 'effort-medium' | 'effort-high'} />
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {rec.timeframeDays}d
+                  {format(T.assistancePage.operatingModel.timeframeDays, { days: rec.timeframeDays })}
                 </span>
               </div>
             </div>

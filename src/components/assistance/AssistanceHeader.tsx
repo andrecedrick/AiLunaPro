@@ -1,5 +1,7 @@
 import { Button } from '../ui/Button';
 import { useRoute } from '../../context/RouteContext';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import type { AuditResult, RiskLevel } from '../../types/scoring';
 import { formatRiskLevel } from '@/utils/formatters';
 
@@ -12,6 +14,7 @@ const RISK_BADGE: Record<RiskLevel, { bg: string; fg: string }> = {
 
 export function AssistanceHeader({ result }: { result: AuditResult }) {
   const { navigate } = useRoute();
+  const T = useLocale();
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -31,7 +34,7 @@ export function AssistanceHeader({ result }: { result: AuditResult }) {
           marginBottom: 12,
         }}
       >
-        ✨ Guided action plan
+        {T.assistancePage.header.badge}
       </div>
 
       <div
@@ -54,7 +57,7 @@ export function AssistanceHeader({ result }: { result: AuditResult }) {
               letterSpacing: -0.5,
             }}
           >
-            Your Action Plan
+            {T.assistancePage.header.title}
           </h1>
           <p
             style={{
@@ -65,7 +68,7 @@ export function AssistanceHeader({ result }: { result: AuditResult }) {
               maxWidth: 640,
             }}
           >
-            We translated your audit answers into a sequenced, contextual plan. Read through each section below — every claim links back to your data.
+            {T.assistancePage.header.intro}
           </p>
         </div>
 
@@ -85,7 +88,7 @@ export function AssistanceHeader({ result }: { result: AuditResult }) {
               fontFamily: 'var(--font-heading)',
             }}
           >
-            Score {result.globalScore} / 100
+            {format(T.assistancePage.header.score, { globalScore: result.globalScore })}
           </span>
           <span
             style={{
@@ -106,7 +109,7 @@ export function AssistanceHeader({ result }: { result: AuditResult }) {
             size="sm"
             onClick={() => navigate({ name: 'audit/result' })}
           >
-            ← Back to result
+            {T.assistancePage.header.backToResult}
           </Button>
         </div>
       </div>

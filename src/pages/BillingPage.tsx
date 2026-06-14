@@ -13,8 +13,11 @@
  *   - Click Subscribe → POST /api/billing/checkout → redirect Stripe Checkout
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
+import type { Dict } from '../lib/locale/i18n/en';
 import { dlog } from '../lib/log';
 import { useBilling } from '../context/BillingContext';
 import { useRoute } from '../context/RouteContext';
@@ -67,6 +70,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 }
 
 function UsageBar({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const T = useLocale();
   const unlimited = limit === -1;
   const percent   = unlimited ? 0 : pct(used, limit);
   const barColor  = percent > 85 ? 'var(--red)' : percent > 60 ? 'var(--yellow)' : 'var(--violet)';
@@ -76,7 +80,9 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
         <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{label}</span>
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          {unlimited ? `${used} / ∞` : `${used} / ${limit}`}
+          {unlimited
+            ? format(T.billingPage.usage.unlimitedValue, { used })
+            : format(T.billingPage.usage.boundedValue, { used, limit })}
         </span>
       </div>
       <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 4, overflow: 'hidden' }}>
@@ -105,69 +111,71 @@ interface PricingPlan {
   bestValue?:   boolean;
 }
 
-const PRICING_PLANS: PricingPlan[] = [
-  {
-    key:         'free',
-    name:        'Free',
-    price:       '$0',
-    priceSuffix: '/mo',
-    description: 'Try the platform with limited access.',
-    features: [
-      'Limited audit access',
-      'Basic dashboard',
-      'Demo reports',
-      'Community support',
-    ],
-    ctaLabel: 'Start for free',
-  },
-  {
-    key:         'starter',
-    name:        'Starter',
-    price:       '$49.99',
-    priceSuffix: '/mo',
-    description: 'Run real audits on your own.',
-    features: [
-      'Core audit workflow',
-      'Basic compliance reports',
-      'Starter audit volume',
-      'Essential AI recommendations',
-      'Email support',
-    ],
-    ctaLabel: 'Subscribe',
-  },
-  {
-    key:         'professional',
-    name:        'Professional',
-    price:       '$149.99',
-    priceSuffix: '/mo',
-    description: 'For growing teams running advanced audits.',
-    bestValue:   true,
-    features: [
-      'Higher audit volume',
-      'Advanced reports',
-      'Team collaboration',
-      'Priority AI recommendations',
-      'Priority support',
-    ],
-    ctaLabel: 'Subscribe',
-  },
-  {
-    key:         'enterprise',
-    name:        'Enterprise',
-    price:       '$499.99',
-    priceSuffix: '/mo',
-    description: 'Organization-grade governance & control.',
-    features: [
-      'Highest audit volume',
-      'Advanced team management',
-      'Organization controls',
-      'Custom branding',
-      'Dedicated support',
-      'Enterprise-ready governance',
-    ],
-    ctaLabel: 'Subscribe',
-  },
-];
+function buildPricingPlans(t: Dict['billingPage']): PricingPlan[] {
+  return [
+    {
+      key:         'free',
+      name:        'Free',
+      price:       '$0',
+      priceSuffix: '/mo',
+      description: t.plans.free.description,
+      features: [
+        t.plans.free.features.limitedAuditAccess,
+        t.plans.free.features.basicDashboard,
+        t.plans.free.features.demoReports,
+        t.plans.free.features.communitySupport,
+      ],
+      ctaLabel: t.plans.cta.startForFree,
+    },
+    {
+      key:         'starter',
+      name:        'Starter',
+      price:       '$49.99',
+      priceSuffix: '/mo',
+      description: t.plans.starter.description,
+      features: [
+        t.plans.starter.features.coreAuditWorkflow,
+        t.plans.starter.features.basicComplianceReports,
+        t.plans.starter.features.starterAuditVolume,
+        t.plans.starter.features.essentialAiRecommendations,
+        t.plans.starter.features.emailSupport,
+      ],
+      ctaLabel: t.plans.cta.subscribe,
+    },
+    {
+      key:         'professional',
+      name:        'Professional',
+      price:       '$149.99',
+      priceSuffix: '/mo',
+      description: t.plans.professional.description,
+      bestValue:   true,
+      features: [
+        t.plans.professional.features.higherAuditVolume,
+        t.plans.professional.features.advancedReports,
+        t.plans.professional.features.teamCollaboration,
+        t.plans.professional.features.priorityAiRecommendations,
+        t.plans.professional.features.prioritySupport,
+      ],
+      ctaLabel: t.plans.cta.subscribe,
+    },
+    {
+      key:         'enterprise',
+      name:        'Enterprise',
+      price:       '$499.99',
+      priceSuffix: '/mo',
+      description: t.plans.enterprise.description,
+      features: [
+        t.plans.enterprise.features.highestAuditVolume,
+        t.plans.enterprise.features.advancedTeamManagement,
+        t.plans.enterprise.features.organizationControls,
+        t.plans.enterprise.features.customBranding,
+        t.plans.enterprise.features.dedicatedSupport,
+        t.plans.enterprise.features.enterpriseReadyGovernance,
+      ],
+      ctaLabel: t.plans.cta.subscribe,
+    },
+  ];
+}
 
 interface PricingCardProps {
   plan:        PricingPlan;
@@ -178,6 +186,7 @@ interface PricingCardProps {
 }
 
 function PricingCard({ plan, isCurrent, loading, disabled, onSubscribe }: PricingCardProps) {
+  const T = useLocale();
   const isFree = plan.key === 'free';
   const accent = plan.bestValue;
   // J12 display-only: approximate local-currency hint. Stripe bills in USD.
@@ -218,7 +227,7 @@ function PricingCard({ plan, isCurrent, loading, disabled, onSubscribe }: Pricin
           textTransform:   'uppercase',
           whiteSpace:      'nowrap',
         }}>
-          Best value
+          {T.billingPage.plans.bestValueBadge}
         </div>
       )}
 
@@ -244,7 +253,7 @@ function PricingCard({ plan, isCurrent, loading, disabled, onSubscribe }: Pricin
         )}
         {approx && (
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-            {approx}{plan.priceSuffix ?? ''} approx · billed in USD
+            {format(T.billingPage.plans.priceApprox, { approx, suffix: plan.priceSuffix ?? '' })}
           </div>
         )}
       </div>
@@ -290,9 +299,9 @@ function PricingCard({ plan, isCurrent, loading, disabled, onSubscribe }: Pricin
           transition:   'all 0.15s ease',
         }}
       >
-        {loading ? 'Redirecting…'
-          : isCurrent ? 'Current plan'
-          : isFree    ? 'Free — current'
+        {loading ? T.billingPage.plans.cta.redirecting
+          : isCurrent ? T.billingPage.plans.cta.currentPlan
+          : isFree    ? T.billingPage.plans.cta.freeCurrent
           : plan.ctaLabel}
       </button>
     </div>
@@ -316,18 +325,24 @@ function InvoicesView({
   invoicesLoading,
   mockInvoices,
 }: InvoicesViewProps) {
+  const T = useLocale();
   // Mock layer → existing local data
   if (!isFirebaseLayer) {
     if (mockInvoices.length === 0) {
-      return <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>No invoices yet.</div>;
+      return <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>{T.billingPage.invoices.empty}</div>;
     }
     return (
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
-            {['Date', 'Description', 'Amount', 'Status'].map(h => (
-              <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                {h}
+            {[
+              { key: 'Date', label: T.billingPage.invoices.tableHeaders.date },
+              { key: 'Description', label: T.billingPage.invoices.tableHeaders.description },
+              { key: 'Amount', label: T.billingPage.invoices.tableHeaders.amount },
+              { key: 'Status', label: T.billingPage.invoices.tableHeaders.status },
+            ].map(h => (
+              <th key={h.key} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                {h.label}
               </th>
             ))}
           </tr>
@@ -357,15 +372,15 @@ function InvoicesView({
 
   // Firebase layer
   if (!hasActiveSubscription) {
-    return <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>No invoices yet.</div>;
+    return <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>{T.billingPage.invoices.empty}</div>;
   }
   if (invoicesLoading || stripeInvoices === null) {
-    return <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>Loading invoices…</div>;
+    return <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>{T.billingPage.invoices.loading}</div>;
   }
   if (stripeInvoices.length === 0) {
     return (
       <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>
-        Invoices will appear here after your first billing cycle.
+        {T.billingPage.invoices.emptyAfterFirstCycle}
       </div>
     );
   }
@@ -374,9 +389,15 @@ function InvoicesView({
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr style={{ borderBottom: '1px solid var(--border)' }}>
-          {['Date', 'Invoice number', 'Amount', 'Status', 'Actions'].map(h => (
-            <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-              {h}
+          {[
+            { key: 'Date', label: T.billingPage.invoices.tableHeaders.date },
+            { key: 'Invoice number', label: T.billingPage.invoices.tableHeaders.invoiceNumber },
+            { key: 'Amount', label: T.billingPage.invoices.tableHeaders.amount },
+            { key: 'Status', label: T.billingPage.invoices.tableHeaders.status },
+            { key: 'Actions', label: T.billingPage.invoices.tableHeaders.actions },
+          ].map(h => (
+            <th key={h.key} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              {h.label}
             </th>
           ))}
         </tr>
@@ -399,18 +420,18 @@ function InvoicesView({
                   background: isPaid ? 'var(--green-soft-bg)' : 'var(--yellow-soft-bg)',
                   color:      isPaid ? 'var(--green-text)'    : 'var(--yellow-text)',
                 }}>
-                  {inv.status ?? 'unknown'}
+                  {inv.status ?? T.billingPage.invoices.statusUnknown}
                 </span>
               </td>
               <td style={{ padding: '13px 20px', display: 'flex', gap: 10, fontSize: 13 }}>
                 {inv.hostedInvoiceUrl && (
                   <a href={inv.hostedInvoiceUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--violet-text)', textDecoration: 'none', fontWeight: 600 }}>
-                    View
+                    {T.billingPage.invoices.actionView}
                   </a>
                 )}
                 {inv.invoicePdf && (
                   <a href={inv.invoicePdf} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--violet-text)', textDecoration: 'none', fontWeight: 600 }}>
-                    PDF
+                    {T.billingPage.invoices.actionPdf}
                   </a>
                 )}
               </td>
@@ -426,13 +447,14 @@ function InvoicesView({
 
 function LockedView() {
   const { showToast } = useToast();
+  const T = useLocale();
   // navigate via window hash to avoid extra hook here
   const goDashboard = () => { window.location.hash = '#/'; window.location.reload(); };
   const contactOwner = () => {
     // Best-effort: try mailto with placeholder; otherwise hint
     const mailto = 'mailto:?subject=Request%20billing%20access&body=Hi%2C%20I%20need%20billing%20access%20for%20our%20workspace.';
     try { window.open(mailto, '_self'); }
-    catch { showToast('Ask your workspace owner for billing access.', 'info'); }
+    catch { showToast(T.billingPage.locked.askOwnerToast, 'info'); }
   };
   return (
     <div style={{ padding: 40, textAlign: 'center' }}>
@@ -441,23 +463,23 @@ function LockedView() {
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>
       <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-        Billing access restricted
+        {T.billingPage.locked.title}
       </div>
       <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 20 }}>
-        Contact your workspace owner to view or manage billing.
+        {T.billingPage.locked.subtitle}
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button type="button" onClick={goDashboard} style={{
           padding: '10px 18px', borderRadius: 10, border: 'none',
           background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
         }}>
-          Back to dashboard
+          {T.billingPage.locked.backToDashboard}
         </button>
         <button type="button" onClick={contactOwner} style={{
           padding: '10px 18px', borderRadius: 10, border: '1px solid var(--violet)',
           background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: 'pointer',
         }}>
-          Contact workspace owner
+          {T.billingPage.locked.contactWorkspaceOwner}
         </button>
       </div>
     </div>
@@ -474,6 +496,7 @@ function MockPlanCard({
   canUpgrade: boolean;
   onSelect:   () => void;
 }) {
+  const T = useLocale();
   const config = PLAN_CONFIGS[tier];
   return (
     <div style={{
@@ -493,13 +516,13 @@ function MockPlanCard({
           borderRadius: '0 0 6px 6px', letterSpacing: 0.5,
           textTransform: 'uppercase',
         }}>
-          Current
+          {T.billingPage.mockPlans.currentBadge}
         </div>
       )}
       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{tier}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: current ? 'var(--violet-text)' : 'var(--text-primary)', marginBottom: 12 }}>
-        {config.monthlyPrice === 0 ? 'Free' : `$${config.monthlyPrice}`}
-        {config.monthlyPrice > 0 && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>/mo</span>}
+        {config.monthlyPrice === 0 ? T.billingPage.mockPlans.free : `$${config.monthlyPrice}`}
+        {config.monthlyPrice > 0 && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>{T.billingPage.mockPlans.priceSuffix}</span>}
       </div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, marginBottom: 16 }}>
         {config.features.map(f => (
@@ -520,12 +543,12 @@ function MockPlanCard({
             background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
           }}
         >
-          Switch
+          {T.billingPage.mockPlans.switch}
         </button>
       )}
       {!current && !canUpgrade && (
         <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', paddingTop: 8 }}>
-          Contact owner to change plan
+          {T.billingPage.mockPlans.contactOwnerToChange}
         </div>
       )}
     </div>
@@ -566,6 +589,8 @@ export function BillingPage() {
     stripeCustomerId,
     upgradePlan, cancelPlan, resumePlan,
   } = useBilling();
+  const T = useLocale();
+  const PRICING_PLANS = useMemo(() => buildPricingPlans(T.billingPage), [T]);
 
   const [confirmPlan,     setConfirmPlan]     = useState<PlanTier | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -711,7 +736,7 @@ export function BillingPage() {
       console.error('[BillingPage] portal failed:', err);
       const friendly =
         err instanceof PortalError
-          ? 'Unable to open Stripe portal. Verify Worker is running.'
+          ? T.billingPage.billingActions.portalError
           : err instanceof Error ? err.message : 'Portal failed';
       setCheckoutError(friendly);
     } finally {
@@ -729,11 +754,11 @@ export function BillingPage() {
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-          Billing
+          {T.billingPage.header.title}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-          Manage your plan, usage, and invoices.
-          {!canManage && <span style={{ color: 'var(--yellow-text)', marginLeft: 6 }}>Read-only view.</span>}
+          {T.billingPage.header.subtitle}
+          {!canManage && <span style={{ color: 'var(--yellow-text)', marginLeft: 6 }}>{T.billingPage.header.readOnlyBadge}</span>}
         </p>
       </div>
 
@@ -742,7 +767,7 @@ export function BillingPage() {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>
-              Current plan
+              {T.billingPage.currentPlan.label}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
               <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
@@ -777,29 +802,32 @@ export function BillingPage() {
                   background: 'var(--surface-2)',
                   color:      'var(--text-muted)',
                 }}>
-                  No subscription
+                  {T.billingPage.currentPlan.statusNoSubscription}
                 </span>
               )}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
               {config.monthlyPrice === 0
-                ? 'Free plan — no active subscription'
+                ? T.billingPage.currentPlan.freePlanNote
                 : (
                     <>
-                      {`$${subscription.billingCycle === 'annual' ? config.annualPrice : config.monthlyPrice}/mo · billed ${subscription.billingCycle}`}
-                      {hasActiveSubscription && ` · Renews ${formatDate(subscription.currentPeriodEnd)}`}
+                      {format(T.billingPage.currentPlan.paidPlanSummary, {
+                        price:        subscription.billingCycle === 'annual' ? config.annualPrice : config.monthlyPrice,
+                        billingCycle: subscription.billingCycle,
+                      })}
+                      {hasActiveSubscription && format(T.billingPage.currentPlan.renews, { date: formatDate(subscription.currentPeriodEnd) })}
                     </>
                   )
               }
             </div>
             {subscription.cancelAtPeriodEnd && (
               <div style={{ fontSize: 13, color: 'var(--yellow-text)', marginTop: 6, fontWeight: 600 }}>
-                ⚠ Cancels at period end ({formatDate(subscription.currentPeriodEnd)})
+                {format(T.billingPage.currentPlan.cancelsAtPeriodEnd, { date: formatDate(subscription.currentPeriodEnd) })}
               </div>
             )}
             {hasActiveSubscription && subscription.currency && (
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                Your active subscription is billed in {subscription.currency.toUpperCase()}.
+                {format(T.billingPage.currentPlan.billedInCurrency, { currency: subscription.currency.toUpperCase() })}
               </div>
             )}
           </div>
@@ -809,11 +837,11 @@ export function BillingPage() {
             <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
               {subscription.cancelAtPeriodEnd ? (
                 <button type="button" onClick={resumePlan} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                  Resume plan
+                  {T.billingPage.currentPlan.resumePlan}
                 </button>
               ) : (
                 <button type="button" onClick={cancelPlan} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                  Cancel plan
+                  {T.billingPage.currentPlan.cancelPlan}
                 </button>
               )}
             </div>
@@ -825,7 +853,7 @@ export function BillingPage() {
         {canManage && isFirebaseLayer && (
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
-              Billing actions
+              {T.billingPage.billingActions.title}
             </div>
             {stripeCustomerId ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'stretch' }}>
@@ -836,7 +864,7 @@ export function BillingPage() {
                     disabled={checkoutLoading}
                     style={{ flex: '1 1 220px', maxWidth: 320, padding: '12px 18px', borderRadius: 10, border: '1.5px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 700, fontSize: 14, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1, fontFamily: 'var(--font-body)' }}
                   >
-                    {checkoutLoading ? 'Loading…' : 'Manage subscription'}
+                    {checkoutLoading ? T.billingPage.billingActions.loading : T.billingPage.billingActions.manageSubscription}
                   </button>
                 )}
                 <div style={{ flex: '1 1 220px', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -846,17 +874,16 @@ export function BillingPage() {
                     disabled={checkoutLoading}
                     style={{ width: '100%', padding: '12px 18px', borderRadius: 10, border: '1.5px solid var(--border-strong, var(--border))', background: 'var(--surface)', color: 'var(--text-primary)', fontWeight: 700, fontSize: 14, cursor: checkoutLoading ? 'wait' : 'pointer', opacity: checkoutLoading ? 0.6 : 1, fontFamily: 'var(--font-body)' }}
                   >
-                    {checkoutLoading ? 'Loading…' : 'Manage payment methods'}
+                    {checkoutLoading ? T.billingPage.billingActions.loading : T.billingPage.billingActions.managePaymentMethods}
                   </button>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                    Update card, set default, remove — handled securely by Stripe.
+                    {T.billingPage.billingActions.paymentMethodsHint}
                   </span>
                 </div>
               </div>
             ) : (
               <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 520 }}>
-                No Stripe customer yet. Payment methods become available after your first
-                subscription or token purchase.
+                {T.billingPage.billingActions.noCustomerYet}
               </div>
             )}
             {checkoutError && (
@@ -882,12 +909,15 @@ export function BillingPage() {
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Tokens
+                  {T.billingPage.tokens.title}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                   {tokens.balance
-                    ? `${tokens.balance.balance.toLocaleString()} / ${tokens.balance.monthlyAllocation.toLocaleString()} this cycle`
-                    : 'Token balance loading…'}
+                    ? format(T.billingPage.tokens.balance, {
+                        balance:    tokens.balance.balance.toLocaleString(),
+                        allocation: tokens.balance.monthlyAllocation.toLocaleString(),
+                      })
+                    : T.billingPage.tokens.balanceLoading}
                 </div>
               </div>
             </div>
@@ -900,7 +930,7 @@ export function BillingPage() {
                 fontWeight: 600, fontSize: 13, cursor: 'pointer',
               }}
             >
-              Manage tokens
+              {T.billingPage.tokens.manageTokens}
             </button>
           </div>
         </Card>
@@ -908,12 +938,12 @@ export function BillingPage() {
 
       {/* Usage */}
       <div style={{ marginBottom: 28 }}>
-        <SectionTitle>Usage this period</SectionTitle>
+        <SectionTitle>{T.billingPage.usage.sectionTitle}</SectionTitle>
         <Card>
-          <UsageBar label="Audits" used={usage.auditsUsed} limit={usage.auditsLimit} />
-          <UsageBar label="Seats"  used={usage.seatsUsed}  limit={usage.seatsLimit} />
+          <UsageBar label={T.billingPage.usage.auditsLabel} used={usage.auditsUsed} limit={usage.auditsLimit} />
+          <UsageBar label={T.billingPage.usage.seatsLabel}  used={usage.seatsUsed}  limit={usage.seatsLimit} />
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-            Period: {formatDate(usage.periodStart)} – {formatDate(usage.periodEnd)}
+            {format(T.billingPage.usage.periodRange, { start: formatDate(usage.periodStart), end: formatDate(usage.periodEnd) })}
           </div>
         </Card>
       </div>
@@ -935,8 +965,8 @@ export function BillingPage() {
               fontWeight:     600,
             }}>
               {currencySource === 'detected' && detectedCurrency
-                ? `Billing currency detected from your region: ${detectedCurrency.toUpperCase()} ${CURRENCY_SYMBOLS[detectedCurrency]}`
-                : `Billing currency: ${selectedCurrency.toUpperCase()} ${CURRENCY_SYMBOLS[selectedCurrency]}`
+                ? format(T.billingPage.pricingSection.currencyBadge.detected, { currency: detectedCurrency.toUpperCase(), symbol: CURRENCY_SYMBOLS[detectedCurrency] })
+                : format(T.billingPage.pricingSection.currencyBadge.default, { currency: selectedCurrency.toUpperCase(), symbol: CURRENCY_SYMBOLS[selectedCurrency] })
               }
             </span>
           </div>
@@ -952,17 +982,17 @@ export function BillingPage() {
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
-              Secure checkout powered by Stripe
+              {T.billingPage.pricingSection.secureCheckoutBadge}
             </div>
             <h2 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px', lineHeight: 1.2 }}>
-              Choose the plan that fits your audit workflow
+              {T.billingPage.pricingSection.heading}
             </h2>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 560, marginInline: 'auto', lineHeight: 1.55 }}>
-              Start in Stripe test mode. No real charges are made — use test card{' '}
+              {T.billingPage.pricingSection.subheadingPrefix}{' '}
               <code style={{ background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
                 4242 4242 4242 4242
               </code>
-              .
+              {T.billingPage.pricingSection.subheadingSuffix}
             </p>
           </div>
 
@@ -1011,7 +1041,7 @@ export function BillingPage() {
       {/* Mock layer — legacy plan grid */}
       {!isBillingFirebase && (
         <div style={{ marginBottom: 28 }}>
-          <SectionTitle>Plans</SectionTitle>
+          <SectionTitle>{T.billingPage.mockPlans.sectionTitle}</SectionTitle>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {(['Free', 'Starter', 'Professional', 'Enterprise'] as PlanTier[]).map(tier => (
               <MockPlanCard
@@ -1028,7 +1058,7 @@ export function BillingPage() {
 
       {/* Invoices */}
       <div style={{ marginBottom: 28 }}>
-        <SectionTitle>Invoices</SectionTitle>
+        <SectionTitle>{T.billingPage.invoices.sectionTitle}</SectionTitle>
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <InvoicesView
             isFirebaseLayer={isFirebaseLayer}
@@ -1040,7 +1070,7 @@ export function BillingPage() {
         </Card>
         {isFirebaseLayer && hasActiveSubscription && (
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-            Payment method and billing details are managed securely in Stripe.
+            {T.billingPage.invoices.managedInStripeNote}
           </p>
         )}
       </div>
@@ -1056,10 +1086,10 @@ export function BillingPage() {
             padding: 32, maxWidth: 380, width: '90%', boxShadow: '0 16px 40px rgba(0,0,0,0.2)',
           }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-              Switch to {confirmPlan}
+              {format(T.billingPage.mockConfirm.title, { plan: confirmPlan })}
             </h3>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px' }}>
-              This is a mock action — no real charge will occur.
+              {T.billingPage.mockConfirm.body}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
@@ -1067,14 +1097,14 @@ export function BillingPage() {
                 onClick={() => setConfirmPlan(null)}
                 style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', fontWeight: 600, fontSize: 13, cursor: 'pointer', color: 'var(--text-muted)' }}
               >
-                Cancel
+                {T.billingPage.mockConfirm.cancel}
               </button>
               <button
                 type="button"
                 onClick={handleMockConfirmUpgrade}
                 style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
               >
-                Confirm (mock)
+                {T.billingPage.mockConfirm.confirm}
               </button>
             </div>
           </div>

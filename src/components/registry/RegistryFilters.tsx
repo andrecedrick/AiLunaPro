@@ -1,3 +1,6 @@
+import { useMemo } from 'react';
+import { useLocale } from '../../context/LocaleContext';
+import type { Dict } from '../../lib/locale/i18n/en';
 import type { RegistryFilters as Filters } from '../../types/registry';
 import { DEPARTMENTS, APPROVAL_LABEL } from '../../data/mockRegistry';
 
@@ -7,15 +10,19 @@ interface Props {
   onClear: () => void;
 }
 
-const RISK_OPTIONS = [
-  { value: 'all', label: 'All risks' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'critical', label: 'Critical' },
-];
+function buildRiskOptions(t: Dict['registry']) {
+  return [
+    { value: 'all', label: t.filters.allRisks },
+    { value: 'low', label: t.filters.risk.low },
+    { value: 'medium', label: t.filters.risk.medium },
+    { value: 'high', label: t.filters.risk.high },
+    { value: 'critical', label: t.filters.risk.critical },
+  ];
+}
 
 export function RegistryFilters({ filters, onChange, onClear }: Props) {
+  const T = useLocale();
+  const RISK_OPTIONS = useMemo(() => buildRiskOptions(T.registry), [T]);
   const update = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
 
   const hasActive =
@@ -57,7 +64,7 @@ export function RegistryFilters({ filters, onChange, onClear }: Props) {
         </span>
         <input
           type="text"
-          placeholder="Search tools, purpose, notes…"
+          placeholder={T.registry.filters.searchPlaceholder}
           value={filters.search}
           onChange={e => update({ search: e.target.value })}
           style={{
@@ -79,7 +86,7 @@ export function RegistryFilters({ filters, onChange, onClear }: Props) {
         value={filters.department}
         onChange={v => update({ department: v })}
         options={[
-          { value: 'all', label: 'All departments' },
+          { value: 'all', label: T.registry.filters.allDepartments },
           ...DEPARTMENTS.map(d => ({ value: d, label: d })),
         ]}
       />
@@ -92,7 +99,7 @@ export function RegistryFilters({ filters, onChange, onClear }: Props) {
         value={filters.approvalStatus}
         onChange={v => update({ approvalStatus: v })}
         options={[
-          { value: 'all', label: 'All approval' },
+          { value: 'all', label: T.registry.filters.allApproval },
           ...Object.entries(APPROVAL_LABEL).map(([value, label]) => ({ value, label })),
         ]}
       />
@@ -112,7 +119,7 @@ export function RegistryFilters({ filters, onChange, onClear }: Props) {
             fontFamily: 'var(--font-body)',
           }}
         >
-          Clear filters
+          {T.registry.filters.clear}
         </button>
       )}
     </div>

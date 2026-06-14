@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useReports } from '../context/ReportsContext';
 import { useRoute } from '../context/RouteContext';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
 import { computeAuditResult } from '../lib/scoring/computeAuditResult';
 import {
   downloadReport, renameReport, ReportApiError,
@@ -26,6 +28,7 @@ export function ReportDetailPage() {
   const { route, navigate } = useRoute();
   const { getReport, getExportsForReport, deleteReport, status } = useReports();
   const { session } = useAuth();
+  const T = useLocale();
   const orgId = session?.orgId ?? '';
 
   const reportId = route.name === 'reports/detail' ? route.reportId : '';
@@ -64,7 +67,7 @@ export function ReportDetailPage() {
   if (status === 'loading') {
     return (
       <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-        Loading report…
+        {T.reportsPages.detail.loading}
       </p>
     );
   }
@@ -81,13 +84,13 @@ export function ReportDetailPage() {
             margin: 0,
           }}
         >
-          Report not found
+          {T.reportsPages.detail.notFoundTitle}
         </h2>
         <p style={{ margin: '8px 0 18px', fontSize: 14, color: 'var(--text-muted)' }}>
-          This report no longer exists or has been deleted.
+          {T.reportsPages.detail.notFoundBody}
         </p>
         <Button variant="primary" size="md" onClick={() => navigate({ name: 'reports' })}>
-          ← Back to reports
+          {T.reportsPages.detail.backToReports}
         </Button>
       </div>
     );
@@ -103,14 +106,14 @@ export function ReportDetailPage() {
     catch (e) {
       const code = e instanceof ReportApiError ? e.code : '';
       if (code === 'PDF_LIMIT_REACHED') setLimitOpen(true);
-      else if (code === 'TOKENS_INSUFFICIENT') { setLimitOpen(false); setPdfError('Not enough tokens to export. Buy tokens to continue.'); }
-      else setPdfError('Download failed. Please try again.');
+      else if (code === 'TOKENS_INSUFFICIENT') { setLimitOpen(false); setPdfError(T.reportsPages.detail.errors.tokensInsufficientExport); }
+      else setPdfError(T.reportsPages.detail.errors.downloadFailed);
     } finally { setPdfBusy(false); }
   };
   const onRename = async () => {
     setSavingTitle(true); setPdfError(null);
     try { setTitleOverride(await renameReport(orgId, report.id, draft.trim())); setEditing(false); }
-    catch (e) { setPdfError(e instanceof ReportApiError && e.code === 'FORBIDDEN' ? 'Only owners or admins can rename reports.' : 'Could not rename. Please try again.'); }
+    catch (e) { setPdfError(e instanceof ReportApiError && e.code === 'FORBIDDEN' ? T.reportsPages.detail.errors.renameForbidden : T.reportsPages.detail.errors.renameFailed); }
     finally { setSavingTitle(false); }
   };
 
@@ -124,10 +127,10 @@ export function ReportDetailPage() {
     } catch (e) {
       const code = e instanceof ReportApiError ? e.code : '';
       if (code === 'PDF_LIMIT_REACHED') setShareLimit(true);
-      else if (code === 'TOKENS_INSUFFICIENT') { setShareLimit(false); setPdfError('Not enough tokens. Buy tokens to continue.'); }
-      else if (code === 'SHARE_DISABLED') setPdfError('Sharing is disabled for this report.');
-      else if (code === 'FORBIDDEN') setPdfError('Only owners or admins can share reports.');
-      else setPdfError('Could not create a share link. Please try again.');
+      else if (code === 'TOKENS_INSUFFICIENT') { setShareLimit(false); setPdfError(T.reportsPages.detail.errors.tokensInsufficient); }
+      else if (code === 'SHARE_DISABLED') setPdfError(T.reportsPages.detail.errors.shareDisabled);
+      else if (code === 'FORBIDDEN') setPdfError(T.reportsPages.detail.errors.shareForbidden);
+      else setPdfError(T.reportsPages.detail.errors.shareCreateFailed);
     } finally { setShareBusy(false); }
   };
   const onRevoke = async () => {
@@ -136,7 +139,7 @@ export function ReportDetailPage() {
       await revokeReportShare(orgId, report.id);
       setShareUrl(''); setShareExpiry('');
       setShareState(prev => ({ shareVersion: (prev?.shareVersion ?? 1) + 1, sharedAt: '', sharedExpiresAt: '', shareRevokedAt: new Date().toISOString(), sharingDisabled: prev?.sharingDisabled ?? false }));
-    } catch { setPdfError('Could not revoke the link. Please try again.'); }
+    } catch { setPdfError(T.reportsPages.detail.errors.revokeFailed); }
     finally { setShareBusy(false); }
   };
   const onToggleSharing = async () => {
@@ -146,7 +149,7 @@ export function ReportDetailPage() {
       const disabled = await setReportSharingDisabled(orgId, report.id, !shareState.sharingDisabled);
       setShareState(prev => (prev ? { ...prev, sharingDisabled: disabled } : prev));
       if (disabled) setShareUrl('');
-    } catch { setPdfError('Could not update sharing. Please try again.'); }
+    } catch { setPdfError(T.reportsPages.detail.errors.toggleSharingFailed); }
     finally { setShareBusy(false); }
   };
   const copyShare = () => {
@@ -168,10 +171,10 @@ export function ReportDetailPage() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           <input value={draft} maxLength={80} autoFocus onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') void onRename(); if (e.key === 'Escape') setEditing(false); }}
-            aria-label="Report title"
+            aria-label={T.reportsPages.detail.rename.titleAriaLabel}
             style={{ flex: '1 1 320px', minWidth: 0, padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-strong)', fontSize: 18, fontFamily: 'var(--font-heading)', fontWeight: 700 }} />
-          <Button variant="primary" size="md" onClick={onRename} disabled={savingTitle}>{savingTitle ? '…' : 'Save title'}</Button>
-          <Button variant="ghost" size="md" onClick={() => setEditing(false)}>Cancel</Button>
+          <Button variant="primary" size="md" onClick={onRename} disabled={savingTitle}>{savingTitle ? T.reportsPages.detail.rename.saving : T.reportsPages.detail.rename.saveTitle}</Button>
+          <Button variant="ghost" size="md" onClick={() => setEditing(false)}>{T.reportsPages.detail.rename.cancel}</Button>
         </div>
       )}
       {pdfError && (
@@ -183,10 +186,10 @@ export function ReportDetailPage() {
           export + rename are immediately visible, not buried in the footer. */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '12px 0 4px' }} className="report-primary-actions">
         <Button variant="primary" size="md" disabled={pdfBusy} onClick={() => onDownload(false)}>
-          {pdfBusy ? 'Preparing…' : '⬇ Download PDF'}
+          {pdfBusy ? T.reportsPages.detail.download.preparing : T.reportsPages.detail.download.downloadPdf}
         </Button>
         <Button variant="secondary" size="md" onClick={() => { setDraft(displayReport.title); setEditing(true); }}>
-          Rename
+          {T.reportsPages.detail.rename.renameButton}
         </Button>
       </div>
 
@@ -197,23 +200,23 @@ export function ReportDetailPage() {
         return (
           <div style={card}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Shareable link</div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{T.reportsPages.detail.share.heading}</div>
               <StatusBadge status={st} />
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: 12.5, margin: '6px 0 12px' }}>
-              A signed, no-login link to this report's PDF. Creating or regenerating counts toward your PDF exports.
+              {T.reportsPages.detail.share.description}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {isActive ? (
                 <>
-                  <Button variant="primary" size="md" disabled={shareBusy} onClick={() => mintShare(true)}>{shareBusy ? 'Working…' : 'Generate new link'}</Button>
-                  <Button variant="ghost" size="md" disabled={shareBusy} onClick={onRevoke}>Revoke</Button>
+                  <Button variant="primary" size="md" disabled={shareBusy} onClick={() => mintShare(true)}>{shareBusy ? T.reportsPages.detail.share.working : T.reportsPages.detail.share.generateNewLink}</Button>
+                  <Button variant="ghost" size="md" disabled={shareBusy} onClick={onRevoke}>{T.reportsPages.detail.share.revoke}</Button>
                 </>
               ) : (
-                <Button variant="primary" size="md" disabled={shareBusy || st === 'Disabled'} onClick={() => mintShare(false)}>{shareBusy ? 'Working…' : 'Share link'}</Button>
+                <Button variant="primary" size="md" disabled={shareBusy || st === 'Disabled'} onClick={() => mintShare(false)}>{shareBusy ? T.reportsPages.detail.share.working : T.reportsPages.detail.share.shareLink}</Button>
               )}
               <Button variant="ghost" size="md" disabled={shareBusy} onClick={onToggleSharing}>
-                {shareState.sharingDisabled ? 'Enable sharing' : 'Disable sharing'}
+                {shareState.sharingDisabled ? T.reportsPages.detail.share.enableSharing : T.reportsPages.detail.share.disableSharing}
               </Button>
             </div>
             {shareUrl && st !== 'Disabled' && (
@@ -221,15 +224,15 @@ export function ReportDetailPage() {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()}
                     style={{ flex: '1 1 280px', minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-strong)', fontSize: 12.5, fontFamily: 'var(--font-mono, monospace)' }} />
-                  <Button variant="ghost" size="md" onClick={copyShare}>{copied ? 'Copied' : 'Copy'}</Button>
+                  <Button variant="ghost" size="md" onClick={copyShare}>{copied ? T.reportsPages.detail.share.copied : T.reportsPages.detail.share.copy}</Button>
                 </div>
-                {shareExpiry && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '8px 0 0' }}>Expires {new Date(shareExpiry).toLocaleString()}.</p>}
+                {shareExpiry && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '8px 0 0' }}>{format(T.reportsPages.detail.share.expires, { date: new Date(shareExpiry).toLocaleString() })}</p>}
               </div>
             )}
             {!shareUrl && isActive && shareState.sharedExpiresAt && (
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>An active link exists (expires {new Date(shareState.sharedExpiresAt).toLocaleString()}). Generate a new link to view the URL again — this revokes the old one.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>{format(T.reportsPages.detail.share.activeLinkExists, { date: new Date(shareState.sharedExpiresAt).toLocaleString() })}</p>
             )}
-            {st === 'Disabled' && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>Sharing is disabled — existing links no longer work.</p>}
+            {st === 'Disabled' && <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>{T.reportsPages.detail.share.disabledNotice}</p>}
           </div>
         );
       })()}
@@ -276,27 +279,27 @@ export function ReportDetailPage() {
             }}
           >
             <Button variant="secondary" size="md" onClick={() => navigate({ name: 'reports' })}>
-              ← Back to reports
+              {T.reportsPages.detail.backToReports}
             </Button>
             <Button
               variant="ghost"
               size="md"
               onClick={() => navigate({ name: 'audit/assistance' })}
             >
-              Open assistance plan
+              {T.reportsPages.detail.footer.openAssistancePlan}
             </Button>
             <Button
               variant="ghost"
               size="md"
               onClick={() => {
-                if (confirm('Delete this report? This cannot be undone.')) {
+                if (confirm(T.reportsPages.detail.footer.deleteConfirm)) {
                   deleteReport(report.id);
                   navigate({ name: 'reports' });
                 }
               }}
               style={{ color: 'var(--red-text)', borderColor: 'var(--border-strong)' }}
             >
-              Delete report
+              {T.reportsPages.detail.footer.deleteReport}
             </Button>
           </div>
         </div>
@@ -328,7 +331,7 @@ export function ReportDetailPage() {
       <PdfLimitModal
         open={shareLimit}
         busy={shareBusy}
-        actionLabel="Use tokens & create link"
+        actionLabel={T.reportsPages.detail.share.useTokensAndCreateLink}
         onUseTokens={() => mintShare(pendingRegen, true)}
         onBuyTokens={() => { setShareLimit(false); navigate({ name: 'billing/tokens' }); }}
         onCancel={() => setShareLimit(false)}
@@ -338,17 +341,24 @@ export function ReportDetailPage() {
 }
 
 function StatusBadge({ status }: { status: 'Disabled' | 'Active' | 'Revoked' | 'Expired' | 'None' }) {
-  if (status === 'None') return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Not shared</span>;
+  const T = useLocale();
+  if (status === 'None') return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{T.reportsPages.detail.status.notShared}</span>;
   const palette: Record<string, { bg: string; fg: string }> = {
     Active: { bg: '#D1FAE5', fg: '#065F46' },
     Expired: { bg: '#FEF3C7', fg: '#92400E' },
     Revoked: { bg: '#FEE2E2', fg: '#991B1B' },
     Disabled: { bg: '#E5E7EB', fg: '#374151' },
   };
+  const label: Record<'Active' | 'Expired' | 'Revoked' | 'Disabled', string> = {
+    Active: T.reportsPages.detail.status.active,
+    Expired: T.reportsPages.detail.status.expired,
+    Revoked: T.reportsPages.detail.status.revoked,
+    Disabled: T.reportsPages.detail.status.disabled,
+  };
   const p = palette[status];
   return (
     <span style={{ background: p.bg, color: p.fg, fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 999, letterSpacing: '0.02em' }}>
-      {status}
+      {label[status]}
     </span>
   );
 }
@@ -360,6 +370,7 @@ function Metadata({
   report: import('../types/report').Report;
   weakestSectionTitle?: string;
 }) {
+  const T = useLocale();
   return (
     <section
       style={{
@@ -380,20 +391,20 @@ function Metadata({
           color: 'var(--text-primary)',
         }}
       >
-        Metadata
+        {T.reportsPages.detail.metadata.heading}
       </h3>
 
-      <Row label="Report ID">
+      <Row label={T.reportsPages.detail.metadata.reportId}>
         <code style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-secondary)' }}>
           {report.id}
         </code>
       </Row>
-      <Row label="Source draft">
+      <Row label={T.reportsPages.detail.metadata.sourceDraft}>
         <code style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-secondary)' }}>
           {report.draftId}
         </code>
       </Row>
-      <Row label="Status">
+      <Row label={T.reportsPages.detail.metadata.status}>
         <span
           style={{
             display: 'inline-flex',
@@ -411,13 +422,13 @@ function Metadata({
         </span>
       </Row>
       {weakestSectionTitle && (
-        <Row label="Weakest section">
+        <Row label={T.reportsPages.detail.metadata.weakestSection}>
           <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
             {weakestSectionTitle}
           </span>
         </Row>
       )}
-      <Row label="Frameworks">
+      <Row label={T.reportsPages.detail.metadata.frameworks}>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {['EU AI Act', 'GDPR', 'ISO 42001', 'NIST AI RMF'].map(f => (
             <span

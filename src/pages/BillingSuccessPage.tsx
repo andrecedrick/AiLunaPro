@@ -17,6 +17,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
 import { useBilling } from '../context/BillingContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
+import type { Dict } from '../lib/locale/i18n/en';
 import { syncSession } from '../lib/billing/stripeClient';
 import { dlog } from '../lib/log';
 
@@ -47,25 +50,26 @@ function extractSessionId(): string | null {
   return null;
 }
 
-function friendlyError(raw: string): string {
+function friendlyError(raw: string, t: Dict['billingPage']): string {
   if (raw.toLowerCase().includes('not yet completed')) {
-    return 'Payment is still being processed. Please wait a moment and try again.';
+    return t.success.errors.stillProcessing;
   }
   if (raw.toLowerCase().includes('no such checkout session')) {
-    return 'This checkout session is no longer valid. Please start a new subscription.';
+    return t.success.errors.sessionInvalid;
   }
   if (raw.toLowerCase().includes('not authenticated')) {
-    return 'You are not signed in. Please sign in and retry.';
+    return t.success.errors.notSignedIn;
   }
   if (raw.toLowerCase().includes('orgid')) {
-    return 'Could not link this subscription to your organization. Please contact support.';
+    return t.success.errors.orgLinkFailed;
   }
-  return 'Something went wrong while activating your subscription.';
+  return t.success.errors.generic;
 }
 
 export function BillingSuccessPage() {
   const { navigate }      = useRoute();
   const { hasActiveSubscription, subscription, refreshSubscription } = useBilling();
+  const T = useLocale();
 
   const [state,  setState]  = useState<SyncState>('idle');
   const [errMsg, setErrMsg] = useState<string | null>(null);
@@ -90,7 +94,7 @@ export function BillingSuccessPage() {
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Sync failed';
       console.error('[BillingSuccess] sync-session failed:', err);
-      setErrMsg(friendlyError(raw));
+      setErrMsg(friendlyError(raw, T.billingPage));
       setState('failed');
     }
   };
@@ -116,7 +120,7 @@ export function BillingSuccessPage() {
     sessionIdRef.current = sid;
     dlog('[BillingSuccess] extracted sessionId=', sid);
     if (!sid) {
-      setErrMsg('We could not detect your checkout session. Please return to Billing and try again.');
+      setErrMsg(T.billingPage.success.errors.noSessionDetected);
       setState('failed');
       return;
     }
@@ -150,20 +154,20 @@ export function BillingSuccessPage() {
   const showSpin = state === 'syncing' || (state === 'synced' && !hasActiveSubscription);
 
   const headline =
-    isFail                                 ? 'Sync failed'
-    : hasActiveSubscription                ? `Your ${subscription.plan} plan is active`
-    : 'Thank you — your subscription is being activated';
+    isFail                                 ? T.billingPage.success.headline.failed
+    : hasActiveSubscription                ? format(T.billingPage.success.headline.active, { plan: subscription.plan })
+    : T.billingPage.success.headline.activating;
 
   const subtext =
-    isFail                                 ? (errMsg ?? 'We could not finalize your subscription automatically.')
-    : hasActiveSubscription                ? 'Redirecting you to Billing…'
-    : 'We are syncing your subscription with Stripe.';
+    isFail                                 ? (errMsg ?? T.billingPage.success.subtext.failedFallback)
+    : hasActiveSubscription                ? T.billingPage.success.subtext.redirecting
+    : T.billingPage.success.subtext.syncing;
 
   const pillLabel =
-    isFail                                 ? 'Sync failed'
-    : hasActiveSubscription                ? 'Subscription activated'
-    : state === 'syncing'                  ? 'Syncing subscription…'
-    : 'Almost done…';
+    isFail                                 ? T.billingPage.success.pill.failed
+    : hasActiveSubscription                ? T.billingPage.success.pill.activated
+    : state === 'syncing'                  ? T.billingPage.success.pill.syncing
+    : T.billingPage.success.pill.almostDone;
 
   return (
     <div style={{
@@ -254,7 +258,7 @@ export function BillingSuccessPage() {
               cursor:       'pointer',
             }}
           >
-            Back to Billing
+            {T.billingPage.success.backToBilling}
           </button>
           {isFail && sessionIdRef.current && (
             <button
@@ -271,7 +275,7 @@ export function BillingSuccessPage() {
                 cursor:       'pointer',
               }}
             >
-              Retry sync
+              {T.billingPage.success.retrySync}
             </button>
           )}
         </div>

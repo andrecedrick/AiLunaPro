@@ -10,6 +10,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../context/LocaleContext';
 import { useReports } from '../context/ReportsContext';
 import { useRoute } from '../context/RouteContext';
 import { useToast } from '../hooks/useToast';
@@ -30,6 +31,7 @@ export function AuditHistoryPage() {
   const { createReport } = useReports();
   const { navigate } = useRoute();
   const { showToast } = useToast();
+  const T = useLocale();
 
   const orgId = session?.orgId ?? '';
   const isFirebase = resolveLayer('audit') === 'firebase';
@@ -56,21 +58,21 @@ export function AuditHistoryPage() {
 
   const handleGenerate = (row: Row) => {
     const id = createReport(row.draft, row.result);
-    showToast('Report generated', 'success');
+    showToast(T.auditHistory.toast.reportGenerated, 'success');
     navigate({ name: 'reports/detail', reportId: id });
   };
 
   const content = useMemo(() => {
-    if (status === 'loading') return <Muted>Loading audit history…</Muted>;
-    if (status === 'error')   return <Muted>Could not load audit history. Try again later.</Muted>;
+    if (status === 'loading') return <Muted>{T.auditHistory.states.loading}</Muted>;
+    if (status === 'error')   return <Muted>{T.auditHistory.states.error}</Muted>;
     if (rows.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>No submitted audits yet</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{T.auditHistory.empty.title}</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-            Submitted audits appear here for this workspace. Run a New Audit to get started.
+            {T.auditHistory.empty.description}
           </div>
-          <button type="button" onClick={() => navigate({ name: 'audit/new' })} style={btnPrimary}>+ Start an audit</button>
+          <button type="button" onClick={() => navigate({ name: 'audit/new' })} style={btnPrimary}>{T.auditHistory.empty.startAudit}</button>
         </div>
       );
     }
@@ -79,7 +81,7 @@ export function AuditHistoryPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr>
-              {['Submitted', 'Score', 'Risk', 'Findings', ''].map((h, i) => (
+              {[T.auditHistory.columns.submitted, T.auditHistory.columns.score, T.auditHistory.columns.risk, T.auditHistory.columns.findings, ''].map((h, i) => (
                 <th key={i} style={th}>{h}</th>
               ))}
             </tr>
@@ -88,11 +90,11 @@ export function AuditHistoryPage() {
             {rows.map(row => (
               <tr key={row.draft.id}>
                 <td style={td}>{formatDate(row.draft.submittedAt || row.draft.updatedAt, 'datetime')}</td>
-                <td style={td}><strong>{row.result.globalScore}</strong><span style={{ color: 'var(--text-muted)' }}>/100</span></td>
+                <td style={td}><strong>{row.result.globalScore}</strong><span style={{ color: 'var(--text-muted)' }}>{T.auditHistory.row.scoreOutOf}</span></td>
                 <td style={td}>{row.result.riskLevel}</td>
                 <td style={td}>{row.result.findings.length}</td>
                 <td style={{ ...td, textAlign: 'right' }}>
-                  <button type="button" onClick={() => handleGenerate(row)} style={btnGhost}>Generate report</button>
+                  <button type="button" onClick={() => handleGenerate(row)} style={btnGhost}>{T.auditHistory.row.generateReport}</button>
                 </td>
               </tr>
             ))}
@@ -105,9 +107,9 @@ export function AuditHistoryPage() {
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '32px 24px' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>Audit history</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>{T.auditHistory.header.title}</h1>
       <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 24px', lineHeight: 1.55 }}>
-        Submitted audits for this workspace. Generate a report to create a shareable snapshot.
+        {T.auditHistory.header.subtitle}
       </p>
       {content}
     </div>

@@ -15,8 +15,11 @@
  *   - owner / admin / billing: can view + buy.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
+import type { Dict } from '../lib/locale/i18n/en';
 import { dlog } from '../lib/log';
 import { useRoute } from '../context/RouteContext';
 import { useToast } from '../hooks/useToast';
@@ -39,11 +42,13 @@ interface PackDef {
   highlight?:  boolean;
 }
 
-const PACKS: PackDef[] = [
-  { pack: 'starter', label: 'Starter', tokens:   5_000, blurb: 'Top off a low cycle.' },
-  { pack: 'pro',     label: 'Pro',     tokens:  25_000, blurb: 'Most common refill.', highlight: true },
-  { pack: 'max',     label: 'Max',     tokens: 100_000, blurb: 'Big workload boost.' },
-];
+function buildPacks(t: Dict['tokensPage']): PackDef[] {
+  return [
+    { pack: 'starter', label: t.packs.starterLabel, tokens:   5_000, blurb: t.packs.starterBlurb },
+    { pack: 'pro',     label: t.packs.proLabel,     tokens:  25_000, blurb: t.packs.proBlurb, highlight: true },
+    { pack: 'max',     label: t.packs.maxLabel,     tokens: 100_000, blurb: t.packs.maxBlurb },
+  ];
+}
 
 function formatDate(iso: string | undefined): string {
   if (!iso) return '—';
@@ -103,6 +108,7 @@ function Stat({ label, value, accent }: { label: string; value: string | number;
 
 function LockedView({ message }: { message: string }) {
   const { navigate } = useRoute();
+  const T = useLocale();
   return (
     <div style={{ padding: 40, textAlign: 'center' }}>
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}>
@@ -110,7 +116,7 @@ function LockedView({ message }: { message: string }) {
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>
       <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-        Tokens unavailable
+        {T.tokensPage.locked.title}
       </div>
       <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 20 }}>
         {message}
@@ -123,7 +129,7 @@ function LockedView({ message }: { message: string }) {
           background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
         }}
       >
-        Back to dashboard
+        {T.tokensPage.locked.backToDashboard}
       </button>
     </div>
   );
@@ -133,6 +139,7 @@ export function TokensPage() {
   const { session } = useAuth();
   const { showToast } = useToast();
   const { balance, loading, enabled, refresh } = useTokens();
+  const T = useLocale();
 
   const role = session?.role ?? null;
   const orgId = session?.orgId ?? null;
@@ -163,14 +170,14 @@ export function TokensPage() {
     const topup  = params.get('topup');
     if (topup === 'success') {
       const sid = params.get('session_id');
-      showToast('Token purchase completed. Your balance will update shortly.', 'success');
+      showToast(T.tokensPage.toasts.purchaseCompleted, 'success');
 
       // Detect whether webhook has already updated the balance.
       const updatedAtMs = balance?.updatedAt ? Date.parse(balance.updatedAt) : 0;
       const recentlyCredited = updatedAtMs > 0 && (Date.now() - updatedAtMs) < 60_000;
 
       if (!recentlyCredited) {
-        setTopupNotice('Payment received. Waiting for Stripe webhook to update your token balance.');
+        setTopupNotice(T.tokensPage.webhook.notice);
         setWaitingWebhook(true);
         // Snapshot the current topupTotal so the watch effect detects growth.
         lastSeenTopupRef.current = balance?.topupTotal ?? 0;
@@ -182,7 +189,7 @@ export function TokensPage() {
       dlog('[TokensPage] topup success — sessionId:', sid, 'recentlyCredited:', recentlyCredited);
     }
     if (topup === 'cancel') {
-      showToast('Token purchase cancelled.', 'info');
+      showToast(T.tokensPage.toasts.purchaseCancelled, 'info');
       window.history.replaceState({}, '', '#/billing/tokens');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,13 +256,13 @@ export function TokensPage() {
   }, [enabled, orgId]);
 
   if (!enabled) {
-    if (role === 'client') return <LockedView message="Tokens are not visible from a client account." />;
-    return <LockedView message="Tokens are unavailable for this workspace." />;
+    if (role === 'client') return <LockedView message={T.tokensPage.locked.clientMessage} />;
+    return <LockedView message={T.tokensPage.locked.workspaceMessage} />;
   }
 
   const handleBuy = async (pack: TokenPack) => {
     if (!canBuy) {
-      showToast('Only owners, admins, or billing managers can buy token packs.', 'warning');
+      showToast(T.tokensPage.toasts.buyForbidden, 'warning');
       return;
     }
     if (!orgId) return;
@@ -326,15 +333,17 @@ export function TokensPage() {
     }
   };
 
+  const PACKS = useMemo(() => buildPacks(T.tokensPage), [T]);
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-          Tokens
+          {T.tokensPage.header.title}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-          Track usage, monitor your monthly allocation, and buy top-ups when needed.
+          {T.tokensPage.header.subtitle}
         </p>
       </div>
 
@@ -416,7 +425,7 @@ export function TokensPage() {
               cursor: 'pointer',
             }}
           >
-            Refresh balance
+            {T.tokensPage.webhook.refreshBalance}
           </button>
         </div>
       )}
@@ -424,21 +433,21 @@ export function TokensPage() {
       {/* Balance summary */}
       <Card style={{ marginBottom: 24 }}>
         {!balance && loading && (
-          <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading balance…</div>
+          <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{T.tokensPage.balance.loading}</div>
         )}
         {!balance && !loading && (
           <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-            No token balance yet. It will be created on your first audit.
+            {T.tokensPage.balance.empty}
           </div>
         )}
         {balance && (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginBottom: 18 }}>
-              <Stat label="Balance"            value={safeBal      === null ? '—' : balanceNum}    accent="violet" />
-              <Stat label="Monthly allocation" value={safeAlloc    === null ? '—' : allocationNum} />
-              <Stat label="Consumed"           value={safeConsumed === null ? '—' : consumedNum}   accent="red" />
-              <Stat label="Rollover"           value={safeRollover === null ? '—' : rolloverNum}   accent="green" />
-              <Stat label="Top-ups"            value={safeTopupTot === null ? '—' : topupTotalNum} accent="green" />
+              <Stat label={T.tokensPage.balance.statBalance}            value={safeBal      === null ? '—' : balanceNum}    accent="violet" />
+              <Stat label={T.tokensPage.balance.statMonthlyAllocation} value={safeAlloc    === null ? '—' : allocationNum} />
+              <Stat label={T.tokensPage.balance.statConsumed}           value={safeConsumed === null ? '—' : consumedNum}   accent="red" />
+              <Stat label={T.tokensPage.balance.statRollover}           value={safeRollover === null ? '—' : rolloverNum}   accent="green" />
+              <Stat label={T.tokensPage.balance.statTopups}            value={safeTopupTot === null ? '—' : topupTotalNum} accent="green" />
             </div>
             {/* Bar */}
             <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 4, overflow: 'hidden' }}>
@@ -449,8 +458,8 @@ export function TokensPage() {
               }} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-              <span>Cycle ends: {formatDate(balance.cycleEnd)}</span>
-              <span>Last reset: {formatDate(balance.lastReset)}</span>
+              <span>{format(T.tokensPage.balance.cycleEnds, { cycleEnd: formatDate(balance.cycleEnd) })}</span>
+              <span>{format(T.tokensPage.balance.lastReset, { lastReset: formatDate(balance.lastReset) })}</span>
             </div>
           </>
         )}
@@ -459,10 +468,10 @@ export function TokensPage() {
       {/* Top-up packs */}
       <div style={{ marginBottom: 28 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 12px' }}>
-          Buy more tokens
+          {T.tokensPage.packs.sectionTitle}
         </h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>
-          Token packs are currently billed in USD. Top-up tokens never expire.
+          {T.tokensPage.packs.sectionNote}
         </p>
         {!canBuy && (
           <div style={{
@@ -470,7 +479,7 @@ export function TokensPage() {
             background: 'var(--yellow-soft-bg)', color: 'var(--yellow-text)',
             fontSize: 13, marginBottom: 14,
           }}>
-            You can view tokens but only owners, admins, and billing managers can buy packs.
+            {T.tokensPage.packs.readOnlyNotice}
           </div>
         )}
         <div style={{
@@ -502,10 +511,10 @@ export function TokensPage() {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
               }}>
-                +{p.tokens.toLocaleString('en-US')}
+                {format(T.tokensPage.packs.amountPrefix, { amount: p.tokens.toLocaleString('en-US') })}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                tokens
+                {T.tokensPage.packs.tokensUnit}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.4, flex: 1 }}>
                 {p.blurb}
@@ -525,7 +534,7 @@ export function TokensPage() {
                   transition: 'all 0.15s ease',
                 }}
               >
-                {pendingPack === p.pack ? 'Redirecting…' : canBuy ? 'Buy pack' : 'Read-only'}
+                {pendingPack === p.pack ? T.tokensPage.packs.redirecting : canBuy ? T.tokensPage.packs.buyPack : T.tokensPage.packs.readOnlyButton}
               </button>
             </div>
           ))}
@@ -543,11 +552,11 @@ export function TokensPage() {
       {/* Usage history */}
       <div style={{ marginBottom: 28 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 12px' }}>
-          Recent usage
+          {T.tokensPage.usage.sectionTitle}
         </h2>
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           {usageLoading && (
-            <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>Loading usage…</div>
+            <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>{T.tokensPage.usage.loading}</div>
           )}
           {!usageLoading && usageError && (
             <div style={{ padding: 24, color: 'var(--red-text)', fontSize: 14 }}>
@@ -556,21 +565,27 @@ export function TokensPage() {
           )}
           {!usageLoading && !usageError && (usage === null || usage.length === 0) && (
             <div style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>
-              No usage yet.
+              {T.tokensPage.usage.empty}
             </div>
           )}
           {!usageLoading && !usageError && usage && usage.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Date', 'Module', 'Action', 'Tokens', 'Status'].map(h => (
-                    <th key={h} style={{
+                  {[
+                    { key: 'Date',   label: T.tokensPage.usage.colDate },
+                    { key: 'Module', label: T.tokensPage.usage.colModule },
+                    { key: 'Action', label: T.tokensPage.usage.colAction },
+                    { key: 'Tokens', label: T.tokensPage.usage.colTokens },
+                    { key: 'Status', label: T.tokensPage.usage.colStatus },
+                  ].map(h => (
+                    <th key={h.key} style={{
                       padding: '12px 20px', textAlign: 'left',
                       fontSize: 12, fontWeight: 700,
                       color: 'var(--text-muted)',
                       textTransform: 'uppercase', letterSpacing: 0.6,
                     }}>
-                      {h}
+                      {h.label}
                     </th>
                   ))}
                 </tr>
@@ -588,7 +603,7 @@ export function TokensPage() {
                       {ev.action}
                     </td>
                     <td style={{ padding: '13px 20px', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      −{ev.tokens.toLocaleString('en-US')}
+                      {format(T.tokensPage.usage.tokensSpent, { tokens: ev.tokens.toLocaleString('en-US') })}
                     </td>
                     <td style={{ padding: '13px 20px' }}>
                       <span style={{

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import {
   APPROVAL_LABEL,
   DATA_TYPES,
@@ -27,6 +29,7 @@ interface Props {
 type FormState = Omit<RegistryItem, 'id' | 'createdAt' | 'updatedAt'>;
 
 export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
+  const T = useLocale();
   const [form, setForm] = useState<FormState>(() => {
     if (mode.kind === 'edit') {
       const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = mode.item;
@@ -76,9 +79,9 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
 
   const handleSave = () => {
     const next: Partial<Record<keyof FormState, string>> = {};
-    if (form.toolName.trim().length === 0) next.toolName = 'Required';
-    if (form.department.trim().length === 0) next.department = 'Required';
-    if (form.purpose.trim().length === 0) next.purpose = 'Required';
+    if (form.toolName.trim().length === 0) next.toolName = T.registry.modal.requiredError;
+    if (form.department.trim().length === 0) next.department = T.registry.modal.requiredError;
+    if (form.purpose.trim().length === 0) next.purpose = T.registry.modal.requiredError;
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     onSave(form, mode);
@@ -86,7 +89,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
 
   const handleDelete = () => {
     if (mode.kind !== 'edit' || !onDelete) return;
-    if (confirm(`Remove "${mode.item.toolName}" from the registry? This cannot be undone.`)) {
+    if (confirm(format(T.registry.modal.deleteConfirm, { toolName: mode.item.toolName }))) {
       onDelete(mode.item.id);
     }
   };
@@ -145,7 +148,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
               letterSpacing: -0.3,
             }}
           >
-            {isEdit ? 'Edit AI tool' : 'Add AI tool'}
+            {isEdit ? T.registry.modal.titleEdit : T.registry.modal.titleAdd}
           </h3>
           {isEdit && (
             <span
@@ -168,8 +171,8 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
           }}
         >
           {isEdit
-            ? 'Update what your team knows about this tool. Changes save immediately to the local registry.'
-            : 'Track an AI tool used by your team. All fields can be edited later.'}
+            ? T.registry.modal.subtitleEdit
+            : T.registry.modal.subtitleAdd}
         </p>
 
         {/* Two-column form grid */}
@@ -182,28 +185,28 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
         >
           {/* Left column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Field label="Tool name" required error={errors.toolName}>
+            <Field label={T.registry.modal.fields.toolName} required error={errors.toolName}>
               <input
                 type="text"
                 value={form.toolName}
                 onChange={e => update('toolName', e.target.value)}
-                placeholder="e.g. Customer support copilot"
+                placeholder={T.registry.modal.placeholders.toolName}
                 style={inputStyle}
                 autoFocus
               />
             </Field>
 
-            <Field label="Purpose" required error={errors.purpose}>
+            <Field label={T.registry.modal.fields.purpose} required error={errors.purpose}>
               <textarea
                 value={form.purpose}
                 onChange={e => update('purpose', e.target.value)}
                 rows={3}
-                placeholder="What does this tool do?"
+                placeholder={T.registry.modal.placeholders.purpose}
                 style={{ ...inputStyle, minHeight: 76, resize: 'vertical' }}
               />
             </Field>
 
-            <Field label="Data types processed">
+            <Field label={T.registry.modal.fields.dataTypes}>
               <div
                 style={{
                   display: 'grid',
@@ -243,7 +246,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
               </div>
             </Field>
 
-            <Field label="Mitigations">
+            <Field label={T.registry.modal.fields.mitigations}>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input
                   type="text"
@@ -255,7 +258,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                       addMitigation();
                     }
                   }}
-                  placeholder="Add a mitigation and press Enter"
+                  placeholder={T.registry.modal.placeholders.mitigation}
                   style={inputStyle}
                 />
                 <button
@@ -307,7 +310,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                           lineHeight: 1,
                           padding: 0,
                         }}
-                        aria-label={`Remove mitigation ${i + 1}`}
+                        aria-label={format(T.registry.modal.removeMitigationAria, { index: i + 1 })}
                       >
                         ×
                       </button>
@@ -317,12 +320,12 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
               )}
             </Field>
 
-            <Field label="Notes">
+            <Field label={T.registry.modal.fields.notes}>
               <textarea
                 value={form.notes}
                 onChange={e => update('notes', e.target.value)}
                 rows={3}
-                placeholder="Vendor, residency, owner, anything worth recording…"
+                placeholder={T.registry.modal.placeholders.notes}
                 style={{ ...inputStyle, minHeight: 76, resize: 'vertical' }}
               />
             </Field>
@@ -330,7 +333,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
 
           {/* Right column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Field label="Department" required error={errors.department}>
+            <Field label={T.registry.modal.fields.department} required error={errors.department}>
               <select
                 value={form.department}
                 onChange={e => update('department', e.target.value)}
@@ -344,7 +347,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
               </select>
             </Field>
 
-            <Field label="Approval status">
+            <Field label={T.registry.modal.fields.approvalStatus}>
               <select
                 value={form.approvalStatus}
                 onChange={e => update('approvalStatus', e.target.value as ApprovalStatus)}
@@ -358,20 +361,20 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
               </select>
             </Field>
 
-            <Field label="Risk level">
+            <Field label={T.registry.modal.fields.riskLevel}>
               <select
                 value={form.riskLevel}
                 onChange={e => update('riskLevel', e.target.value as RegistryRiskLevel)}
                 style={inputStyle}
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
+                <option value="low">{T.registry.modal.riskOptions.low}</option>
+                <option value="medium">{T.registry.modal.riskOptions.medium}</option>
+                <option value="high">{T.registry.modal.riskOptions.high}</option>
+                <option value="critical">{T.registry.modal.riskOptions.critical}</option>
               </select>
             </Field>
 
-            <Field label="Human oversight">
+            <Field label={T.registry.modal.fields.humanOversight}>
               <select
                 value={form.humanOversight}
                 onChange={e => update('humanOversight', e.target.value as OversightModel)}
@@ -385,7 +388,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
               </select>
             </Field>
 
-            <Field label="Next review date">
+            <Field label={T.registry.modal.fields.nextReviewDate}>
               <input
                 type="date"
                 value={form.reviewDate ?? ''}
@@ -393,7 +396,7 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                 style={inputStyle}
               />
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                Leave empty if no review is scheduled.
+                {T.registry.modal.reviewDateHint}
               </div>
             </Field>
 
@@ -409,8 +412,10 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                   lineHeight: 1.5,
                 }}
               >
-                Created {formatDate(mode.item.createdAt)} · Last updated{' '}
-                {formatDate(mode.item.updatedAt)}
+                {format(T.registry.modal.auditTrail, {
+                  createdDate: formatDate(mode.item.createdAt),
+                  updatedDate: formatDate(mode.item.updatedAt),
+                })}
               </div>
             )}
           </div>
@@ -437,16 +442,16 @@ export function RegistryItemModal({ mode, onClose, onSave, onDelete }: Props) {
                 onClick={handleDelete}
                 style={{ color: 'var(--red-text)' }}
               >
-                Delete tool
+                {T.registry.modal.buttons.delete}
               </Button>
             )}
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <Button variant="ghost" size="md" onClick={onClose}>
-              Cancel
+              {T.registry.modal.buttons.cancel}
             </Button>
             <Button variant="primary" size="md" onClick={handleSave}>
-              {isEdit ? 'Save changes' : 'Add to registry'}
+              {isEdit ? T.registry.modal.buttons.saveChanges : T.registry.modal.buttons.addToRegistry}
             </Button>
           </div>
         </div>

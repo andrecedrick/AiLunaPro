@@ -11,12 +11,13 @@ export function CTABlock() {
   const { isAuthenticated, session } = useAuth();
   const { hasActiveSubscription } = useBilling();
   const { showToast } = useToast();
-  const D = useLocale().dashboard.cta;
+  const T = useLocale();
+  const D = T.dashboard.cta;
   const [demoOpen, setDemoOpen] = useState(false);
 
   const handleStartTrial = () => {
     if (!isAuthenticated) navigate({ name: 'signup' });
-    else if (hasActiveSubscription) showToast('You already have an active plan.', 'info');
+    else if (hasActiveSubscription) showToast(T.dashboardHome.cta.toast.alreadyActivePlan, 'info');
     else navigate({ name: 'billing' });
   };
 
@@ -40,7 +41,7 @@ export function CTABlock() {
         <DemoModal
           onClose={() => setDemoOpen(false)}
           orgId={session?.orgId ?? ''}
-          onSubmitted={() => { setDemoOpen(false); showToast("Demo request sent. We'll review it and get back to you.", 'success'); }}
+          onSubmitted={() => { setDemoOpen(false); showToast(T.dashboardHome.cta.toast.demoRequestSent, 'success'); }}
         />
       )}
       <div
@@ -95,7 +96,7 @@ export function CTABlock() {
             letterSpacing: -0.5,
           }}
         >
-          Ready to achieve full AI compliance?
+          {T.dashboardHome.cta.heading}
         </h2>
         <p
           style={{
@@ -106,8 +107,7 @@ export function CTABlock() {
             maxWidth: 480,
           }}
         >
-          Join organizations using AiLunaPro to automate their compliance
-          workflows, reduce risk, and build trust with stakeholders.
+          {T.dashboardHome.cta.body}
         </p>
       </div>
 
@@ -163,6 +163,7 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  const T = useLocale();
 
   // B2.2: actually persist the request (worker-only demo_requests store) —
   // success is only reported once the server confirmed the write.
@@ -174,7 +175,7 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
       await submitDemoRequest({ orgId, name, email, company: company || undefined, message: message || undefined });
       onSubmitted();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send your request. Please try again.');
+      setError(err instanceof Error ? err.message : T.dashboardHome.cta.demoModal.errorFallback);
       setSending(false);
     }
   };
@@ -196,24 +197,24 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
           boxShadow: '0 16px 40px rgba(0,0,0,0.2)',
         }}
       >
-        <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>Schedule a demo</h3>
+        <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>{T.dashboardHome.cta.demoModal.title}</h3>
         <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>
-          Tell us a bit about your team and we'll be in touch.
+          {T.dashboardHome.cta.demoModal.subtitle}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Full name" style={inputStyle()} />
-          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Work email" type="email" style={inputStyle()} />
-          <input value={company} onChange={e => setCompany(e.target.value)} placeholder="Company" style={inputStyle()} />
-          <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="What would you like to discuss?" rows={3} style={{ ...inputStyle(), resize: 'vertical', fontFamily: 'inherit' }} />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderFullName} style={inputStyle()} />
+          <input value={email} onChange={e => setEmail(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderWorkEmail} type="email" style={inputStyle()} />
+          <input value={company} onChange={e => setCompany(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderCompany} style={inputStyle()} />
+          <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderMessage} rows={3} style={{ ...inputStyle(), resize: 'vertical', fontFamily: 'inherit' }} />
         </div>
         {error && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--red-text, #DC2626)' }}>{error}</p>}
         <p style={{ margin: '12px 0 0', fontSize: 11.5, color: 'var(--text-muted)' }}>
-          We only use these details to respond to your request.
+          {T.dashboardHome.cta.demoModal.privacyNote}
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-          <button type="button" onClick={onClose} style={btnGhost()}>Cancel</button>
+          <button type="button" onClick={onClose} style={btnGhost()}>{T.dashboardHome.cta.demoModal.cancel}</button>
           <button type="button" onClick={onSend} disabled={!name || !email || sending} style={btnPrimary(!name || !email || sending)}>
-            {sending ? 'Sending…' : 'Request demo'}
+            {sending ? T.dashboardHome.cta.demoModal.submitting : T.dashboardHome.cta.demoModal.submit}
           </button>
         </div>
       </div>

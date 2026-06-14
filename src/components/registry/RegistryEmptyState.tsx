@@ -1,4 +1,5 @@
 import { Button } from '../ui/Button';
+import { useLocale } from '../../context/LocaleContext';
 
 interface Props {
   variant: 'no-items' | 'no-matches';
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function RegistryEmptyState({ variant, onAdd, onClearFilters }: Props) {
+  const T = useLocale();
   const isNoItems = variant === 'no-items';
   return (
     <div
@@ -50,7 +52,7 @@ export function RegistryEmptyState({ variant, onAdd, onClearFilters }: Props) {
           letterSpacing: -0.2,
         }}
       >
-        {isNoItems ? 'No AI tools in the registry yet' : 'No tools match these filters'}
+        {isNoItems ? T.registry.empty.noItems.title : T.registry.empty.noMatches.title}
       </h3>
       <p
         style={{
@@ -62,16 +64,16 @@ export function RegistryEmptyState({ variant, onAdd, onClearFilters }: Props) {
         }}
       >
         {isNoItems
-          ? 'Track every AI tool used across your organization — purpose, data, oversight, and mitigations. The registry feeds your audits and reports.'
-          : 'Try widening the filters, or clear them to see the full registry.'}
+          ? T.registry.empty.noItems.body
+          : T.registry.empty.noMatches.body}
       </p>
       {isNoItems ? (
         <Button variant="primary" size="md" onClick={onAdd}>
-          + Add your first tool
+          {T.registry.empty.noItems.action}
         </Button>
       ) : (
         <Button variant="secondary" size="md" onClick={onClearFilters}>
-          Clear filters
+          {T.registry.empty.noMatches.action}
         </Button>
       )}
     </div>

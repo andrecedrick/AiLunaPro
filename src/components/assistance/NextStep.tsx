@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { SectionTitle } from './SectionTitle';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import type { AuditResult } from '../../types/scoring';
 import { getNextStep } from '../../lib/scoring/assistance';
 
 const SAVED_KEY = 'ailunapro-assistance-saved-at';
 
 export function NextStep({ result }: { result: AuditResult }) {
-  const step = getNextStep(result);
+  const T = useLocale();
+  const step = getNextStep(result, T.assistancePage);
   const [savedAt, setSavedAt] = useState<string | null>(() => {
     try {
       return localStorage.getItem(SAVED_KEY);
@@ -51,7 +54,7 @@ export function NextStep({ result }: { result: AuditResult }) {
         transition: 'background 0.2s, border-color 0.2s',
       }}
     >
-      <SectionTitle eyebrow="06 · Recommended" title="Your next step" />
+      <SectionTitle eyebrow={T.assistancePage.nextStep.eyebrow} title={T.assistancePage.nextStep.title} />
 
       <div
         style={{
@@ -92,7 +95,7 @@ export function NextStep({ result }: { result: AuditResult }) {
               marginBottom: 12,
             }}
           >
-            Next 1 thing
+            {T.assistancePage.nextStep.nextOneThing}
           </div>
           <h3
             style={{
@@ -174,7 +177,7 @@ export function NextStep({ result }: { result: AuditResult }) {
                     backdropFilter: 'blur(4px)',
                   }}
                 >
-                  {isSave && savedAt ? '✓ Saved' : isRemind && reminderSet ? '✓ Reminder set' : isExport && exported ? '✓ Exported' : c.label}
+                  {isSave && savedAt ? T.assistancePage.nextStep.ctas.saved : isRemind && reminderSet ? T.assistancePage.nextStep.ctas.reminderSet : isExport && exported ? T.assistancePage.nextStep.ctas.exported : c.label}
                 </button>
               );
             })}
@@ -189,7 +192,7 @@ export function NextStep({ result }: { result: AuditResult }) {
                 fontStyle: 'italic',
               }}
             >
-              Saved locally at {new Date(savedAt).toLocaleString()}.
+              {format(T.assistancePage.nextStep.savedAt, { timestamp: new Date(savedAt).toLocaleString() })}
             </p>
           )}
         </div>
@@ -205,8 +208,7 @@ export function NextStep({ result }: { result: AuditResult }) {
           textAlign: 'center',
         }}
       >
-        We'll keep this plan available locally — no upload, no account upgrade required.
-        Come back whenever your team is ready to act.
+        {T.assistancePage.nextStep.localOnlyNote}
       </p>
     </section>
   );
