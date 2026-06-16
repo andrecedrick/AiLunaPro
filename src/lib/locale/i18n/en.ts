@@ -2282,6 +2282,7 @@ export const en = {
       "requiredMark": "*",
       "submit": {
         "loading": "Calculating…",
+        "unlock": "Email me my full report →",
         "idle": "Calculate my ROI"
       },
       "signInPrompt": "Already have an account?",

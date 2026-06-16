@@ -2267,6 +2267,7 @@ export const de: Dict = {
       "requiredMark": "*",
       "submit": {
         "loading": "Wird berechnet…",
+        "unlock": "Vollständigen Bericht per E-Mail erhalten →",
         "idle": "Meinen ROI berechnen"
       },
       "signInPrompt": "Haben Sie bereits ein Konto?",

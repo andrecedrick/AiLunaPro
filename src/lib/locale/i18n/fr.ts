@@ -2267,6 +2267,7 @@ export const fr: Dict = {
       "requiredMark": "*",
       "submit": {
         "loading": "Calcul en cours…",
+        "unlock": "Recevoir mon rapport complet par e-mail →",
         "idle": "Calculer mon ROI"
       },
       "signInPrompt": "Vous avez déjà un compte ?",

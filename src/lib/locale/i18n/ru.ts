@@ -2268,6 +2268,7 @@ export const ru: Dict = {
       "requiredMark": "*",
       "submit": {
         "loading": "Вычисляем…",
+        "unlock": "Прислать мой полный отчёт на email →",
         "idle": "Рассчитать мой ROI"
       },
       "signInPrompt": "Уже есть аккаунт?",

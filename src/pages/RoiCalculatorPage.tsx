@@ -23,6 +23,7 @@ import type { RoiResult } from '../types/roi';
 import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
 import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
 import { track } from '../lib/analytics/track';
+import { computeRoiPreview, type RoiPreview } from '../lib/roi/score';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
@@ -55,6 +56,7 @@ export function RoiCalculatorPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errors,     setErrors]     = useState<FormErrors>({});
   const [result,     setResult]     = useState<RoiResult | null>(null);
+  const [preview,    setPreview]    = useState<RoiPreview | null>(null);
 
   // B2.4: persist in-progress inputs locally (NON-PII only — never email or
   // company) so an abandoned run can be resumed; signal flow start once.
@@ -69,6 +71,60 @@ export function RoiCalculatorPage() {
     }
     saveFlowProgress('roi', { teamSize, hours, cost, workflow });
   }, [teamSize, hours, cost, workflow, result, resumed]);
+
+  // A1 Change 2b (value-first): once the savings are revealed, keep them live as
+  // the visitor tweaks inputs. Recompute only when inputs are valid (never show
+  // NaN); the functional updater keeps `preview` out of the dep list (no loop).
+  useEffect(() => {
+    setPreview(prev => {
+      if (!prev) return prev;
+      const hoursNum = Number(hours);
+      const costNum  = Number(cost);
+      if (!workflow) return prev;
+      if (!Number.isFinite(hoursNum) || hoursNum < 0 || hoursNum > 10000) return prev;
+      if (!Number.isFinite(costNum)  || costNum  < 1 || costNum  > 1000)  return prev;
+      return computeRoiPreview({
+        monthlyHoursOnRepetitiveWork: hoursNum,
+        averageHourlyCost:            costNum,
+        targetWorkflow:               workflow as Workflow,
+      });
+    });
+  }, [hours, cost, workflow]);
+
+  // A1 Change 2b (value-first): reveal the savings CLIENT-SIDE before the email
+  // gate. No email/consent/captcha required to see them; the email step below
+  // unlocks the full result (recommended agents) + saves it. The previewed
+  // figures are identical to the server's (locked by the parity test).
+  const onSeePreview = () => {
+    const err: FormErrors = {};
+    const teamSizeNum = Number(teamSize);
+    if (!Number.isFinite(teamSizeNum) || !Number.isInteger(teamSizeNum) || teamSizeNum < 1 || teamSizeNum > 10000) {
+      err.teamSize = T.publicTools.roi.errors.teamSize;
+    }
+    const hoursNum = Number(hours);
+    if (!Number.isFinite(hoursNum) || hoursNum < 0 || hoursNum > 10000) {
+      err.hours = T.publicTools.roi.errors.hours;
+    }
+    const costNum = Number(cost);
+    if (!Number.isFinite(costNum) || costNum < 1 || costNum > 1000) {
+      err.cost = T.publicTools.roi.errors.cost;
+    }
+    if (!workflow || !(WORKFLOW_VALUES as readonly string[]).includes(workflow)) {
+      err.workflow = T.publicTools.roi.errors.workflow;
+    }
+    setErrors(err);
+    if (Object.keys(err).length > 0) return;
+    setPreview(computeRoiPreview({
+      monthlyHoursOnRepetitiveWork: hoursNum,
+      averageHourlyCost:            costNum,
+      targetWorkflow:               workflow as Workflow,
+    }));
+    track('score_viewed', { flow: 'roi' });
+    requestAnimationFrame(() => {
+      const el = document.getElementById('roi-preview');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +175,6 @@ export function RoiCalculatorPage() {
       clearFlowProgress('roi');
       savePendingResult({ kind: 'roi', headline: `estimated savings of $${Math.round(r.result.estimatedMonthlyCostSaved).toLocaleString('en-US')}/month`, createdAt: new Date().toISOString() });
       track('lead_flow_completed', { flow: 'roi' });
-      track('score_viewed', { flow: 'roi' });
       requestAnimationFrame(() => {
         const el = document.getElementById('roi-result');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -134,6 +189,7 @@ export function RoiCalculatorPage() {
 
   const reset = () => {
     setResult(null);
+    setPreview(null);
     setTeamSize(''); setHours(''); setCost('50'); setWorkflow('');
     setEmail(''); setCompany(''); setConsent(false);
     clearFlowProgress('roi');
@@ -220,6 +276,38 @@ export function RoiCalculatorPage() {
               </Field>
             </fieldset>
 
+            {/* A1 Change 2b — value-first: reveal the savings before the email gate. */}
+            {!preview ? (
+              <div style={{ marginTop: 4, display: 'flex', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={onSeePreview}
+                  style={{
+                    padding: '13px 32px', borderRadius: 12, border: 'none',
+                    background: 'var(--violet)', color: '#fff',
+                    fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                    boxShadow: '0 8px 22px rgba(124,58,237,0.25)',
+                  }}
+                >
+                  {T.publicTools.roi.submit.idle}
+                </button>
+              </div>
+            ) : (
+            <>
+            {/* Value-first savings reveal (computed client-side; identical to the saved result) */}
+            <div id="roi-preview" style={{ marginTop: 24, padding: '22px 24px', borderRadius: 14, border: '2px solid var(--violet)', background: 'var(--brand-soft-bg, #f5f3ff)', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 6 }}>{T.publicTools.roi.result.monthlySavingsLabel}</div>
+              <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--green-text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>${preview.estimatedMonthlyCostSaved.toLocaleString('en-US')}<span style={{ fontSize: 20, color: 'var(--text-muted)', fontWeight: 600 }}>{T.publicTools.roi.result.monthlySavingsUnit}</span></div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 24, marginTop: 18 }}>
+                <Stat label={T.publicTools.roi.result.yearlySavingsLabel} value={`$${preview.estimatedYearlyCostSaved.toLocaleString('en-US')}`} />
+                <Stat label={T.publicTools.roi.result.timeSavedLabel} value={format(T.publicTools.roi.result.timeSavedValue, { hours: preview.estimatedTimeSavedHoursPerMonth.toLocaleString('en-US') })} />
+                <Stat label={T.publicTools.roi.result.paybackLabel} value={preview.estimatedPaybackMonths === null ? T.publicTools.roi.result.paybackEmpty : format(T.publicTools.roi.result.paybackValue, { months: preview.estimatedPaybackMonths.toLocaleString('en-US') })} />
+              </div>
+              <div style={{ marginTop: 14, fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                {T.publicTools.roi.result.disclaimer}{' '}{T.publicTools.roi.result.pricingNote}
+              </div>
+            </div>
+
             {/* Lead capture */}
             <fieldset style={fieldsetStyle()}>
               <legend style={legendStyle()}>{T.publicTools.roi.leadCapture.legend}</legend>
@@ -286,9 +374,11 @@ export function RoiCalculatorPage() {
                   transition: 'all 0.15s ease',
                 }}
               >
-                {submitting ? T.publicTools.roi.submit.loading : T.publicTools.roi.submit.idle}
+                {submitting ? T.publicTools.roi.submit.loading : T.publicTools.roi.submit.unlock}
               </button>
             </div>
+            </>
+            )}
 
             <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
               {T.publicTools.roi.signInPrompt}{' '}

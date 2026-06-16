@@ -2269,6 +2269,7 @@ export const zh: Dict = {
       "requiredMark": "*",
       "submit": {
         "loading": "正在计算……",
+        "unlock": "将我的完整报告发送到邮箱 →",
         "idle": "计算我的 ROI"
       },
       "signInPrompt": "已有账户？",
