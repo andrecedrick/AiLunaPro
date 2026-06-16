@@ -278,6 +278,12 @@ export const zh: Dict = {
     }
   },
   results: {
+    "nextTools": {
+      "title": "继续探索",
+      "subtitle": "可随时运行的轻量工具 — 无需设置。",
+      "roi": "估算你的 ROI",
+      "diagnostic": "再做一次快速诊断"
+    },
     "insightCard": {
       "whatThisMeans": "这意味着什么",
       "whyItMatters": "为什么重要",

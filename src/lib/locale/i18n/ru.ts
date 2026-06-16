@@ -277,6 +277,12 @@ export const ru: Dict = {
     }
   },
   results: {
+    "nextTools": {
+      "title": "Продолжить изучение",
+      "subtitle": "Лёгкие инструменты, которые можно запустить в любой момент — без настройки.",
+      "roi": "Оценить ROI",
+      "diagnostic": "Пройти ещё одну быструю диагностику"
+    },
     "insightCard": {
       "whatThisMeans": "Что это значит",
       "whyItMatters": "Почему это важно",

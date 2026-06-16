@@ -22,6 +22,7 @@ import { RecommendationsList } from '../components/result/RecommendationsList';
 import { Roadmap } from '../components/result/Roadmap';
 import { ActionPlan } from '../components/result/ActionPlan';
 import { Disclaimer } from '../components/result/Disclaimer';
+import { PostResultTools } from '../components/result/PostResultTools';
 import { auditSections } from '../data/mockAuditQuestions';
 
 export function ReportDetailPage() {
@@ -302,6 +303,9 @@ export function ReportDetailPage() {
               {T.reportsPages.detail.footer.deleteReport}
             </Button>
           </div>
+
+          {/* Change B: subtle post-result re-engagement with the quick tools. */}
+          <PostResultTools />
         </div>
 
         {/* Aside */}

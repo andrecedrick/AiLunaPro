@@ -291,6 +291,12 @@ export const en = {
     }
   },
   results: {
+    "nextTools": {
+      "title": "Keep exploring",
+      "subtitle": "Lightweight tools you can run anytime — no setup.",
+      "roi": "Estimate your ROI",
+      "diagnostic": "Run another quick diagnostic"
+    },
     "insightCard": {
       "whatThisMeans": "What this means",
       "whyItMatters": "Why it matters",

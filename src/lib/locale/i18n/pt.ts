@@ -276,6 +276,12 @@ export const pt: Dict = {
     }
   },
   results: {
+    "nextTools": {
+      "title": "Continue a explorar",
+      "subtitle": "Ferramentas leves que pode executar quando quiser — sem configuração.",
+      "roi": "Estimar o seu ROI",
+      "diagnostic": "Fazer outro diagnóstico rápido"
+    },
     "insightCard": {
       "whatThisMeans": "O que isto significa",
       "whyItMatters": "Por que é importante",

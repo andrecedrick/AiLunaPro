@@ -276,6 +276,12 @@ export const es: Dict = {
     }
   },
   results: {
+    "nextTools": {
+      "title": "Sigue explorando",
+      "subtitle": "Herramientas ligeras que puedes ejecutar cuando quieras, sin configuración.",
+      "roi": "Calcular tu ROI",
+      "diagnostic": "Hacer otro diagnóstico rápido"
+    },
     "insightCard": {
       "whatThisMeans": "Qué significa esto",
       "whyItMatters": "Por qué es importante",

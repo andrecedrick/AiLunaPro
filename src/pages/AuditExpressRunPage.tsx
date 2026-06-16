@@ -7,6 +7,7 @@ import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
 import { JourneyNext } from '../components/journey/JourneyNext';
+import { PostResultTools } from '../components/result/PostResultTools';
 import { DocumentAnalyzeCard } from '../components/auditExpress/DocumentAnalyzeCard';
 import { advanceJourney } from '../lib/journey/journeyState';
 import { track } from '../lib/analytics/track';
@@ -178,6 +179,9 @@ export function AuditExpressRunPage() {
             }}
             hasRecommendedAgents={(preview.k1a.recommendedAgentIds?.length ?? 0) > 0}
           />
+
+          {/* Change B: subtle post-result re-engagement with the quick tools. */}
+          <PostResultTools />
         </>
       )}
 
