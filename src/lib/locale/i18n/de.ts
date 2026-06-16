@@ -725,11 +725,14 @@ export const de: Dict = {
       "greetingBody": "Wählen Sie, wie Sie beginnen möchten. Sie können jederzeit wechseln und immer direkt zu Ihrem Dashboard gehen.",
       "heading": "Wie möchten Sie starten?",
       "express": {
+        "badge": "Empfohlen für Ihr erstes Audit",
+        "time": "~5 Min.",
         "title": "Audit Express",
         "body": "Eine schnelle Momentaufnahme der KI-Bereitschaft in ca. 5 Minuten — ein paar kurze Fragen, eine optionale Website-Analyse, ein indikativer ROI. Ideal für einen ersten Eindruck.",
         "cta": "Audit Express starten →"
       },
       "full": {
+        "time": "~15 Min.",
         "title": "Neuer Audit (vollständig)",
         "body": "Der vollständige strukturierte Fragebogen — tiefere Bewertung von Konformität und Reifegrad, die Sie in einen teilbaren Bericht umwandeln können. Ideal für eine gründliche Einschätzung.",
         "cta": "Neuen Audit erstellen →"

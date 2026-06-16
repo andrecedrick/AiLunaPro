@@ -727,11 +727,14 @@ export const zh: Dict = {
       "greetingBody": "选择您希望的开始方式。您可以随时切换，也可以随时直接前往仪表盘。",
       "heading": "您想如何开始？",
       "express": {
+        "badge": "推荐作为您的首次审计",
+        "time": "约 5 分钟",
         "title": "Audit Express",
         "body": "一份快速的、约 5 分钟的 AI 就绪情况概览 — 几个快速问题、可选的网站分析以及指示性 ROI。最适合初步了解。",
         "cta": "开始 Audit Express →"
       },
       "full": {
+        "time": "约 15 分钟",
         "title": "新建审计（完整）",
         "body": "完整的结构化问卷 — 更深入的合规性 + 成熟度评分，可转化为可共享的报告。最适合全面评估。",
         "cta": "创建新建审计 →"

@@ -725,11 +725,14 @@ export const es: Dict = {
       "greetingBody": "Elija cómo le gustaría empezar. Puede cambiar en cualquier momento y siempre puede ir directamente a su panel.",
       "heading": "¿Cómo quiere empezar?",
       "express": {
+        "badge": "Recomendado para tu primera auditoría",
+        "time": "~5 min",
         "title": "Audit Express",
         "body": "Una instantánea rápida de preparación para la IA de unos 5 minutos — unas pocas preguntas rápidas, un análisis opcional del sitio web y un ROI indicativo. Ideal para un primer vistazo.",
         "cta": "Iniciar Audit Express →"
       },
       "full": {
+        "time": "~15 min",
         "title": "Nueva auditoría (completa)",
         "body": "El cuestionario estructurado completo — una evaluación más profunda de cumplimiento y madurez que puede convertir en un informe compartible. Ideal para una evaluación exhaustiva.",
         "cta": "Crear una nueva auditoría →"

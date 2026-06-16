@@ -740,11 +740,14 @@ export const en = {
       "greetingBody": "Pick how you'd like to begin. You can switch anytime, and you can always go straight to your dashboard.",
       "heading": "How do you want to start?",
       "express": {
+        "badge": "Recommended for your first audit",
+        "time": "~5 min",
         "title": "Audit Express",
         "body": "A fast, ~5-minute AI-readiness snapshot — a few quick questions, an optional website analysis, indicative ROI. Best for a first look.",
         "cta": "Start Audit Express →"
       },
       "full": {
+        "time": "~15 min",
         "title": "New Audit (full)",
         "body": "The complete structured questionnaire — deeper compliance + maturity scoring you can turn into a shareable report. Best for a thorough assessment.",
         "cta": "Create a New Audit →"

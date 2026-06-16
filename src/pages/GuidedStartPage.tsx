@@ -38,6 +38,13 @@ export function GuidedStartPage() {
   const cardTitle: CSSProperties = { fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' };
   const cardBody: CSSProperties = { fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 12px' };
   const cta: CSSProperties = { display: 'inline-block', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'var(--brand-gradient, var(--violet))', color: '#fff' };
+  // A1 Change 1: Audit Express is the recommended first-run default — give it
+  // primary visual weight (badge + accent border + filled CTA); the full audit
+  // stays fully available, positioned as the deeper secondary option.
+  const expressCard: CSSProperties = { ...card, border: '2px solid var(--violet)', boxShadow: '0 10px 26px rgba(124,58,237,0.14)' };
+  const badgePill: CSSProperties = { display: 'inline-block', background: 'var(--brand-gradient, var(--violet))', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, marginBottom: 10, letterSpacing: 0.2 };
+  const timeChip: CSSProperties = { display: 'inline-block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 6, marginLeft: 8, verticalAlign: 'middle' };
+  const ctaSecondary: CSSProperties = { ...cta, background: 'transparent', color: 'var(--violet-text)', border: '1px solid var(--violet)' };
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -57,16 +64,17 @@ export function GuidedStartPage() {
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text-primary)', margin: '0 0 14px' }}>{S.heading}</h1>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        <button type="button" style={card} onClick={() => go({ name: 'audit-express/run' })}>
-          <div style={cardTitle}>{S.express.title}</div>
+        <button type="button" style={expressCard} onClick={() => go({ name: 'audit-express/run' })}>
+          <span style={badgePill}>{S.express.badge}</span>
+          <div style={cardTitle}>{S.express.title}<span style={timeChip}>{S.express.time}</span></div>
           <p style={cardBody}>{S.express.body}</p>
           <span style={cta}>{S.express.cta}</span>
         </button>
 
         <button type="button" style={card} onClick={() => go({ name: 'audit/new' })}>
-          <div style={cardTitle}>{S.full.title}</div>
+          <div style={cardTitle}>{S.full.title}<span style={timeChip}>{S.full.time}</span></div>
           <p style={cardBody}>{S.full.body}</p>
-          <span style={cta}>{S.full.cta}</span>
+          <span style={ctaSecondary}>{S.full.cta}</span>
         </button>
       </div>
 
