@@ -119,6 +119,7 @@ export function RoiCalculatorPage() {
       clearFlowProgress('roi');
       savePendingResult({ kind: 'roi', headline: `estimated savings of $${Math.round(r.result.estimatedMonthlyCostSaved).toLocaleString('en-US')}/month`, createdAt: new Date().toISOString() });
       track('lead_flow_completed', { flow: 'roi' });
+      track('score_viewed', { flow: 'roi' });
       requestAnimationFrame(() => {
         const el = document.getElementById('roi-result');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -412,6 +413,7 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
           href={AFFILIATE_URL}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => track('cta_clicked', { flow: 'roi', target: 'signup' })}
           style={{
             display: 'inline-block',
             padding: '11px 28px', borderRadius: 10,

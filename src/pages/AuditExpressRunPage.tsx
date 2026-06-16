@@ -9,6 +9,7 @@ import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../
 import { JourneyNext } from '../components/journey/JourneyNext';
 import { DocumentAnalyzeCard } from '../components/auditExpress/DocumentAnalyzeCard';
 import { advanceJourney } from '../lib/journey/journeyState';
+import { track } from '../lib/analytics/track';
 import { MAX_DOC_TEXT_CHARS } from '../lib/auditExpress/docValidation';
 import { useLocale } from '../context/LocaleContext';
 import { format } from '../lib/locale/i18n';
@@ -40,7 +41,7 @@ export function AuditExpressRunPage() {
   const complete = AX_QUESTIONS.every(q => Boolean(taps[q.key]));
 
   // B8.3: entering the Audit Express run = the "Audit" journey step (monotonic).
-  useEffect(() => { advanceJourney('audit'); }, []);
+  useEffect(() => { advanceJourney('audit'); track('audit_started', { type: 'express' }); }, []);
 
   /** Save (auto), then supersede the earlier preview-only record so Saved Audits
    *  shows exactly one entry per run (enriched replaces preview-only). */
@@ -60,6 +61,7 @@ export function AuditExpressRunPage() {
     try {
       const p = await runPreview(orgId, taps) as AuditPreview;
       setPreview(p); setPhase('results'); setSnapshot(null);
+      track('audit_completed', { type: 'express' });
       createdAtRef.current = when; auditIdRef.current = ''; setAuditId('');
       void persist(null);
     } catch (e) {

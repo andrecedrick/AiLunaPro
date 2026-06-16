@@ -119,6 +119,7 @@ export function DiagnosticPage() {
       clearFlowProgress('diagnostic');
       savePendingResult({ kind: 'diagnostic', headline: `AI maturity score ${r.score}/100 (${r.bucket})`, createdAt: new Date().toISOString() });
       track('lead_flow_completed', { flow: 'diagnostic' });
+      track('score_viewed', { flow: 'diagnostic' });
       // Scroll result into view
       requestAnimationFrame(() => {
         const el = document.getElementById('diagnostic-result');
@@ -457,6 +458,7 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
           href={AFFILIATE_URL}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => track('cta_clicked', { flow: 'diagnostic', target: 'signup' })}
           style={{
             display: 'inline-block',
             padding: '11px 28px', borderRadius: 10,

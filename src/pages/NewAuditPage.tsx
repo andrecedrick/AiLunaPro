@@ -3,13 +3,14 @@ import { AuditShell } from '../components/audit/AuditShell';
 import { useAudit } from '../context/AuditContext';
 import { useLocale } from '../context/LocaleContext';
 import { advanceJourney } from '../lib/journey/journeyState';
+import { track } from '../lib/analytics/track';
 
 export function NewAuditPage() {
   const { status } = useAudit();
   const F = useLocale().auditForm;
 
   // B8.3: entering the New Audit flow = the "Audit" journey step (monotonic).
-  useEffect(() => { advanceJourney('audit'); }, []);
+  useEffect(() => { advanceJourney('audit'); track('audit_started', { type: 'full' }); }, []);
 
   return (
     <div>

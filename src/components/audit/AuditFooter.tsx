@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { useAudit } from '../../context/AuditContext';
 import { useRoute } from '../../context/RouteContext';
 import { useLocale } from '../../context/LocaleContext';
+import { track } from '../../lib/analytics/track';
 
 export function AuditFooter() {
   const { isFirst, isLast, prevStep, nextStep, saveProgress, submitAudit } = useAudit();
@@ -25,6 +26,7 @@ export function AuditFooter() {
 
   const handleSubmit = () => {
     const id = submitAudit();
+    track('audit_completed', { type: 'full' });
     navigate({ name: 'audit/result', auditId: id });
   };
 

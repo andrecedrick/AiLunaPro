@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
 import { useLocale } from '../context/LocaleContext';
 import { signupValidate } from '../utils/validators/auth';
+import { track } from '../lib/analytics/track';
 import type { FormErrors } from '../types/form';
 
 export function SignupPage() {
@@ -31,9 +32,11 @@ export function SignupPage() {
     setErrors({});
     setApiError('');
     setLoading(true);
+    track('signup_started');
     const result = await signup(name, email, password);
     setLoading(false);
     if (result.success) {
+      track('signup_completed');
       // J1.3D: if user came via invite link, resume invite flow.
       let resumedInvite = false;
       try {

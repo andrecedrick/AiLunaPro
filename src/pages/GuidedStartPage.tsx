@@ -3,6 +3,7 @@ import { useRoute } from '../context/RouteContext';
 import { useLocale } from '../context/LocaleContext';
 import { markJourneyStarted } from '../lib/journey/journeyState';
 import { readLatestPendingResult, clearPendingResult } from '../lib/leads/pendingLead';
+import { track } from '../lib/analytics/track';
 import type { Route } from '../types/audit';
 
 /**
@@ -23,6 +24,8 @@ export function GuidedStartPage() {
 
   const go = (route: Route) => {
     if (pending) clearPendingResult(pending.kind);
+    const path = route.name === 'audit-express/run' ? 'express' : route.name === 'audit/new' ? 'full' : 'skip';
+    track('onboarding_path_chosen', { path });
     markJourneyStarted();
     navigate(route);
   };

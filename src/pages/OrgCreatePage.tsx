@@ -9,6 +9,7 @@ import { format } from '../lib/locale/i18n';
 import type { Dict } from '../lib/locale/i18n/en';
 import { validateOrgName } from '../utils/validators';
 import { postAuthRoute } from '../lib/journey/journeyState';
+import { track } from '../lib/analytics/track';
 import type { Organization } from '../types/auth';
 
 function buildPlans(t: Dict['orgCreate']): { value: Organization['plan']; label: string; desc: string }[] {
@@ -39,6 +40,7 @@ export function OrgCreatePage() {
     setLoading(true);
     setTimeout(() => {
       createOrg(name, plan);
+      track('workspace_created', { plan });
       setLoading(false);
       navigate({ name: postAuthRoute() });
     }, 400);
