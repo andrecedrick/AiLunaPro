@@ -13,6 +13,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
+import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { format } from '../lib/locale/i18n';
 import type { Dict } from '../lib/locale/i18n/en';
@@ -52,6 +53,12 @@ interface FormErrors {
 
 export function DiagnosticPage() {
   const { navigate } = useRoute();
+  // B1: these public tool pages render inside CampaignChrome, which already shows
+  // a "← Back to app" return for authenticated users. So the "Already have an
+  // account? Sign in" prompt below is only meaningful to anonymous visitors —
+  // hide it once auth resolves and the user is logged in. Gate on isLoading too
+  // so an authed user never sees it flash during Firebase auth resolution.
+  const { isAuthenticated, isLoading } = useAuth();
   const T = useLocale();
   // Localized diagnostic question + option labels (data-driven content), keyed
   // by question id / option value; falls back to the raw English data.
@@ -385,16 +392,18 @@ export function DiagnosticPage() {
             </>
             )}
 
-            <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-              {T.publicTools.diagnostic.signInPrompt}{' '}
-              <button
-                type="button"
-                onClick={() => navigate({ name: 'login' })}
-                style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontWeight: 600, padding: 0 }}
-              >
-                {T.publicTools.diagnostic.signInLink}
-              </button>
-            </div>
+            {!isLoading && !isAuthenticated && (
+              <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+                {T.publicTools.diagnostic.signInPrompt}{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate({ name: 'login' })}
+                  style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+                >
+                  {T.publicTools.diagnostic.signInLink}
+                </button>
+              </div>
+            )}
           </form>
         )}
       </div>

@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
+import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { format } from '../lib/locale/i18n';
 import { WORKFLOW_LABELS, WORKFLOW_VALUES, type Workflow } from '../data/roi-config';
@@ -39,6 +40,11 @@ interface FormErrors {
 
 export function RoiCalculatorPage() {
   const { navigate } = useRoute();
+  // B1: rendered inside CampaignChrome, which already shows "← Back to app" for
+  // authenticated users — so the "Already have an account? Sign in" prompt below
+  // is only meaningful to anonymous visitors. Hide it once auth resolves and the
+  // user is logged in; gate on isLoading too so it never flashes during resolution.
+  const { isAuthenticated, isLoading } = useAuth();
   const T = useLocale();
 
   // B2.4: restore an unfinished run from localStorage (client-side only).
@@ -380,16 +386,18 @@ export function RoiCalculatorPage() {
             </>
             )}
 
-            <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-              {T.publicTools.roi.signInPrompt}{' '}
-              <button
-                type="button"
-                onClick={() => navigate({ name: 'login' })}
-                style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontWeight: 600, padding: 0 }}
-              >
-                {T.publicTools.roi.signInLink}
-              </button>
-            </div>
+            {!isLoading && !isAuthenticated && (
+              <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+                {T.publicTools.roi.signInPrompt}{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate({ name: 'login' })}
+                  style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+                >
+                  {T.publicTools.roi.signInLink}
+                </button>
+              </div>
+            )}
           </form>
         )}
       </div>
