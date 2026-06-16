@@ -738,6 +738,8 @@ export const en = {
     "start": {
       "greetingTitle": "Hi, I'm Luna — let's get you started.",
       "greetingBody": "Pick how you'd like to begin. You can switch anytime, and you can always go straight to your dashboard.",
+      "pendingGreetingDiagnostic": "We saved your diagnostic. A full audit turns it into a complete action plan. Pick how you'd like to continue.",
+      "pendingGreetingRoi": "We saved your ROI estimate. A full audit turns it into a complete action plan. Pick how you'd like to continue.",
       "heading": "How do you want to start?",
       "express": {
         "badge": "Recommended for your first audit",

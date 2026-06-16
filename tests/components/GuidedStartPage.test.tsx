@@ -38,7 +38,9 @@ describe('GuidedStartPage — anon→auth continuity (B2.3)', () => {
   it('greets with the pending public-flow result and clears it on choice', () => {
     savePendingResult({ kind: 'diagnostic', headline: 'AI maturity score 62/100 (medium)', createdAt: '2026-06-10T00:00:00.000Z' });
     render(<GuidedStartPage />);
-    expect(screen.getByText(/AI maturity score 62\/100/)).toBeTruthy();
+    // B2.3 + A1: the returning-user greeting is now fully localized (no English
+    // score headline echoed) — assert the diagnostic continuity greeting renders.
+    expect(screen.getByText(/We saved your diagnostic/)).toBeTruthy();
     fireEvent.click(screen.getByText(/Start Audit Express/));
     expect(readPendingResult('diagnostic')).toBeNull(); // one-shot: consumed
     expect(navigate).toHaveBeenCalledWith({ name: 'audit-express/run' });

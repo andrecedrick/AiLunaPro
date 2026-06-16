@@ -31,9 +31,9 @@ export function GuidedStartPage() {
   };
 
   const card: CSSProperties = {
-    flex: '1 1 280px', textAlign: 'left', cursor: 'pointer', background: 'var(--surface)',
-    border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)',
-    padding: 20, fontFamily: 'var(--font-body)',
+    flex: '1 1 240px', textAlign: 'left', cursor: 'pointer', background: 'var(--surface)',
+    border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'none',
+    padding: 20, fontFamily: 'var(--font-body)', opacity: 0.92,
   };
   const cardTitle: CSSProperties = { fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' };
   const cardBody: CSSProperties = { fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 12px' };
@@ -41,7 +41,7 @@ export function GuidedStartPage() {
   // A1 Change 1: Audit Express is the recommended first-run default — give it
   // primary visual weight (badge + accent border + filled CTA); the full audit
   // stays fully available, positioned as the deeper secondary option.
-  const expressCard: CSSProperties = { ...card, border: '2px solid var(--violet)', boxShadow: '0 10px 26px rgba(124,58,237,0.14)' };
+  const expressCard: CSSProperties = { ...card, flex: '2 1 360px', opacity: 1, background: 'var(--brand-soft-bg, #f5f3ff)', border: '2px solid var(--violet)', boxShadow: '0 12px 30px rgba(124,58,237,0.16)' };
   const badgePill: CSSProperties = { display: 'inline-block', background: 'var(--brand-gradient, var(--violet))', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, marginBottom: 10, letterSpacing: 0.2 };
   const timeChip: CSSProperties = { display: 'inline-block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 6, marginLeft: 8, verticalAlign: 'middle' };
   const ctaSecondary: CSSProperties = { ...cta, background: 'transparent', color: 'var(--violet-text)', border: '1px solid var(--violet)' };
@@ -55,7 +55,7 @@ export function GuidedStartPage() {
           <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 15, color: 'var(--text-primary)' }}>{S.greetingTitle}</div>
           <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '4px 0 0' }}>
             {pending
-              ? <>We saved your {pending.kind === 'diagnostic' ? 'diagnostic' : 'ROI estimate'} — <strong style={{ color: 'var(--text-primary)' }}>{pending.headline}</strong>. A full audit turns it into a complete action plan. Pick how you'd like to continue.</>
+              ? (pending.kind === 'diagnostic' ? S.pendingGreetingDiagnostic : S.pendingGreetingRoi)
               : S.greetingBody}
           </p>
         </div>
@@ -65,7 +65,7 @@ export function GuidedStartPage() {
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <button type="button" style={expressCard} onClick={() => go({ name: 'audit-express/run' })}>
-          <span style={badgePill}>{S.express.badge}</span>
+          <span style={badgePill}>★ {S.express.badge}</span>
           <div style={cardTitle}>{S.express.title}<span style={timeChip}>{S.express.time}</span></div>
           <p style={cardBody}>{S.express.body}</p>
           <span style={cta}>{S.express.cta}</span>

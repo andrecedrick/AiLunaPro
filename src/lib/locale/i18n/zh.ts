@@ -725,6 +725,8 @@ export const zh: Dict = {
     "start": {
       "greetingTitle": "您好，我是 Luna — 让我们开始吧。",
       "greetingBody": "选择您希望的开始方式。您可以随时切换，也可以随时直接前往仪表盘。",
+      "pendingGreetingDiagnostic": "我们已保存您的诊断。完整审计可将其转化为完整的行动计划。请选择如何继续。",
+      "pendingGreetingRoi": "我们已保存您的 ROI 估算。完整审计可将其转化为完整的行动计划。请选择如何继续。",
       "heading": "您想如何开始？",
       "express": {
         "badge": "推荐作为您的首次审计",

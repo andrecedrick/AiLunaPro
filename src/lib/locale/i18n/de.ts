@@ -723,6 +723,8 @@ export const de: Dict = {
     "start": {
       "greetingTitle": "Hallo, ich bin Luna — legen wir los.",
       "greetingBody": "Wählen Sie, wie Sie beginnen möchten. Sie können jederzeit wechseln und immer direkt zu Ihrem Dashboard gehen.",
+      "pendingGreetingDiagnostic": "Wir haben Ihre Diagnose gespeichert. Ein vollständiges Audit macht daraus einen kompletten Aktionsplan. Wählen Sie, wie Sie fortfahren möchten.",
+      "pendingGreetingRoi": "Wir haben Ihre ROI-Schätzung gespeichert. Ein vollständiges Audit macht daraus einen kompletten Aktionsplan. Wählen Sie, wie Sie fortfahren möchten.",
       "heading": "Wie möchten Sie starten?",
       "express": {
         "badge": "Empfohlen für Ihr erstes Audit",
