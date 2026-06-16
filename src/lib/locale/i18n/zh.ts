@@ -2201,6 +2201,7 @@ export const zh: Dict = {
       },
       "submit": {
         "loading": "正在计算您的结果……",
+        "unlock": "将我的完整报告发送到邮箱 →",
         "idle": "获取我的 AI 成熟度评分"
       },
       "signInPrompt": "已有账户？",

@@ -2199,6 +2199,7 @@ export const de: Dict = {
       },
       "submit": {
         "loading": "Ihr Ergebnis wird berechnet…",
+        "unlock": "Vollständigen Bericht per E-Mail erhalten →",
         "idle": "Meinen KI-Reifegrad-Score erhalten"
       },
       "signInPrompt": "Haben Sie bereits ein Konto?",

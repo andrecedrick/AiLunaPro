@@ -2214,6 +2214,7 @@ export const en = {
       },
       "submit": {
         "loading": "Computing your result…",
+        "unlock": "Email me my full report →",
         "idle": "Get my AI maturity score"
       },
       "signInPrompt": "Already have an account?",

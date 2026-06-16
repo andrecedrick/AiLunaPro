@@ -2199,6 +2199,7 @@ export const fr: Dict = {
       },
       "submit": {
         "loading": "Calcul de votre résultat…",
+        "unlock": "Recevoir mon rapport complet par e-mail →",
         "idle": "Obtenir mon score de maturité IA"
       },
       "signInPrompt": "Vous avez déjà un compte ?",

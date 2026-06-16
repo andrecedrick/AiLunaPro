@@ -22,6 +22,7 @@ import type { DiagnosticResult, Bucket } from '../types/diagnostic';
 import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
 import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
 import { track } from '../lib/analytics/track';
+import { computeDiagnosticPreview, type DiagnosticPreview } from '../lib/diagnostic/score';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
@@ -75,6 +76,7 @@ export function DiagnosticPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errors,     setErrors]     = useState<FormErrors>({});
   const [result,     setResult]     = useState<DiagnosticResult | null>(null);
+  const [preview,    setPreview]    = useState<DiagnosticPreview | null>(null);
 
   const allAnswered = useMemo(
     () => DIAGNOSTIC_QUESTIONS.every(q => typeof answers[q.id] === 'string' && answers[q.id].length > 0),
@@ -87,7 +89,24 @@ export function DiagnosticPage() {
       // B2.4: persist in-progress answers locally; signal flow start once.
       if (Object.keys(prev).length === 0) track('lead_flow_started', { flow: 'diagnostic' });
       saveFlowProgress('diagnostic', { answers: next });
+      // A1 Change 2: keep the value-first preview live if it's already revealed.
+      setPreview(p => (p ? computeDiagnosticPreview(next) : p));
       return next;
+    });
+  };
+
+  // A1 Change 2 (value-first): reveal the score CLIENT-SIDE before the email
+  // gate. No email/consent/captcha required to see it; the email step below
+  // unlocks the full report (recommended agents) + saves it. The previewed
+  // number is identical to the server's (locked by the parity test).
+  const onSeeScore = () => {
+    if (!allAnswered) { setErrors({ answers: T.publicTools.diagnostic.errors.answers }); return; }
+    setErrors({});
+    setPreview(computeDiagnosticPreview(answers));
+    track('score_viewed', { flow: 'diagnostic' });
+    requestAnimationFrame(() => {
+      const el = document.getElementById('diagnostic-preview');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   };
 
@@ -119,7 +138,6 @@ export function DiagnosticPage() {
       clearFlowProgress('diagnostic');
       savePendingResult({ kind: 'diagnostic', headline: `AI maturity score ${r.score}/100 (${r.bucket})`, createdAt: new Date().toISOString() });
       track('lead_flow_completed', { flow: 'diagnostic' });
-      track('score_viewed', { flow: 'diagnostic' });
       // Scroll result into view
       requestAnimationFrame(() => {
         const el = document.getElementById('diagnostic-result');
@@ -158,7 +176,7 @@ export function DiagnosticPage() {
         </div>
 
         {result ? (
-          <ResultView result={result} onReset={() => { setResult(null); setAnswers({}); clearFlowProgress('diagnostic'); }} />
+          <ResultView result={result} onReset={() => { setResult(null); setPreview(null); setAnswers({}); clearFlowProgress('diagnostic'); }} />
         ) : (
           <form onSubmit={handleSubmit} noValidate>
             {/* B2.4: abandoned-flow resume notice (client-side only) */}
@@ -232,6 +250,35 @@ export function DiagnosticPage() {
                 {errors.answers}
               </div>
             )}
+
+            {/* A1 Change 2 — value-first: reveal the score before the email gate. */}
+            {!preview ? (
+              <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={onSeeScore}
+                  disabled={!allAnswered}
+                  style={{
+                    padding: '13px 32px', borderRadius: 12, border: 'none',
+                    background: allAnswered ? 'var(--violet)' : 'var(--surface-2)',
+                    color: allAnswered ? '#fff' : 'var(--text-muted)',
+                    fontSize: 15, fontWeight: 700,
+                    cursor: allAnswered ? 'pointer' : 'not-allowed',
+                    boxShadow: allAnswered ? '0 8px 22px rgba(124,58,237,0.25)' : 'none',
+                  }}
+                >
+                  {T.publicTools.diagnostic.submit.idle}
+                </button>
+              </div>
+            ) : (
+            <>
+            {/* Value-first score reveal (computed client-side; identical to the saved result) */}
+            <div id="diagnostic-preview" style={{ marginTop: 24, padding: '22px 24px', borderRadius: 14, border: '2px solid var(--violet)', background: 'var(--brand-soft-bg, #f5f3ff)', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 6 }}>{T.publicTools.diagnostic.result.scoreLabel}</div>
+              <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{preview.score}<span style={{ fontSize: 20, color: 'var(--text-muted)' }}>{T.publicTools.diagnostic.result.scoreUnit}</span></div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginTop: 10 }}>{T.publicTools.diagnostic.buckets[preview.bucket].title}</div>
+              <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '6px auto 0', maxWidth: 460 }}>{T.publicTools.diagnostic.buckets[preview.bucket].message}</p>
+            </div>
 
             {/* Lead capture */}
             <div style={{
@@ -332,9 +379,11 @@ export function DiagnosticPage() {
                   transition: 'all 0.15s ease',
                 }}
               >
-                {submitting ? T.publicTools.diagnostic.submit.loading : T.publicTools.diagnostic.submit.idle}
+                {submitting ? T.publicTools.diagnostic.submit.loading : T.publicTools.diagnostic.submit.unlock}
               </button>
             </div>
+            </>
+            )}
 
             <div style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
               {T.publicTools.diagnostic.signInPrompt}{' '}

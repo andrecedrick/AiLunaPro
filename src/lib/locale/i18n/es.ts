@@ -2199,6 +2199,7 @@ export const es: Dict = {
       },
       "submit": {
         "loading": "Calculando tu resultado…",
+        "unlock": "Enviarme mi informe completo por correo →",
         "idle": "Obtener mi puntuación de madurez en IA"
       },
       "signInPrompt": "¿Ya tienes una cuenta?",

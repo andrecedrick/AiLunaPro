@@ -2199,6 +2199,7 @@ export const pt: Dict = {
       },
       "submit": {
         "loading": "A calcular o seu resultado…",
+        "unlock": "Enviar-me o relatório completo por e-mail →",
         "idle": "Obter a minha pontuação de maturidade em AI"
       },
       "signInPrompt": "Já tem uma conta?",
