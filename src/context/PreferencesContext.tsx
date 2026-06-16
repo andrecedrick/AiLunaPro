@@ -22,7 +22,7 @@ import {
 import {
   initialLanguage,
   saveLanguage,
-  loadDisplayCurrency,
+  initialDisplayCurrency,
   saveDisplayCurrency,
   loadUserProfile,
   saveUserProfile,
@@ -47,9 +47,11 @@ interface PreferencesValue {
 const PreferencesContext = createContext<PreferencesValue | undefined>(undefined);
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  // First paint: explicit stored choice → browser detection (non-persisted) → 'en'.
+  // First paint (synchronous → no flicker): explicit stored choice → browser
+  // detection (non-persisted) → fallback. Same priority for language ('en') and
+  // display currency ('usd'). B6.7 P1 wires browser-language currency detection.
   const [language,        setLanguageState]        = useState<Language>(() => initialLanguage());
-  const [displayCurrency, setDisplayCurrencyState] = useState<DisplayCurrency>(() => loadDisplayCurrency());
+  const [displayCurrency, setDisplayCurrencyState] = useState<DisplayCurrency>(() => initialDisplayCurrency());
   const [userProfile,     setUserProfileState]     = useState<UserProfile>(() => loadUserProfile());
 
   const setLanguage = useCallback((l: Language) => {

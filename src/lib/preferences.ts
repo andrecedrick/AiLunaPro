@@ -6,6 +6,8 @@
  * in a later phase.
  */
 
+import { detectCurrencyFromLocale } from './billing/currencyDetect';
+
 /**
  * UI language preference. Shell + Preferences UI are translated (B6.0/B6.5);
  * areas not yet migrated fall back to English. Picker labels show each
@@ -195,6 +197,39 @@ export function saveDisplayCurrency(c: DisplayCurrency): void {
  */
 export function hasExplicitDisplayCurrency(): boolean {
   try { return localStorage.getItem(KEYS.currency) !== null; } catch { return false; }
+}
+
+/**
+ * Best-effort display-currency detection from the browser — B6.7 P1. Maps the
+ * REGION subtag of navigator.language(s) to a SUPPORTED currency (e.g. fr-FR →
+ * eur, en-GB → gbp, en-US → usd). No IP, no network, no PII — only
+ * navigator.language(s). Region-less tags (e.g. "fr") and unmapped regions
+ * deliberately return null so the caller falls back to USD rather than guessing.
+ */
+export function detectNavigatorCurrency(): DisplayCurrency | null {
+  try {
+    const tags = typeof navigator !== 'undefined'
+      ? [navigator.language, ...(navigator.languages ?? [])]
+      : [];
+    for (const tag of tags) {
+      const c = detectCurrencyFromLocale(tag ?? '');
+      if (c && isDisplayCurrency(c)) return c;
+    }
+  } catch { /* noop */ }
+  return null;
+}
+
+/**
+ * Initial display currency for first paint (B6.7 P1). Priority:
+ *   1. explicit stored choice (user selection) — absolute priority
+ *   2. browser-language mapping (NON-persisted, like the language detector)
+ *   3. 'usd' fallback
+ * Detection runs ONCE at init and is never persisted until the user explicitly
+ * picks a currency (privacy posture, §9.24). No IP/geolocation.
+ */
+export function initialDisplayCurrency(): DisplayCurrency {
+  if (hasExplicitDisplayCurrency()) return loadDisplayCurrency();
+  return detectNavigatorCurrency() ?? 'usd';
 }
 
 /* ── User profile (J9 Phase B-lite, UI/copy only) ─────────── */
