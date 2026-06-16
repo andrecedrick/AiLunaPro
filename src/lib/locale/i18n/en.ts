@@ -537,6 +537,18 @@ export const en = {
       "poweredBy": "Powered by Luna AI",
       "scheduleDemo": "Schedule Demo",
       "startFreeTrial": "Start Free Trial →"
+    },
+    "quickTools": {
+      "title": "Quick tools",
+      "subtitle": "Lightweight checks you can re-run anytime — separate from your full audit.",
+      "diagnostic": {
+        "label": "Run a quick diagnostic",
+        "hint": "Score your AI maturity in ~2 min"
+      },
+      "roi": {
+        "label": "Estimate your ROI",
+        "hint": "See potential time & cost savings"
+      }
     }
   },
   topbar: {

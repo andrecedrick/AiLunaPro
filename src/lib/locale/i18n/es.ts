@@ -522,6 +522,18 @@ export const es: Dict = {
       "poweredBy": "Con tecnología de Luna AI",
       "scheduleDemo": "Programar demo",
       "startFreeTrial": "Iniciar prueba gratuita →"
+    },
+    "quickTools": {
+      "title": "Herramientas rápidas",
+      "subtitle": "Comprobaciones ligeras que puedes repetir cuando quieras, independientes de tu auditoría completa.",
+      "diagnostic": {
+        "label": "Hacer un diagnóstico rápido",
+        "hint": "Evalúa tu madurez en IA en ~2 min"
+      },
+      "roi": {
+        "label": "Calcular tu ROI",
+        "hint": "Mira el tiempo y los costes que podrías ahorrar"
+      }
     }
   },
   topbar: {

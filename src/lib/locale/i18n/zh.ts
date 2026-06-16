@@ -524,6 +524,18 @@ export const zh: Dict = {
       "poweredBy": "由 Luna AI 提供支持",
       "scheduleDemo": "预约演示",
       "startFreeTrial": "开始免费试用 →"
+    },
+    "quickTools": {
+      "title": "快捷工具",
+      "subtitle": "可随时重新运行的轻量检查 — 独立于完整审计。",
+      "diagnostic": {
+        "label": "运行快速诊断",
+        "hint": "约 2 分钟评估你的 AI 成熟度"
+      },
+      "roi": {
+        "label": "估算你的 ROI",
+        "hint": "查看可能节省的时间与成本"
+      }
     }
   },
   topbar: {
