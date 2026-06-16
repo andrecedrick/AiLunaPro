@@ -2311,7 +2311,7 @@ export const zh: Dict = {
         "paybackValue": "{months} 个月",
         "paybackEmpty": "—",
         "disclaimer": "这是基于您提供的信息和保守的自动化假设得出的估算。实际节省可能有所不同。",
-        "pricingNote": "回本周期假设参考智能体成本为 $99/月；实际定价因智能体而异。",
+        "pricingNote": "回本周期假设参考智能体成本为 {cost}/月；实际定价因智能体而异。",
         "recommendedAgentsHeading": "推荐的 AiLunaPro 智能体",
         "agentCardBrand": "AiLunaPro",
         "agentCardCta": "获取此智能体",

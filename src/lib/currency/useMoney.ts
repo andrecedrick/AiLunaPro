@@ -13,7 +13,12 @@
 import { usePreferences } from '../../context/PreferencesContext';
 import { formatMoney, type FormatMoneyOptions } from './format';
 
-export function useMoney(): (amountUsd: number, opts?: FormatMoneyOptions) => string {
+export interface MoneyFormatter {
+  /** Format a USD-base amount in the user's current display currency. */
+  format: (amountUsd: number, opts?: FormatMoneyOptions) => string;
+}
+
+export function useMoney(): MoneyFormatter {
   const { displayCurrency } = usePreferences();
-  return (amountUsd, opts) => formatMoney(amountUsd, displayCurrency, opts);
+  return { format: (amountUsd, opts) => formatMoney(amountUsd, displayCurrency, opts) };
 }

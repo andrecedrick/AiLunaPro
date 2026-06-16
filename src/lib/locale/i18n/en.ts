@@ -2324,7 +2324,7 @@ export const en = {
         "paybackValue": "{months} months",
         "paybackEmpty": "—",
         "disclaimer": "This is an estimate based on the information you provided and conservative automation assumptions. Actual savings may vary.",
-        "pricingNote": "Payback assumes a reference agent cost of $99/month; actual pricing varies by agent.",
+        "pricingNote": "Payback assumes a reference agent cost of {cost}/month; actual pricing varies by agent.",
         "recommendedAgentsHeading": "Recommended AiLunaPro agents",
         "agentCardBrand": "AiLunaPro",
         "agentCardCta": "Get this agent",

@@ -2309,7 +2309,7 @@ export const it: Dict = {
         "paybackValue": "{months} mesi",
         "paybackEmpty": "—",
         "disclaimer": "Questa è una stima basata sulle informazioni fornite e su ipotesi di automazione prudenti. Il risparmio effettivo può variare.",
-        "pricingNote": "L'ammortamento presuppone un costo di riferimento dell'agente di $99/month; il prezzo effettivo varia in base all'agente.",
+        "pricingNote": "L'ammortamento presuppone un costo di riferimento dell'agente di {cost}/month; il prezzo effettivo varia in base all'agente.",
         "recommendedAgentsHeading": "Agenti AiLunaPro consigliati",
         "agentCardBrand": "AiLunaPro",
         "agentCardCta": "Ottieni questo agente",

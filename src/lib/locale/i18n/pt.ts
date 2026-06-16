@@ -2309,7 +2309,7 @@ export const pt: Dict = {
         "paybackValue": "{months} meses",
         "paybackEmpty": "—",
         "disclaimer": "Esta é uma estimativa baseada nas informações que forneceu e em pressupostos de automação conservadores. As poupanças reais podem variar.",
-        "pricingNote": "O retorno assume um custo de referência de agente de $99/mês; os preços reais variam por agente.",
+        "pricingNote": "O retorno assume um custo de referência de agente de {cost}/mês; os preços reais variam por agente.",
         "recommendedAgentsHeading": "Agentes recomendados da AiLunaPro",
         "agentCardBrand": "AiLunaPro",
         "agentCardCta": "Obter este agente",

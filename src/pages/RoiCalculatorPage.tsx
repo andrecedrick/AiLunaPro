@@ -18,7 +18,8 @@ import { useRoute } from '../context/RouteContext';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { format } from '../lib/locale/i18n';
-import { WORKFLOW_LABELS, WORKFLOW_VALUES, type Workflow } from '../data/roi-config';
+import { WORKFLOW_LABELS, WORKFLOW_VALUES, AGENT_DEFAULT_MONTHLY_USD, type Workflow } from '../data/roi-config';
+import { useMoney } from '../lib/currency/useMoney';
 import { submitRoi, friendlyRoiError } from '../lib/roi/roiClient';
 import type { RoiResult } from '../types/roi';
 import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
@@ -46,6 +47,7 @@ export function RoiCalculatorPage() {
   // user is logged in; gate on isLoading too so it never flashes during resolution.
   const { isAuthenticated, isLoading } = useAuth();
   const T = useLocale();
+  const money = useMoney();
 
   // B2.4: restore an unfinished run from localStorage (client-side only).
   const saved = readFlowProgress('roi')?.state as { teamSize?: string; hours?: string; cost?: string; workflow?: string } | undefined;
@@ -179,7 +181,7 @@ export function RoiCalculatorPage() {
       // B2.3/B2.4: completed — clear resume state; keep a non-PII headline for
       // post-auth continuity (guided journey start banner).
       clearFlowProgress('roi');
-      savePendingResult({ kind: 'roi', headline: `estimated savings of $${Math.round(r.result.estimatedMonthlyCostSaved).toLocaleString('en-US')}/month`, createdAt: new Date().toISOString() });
+      savePendingResult({ kind: 'roi', headline: `estimated savings of ${money.format(r.result.estimatedMonthlyCostSaved)}/month`, createdAt: new Date().toISOString() });
       track('lead_flow_completed', { flow: 'roi' });
       requestAnimationFrame(() => {
         const el = document.getElementById('roi-result');
@@ -303,14 +305,14 @@ export function RoiCalculatorPage() {
             {/* Value-first savings reveal (computed client-side; identical to the saved result) */}
             <div id="roi-preview" style={{ marginTop: 24, padding: '22px 24px', borderRadius: 14, border: '2px solid var(--violet)', background: 'var(--brand-soft-bg, #f5f3ff)', textAlign: 'center' }}>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 6 }}>{T.publicTools.roi.result.monthlySavingsLabel}</div>
-              <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--green-text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>${preview.estimatedMonthlyCostSaved.toLocaleString('en-US')}<span style={{ fontSize: 20, color: 'var(--text-muted)', fontWeight: 600 }}>{T.publicTools.roi.result.monthlySavingsUnit}</span></div>
+              <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--green-text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{money.format(preview.estimatedMonthlyCostSaved)}<span style={{ fontSize: 20, color: 'var(--text-muted)', fontWeight: 600 }}>{T.publicTools.roi.result.monthlySavingsUnit}</span></div>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 24, marginTop: 18 }}>
-                <Stat label={T.publicTools.roi.result.yearlySavingsLabel} value={`$${preview.estimatedYearlyCostSaved.toLocaleString('en-US')}`} />
+                <Stat label={T.publicTools.roi.result.yearlySavingsLabel} value={money.format(preview.estimatedYearlyCostSaved)} />
                 <Stat label={T.publicTools.roi.result.timeSavedLabel} value={format(T.publicTools.roi.result.timeSavedValue, { hours: preview.estimatedTimeSavedHoursPerMonth.toLocaleString('en-US') })} />
                 <Stat label={T.publicTools.roi.result.paybackLabel} value={preview.estimatedPaybackMonths === null ? T.publicTools.roi.result.paybackEmpty : format(T.publicTools.roi.result.paybackValue, { months: preview.estimatedPaybackMonths.toLocaleString('en-US') })} />
               </div>
               <div style={{ marginTop: 14, fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                {T.publicTools.roi.result.disclaimer}{' '}{T.publicTools.roi.result.pricingNote}
+                {T.publicTools.roi.result.disclaimer}{' '}{format(T.publicTools.roi.result.pricingNote, { cost: money.format(AGENT_DEFAULT_MONTHLY_USD) })}
               </div>
             </div>
 
@@ -409,6 +411,7 @@ export function RoiCalculatorPage() {
 
 function ResultView({ result, onReset }: { result: RoiResult; onReset: () => void }) {
   const T = useLocale();
+  const money = useMoney();
   const monthly = result.estimatedMonthlyCostSaved;
   const yearly  = result.estimatedYearlyCostSaved;
   const time    = result.estimatedTimeSavedHoursPerMonth;
@@ -430,11 +433,11 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
           fontSize: 56, fontWeight: 800, color: 'var(--green-text)',
           fontVariantNumeric: 'tabular-nums', lineHeight: 1.05,
         }}>
-          ${monthly.toLocaleString('en-US')}<span style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 600 }}>{T.publicTools.roi.result.monthlySavingsUnit}</span>
+          {money.format(monthly)}<span style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 600 }}>{T.publicTools.roi.result.monthlySavingsUnit}</span>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 24, marginTop: 22 }}>
-          <Stat label={T.publicTools.roi.result.yearlySavingsLabel}  value={`$${yearly.toLocaleString('en-US')}`} />
+          <Stat label={T.publicTools.roi.result.yearlySavingsLabel}  value={money.format(yearly)} />
           <Stat label={T.publicTools.roi.result.timeSavedLabel}      value={format(T.publicTools.roi.result.timeSavedValue, { hours: time.toLocaleString('en-US') })} />
           <Stat label={T.publicTools.roi.result.paybackLabel}         value={payback === null ? T.publicTools.roi.result.paybackEmpty : format(T.publicTools.roi.result.paybackValue, { months: payback.toLocaleString('en-US') })} />
         </div>
@@ -450,7 +453,7 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
           {T.publicTools.roi.result.disclaimer}
         </div>
         <div style={{ marginTop: 4 }}>
-          {T.publicTools.roi.result.pricingNote}
+          {format(T.publicTools.roi.result.pricingNote, { cost: money.format(AGENT_DEFAULT_MONTHLY_USD) })}
         </div>
       </div>
 
