@@ -428,7 +428,7 @@ export const ru: Dict = {
         "journeyHeadline": "Вот что означает ваш срез",
         "journeyReadiness": "Готовность к AI: {bucket} ({score}/100).",
         "journeyTimeSaved": "Оценочная экономия времени ≈ {hours} часов/месяц.",
-        "journeyCostSaved": "Оценочная экономия затрат ≈ ${amount}/месяц."
+        "journeyCostSaved": "Оценочная экономия затрат ≈ {amount}/месяц."
       },
       "cta": {
         "computing": "Вычисление…",

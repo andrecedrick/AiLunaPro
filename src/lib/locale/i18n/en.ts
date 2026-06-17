@@ -442,7 +442,7 @@ export const en = {
         "journeyHeadline": "Here is what your snapshot means",
         "journeyReadiness": "AI readiness: {bucket} ({score}/100).",
         "journeyTimeSaved": "Estimated time saved ≈ {hours} hours/month.",
-        "journeyCostSaved": "Estimated cost saved ≈ ${amount}/month."
+        "journeyCostSaved": "Estimated cost saved ≈ {amount}/month."
       },
       "cta": {
         "computing": "Computing…",

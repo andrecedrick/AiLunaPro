@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { formatHoursRange, formatMoneyRange, formatPaybackRange, indicativeRange } from '../../lib/result/narrative';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
+import { useMoney } from '../../lib/currency/useMoney';
 
 /** Shared, non-PII result rendering for Audit Express (Run page + Detail page). */
 
@@ -28,8 +29,6 @@ export interface AuditUnderstanding {
   automationOpportunities: { id: string; title: string; impact: string; effort: string }[];
 }
 
-const usd = (n: number) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
-
 const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 22, marginTop: 14 };
 const h2: CSSProperties = { fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.005em', color: 'var(--text-primary)' };
 
@@ -40,6 +39,7 @@ export function AuditResultView({ preview, understanding, onSeeAgents, onRunFull
   onRunFullAudit?: () => void;
 }) {
   const T = useLocale();
+  const money = useMoney();
   const R = T.audit.express.result;
   const C = T.audit.express.cta;
   // Defensive: never assume a fully-shaped server response. Missing fields render
@@ -68,7 +68,7 @@ export function AuditResultView({ preview, understanding, onSeeAgents, onRunFull
           <>
             <div style={label}>{R.opportunityLabel}</div>
             <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>{R.timeBack}</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{format(R.timeBackValue, { range: formatHoursRange(num(r.estimatedTimeSavedHoursPerMonth)), low: Math.round(yearHrs.low), high: Math.round(yearHrs.high) })}</span></div>
-            <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>{R.costImpact}</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{format(R.costImpactValue, { range: formatMoneyRange(num(r.estimatedMonthlyCostSaved)), low: usd(yearUsd.low), high: usd(yearUsd.high) })}</span></div>
+            <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>{R.costImpact}</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{format(R.costImpactValue, { range: formatMoneyRange(num(r.estimatedMonthlyCostSaved), money.currency), low: money.format(yearUsd.low, { approx: false }), high: money.format(yearUsd.high, { approx: false }) })}</span></div>
             {formatPaybackRange(r.estimatedPaybackMonths) && <div style={rangeRow}><span style={{ color: 'var(--text-secondary)' }}>{R.payback}</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{formatPaybackRange(r.estimatedPaybackMonths)}</span></div>}
 
             <div style={label}>{R.howSavingLabel}</div>

@@ -427,7 +427,7 @@ export const es: Dict = {
         "journeyHeadline": "Esto es lo que significa tu instantánea",
         "journeyReadiness": "Preparación para la IA: {bucket} ({score}/100).",
         "journeyTimeSaved": "Tiempo ahorrado estimado ≈ {hours} horas/mes.",
-        "journeyCostSaved": "Coste ahorrado estimado ≈ ${amount}/mes."
+        "journeyCostSaved": "Coste ahorrado estimado ≈ {amount}/mes."
       },
       "cta": {
         "computing": "Calculando…",

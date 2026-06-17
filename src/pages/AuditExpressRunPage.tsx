@@ -8,6 +8,7 @@ import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
 import { JourneyNext } from '../components/journey/JourneyNext';
 import { PostResultTools } from '../components/result/PostResultTools';
+import { useMoney } from '../lib/currency/useMoney';
 import { DocumentAnalyzeCard } from '../components/auditExpress/DocumentAnalyzeCard';
 import { advanceJourney } from '../lib/journey/journeyState';
 import { track } from '../lib/analytics/track';
@@ -22,6 +23,7 @@ export function AuditExpressRunPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
   const T = useLocale();
+  const money = useMoney();
   const A = T.audit.express;
   const orgId = session?.orgId ?? '';
 
@@ -174,7 +176,7 @@ export function AuditExpressRunPage() {
               lines: [
                 format(A.run.journeyReadiness, { bucket: preview.k1a.bucket, score: preview.k1a.normalizedScore }),
                 format(A.run.journeyTimeSaved, { hours: preview.k2a.result.estimatedTimeSavedHoursPerMonth }),
-                format(A.run.journeyCostSaved, { amount: Math.round(Number(preview.k2a.result.estimatedMonthlyCostSaved) || 0).toLocaleString('en-US') }),
+                format(A.run.journeyCostSaved, { amount: money.format(Number(preview.k2a.result.estimatedMonthlyCostSaved) || 0, { approx: false }) }),
               ],
             }}
             hasRecommendedAgents={(preview.k1a.recommendedAgentIds?.length ?? 0) > 0}

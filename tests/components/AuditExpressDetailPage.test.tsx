@@ -30,6 +30,11 @@ vi.mock('../../src/context/RouteContext', () => ({
 vi.mock('../../src/context/AuthContext', () => ({
   useAuth: () => ({ session: { orgId: 'o1' } }),
 }));
+// B6.7: AuditResultView (rendered by the detail page) reads display currency via
+// useMoney → usePreferences. Provide a stable USD currency.
+vi.mock('../../src/context/PreferencesContext', () => ({
+  usePreferences: () => ({ displayCurrency: 'usd' }),
+}));
 vi.mock('../../src/lib/auditExpress/savedClient', () => ({
   getSavedAuditDetail: vi.fn(async () => SPARSE_DETAIL),
   renameAudit: vi.fn(), createShareLink: vi.fn(), regenerateShareLink: vi.fn(),

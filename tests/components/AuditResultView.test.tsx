@@ -1,5 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+// B6.7: AuditResultView now reads the display currency via useMoney →
+// usePreferences. Provide a stable USD currency (these tests assert hours/labels,
+// not money values).
+vi.mock('../../src/context/PreferencesContext', () => ({
+  usePreferences: () => ({ displayCurrency: 'usd' }),
+}));
+
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../../src/components/auditExpress/AuditResultView';
 
 /* Hardening: the shared result view must never crash on a partial/malformed

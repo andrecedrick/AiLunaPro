@@ -429,7 +429,7 @@ export const zh: Dict = {
         "journeyHeadline": "以下是您的快照含义",
         "journeyReadiness": "AI 就绪度：{bucket}（{score}/100）。",
         "journeyTimeSaved": "预计节省时间 ≈ {hours} 小时/月。",
-        "journeyCostSaved": "预计节省成本 ≈ ${amount}/月。"
+        "journeyCostSaved": "预计节省成本 ≈ {amount}/月。"
       },
       "cta": {
         "computing": "计算中…",

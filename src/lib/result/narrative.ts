@@ -1,4 +1,6 @@
 import type { SectionKey } from '../../types/audit';
+import type { Currency } from '../billing/currencyConstants';
+import { formatMoney } from '../currency/format';
 
 /**
  * Deterministic result-narrative layer (no LLM, no PII, no legal interpretation).
@@ -18,15 +20,22 @@ export function indicativeRange(value: number, pct = 0.15): { low: number; high:
   return { low: v * (1 - pct), high: v * (1 + pct) };
 }
 function roundTo(n: number, step: number): number { return Math.round(n / step) * step; }
-const usd = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
 
 export function formatHoursRange(hoursPerMonth: number): string {
   const { low, high } = indicativeRange(hoursPerMonth);
   return `~${Math.max(1, Math.round(low))}–${Math.round(high)} h/month`;
 }
-export function formatMoneyRange(usdPerMonth: number): string {
+/**
+ * Indicative monthly cost-saved RANGE in the display currency (B6.7).
+ * Bounds are rounded to hundreds in USD (preserving the prior output) then
+ * converted via the deterministic FX snapshot. A single "≈" precedes the whole
+ * range for non-USD; USD output is byte-identical to the prior `$`-formatted form.
+ */
+export function formatMoneyRange(usdPerMonth: number, currency: Currency = 'usd'): string {
   const { low, high } = indicativeRange(usdPerMonth);
-  return `~${usd(roundTo(low, 100))}–${usd(roundTo(high, 100))}/mo`;
+  const lo = formatMoney(roundTo(low, 100), currency, { approx: false });
+  const hi = formatMoney(roundTo(high, 100), currency, { approx: false });
+  return `${currency !== 'usd' ? '≈ ' : ''}~${lo}–${hi}/mo`;
 }
 export function formatPaybackRange(months: number | null): string | null {
   if (months == null || !Number.isFinite(months) || months <= 0) return null;

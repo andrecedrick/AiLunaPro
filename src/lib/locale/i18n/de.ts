@@ -427,7 +427,7 @@ export const de: Dict = {
         "journeyHeadline": "So ist Ihre Momentaufnahme zu verstehen",
         "journeyReadiness": "KI-Reife: {bucket} ({score}/100).",
         "journeyTimeSaved": "Geschätzte eingesparte Zeit ≈ {hours} Stunden/Monat.",
-        "journeyCostSaved": "Geschätzte eingesparte Kosten ≈ ${amount}/Monat."
+        "journeyCostSaved": "Geschätzte eingesparte Kosten ≈ {amount}/Monat."
       },
       "cta": {
         "computing": "Wird berechnet…",

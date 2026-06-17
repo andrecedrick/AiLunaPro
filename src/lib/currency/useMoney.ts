@@ -12,13 +12,19 @@
 
 import { usePreferences } from '../../context/PreferencesContext';
 import { formatMoney, type FormatMoneyOptions } from './format';
+import type { Currency } from '../billing/currencyConstants';
 
 export interface MoneyFormatter {
   /** Format a USD-base amount in the user's current display currency. */
   format: (amountUsd: number, opts?: FormatMoneyOptions) => string;
+  /** The active display currency — e.g. to pass into pure range formatters. */
+  currency: Currency;
 }
 
 export function useMoney(): MoneyFormatter {
   const { displayCurrency } = usePreferences();
-  return { format: (amountUsd, opts) => formatMoney(amountUsd, displayCurrency, opts) };
+  return {
+    format: (amountUsd, opts) => formatMoney(amountUsd, displayCurrency, opts),
+    currency: displayCurrency,
+  };
 }
