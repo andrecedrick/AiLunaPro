@@ -74,7 +74,7 @@
 |---|---|---|
 | V1 — Site analysis | URL crawl (`runExtraction`) inside Audit Express | editable stack/AI "fiche"; standalone V1 surface |
 | W1 — Quick Win matrix | Impact×Effort matrix inside the Express PDF | standalone scored W1 cockpit + top-3 |
-| Smart Locale + Currency | currency **display** + FX (`/api/public/fx`) · **UI/content translation ✅ 8 languages** (B6.0/B6.5/B6.2, EN/FR/ES/IT/DE/PT/RU/ZH) | Arabic + basic RTL (B6.6) · FX-snapshot determinism + currency unification (B6.7) · Latin-5 PDF i18n (B6.3) · regulatory/`narrative.ts` copy (deferred) |
+| Smart Locale + Currency | currency **display** (deterministic FX snapshot) · **UI/content translation ✅ 8 languages** (B6.0/B6.5/B6.2, EN/FR/ES/IT/DE/PT/RU/ZH) · **FX-snapshot + currency unification ✅ (B6.7, 2026-06-17)** | Arabic + basic RTL (B6.6) · Latin-5 PDF i18n (B6.3) · regulatory/`narrative.ts` copy (deferred) |
 | SEO/GEO surfaces (§7ter) | public pages (audit-express, eu-ai-act, faq, methodologie, pricing, shadow-ai, use-cases) | sitemap.xml, schema.org, llms.txt |
 | System Builder | static read-only skeleton (J9) | promotion to core nav (B3); persistence |
 
@@ -105,7 +105,7 @@
 ### 0bis.3 — Unresolved governance decisions (must be settled before related GO)
 1. **K5/B5 (documents):** ~~RAG/LLM (v2.4) **vs** deterministic/no-LLM~~ **RESOLVED 2026-06-11** — **B5 shipped deterministic/no-LLM** (`c4fe055`+`7bb273a`, §19.B5). The **K5 RAG/LLM variant remains a separate 🔴 future item**, still blocked by the standing no-LLM guardrail.
 2. **K6/B4 (Luna Copilot):** ~~LLM/Anthropic SSE agent (v2.4) **vs** rule-based/no-LLM~~ **RESOLVED 2026-06-11** — **B4 shipped rule-based/no-LLM** (`bdaef89`, §19.B4). The **K6 LLM/SSE-agent variant remains a separate 🔴 future item**, still blocked by the standing no-LLM guardrail.
-3. **i18n (B6/§9.24):** ~~static dictionaries vs translation service~~ **RESOLVED 2026-06-14 — static dictionaries** (no external service, no runtime/LLM translation, deterministic, English fallback). Shipped: **B6.0** foundation, **B6.5** registry + RU/ZH, **B6.2 (a–data)** complete UI + data-driven content across 8 languages, **prod-deployed + real-UI-validated** (§19.B6). Still open *within* B6: Arabic + RTL (B6.6), FX-snapshot + currency unification (B6.7), Latin-5 PDF text (B6.3).
+3. **i18n (B6/§9.24):** ~~static dictionaries vs translation service~~ **RESOLVED 2026-06-14 — static dictionaries** (no external service, no runtime/LLM translation, deterministic, English fallback). Shipped: **B6.0** foundation, **B6.5** registry + RU/ZH, **B6.2 (a–data)** complete UI + data-driven content across 8 languages, **prod-deployed + real-UI-validated** (§19.B6). Still open *within* B6: Arabic + RTL (B6.6), Latin-5 PDF text (B6.3). **FX-snapshot + currency unification (B6.7) — ✅ shipped 2026-06-17 (`73ae0cb`).**
 4. **B2/T1:** ~~lead-storage model~~ **RESOLVED 2026-06-10** (worker-only consented Firestore — see §19.B2); dunning/re-engagement **channel** (Sequenzy/Twilio) still open — blocks B2(e)/T1 only.
 > Note: the standing project guardrail today is **no-LLM / deterministic**. The **LLM variants** (K5 RAG, K6 conversational copilot) cannot proceed until this is explicitly overridden or the deterministic re-scope is confirmed — their deterministic counterparts (B5, B4) are shipped and closed.
 
@@ -1124,7 +1124,7 @@ Prioritized Action Plan (extension J9) → Payment Methods (Billing UX, valeur i
 renderer) → Audio Explanations (dépend TTS architecture) → Webhooks sortants.
 
 #### 9.24 Internationalization, Currency & Smart Locale
-*(Smart locale detection + currency DISPLAY = ✅ LIVRÉ J12 ; **multilingual UI translation = ✅ LIVRÉ via B6 — static dictionaries, 8 langues (EN/FR/ES/IT/DE/PT/RU/ZH), 2026-06-14** ; PDF i18n / Arabe-RTL / FX-snapshot = en cours — voir §19.B6 / §0bis.2)*
+*(Smart locale detection + currency DISPLAY = ✅ LIVRÉ J12 ; **multilingual UI translation = ✅ LIVRÉ via B6 — static dictionaries, 8 langues (EN/FR/ES/IT/DE/PT/RU/ZH), 2026-06-14** ; **FX-snapshot + currency unification = ✅ LIVRÉ B6.7 2026-06-17** ; PDF i18n / Arabe-RTL = en cours — voir §19.B6 / §0bis.2)*
 
 **✅ Livré J12 (2026-05-29)** : détection locale + affichage devise (display-only).
 - **Détection** : worker `GET /api/public/geo` (no-auth, `CF-IPCountry`→`REGION_TO_CURRENCY`,
@@ -1145,7 +1145,7 @@ renderer) → Audio Explanations (dépend TTS architecture) → Webhooks sortant
 
 **Reste planifié (référence d'origine ci-dessous) — multilingual UI ✅ livré via B6 ; le reste partiellement en cours :**
 
-#### 9.24 (réf. d'origine) Internationalization, Currency & Smart Locale *(multilingual UI ✅ B6 ; currency-snapshot / RTL / PDF-i18n en cours)*
+#### 9.24 (réf. d'origine) Internationalization, Currency & Smart Locale *(multilingual UI ✅ B6 ; currency-snapshot ✅ B6.7 2026-06-17 ; RTL / PDF-i18n en cours)*
 
 **Statut (mis à jour 2026-06-14)** : le **(1) Multilingual support (UI + contenu statique)
 est ✅ LIVRÉ** — static dictionaries, 8 langues, B6.0/B6.5/B6.2 (a–d) (§19.B6, §0bis.2). Le
@@ -2361,6 +2361,8 @@ Chaque clôture DOIT produire :
 
 ### 18.1 Phases
 
+**✅ B6.7 — Currency unification + deterministic FX snapshot** — FAIT + clôturé (P0→P4, 2026-06-17, `73ae0cb` ; merged to `main`, frontend Pages + worker déployés, prod-vérifié). Couche unique `src/lib/currency` (FX_SNAPSHOT versionné, `useMoney`/`formatMoney`) ; détection devise via langue navigateur au boot ; ROI / résultats audit / agents / hints billing migrés (USD byte-identique, `≈` pour converti) ; live-FX (`/api/public/fx`) + geo-IP (`/api/public/geo`) supprimés (404 prod) ; `fxSnapshotVersion` stampé ; **Stripe billing intact**. FX = snapshot manuel versionné (pas d'API runtime). Voir §19.B6.
+
 **✅ J1 — Stripe intégration réelle (test mode)** — FAIT
 Subscription sync hardening (product→plan partagé, APP_BASE_URL, syncBalanceAllocation),
 checkout / portal / webhook / tokens, multi-currency, balance optimistic-concurrency.
@@ -3047,8 +3049,9 @@ B5 (+B5.1), B7, B8 — plus net-new results-UX redesign, routing reload-safety f
 consulting-grade white-paper PDFs. **B6 🟡 in progress** — static-dictionary i18n (no deps,
 deterministic, no LLM): foundation + locale registry + **8-language UI content** translated
 across EN/FR/ES/IT/DE/PT/RU/ZH (B6.0 `8a82684`, B6.5 `0f1462c`, B6.2 a–d
-`74d22bd`/`049851e`/`ee489d6`/`e3b625b`). **Pending within B6:** B6.3 Latin-5 PDF text ·
-B6.6 Arabic + basic RTL · B6.7 FX-snapshot + currency unification; regulatory/`narrative.ts`
+`74d22bd`/`049851e`/`ee489d6`/`e3b625b`), **B6.7 currency unification + deterministic FX
+snapshot (`73ae0cb`, 2026-06-17)**. **Pending within B6:** B6.3 Latin-5 PDF text ·
+B6.6 Arabic + basic RTL; regulatory/`narrative.ts`
 copy deferred (human-review-gated). **Still 🔴:** B2(e) re-engagement (blocked on the T1
 outbound-channel decision, §0bis.3 #4).
 
@@ -3326,7 +3329,7 @@ scrubbed text/signals to the worker (keeps raw bytes off the server).
 deferred pending explicit `pdfjs-dist` dependency approval); integration = Audit Express
 run page via the existing extract/understand pipeline; caps 1 MB file / 200 KB text.
 
-### B6 — Internationalization & monetary support *(🟡 IN PROGRESS — static-dictionary i18n + 8-language UI shipped 2026-06-14; PDF i18n / Arabic-RTL / FX-snapshot pending)*
+### B6 — Internationalization & monetary support *(🟡 IN PROGRESS — static-dictionary i18n + 8-language UI shipped 2026-06-14; currency unification + deterministic FX snapshot shipped 2026-06-17 (B6.7); PDF i18n / Arabic-RTL pending)*
 **Objectives:** (a) **language translation** for UI **and** generated content (reports/
 PDF text); (b) **online currency handling** for pricing, ROI, and reports; (c) explicit
 **fallback behavior** when a language/currency is unsupported (default locale/currency,
@@ -3340,10 +3343,15 @@ no new deps unless approved. **Decision RESOLVED 2026-06-14 — static dictionar
 external service, no runtime/LLM translation, deterministic, English fallback).
 **Shipped & prod-verified:** B6.0 foundation (`8a82684`), B6.5 locale registry + RU/ZH
 (`0f1462c`), B6.2 (a–d) content translation across EN/FR/ES/IT/DE/PT/RU/ZH
-(`74d22bd`/`049851e`/`ee489d6`/`e3b625b`). **Pending within B6:** B6.3 Latin-5 PDF text
-rendering, B6.6 Arabic + basic RTL, B6.7 FX-snapshot determinism + Currency/DisplayCurrency
-unification; regulatory + `narrative.ts` prose deferred (human-review-gated). PDFs render
-Latin-only today — RU/AR/ZH fall back to English via `pdfLocale`, preserving determinism.
+(`74d22bd`/`049851e`/`ee489d6`/`e3b625b`), **B6.7 currency unification + deterministic FX
+snapshot (`73ae0cb`, 2026-06-17)** — single `src/lib/currency` layer (FX_SNAPSHOT versioned,
+`useMoney`/`formatMoney`), browser-language currency detection at boot, USD byte-identical +
+`≈` for converted, live-FX + geo-IP removed (`/api/public/fx` + `/api/public/geo` deleted,
+404 in prod), `fxSnapshotVersion` stamped, Stripe billing untouched. FX is a manual versioned
+snapshot (no runtime API). **Pending within B6:** B6.3 Latin-5 PDF text rendering, B6.6 Arabic
++ basic RTL; regulatory + `narrative.ts` prose deferred (human-review-gated). PDFs render
+Latin-only today — RU/AR/ZH fall back to English via `pdfLocale`, preserving determinism (and
+render USD only — the worker performs no FX, so PDFs are inherently FX-deterministic).
 
 **How to add a language (manual, compile-time-enforced):** extend the `Language` union +
 label maps (`src/lib/preferences.ts`), add `src/lib/locale/i18n/<code>.ts` typed `: Dict`,
@@ -3404,7 +3412,7 @@ B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent 
 4. **B6** — ~~translation approach (static dictionaries vs service)~~ **RESOLVED 2026-06-14: static dictionaries** (no service, no LLM, deterministic); B6.0/B6.5/B6.2(a–d) shipped — see §0bis.3 #3 / §19.B6.
 5. **B3** — ~~whether v1.x adds persistence to System Builder~~ **RESOLVED 2026-06-11** (localStorage-only persistence + checklists; Firestore deferred — see §19.B3).
 6. **Prioritization & phasing** of B1–B7 (not yet committed).
-**Implementation status (authoritative in §0bis.2):** B1, B2 (a–d), B3, B4, B5 (+B5.1), B7, B8 are ✅ shipped & prod-verified; **B6 🟡 in progress** — foundation + registry + 8-language UI content shipped (B6.0/B6.5/B6.2 a–d, 2026-06-14); B6.3 PDF-i18n / B6.6 Arabic-RTL / B6.7 FX-snapshot pending. **B2(e) re-engagement remains 🔴** (T1 channel). All §18 closed epics remain as-is.
+**Implementation status (authoritative in §0bis.2):** B1, B2 (a–d), B3, B4, B5 (+B5.1), B7, B8 are ✅ shipped & prod-verified; **B6 🟡 in progress** — foundation + registry + 8-language UI content shipped (B6.0/B6.5/B6.2 a–d, 2026-06-14) + **B6.7 currency unification + FX-snapshot ✅ 2026-06-17 (`73ae0cb`)**; B6.3 PDF-i18n / B6.6 Arabic-RTL pending. **B2(e) re-engagement remains 🔴** (T1 channel). All §18 closed epics remain as-is.
 
 ---
 
