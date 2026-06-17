@@ -36,9 +36,6 @@ interface PreferencesValue {
   setLanguage:        (l: Language) => void;
   displayCurrency:    DisplayCurrency;
   setDisplayCurrency: (c: DisplayCurrency) => void;
-  /** J12: set display currency WITHOUT persisting (smart-locale in-memory
-   *  default). Only setDisplayCurrency (explicit user choice) writes storage. */
-  setDisplayCurrencyEphemeral: (c: DisplayCurrency) => void;
   /** J9 Phase B-lite: user profile (UI/copy switch only, never scoring). */
   userProfile:        UserProfile;
   setUserProfile:     (p: UserProfile) => void;
@@ -64,11 +61,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     saveDisplayCurrency(c); // explicit user choice → persist
   }, []);
 
-  // J12: in-memory only (no persist) — used by Billing-only smart-locale detect.
-  const setDisplayCurrencyEphemeral = useCallback((c: DisplayCurrency) => {
-    setDisplayCurrencyState(c);
-  }, []);
-
   const setUserProfile = useCallback((p: UserProfile) => {
     setUserProfileState(p);
     saveUserProfile(p);
@@ -81,7 +73,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         setLanguage,
         displayCurrency,
         setDisplayCurrency,
-        setDisplayCurrencyEphemeral,
         userProfile,
         setUserProfile,
       }}

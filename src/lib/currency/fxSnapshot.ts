@@ -9,8 +9,9 @@
  * `version` is recorded alongside generated results/PDFs so a report can be
  * re-rendered reproducibly with the exact rates it was produced with.
  *
- * The rates mirror the prior static table (src/lib/locale/fxRates.ts), so the
- * P3 cutover from the live-FX path to this snapshot is value-stable.
+ * These rates mirror the prior static fallback table; the live-FX path
+ * (loadLiveRates → ECB) was removed in P3, so this snapshot is now the single,
+ * value-stable source of display FX.
  */
 
 import type { Currency } from '../billing/currencyConstants';
