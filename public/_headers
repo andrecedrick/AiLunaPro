@@ -51,6 +51,18 @@
   Cache-Control: no-cache, must-revalidate
   Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://res.cloudinary.com https://*.stripe.com; connect-src 'self' https://api.ailunapro.com https://*.googleapis.com https://*.i.posthog.com https://api.stripe.com https://challenges.cloudflare.com https://www.google.com; frame-src 'self' https://js.stripe.com https://challenges.cloudflare.com https://www.google.com; worker-src 'self' blob:; form-action 'self'
 
+# SEO landing pages for the public tools (ROI Calculator, Maturity Diagnostic):
+# same stale-prevention HTML policy + report-only CSP as audit-express. These
+# deep-link into the SPA tools (#/roi-calculator, #/diagnostic). Indexable — NO
+# X-Robots-Tag here.
+/ai-roi-calculator/*
+  Cache-Control: no-cache, must-revalidate
+  Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://res.cloudinary.com https://*.stripe.com; connect-src 'self' https://api.ailunapro.com https://*.googleapis.com https://*.i.posthog.com https://api.stripe.com https://challenges.cloudflare.com https://www.google.com; frame-src 'self' https://js.stripe.com https://challenges.cloudflare.com https://www.google.com; worker-src 'self' blob:; form-action 'self'
+
+/ai-maturity-diagnostic/*
+  Cache-Control: no-cache, must-revalidate
+  Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://res.cloudinary.com https://*.stripe.com; connect-src 'self' https://api.ailunapro.com https://*.googleapis.com https://*.i.posthog.com https://api.stripe.com https://challenges.cloudflare.com https://www.google.com; frame-src 'self' https://js.stripe.com https://challenges.cloudflare.com https://www.google.com; worker-src 'self' blob:; form-action 'self'
+
 # Public J14 SEO pages (eu-ai-act, faq): same stale-prevention HTML policy + same
 # report-only CSP as audit-express. Indexable — NO X-Robots-Tag here.
 /eu-ai-act/*

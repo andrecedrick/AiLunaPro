@@ -23,6 +23,7 @@ import type { DiagnosticResult, Bucket } from '../types/diagnostic';
 import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
 import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
 import { track } from '../lib/analytics/track';
+import { captureSrc, getSrc, withSrc } from '../lib/analytics/srcParam';
 import { computeDiagnosticPreview, type DiagnosticPreview } from '../lib/diagnostic/score';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
@@ -60,6 +61,8 @@ export function DiagnosticPage() {
   // so an authed user never sees it flash during Firebase auth resolution.
   const { isAuthenticated, isLoading } = useAuth();
   const T = useLocale();
+  // A2: capture the SEO landing-page acquisition tag (?src) once, persist for the session.
+  const [src] = useState(() => captureSrc());
   // Localized diagnostic question + option labels (data-driven content), keyed
   // by question id / option value; falls back to the raw English data.
   const DQ = T.diagnosticQuestions.byId as Record<string, { label: string; options: Record<string, string> }>;
@@ -94,7 +97,7 @@ export function DiagnosticPage() {
     setAnswers(prev => {
       const next = { ...prev, [qid]: value };
       // B2.4: persist in-progress answers locally; signal flow start once.
-      if (Object.keys(prev).length === 0) track('lead_flow_started', { flow: 'diagnostic' });
+      if (Object.keys(prev).length === 0) track('lead_flow_started', { flow: 'diagnostic', src: src ?? undefined });
       saveFlowProgress('diagnostic', { answers: next });
       // A1 Change 2: keep the value-first preview live if it's already revealed.
       setPreview(p => (p ? computeDiagnosticPreview(next) : p));
@@ -110,7 +113,7 @@ export function DiagnosticPage() {
     if (!allAnswered) { setErrors({ answers: T.publicTools.diagnostic.errors.answers }); return; }
     setErrors({});
     setPreview(computeDiagnosticPreview(answers));
-    track('score_viewed', { flow: 'diagnostic' });
+    track('score_viewed', { flow: 'diagnostic', src: src ?? undefined });
     requestAnimationFrame(() => {
       const el = document.getElementById('diagnostic-preview');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -144,7 +147,7 @@ export function DiagnosticPage() {
       // for post-auth continuity (guided journey start banner).
       clearFlowProgress('diagnostic');
       savePendingResult({ kind: 'diagnostic', headline: `AI maturity score ${r.score}/100 (${r.bucket})`, createdAt: new Date().toISOString() });
-      track('lead_flow_completed', { flow: 'diagnostic' });
+      track('lead_flow_completed', { flow: 'diagnostic', src: src ?? undefined });
       // Scroll result into view
       requestAnimationFrame(() => {
         const el = document.getElementById('diagnostic-result');
@@ -475,7 +478,7 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
           {result.recommendedAgentIds.map(slug => (
             <a
               key={slug}
-              href={AFFILIATE_URL}
+              href={withSrc(AFFILIATE_URL)}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -513,10 +516,10 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
           {T.publicTools.diagnostic.result.ctaBody}
         </div>
         <a
-          href={AFFILIATE_URL}
+          href={withSrc(AFFILIATE_URL)}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => track('cta_clicked', { flow: 'diagnostic', target: 'signup' })}
+          onClick={() => track('cta_clicked', { flow: 'diagnostic', target: 'signup', src: getSrc() ?? undefined })}
           style={{
             display: 'inline-block',
             padding: '11px 28px', borderRadius: 10,

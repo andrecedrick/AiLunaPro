@@ -25,6 +25,7 @@ import type { RoiResult } from '../types/roi';
 import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
 import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
 import { track } from '../lib/analytics/track';
+import { captureSrc, getSrc, withSrc } from '../lib/analytics/srcParam';
 import { computeRoiPreview, type RoiPreview } from '../lib/roi/score';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
@@ -48,6 +49,8 @@ export function RoiCalculatorPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const T = useLocale();
   const money = useMoney();
+  // A2: capture the SEO landing-page acquisition tag (?src) once, persist for the session.
+  const [src] = useState(() => captureSrc());
 
   // B2.4: restore an unfinished run from localStorage (client-side only).
   const saved = readFlowProgress('roi')?.state as { teamSize?: string; hours?: string; cost?: string; workflow?: string } | undefined;
@@ -75,7 +78,7 @@ export function RoiCalculatorPage() {
     if (!dirty) return;
     if (!flowStartedRef.current) {
       flowStartedRef.current = true;
-      if (!resumed) track('lead_flow_started', { flow: 'roi' });
+      if (!resumed) track('lead_flow_started', { flow: 'roi', src: src ?? undefined });
     }
     saveFlowProgress('roi', { teamSize, hours, cost, workflow });
   }, [teamSize, hours, cost, workflow, result, resumed]);
@@ -127,7 +130,7 @@ export function RoiCalculatorPage() {
       averageHourlyCost:            costNum,
       targetWorkflow:               workflow as Workflow,
     }));
-    track('score_viewed', { flow: 'roi' });
+    track('score_viewed', { flow: 'roi', src: src ?? undefined });
     requestAnimationFrame(() => {
       const el = document.getElementById('roi-preview');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -182,7 +185,7 @@ export function RoiCalculatorPage() {
       // post-auth continuity (guided journey start banner).
       clearFlowProgress('roi');
       savePendingResult({ kind: 'roi', headline: `estimated savings of ${money.format(r.result.estimatedMonthlyCostSaved)}/month`, createdAt: new Date().toISOString() });
-      track('lead_flow_completed', { flow: 'roi' });
+      track('lead_flow_completed', { flow: 'roi', src: src ?? undefined });
       requestAnimationFrame(() => {
         const el = document.getElementById('roi-result');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -473,7 +476,7 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
           {result.recommendedAgentIds.map(slug => (
             <a
               key={slug}
-              href={AFFILIATE_URL}
+              href={withSrc(AFFILIATE_URL)}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -511,10 +514,10 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
           {T.publicTools.roi.result.ctaBody}
         </div>
         <a
-          href={AFFILIATE_URL}
+          href={withSrc(AFFILIATE_URL)}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => track('cta_clicked', { flow: 'roi', target: 'signup' })}
+          onClick={() => track('cta_clicked', { flow: 'roi', target: 'signup', src: getSrc() ?? undefined })}
           style={{
             display: 'inline-block',
             padding: '11px 28px', borderRadius: 10,
