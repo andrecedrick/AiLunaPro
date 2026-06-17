@@ -11,6 +11,7 @@ import { useRoute } from '../context/RouteContext';
 import { useLocale } from '../context/LocaleContext';
 import { format } from '../lib/locale/i18n';
 import { fetchAgent } from '../lib/agents/agentsClient';
+import { useMoney } from '../lib/currency/useMoney';
 import type { AgentCatalogEntry } from '../types/agents';
 
 const PLAN_LABEL: Record<AgentCatalogEntry['minPlan'], string> = {
@@ -61,6 +62,7 @@ export function AgentDetailPage() {
   const { route, navigate } = useRoute();
   const { session } = useAuth();
   const T = useLocale();
+  const money = useMoney();
   const AC = T.agentsContent;
   const tax = (group: Record<string, string>, key: string) => group[key] ?? key;
   const role  = session?.role;
@@ -203,7 +205,7 @@ export function AgentDetailPage() {
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{T.agentsPages.detail.bestFit.minBudget}</div>
                   <div style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>
-                    {format(T.agentsPages.detail.bestFit.minBudgetValue, { amount: agent.fits.budgetMin.toLocaleString('en-US') })}
+                    {format(T.agentsPages.detail.bestFit.minBudgetValue, { amount: money.format(agent.fits.budgetMin) })}
                   </div>
                 </div>
               )}
@@ -234,7 +236,7 @@ export function AgentDetailPage() {
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{T.agentsPages.detail.roi.costSaved}</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--green-text)' }}>
-                    {format(T.agentsPages.detail.roi.costSavedValue, { amount: agent.expectedRoi.monthlyCostSaved.toLocaleString('en-US') })}
+                    {format(T.agentsPages.detail.roi.costSavedValue, { amount: money.format(agent.expectedRoi.monthlyCostSaved) })}
                   </div>
                 </div>
               )}
@@ -256,10 +258,10 @@ export function AgentDetailPage() {
                 .split('**')
                 .map((seg, i) => (i % 2 === 1 ? <strong key={i}>{seg}</strong> : seg))}
               {agent.pricing.installPrice !== null && (
-                <>{format(T.agentsPages.detail.pricing.install, { amount: agent.pricing.installPrice.toLocaleString('en-US') })}</>
+                <>{format(T.agentsPages.detail.pricing.install, { amount: money.format(agent.pricing.installPrice) })}</>
               )}
               {agent.pricing.monthlyPrice !== null && (
-                <>{format(T.agentsPages.detail.pricing.monthly, { amount: agent.pricing.monthlyPrice.toLocaleString('en-US') })}</>
+                <>{format(T.agentsPages.detail.pricing.monthly, { amount: money.format(agent.pricing.monthlyPrice) })}</>
               )}
               {agent.pricing.installPrice === null && agent.pricing.monthlyPrice === null && (
                 <>{T.agentsPages.detail.pricing.onRequest}</>

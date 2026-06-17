@@ -1976,20 +1976,20 @@ export const ru: Dict = {
         "industries": "Отрасли",
         "companySize": "Размер компании",
         "minBudget": "Мин. бюджет",
-        "minBudgetValue": "${amount}/мес"
+        "minBudgetValue": "{amount}/мес"
       },
       "roi": {
         "timeSaved": "Сэкономленное время",
         "timeSavedValue": "{hours} ч/мес",
         "costSaved": "Сэкономленные затраты",
-        "costSavedValue": "${amount}/мес",
+        "costSavedValue": "{amount}/мес",
         "payback": "Окупаемость",
         "paybackValue": "{months} месяцев"
       },
       "pricing": {
         "modelPrefix": "Модель: **{model}**",
-        "install": " · Установка: ${amount}",
-        "monthly": " · Ежемесячно: ${amount}",
+        "install": " · Установка: {amount}",
+        "monthly": " · Ежемесячно: {amount}",
         "onRequest": " · Цена по запросу"
       }
     }

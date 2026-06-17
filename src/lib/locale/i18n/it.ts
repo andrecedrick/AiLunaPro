@@ -1975,20 +1975,20 @@ export const it: Dict = {
         "industries": "Settori",
         "companySize": "Dimensione dell'azienda",
         "minBudget": "Budget minimo",
-        "minBudgetValue": "${amount}/mese"
+        "minBudgetValue": "{amount}/mese"
       },
       "roi": {
         "timeSaved": "Tempo risparmiato",
         "timeSavedValue": "{hours} h/mese",
         "costSaved": "Costo risparmiato",
-        "costSavedValue": "${amount}/mese",
+        "costSavedValue": "{amount}/mese",
         "payback": "Ritorno dell'investimento",
         "paybackValue": "{months} mesi"
       },
       "pricing": {
         "modelPrefix": "Modello: **{model}**",
-        "install": " · Installazione: ${amount}",
-        "monthly": " · Mensile: ${amount}",
+        "install": " · Installazione: {amount}",
+        "monthly": " · Mensile: {amount}",
         "onRequest": " · Prezzi su richiesta"
       }
     }

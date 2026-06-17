@@ -1977,20 +1977,20 @@ export const zh: Dict = {
         "industries": "行业",
         "companySize": "公司规模",
         "minBudget": "最低预算",
-        "minBudgetValue": "${amount}/月"
+        "minBudgetValue": "{amount}/月"
       },
       "roi": {
         "timeSaved": "节省时间",
         "timeSavedValue": "{hours} 小时/月",
         "costSaved": "节省成本",
-        "costSavedValue": "${amount}/月",
+        "costSavedValue": "{amount}/月",
         "payback": "回本周期",
         "paybackValue": "{months} 个月"
       },
       "pricing": {
         "modelPrefix": "模式：**{model}**",
-        "install": " · 安装：${amount}",
-        "monthly": " · 每月：${amount}",
+        "install": " · 安装：{amount}",
+        "monthly": " · 每月：{amount}",
         "onRequest": " · 价格面议"
       }
     }

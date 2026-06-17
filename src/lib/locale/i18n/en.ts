@@ -2192,20 +2192,20 @@ export const en = {
         "industries": "Industries",
         "companySize": "Company size",
         "minBudget": "Min budget",
-        "minBudgetValue": "${amount}/mo"
+        "minBudgetValue": "{amount}/mo"
       },
       "roi": {
         "timeSaved": "Time saved",
         "timeSavedValue": "{hours} h/mo",
         "costSaved": "Cost saved",
-        "costSavedValue": "${amount}/mo",
+        "costSavedValue": "{amount}/mo",
         "payback": "Payback",
         "paybackValue": "{months} months"
       },
       "pricing": {
         "modelPrefix": "Model: **{model}**",
-        "install": " · Install: ${amount}",
-        "monthly": " · Monthly: ${amount}",
+        "install": " · Install: {amount}",
+        "monthly": " · Monthly: {amount}",
         "onRequest": " · Pricing on request"
       }
     }
