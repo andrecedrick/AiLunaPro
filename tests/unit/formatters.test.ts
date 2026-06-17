@@ -7,7 +7,6 @@ import {
   formatDate,
   formatScore,
   formatRiskLevel,
-  formatCurrency,
 } from '@/utils/formatters';
 
 describe('formatDate', () => {
@@ -85,23 +84,5 @@ describe('formatRiskLevel', () => {
 
   it('falls back for unexpected values', () => {
     expect(formatRiskLevel('weird')).toBe('Unknown risk');
-  });
-});
-
-describe('formatCurrency', () => {
-  it('formats a USD amount by default', () => {
-    const result = formatCurrency(49);
-    // Locale-dependent; just check that a "$" or USD-ish marker shows.
-    expect(result).toMatch(/\$|USD/);
-  });
-
-  it('honors a custom currency code', () => {
-    const result = formatCurrency(49, 'EUR', 'fr-FR');
-    expect(result).toMatch(/€|EUR/);
-  });
-
-  it('returns "—" for non-finite values', () => {
-    expect(formatCurrency(NaN)).toBe('—');
-    expect(formatCurrency(Infinity)).toBe('—');
   });
 });

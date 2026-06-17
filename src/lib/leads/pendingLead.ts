@@ -6,6 +6,8 @@
  * Everything is best-effort: storage failures must never break the flows.
  */
 
+import { FX_SNAPSHOT } from '../currency/fxSnapshot';
+
 export type LeadFlowKind = 'diagnostic' | 'roi';
 
 /* ── Pending result (continuity): saved on successful submit, surfaced after
@@ -17,12 +19,21 @@ export interface PendingLeadResult {
   /** Headline for the post-auth banner, e.g. score or monthly savings. */
   headline: string;
   createdAt: string;
+  /**
+   * B6.7: the FX snapshot version in effect when this (possibly currency-converted)
+   * headline was produced — recorded for reproducibility/traceability of any money
+   * figure. Display conversion is deterministic per deploy (single versioned snapshot).
+   */
+  fxSnapshotVersion?: string;
 }
 
 const RESULT_KEY = (k: LeadFlowKind) => `ailunapro.lead.v1.${k}.result`;
 
 export function savePendingResult(r: PendingLeadResult): void {
-  try { localStorage.setItem(RESULT_KEY(r.kind), JSON.stringify(r)); } catch { /* non-fatal */ }
+  try {
+    const stamped: PendingLeadResult = { ...r, fxSnapshotVersion: r.fxSnapshotVersion ?? FX_SNAPSHOT.version };
+    localStorage.setItem(RESULT_KEY(r.kind), JSON.stringify(stamped));
+  } catch { /* non-fatal */ }
 }
 
 export function readPendingResult(kind: LeadFlowKind): PendingLeadResult | null {
