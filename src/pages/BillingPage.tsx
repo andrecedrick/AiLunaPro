@@ -27,7 +27,7 @@ import { PLAN_CONFIGS, type PlanTier } from '../types/billing';
 import { createCheckoutSession, createPortalSession, CheckoutError, PortalError, WORKER_BASE, fetchInvoices, type StripeInvoice } from '../lib/billing/stripeClient';
 import { CURRENCY_SYMBOLS, type Currency, type CurrencySettings, DEFAULT_CURRENCY_SETTINGS } from '../lib/billing/currencyConstants';
 import { usePreferences } from '../context/PreferencesContext';
-import { formatApproxFromUsd } from '../lib/locale/fxRates';
+import { useMoney } from '../lib/currency/useMoney';
 import { formatMoney } from '../lib/billing/currencyFormat';
 import { resolveBillingCurrency } from '../lib/billing/currencyDetect';
 import { db } from '../lib/firestore';
@@ -189,10 +189,12 @@ function PricingCard({ plan, isCurrent, loading, disabled, onSubscribe }: Pricin
   const T = useLocale();
   const isFree = plan.key === 'free';
   const accent = plan.bestValue;
-  // J12 display-only: approximate local-currency hint. Stripe bills in USD.
+  // B6.7 display-only: approximate local-currency hint via the deterministic FX
+  // snapshot (money.format adds the "≈"). Shown only for non-USD; Stripe bills in USD.
   const { displayCurrency } = usePreferences();
+  const money = useMoney();
   const priceUsd = parseFloat(plan.price.replace(/[^0-9.]/g, '')) || 0;
-  const approx = priceUsd > 0 ? formatApproxFromUsd(priceUsd, displayCurrency as Currency) : null;
+  const approx = priceUsd > 0 && displayCurrency !== 'usd' ? money.format(priceUsd) : null;
 
   return (
     <div style={{
@@ -561,28 +563,11 @@ export function BillingPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
   const tokens = useTokens();
-  const { setDisplayCurrencyEphemeral } = usePreferences();
 
-  // J12 (A+B): smart-locale detection + live FX run ONLY here (Billing),
-  // on-demand, NOT on the global boot path. Dynamic imports keep geo/FX code
-  // off Dashboard/other routes. fxReady forces a re-render once live rates land.
-  const [, setFxReady] = useState(false);
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const { hasExplicitDisplayCurrency } = await import('../lib/preferences');
-      if (!hasExplicitDisplayCurrency()) {
-        const { fetchSuggestedCurrency } = await import('../lib/locale/geoService');
-        const c = await fetchSuggestedCurrency();
-        if (active && c) setDisplayCurrencyEphemeral(c as Currency);
-      }
-      // Live reference FX (ECB, display-only); fail-safe keeps static fallback.
-      const { loadLiveRates } = await import('../lib/locale/fxRates');
-      await loadLiveRates();
-      if (active) setFxReady(true);
-    })().catch(() => { /* keep usd + static fallback */ });
-    return () => { active = false; };
-  }, [setDisplayCurrencyEphemeral]);
+  // B6.7: the display currency comes from PreferencesContext (browser-language at
+  // boot + the user's explicit selection) — no IP/geo detection here — and the ≈
+  // hints use the deterministic FX snapshot, so there is no live FX fetch. Stripe
+  // billing currency + amounts are unaffected (resolved separately, below).
   const {
     subscription, invoices, usage,
     hasActiveSubscription,
