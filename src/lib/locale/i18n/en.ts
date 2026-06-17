@@ -30,6 +30,9 @@ export const en = {
     settings:              'Settings',
     billing:               'Billing',
     help:                  'Help',
+    toolsSection:          'Tools',
+    aiRoiCalculator:       'AI ROI Calculator',
+    aiMaturityDiagnostic:  'AI Maturity Diagnostic',
   },
   /** App-shell chrome (sidebar header, org switcher, sign-out, pref widget). */
   shell: {

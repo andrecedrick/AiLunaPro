@@ -17,6 +17,9 @@ export const de: Dict = {
     settings:              'Einstellungen',
     billing:               'Abrechnung',
     help:                  'Hilfe',
+    toolsSection:          'Tools',
+    aiRoiCalculator:       'KI-ROI-Rechner',
+    aiMaturityDiagnostic:  'KI-Reifegrad-Diagnose',
   },
   shell: {
     complianceSuite:  'Compliance-Suite',

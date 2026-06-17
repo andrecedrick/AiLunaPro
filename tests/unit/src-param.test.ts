@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { captureSrc, getSrc, withSrc } from '../../src/lib/analytics/srcParam';
+import { captureSrc, getSrc, withSrc, setSrc } from '../../src/lib/analytics/srcParam';
 
 /**
  * A2 — SEO landing-page acquisition tag (?src). Capture from the hash query,
@@ -24,6 +24,13 @@ describe('srcParam', () => {
     expect(captureSrc()).toBeNull();
     window.location.hash = '#/roi-calculator?src=bad%20value';
     expect(captureSrc()).toBeNull();
+  });
+
+  it('setSrc persists a valid slug (in-app menu entry) and ignores invalid input', () => {
+    setSrc('menu-roi');
+    expect(getSrc()).toBe('menu-roi');
+    setSrc('bad value!');           // invalid → ignored, previous kept
+    expect(getSrc()).toBe('menu-roi');
   });
 
   it('withSrc appends &src when known and leaves the URL unchanged otherwise', () => {

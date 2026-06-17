@@ -18,6 +18,9 @@ export const ru: Dict = {
     settings:              'Настройки',
     billing:               'Оплата',
     help:                  'Помощь',
+    toolsSection:          'Инструменты',
+    aiRoiCalculator:       'Калькулятор ROI ИИ',
+    aiMaturityDiagnostic:  'Диагностика зрелости ИИ',
   },
   shell: {
     complianceSuite:  'Пакет соответствия',

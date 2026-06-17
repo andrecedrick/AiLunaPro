@@ -36,6 +36,16 @@ export function captureSrc(): string | null {
   return getSrc();
 }
 
+/**
+ * Explicitly set the acquisition source — e.g. an in-app entry point (sidebar
+ * Tools menu) where the tag can't ride the URL because the hash router strips the
+ * query on navigate. Slug-validated; persisted for the session.
+ */
+export function setSrc(value: string): void {
+  if (!ALLOWED.test(value)) return;
+  try { sessionStorage.setItem(KEY, value); } catch { /* non-fatal */ }
+}
+
 /** The captured acquisition source for this session, or null. */
 export function getSrc(): string | null {
   try {

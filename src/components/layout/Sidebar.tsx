@@ -4,6 +4,7 @@ import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocale } from '../../context/LocaleContext';
 import { SidebarPreferences } from './SidebarPreferences';
+import { setSrc } from '../../lib/analytics/srcParam';
 import type { Route, RouteName } from '../../types/audit';
 
 /* Map Sidebar nav item ids to routes (only the ones wired so far). */
@@ -120,6 +121,18 @@ function NavIcon({ id }: { id: string }): ReactNode {
           <circle cx="12" cy="12" r="10" />
           <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
           <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      );
+    case 'roi-tool':
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="23 6 13.5 16.5 8.5 11.5 1 19" /><polyline points="17 6 23 6 23 12" />
+        </svg>
+      );
+    case 'diag-tool':
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
         </svg>
       );
     default:
@@ -504,6 +517,33 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
               }}
             />
           ))}
+
+        {/* Secondary — public quick tools. Visually distinct from the core nav
+            (divider + muted section heading). Navigates to the public SPA tools
+            (rendered chromeless with a "Back to app" return); setSrc tags the
+            in-app menu as the acquisition source for analytics. */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '10px 8px' }} />
+        {!iconsOnly && (
+          <div style={{ padding: '2px 12px 6px', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            {T.nav.toolsSection}
+          </div>
+        )}
+        <NavItem
+          id="roi-tool"
+          icon="roi-tool"
+          label={T.nav.aiRoiCalculator}
+          active={false}
+          iconsOnly={iconsOnly}
+          onClick={() => { setSrc('menu-roi'); navigate({ name: 'roi-calculator' }); onNavigate?.(); }}
+        />
+        <NavItem
+          id="diag-tool"
+          icon="diag-tool"
+          label={T.nav.aiMaturityDiagnostic}
+          active={false}
+          iconsOnly={iconsOnly}
+          onClick={() => { setSrc('menu-diagnostic'); navigate({ name: 'diagnostic' }); onNavigate?.(); }}
+        />
       </nav>
 
       {/* Language + Currency preferences (hidden in the collapsed rail) */}

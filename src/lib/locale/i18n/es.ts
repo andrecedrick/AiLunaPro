@@ -17,6 +17,9 @@ export const es: Dict = {
     settings:              'Ajustes',
     billing:               'Facturación',
     help:                  'Ayuda',
+    toolsSection:          'Herramientas',
+    aiRoiCalculator:       'Calculadora de ROI de IA',
+    aiMaturityDiagnostic:  'Diagnóstico de madurez en IA',
   },
   shell: {
     complianceSuite:  'Suite de cumplimiento',

@@ -19,6 +19,9 @@ export const zh: Dict = {
     settings:              '设置',
     billing:               '账单',
     help:                  '帮助',
+    toolsSection:          '工具',
+    aiRoiCalculator:       'AI ROI 计算器',
+    aiMaturityDiagnostic:  'AI 成熟度诊断',
   },
   shell: {
     complianceSuite:  '合规套件',
