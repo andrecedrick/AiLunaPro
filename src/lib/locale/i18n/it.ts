@@ -2474,6 +2474,21 @@ export const it: Dict = {
         "docTitle": "Preventivo del progetto",
         "summaryHeading": "Riepilogo del progetto",
         "pricingHeading": "Investimento stimato"
+      },
+      "email": {
+        "button": "Inviami questo preventivo via e-mail",
+        "sent": "Preventivo inviato alla tua casella.",
+        "error": "Impossibile inviare l'e-mail. Riprova."
+      },
+      "override": {
+        "toggle": "Modifica prezzo (admin)",
+        "minLabel": "Min (USD)",
+        "maxLabel": "Max (USD)",
+        "reasonLabel": "Motivazione",
+        "save": "Salva modifica",
+        "error": "Impossibile salvare la modifica.",
+        "invalid": "Inserisci un min/max (USD) valido e una breve motivazione.",
+        "adjustedNote": "Prezzo modificato: {range}"
       }
     }
   },

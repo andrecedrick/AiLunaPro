@@ -2476,6 +2476,21 @@ export const zh: Dict = {
         "docTitle": "项目报价",
         "summaryHeading": "项目概要",
         "pricingHeading": "预计投资"
+      },
+      "email": {
+        "button": "将此报价发送到我的邮箱",
+        "sent": "报价已发送到您的邮箱。",
+        "error": "无法发送邮件，请重试。"
+      },
+      "override": {
+        "toggle": "调整价格（管理员）",
+        "minLabel": "最低 (USD)",
+        "maxLabel": "最高 (USD)",
+        "reasonLabel": "理由",
+        "save": "保存调整",
+        "error": "无法保存调整。",
+        "invalid": "请输入有效的最低/最高金额 (USD) 和简短理由。",
+        "adjustedNote": "调整后价格：{range}"
       }
     }
   },

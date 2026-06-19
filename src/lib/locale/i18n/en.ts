@@ -2489,6 +2489,21 @@ export const en = {
         "docTitle": "Project quote",
         "summaryHeading": "Project summary",
         "pricingHeading": "Estimated investment"
+      },
+      "email": {
+        "button": "Email me this quote",
+        "sent": "Quote sent to your inbox.",
+        "error": "Could not send the email. Please try again."
+      },
+      "override": {
+        "toggle": "Adjust price (admin)",
+        "minLabel": "Min (USD)",
+        "maxLabel": "Max (USD)",
+        "reasonLabel": "Justification",
+        "save": "Save adjustment",
+        "error": "Could not save the adjustment.",
+        "invalid": "Enter a valid min/max (USD) and a short justification.",
+        "adjustedNote": "Adjusted price: {range}"
       }
     }
   },

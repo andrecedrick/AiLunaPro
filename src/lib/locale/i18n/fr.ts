@@ -2474,6 +2474,21 @@ export const fr: Dict = {
         "docTitle": "Devis du projet",
         "summaryHeading": "Résumé du projet",
         "pricingHeading": "Investissement estimé"
+      },
+      "email": {
+        "button": "M'envoyer ce devis par e-mail",
+        "sent": "Devis envoyé dans votre boîte mail.",
+        "error": "Impossible d'envoyer l'e-mail. Veuillez réessayer."
+      },
+      "override": {
+        "toggle": "Ajuster le prix (admin)",
+        "minLabel": "Min (USD)",
+        "maxLabel": "Max (USD)",
+        "reasonLabel": "Justification",
+        "save": "Enregistrer l'ajustement",
+        "error": "Impossible d'enregistrer l'ajustement.",
+        "invalid": "Saisissez un min/max (USD) valide et une brève justification.",
+        "adjustedNote": "Prix ajusté : {range}"
       }
     }
   },

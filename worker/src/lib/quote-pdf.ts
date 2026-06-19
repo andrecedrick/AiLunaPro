@@ -42,6 +42,13 @@ export function fold(s: string): string {
   return out.replace(/\s{2,}/g, ' ');
 }
 
+/** USD-formatted price range used in the server-side (email/shared) PDF after a
+ *  manual override — the override amounts are stored in USD. e.g. "$30,000 - $80,000". */
+export function formatUsdRange(minUsd: number, maxUsd: number, openEnded = false): string {
+  const f = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+  return `${f(minUsd)} - ${f(maxUsd)}${openEnded ? '+' : ''}`;
+}
+
 export interface QuotePdfInput {
   createdAt:        string;
   docTitle:         string;

@@ -87,7 +87,12 @@ export type AppEnv = {
     // J15 P1.1 — R2 bucket for saved Audit Express PDFs (org-scoped keys).
     AUDIT_PDFS?:                   R2Bucket;
     // Shareable PDF links — HMAC secret (operator sets via `wrangler secret put`).
+    // Reused for quote PDF email links (Q4); HMAC payload is id-scoped + gated by
+    // quote-doc existence, so cross-feature replay is benign (404).
     AUDIT_SHARE_SECRET?:           string;
+    // Q4 — Sequenzy transactional email (operator secret) + optional admin BCC.
+    SEQUENZY_API_KEY?:             string;
+    ADMIN_EMAIL?:                  string;
   };
   Variables: {
     uid:    string;

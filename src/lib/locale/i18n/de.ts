@@ -2474,6 +2474,21 @@ export const de: Dict = {
         "docTitle": "Projektangebot",
         "summaryHeading": "Projektzusammenfassung",
         "pricingHeading": "Geschätzte Investition"
+      },
+      "email": {
+        "button": "Angebot per E-Mail senden",
+        "sent": "Angebot an Ihren Posteingang gesendet.",
+        "error": "E-Mail konnte nicht gesendet werden. Bitte erneut versuchen."
+      },
+      "override": {
+        "toggle": "Preis anpassen (Admin)",
+        "minLabel": "Min (USD)",
+        "maxLabel": "Max (USD)",
+        "reasonLabel": "Begründung",
+        "save": "Anpassung speichern",
+        "error": "Anpassung konnte nicht gespeichert werden.",
+        "invalid": "Geben Sie einen gültigen Min/Max-Wert (USD) und eine kurze Begründung ein.",
+        "adjustedNote": "Angepasster Preis: {range}"
       }
     }
   },

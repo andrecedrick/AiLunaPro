@@ -105,3 +105,35 @@ export async function downloadQuotePdf(orgId: string, quoteId: string, render: Q
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Admin (owner/admin) manual price override. Preserves the computed price
+ *  server-side; records min/max (USD) + justification. */
+export async function overrideQuotePrice(
+  orgId: string, quoteId: string, input: { minUsd: number; maxUsd: number; reason: string },
+): Promise<{ overrideMinUsd: number; overrideMaxUsd: number }> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/quote/${encodeURIComponent(quoteId)}/override`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, ...input }),
+  });
+  const j = await res.json().catch(() => null) as ({ overrideMinUsd?: number; overrideMaxUsd?: number; code?: string }) | null;
+  if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
+  return { overrideMinUsd: j.overrideMinUsd ?? input.minUsd, overrideMaxUsd: j.overrideMaxUsd ?? input.maxUsd };
+}
+
+/** Email the quote to the signed-in user as a tokenized PDF link (no attachment).
+ *  `render` is persisted server-side so the link regenerates the same PDF. */
+export async function emailQuote(
+  orgId: string, quoteId: string, locale: string, render: QuotePdfRender, sendAdminCopy = false,
+): Promise<{ emailed: boolean }> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/quote/email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, quoteId, locale, render, sendAdminCopy }),
+  });
+  const j = await res.json().catch(() => null) as ({ emailed?: boolean; code?: string }) | null;
+  if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
+  return { emailed: j.emailed === true };
+}

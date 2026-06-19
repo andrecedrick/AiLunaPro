@@ -29,7 +29,9 @@ import {
 } from '../lib/quote-shared';
 import { consumeTokens } from '../lib/tokens';
 import { firestoreGet, firestoreSet, firestoreDelete } from '../lib/firestoreAdmin';
-import { buildQuotePdf, type QuotePdfInput } from '../lib/quote-pdf';
+import { buildQuotePdf, formatUsdRange, type QuotePdfInput } from '../lib/quote-pdf';
+import { sendTransactional } from '../lib/sequenzy';
+import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import type { AppEnv } from '../index';
 
 const quote = new Hono<AppEnv>();
@@ -282,6 +284,217 @@ quote.post('/api/quote/pdf', requireAuth(), requireRole(GEN_ROLES), async c => {
   return c.body(bytes as unknown as Uint8Array<ArrayBuffer>, 200, {
     'Content-Type': 'application/pdf',
     'Content-Disposition': `attachment; filename="quote-${quoteId}.pdf"`,
+    'Cache-Control': 'no-store',
+  });
+});
+
+/* ── POST /api/quote/:quoteId/override — admin manual price adjustment ──────
+ *
+ * Owner/admin only. Records an override (min/max USD) + justification while
+ * PRESERVING the original computed price + estimate. Keeps the persisted render
+ * payload consistent so the email/shared PDF reflects the adjusted price.
+ */
+
+const OVERRIDE_ROLES: RoleList = ['owner', 'admin'];
+const PRICE_MAX = 100_000_000;
+
+interface OverrideBody { orgId?: unknown; minUsd?: unknown; maxUsd?: unknown; reason?: unknown }
+
+quote.post('/api/quote/:quoteId/override', requireAuth(), requireRole(OVERRIDE_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string;
+  const uid   = c.get('uid') as string;
+  const quoteId = safeId(c.req.param('quoteId'));
+  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
+
+  let body: OverrideBody;
+  try { body = (await c.req.json()) as OverrideBody; }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const min = typeof body.minUsd === 'number' ? body.minUsd : NaN;
+  const max = typeof body.maxUsd === 'number' ? body.maxUsd : NaN;
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < 0 || min > PRICE_MAX || max > PRICE_MAX) {
+    return c.json({ error: 'min/max must be valid USD amounts.', code: 'INVALID_PRICE' }, 400);
+  }
+  if (min > max) return c.json({ error: 'min must be <= max.', code: 'INVALID_PRICE_ORDER' }, 400);
+  const reason = sanitizeDescription(body.reason).slice(0, 500);
+  if (reason.length < 3) return c.json({ error: 'A justification is required.', code: 'INVALID_REASON' }, 400);
+
+  const path = `${COLLECTION(orgId)}/${quoteId}`;
+  const stored = await firestoreGet(saJson, path);
+  if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  const overrideMinUsd = Math.round(min);
+  const overrideMaxUsd = Math.round(max);
+
+  const patch: Record<string, string | number> = {
+    overrideMinUsd,
+    overrideMaxUsd,
+    overrideReason: reason,
+    overriddenBy:   uid,
+    overriddenAt:   new Date().toISOString(),
+    status:         'overridden',
+    updatedAt:      new Date().toISOString(),
+  };
+
+  // Keep the persisted render (used by the email/shared PDF) consistent with the
+  // override so a regenerated document shows the adjusted price (USD).
+  if (typeof stored.renderJson === 'string') {
+    try {
+      const r = JSON.parse(stored.renderJson) as QuotePdfInput;
+      r.rangeText = formatUsdRange(overrideMinUsd, overrideMaxUsd);
+      patch.renderJson = JSON.stringify(r);
+    } catch { /* leave renderJson as-is */ }
+  }
+
+  await firestoreSet(saJson, path, patch, { merge: true });
+  // Original price preserved: priceMinUsd/priceMaxUsd + estimateJson are untouched.
+  return c.json({ quoteId, overrideMinUsd, overrideMaxUsd, status: 'overridden' });
+});
+
+/* ── POST /api/quote/email — send the quote as a tokenized PDF link ─────────
+ *
+ * Member+ roles. Sends to the caller's VERIFIED token email (never a client-
+ * supplied address). PDF is delivered as an HMAC-signed, short-lived LINK (not
+ * an attachment — Sequenzy does not support attachments). Per-locale template
+ * slug (RU/ZH -> English, matching the PDF rule). Best-effort / non-fatal.
+ */
+
+const EMAIL_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
+const PDF_LANGS = new Set(['en', 'fr', 'es', 'de', 'it', 'pt']);
+const SHARE_TTL = 14 * 24 * 3600; // 14 days
+
+interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown }
+
+quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string;
+  const recipient = c.get('email') as string | undefined;
+  if (!recipient) return c.json({ error: 'No email on your account.', code: 'NO_EMAIL' }, 400);
+
+  const secret = env.AUDIT_SHARE_SECRET;
+  if (!secret) return c.json({ error: 'Email links are not enabled.', code: 'SHARE_DISABLED' }, 503);
+
+  let body: EmailBody;
+  try { body = (await c.req.json()) as EmailBody; }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const quoteId = safeId(body.quoteId);
+  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
+
+  const path = `${COLLECTION(orgId)}/${quoteId}`;
+  const stored = await firestoreGet(saJson, path);
+  if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  // Persist the render payload if supplied (so the shared link can regenerate it).
+  let render: QuotePdfInput | null = null;
+  if (body.render && typeof body.render === 'object') {
+    const r = body.render as Record<string, unknown>;
+    render = {
+      createdAt:        typeof stored.createdAt === 'string' ? stored.createdAt : new Date().toISOString(),
+      docTitle:         str(r.docTitle) || 'Project quote',
+      solutionLabel:    str(r.solutionLabel),
+      summaryHeading:   str(r.summaryHeading),
+      summary:          str(r.summary, 2000),
+      pricingHeading:   str(r.pricingHeading),
+      rangeText:        str(r.rangeText, 120),
+      scopeHeading:     str(r.scopeHeading),
+      scope:            strList(r.scope),
+      nextStepsHeading: str(r.nextStepsHeading),
+      nextSteps:        strList(r.nextSteps),
+      paymentNote:      str(r.paymentNote, 600),
+      disclaimer:       str(r.disclaimer, 600),
+    };
+    if (typeof stored.overrideMinUsd === 'number' && typeof stored.overrideMaxUsd === 'number') {
+      render.rangeText = formatUsdRange(stored.overrideMinUsd, stored.overrideMaxUsd);
+    }
+    try { await firestoreSet(saJson, path, { renderJson: JSON.stringify(render), pdfAt: new Date().toISOString() }, { merge: true }); }
+    catch (err) { console.error('[quote] email render persist failed:', err instanceof Error ? err.message : ''); }
+  } else if (typeof stored.renderJson === 'string') {
+    try { render = JSON.parse(stored.renderJson) as QuotePdfInput; } catch { render = null; }
+  }
+  if (!render) return c.json({ error: 'Generate the quote PDF first.', code: 'PDF_NOT_READY' }, 400);
+
+  const now = Math.floor(Date.now() / 1000);
+  const { token } = await signShareToken(secret, orgId, quoteId, 1, SHARE_TTL, now);
+  const pdfUrl = `${new URL(c.req.url).origin}/api/quote/shared/${token}`;
+
+  const locale = typeof body.locale === 'string' ? body.locale : 'en';
+  const slugLang = PDF_LANGS.has(locale) ? locale : 'en';
+  const variables: Record<string, string> = {
+    QUOTE_TITLE: render.docTitle,
+    SOLUTION:    render.solutionLabel,
+    RANGE:       render.rangeText,
+    PDF_URL:     pdfUrl,
+  };
+
+  const result = await sendTransactional(env.SEQUENZY_API_KEY, { to: recipient, slug: `quote-${slugLang}`, variables });
+
+  if (body.sendAdminCopy === true && env.ADMIN_EMAIL) {
+    await sendTransactional(env.SEQUENZY_API_KEY, {
+      to: env.ADMIN_EMAIL,
+      slug: 'quote-admin',
+      variables: { ...variables, CUSTOMER_EMAIL: recipient },
+    });
+  }
+
+  // Non-fatal: a missing template / unconfigured key surfaces emailed=false, not a 5xx.
+  return c.json({ ok: true, emailed: result.ok, pdfUrlMinted: true });
+});
+
+/* ── GET /api/quote/shared/:token — public, HMAC-gated PDF for email links ──
+ *
+ * No auth: the short-lived HMAC token IS the gate. Regenerates the deterministic
+ * PDF from the quote's persisted render payload (override reflected). no-store.
+ */
+quote.get('/api/quote/shared/:token', async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const secret = env.AUDIT_SHARE_SECRET;
+  if (!secret) return c.json({ error: 'Links are not enabled.', code: 'SHARE_DISABLED' }, 503);
+
+  const v = await verifyShareToken(secret, c.req.param('token'), Math.floor(Date.now() / 1000));
+  if (!v.ok) {
+    return c.json(
+      { error: v.code === 'SHARE_EXPIRED' ? 'This link has expired.' : 'This link is invalid.', code: v.code },
+      v.code === 'SHARE_EXPIRED' ? 410 : 401,
+    );
+  }
+
+  const { orgId, auditId: quoteId } = v.payload;
+  const stored = await firestoreGet(saJson, `${COLLECTION(orgId)}/${quoteId}`);
+  if (!stored || typeof stored.renderJson !== 'string') {
+    return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+  }
+
+  let render: QuotePdfInput;
+  try { render = JSON.parse(stored.renderJson) as QuotePdfInput; }
+  catch { return c.json({ error: 'Quote unavailable.', code: 'RENDER_UNAVAILABLE' }, 500); }
+  if (typeof stored.overrideMinUsd === 'number' && typeof stored.overrideMaxUsd === 'number') {
+    render.rangeText = formatUsdRange(stored.overrideMinUsd, stored.overrideMaxUsd);
+  }
+
+  let bytes: Uint8Array;
+  try { bytes = buildQuotePdf(render); }
+  catch (err) {
+    console.error('[quote] shared PDF render failed ray:', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not render the quote PDF.', code: 'PDF_RENDER_FAILED' }, 500);
+  }
+
+  return c.body(bytes as unknown as Uint8Array<ArrayBuffer>, 200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': `inline; filename="quote-${quoteId}.pdf"`,
     'Cache-Control': 'no-store',
   });
 });

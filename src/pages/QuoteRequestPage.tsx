@@ -26,7 +26,7 @@ import {
   type QuoteCategory, type QuoteTier, type BusinessSize, type Urgency, type BudgetBand,
 } from '../data/quote-config';
 import { computeQuotePreview, type QuotePreview } from '../lib/quote/score';
-import { generateQuote, downloadQuotePdf, QuoteGenError } from '../lib/quote/quoteClient';
+import { generateQuote, downloadQuotePdf, emailQuote, overrideQuotePrice, QuoteGenError } from '../lib/quote/quoteClient';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
 import { usePreferences } from '../context/PreferencesContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
@@ -77,6 +77,16 @@ export function QuoteRequestPage() {
   const [modal,      setModal]      = useState<{ open: boolean; balance: number; required: number }>({ open: false, balance: 0, required: 0 });
   const [downloading, setDownloading] = useState(false);
   const [pdfError,    setPdfError]    = useState<string | null>(null);
+  // Q4 — email + admin price override.
+  const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [override,   setOverride]   = useState<{ minUsd: number; maxUsd: number } | null>(null);
+  const [showOverride, setShowOverride] = useState(false);
+  const [ovMin, setOvMin] = useState('');
+  const [ovMax, setOvMax] = useState('');
+  const [ovReason, setOvReason] = useState('');
+  const [ovBusy, setOvBusy] = useState(false);
+  const [ovError, setOvError] = useState<string | null>(null);
+  const isAdmin = session?.role === 'owner' || session?.role === 'admin';
   // Stable per estimate session: a network retry reuses it (server idempotent,
   // no double charge); reset() mints a fresh one for the next quote.
   const quoteIdRef = useRef<string>('');
@@ -137,6 +147,8 @@ export function QuoteRequestPage() {
     setGenerating(false); setGenError(null); setGenerated(false);
     setModal({ open: false, balance: 0, required: 0 });
     setDownloading(false); setPdfError(null);
+    setEmailState('idle'); setOverride(null); setShowOverride(false);
+    setOvMin(''); setOvMax(''); setOvReason(''); setOvBusy(false); setOvError(null);
     quoteIdRef.current = '';
     clearFlowProgress('quote');
   };
@@ -177,38 +189,82 @@ export function QuoteRequestPage() {
     }
   };
 
+  // Build the PDF/email render payload (exact display strings). PDF language:
+  // Latin → current locale; RU/ZH → English (pdfLocale rule). Reflects an override.
+  const buildRender = () => {
+    const p = preview!;
+    const useEnglish = pdfLocale(language) !== language;
+    const pq = (useEnglish ? EN.publicTools.quote : Q);
+    const sols  = pq.solutions as Record<string, string>;
+    const scp   = pq.scope as Record<string, string>;
+    const steps = pq.nextSteps as Record<string, string>;
+    const min = override ? override.minUsd : p.priceMinUsd;
+    const max = override ? override.maxUsd : p.priceMaxUsd;
+    const openEnded = override ? false : p.openEnded;
+    return {
+      docTitle:         pq.pdf.docTitle,
+      solutionLabel:    sols[p.solutionKey] ?? p.solutionKey,
+      summaryHeading:   pq.pdf.summaryHeading,
+      // User free-text only when it matches the PDF language (the ASCII engine
+      // can't render RU/ZH text — the server skips an empty summary).
+      summary:          useEnglish ? '' : effectiveDescription,
+      pricingHeading:   pq.pdf.pricingHeading,
+      rangeText:        `${money.format(min)} – ${money.format(max)}${openEnded ? '+' : ''}`,
+      scopeHeading:     pq.result.scopeHeading,
+      scope:            p.scopeKeys.map(k => scp[k] ?? k),
+      nextStepsHeading: pq.result.nextStepsHeading,
+      nextSteps:        p.nextStepKeys.map(k => steps[k] ?? k),
+      paymentNote:      pq.guided.paymentNote,
+      disclaimer:       pq.result.disclaimer,
+    };
+  };
+
   const onDownloadPdf = async () => {
     if (downloading || !preview) return;
     const orgId = session?.orgId;
     if (!orgId || !quoteIdRef.current) return;
     setDownloading(true); setPdfError(null);
     try {
-      // PDF language: Latin → current locale; RU/ZH → English (pdfLocale rule).
-      const useEnglish = pdfLocale(language) !== language;
-      const pq = (useEnglish ? EN.publicTools.quote : Q);
-      const sols  = pq.solutions as Record<string, string>;
-      const scp   = pq.scope as Record<string, string>;
-      const steps = pq.nextSteps as Record<string, string>;
-      await downloadQuotePdf(orgId, quoteIdRef.current, {
-        docTitle:         pq.pdf.docTitle,
-        solutionLabel:    sols[preview.solutionKey] ?? preview.solutionKey,
-        summaryHeading:   pq.pdf.summaryHeading,
-        // User's free-text only when it's in the PDF language (else the ASCII
-        // engine can't render RU/ZH text — server skips an empty summary).
-        summary:          useEnglish ? '' : effectiveDescription,
-        pricingHeading:   pq.pdf.pricingHeading,
-        rangeText:        `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? '+' : ''}`,
-        scopeHeading:     pq.result.scopeHeading,
-        scope:            preview.scopeKeys.map(k => scp[k] ?? k),
-        nextStepsHeading: pq.result.nextStepsHeading,
-        nextSteps:        preview.nextStepKeys.map(k => steps[k] ?? k),
-        paymentNote:      pq.guided.paymentNote,
-        disclaimer:       pq.result.disclaimer,
-      });
+      await downloadQuotePdf(orgId, quoteIdRef.current, buildRender());
     } catch {
       setPdfError(Q.generate.error);
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const onEmail = async () => {
+    if (emailState === 'sending' || !preview) return;
+    const orgId = session?.orgId;
+    if (!orgId || !quoteIdRef.current) return;
+    setEmailState('sending');
+    try {
+      await emailQuote(orgId, quoteIdRef.current, language, buildRender());
+      setEmailState('sent');
+    } catch {
+      setEmailState('error');
+    }
+  };
+
+  const onOverride = async () => {
+    if (ovBusy || !preview) return;
+    const orgId = session?.orgId;
+    if (!orgId || !quoteIdRef.current) return;
+    const min = Number(ovMin), max = Number(ovMax);
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < min || ovReason.trim().length < 3) {
+      setOvError(Q.override.invalid);
+      return;
+    }
+    setOvBusy(true); setOvError(null);
+    try {
+      const r = await overrideQuotePrice(orgId, quoteIdRef.current, { minUsd: min, maxUsd: max, reason: ovReason.trim() });
+      setOverride({ minUsd: r.overrideMinUsd, maxUsd: r.overrideMaxUsd });
+      setShowOverride(false);
+      setEmailState('idle'); // a fresh email will carry the adjusted price
+    } catch {
+      setOvError(Q.override.error);
+    } finally {
+      setOvBusy(false);
     }
   };
 
@@ -338,17 +394,50 @@ export function QuoteRequestPage() {
 
             {isAuthenticated ? (
               generated ? (
-                <div id="quote-generated" style={{ marginTop: 22, padding: 20, borderRadius: 14, background: 'var(--green-soft-bg, #ecfdf5)', border: '1px solid var(--green-text, #059669)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>{Q.generate.success}</div>
-                  <button
-                    type="button"
-                    disabled={downloading}
-                    onClick={() => void onDownloadPdf()}
-                    style={{ ...primaryBtnStyle(), opacity: downloading ? 0.6 : 1, cursor: downloading ? 'wait' : 'pointer' }}
-                  >
-                    {downloading ? '…' : Q.pdf.download}
-                  </button>
-                  {pdfError && <div style={{ marginTop: 10, color: 'var(--red-text)', fontSize: 13 }}>{pdfError}</div>}
+                <div id="quote-generated" style={{ marginTop: 22, padding: 20, borderRadius: 14, background: 'var(--green-soft-bg, #ecfdf5)', border: '1px solid var(--green-text, #059669)' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center', marginBottom: 12 }}>{Q.generate.success}</div>
+
+                  {override && (
+                    <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--violet-text)', marginBottom: 12 }}>
+                      {format(Q.override.adjustedNote, { range: `${money.format(override.minUsd)} – ${money.format(override.maxUsd)}` })}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                    <button type="button" disabled={downloading} onClick={() => void onDownloadPdf()} style={{ ...primaryBtnStyle(), opacity: downloading ? 0.6 : 1 }}>
+                      {downloading ? '…' : Q.pdf.download}
+                    </button>
+                    <button type="button" disabled={emailState === 'sending'} onClick={() => void onEmail()} style={{ ...secondaryBtnStyle(), opacity: emailState === 'sending' ? 0.6 : 1 }}>
+                      {emailState === 'sending' ? '…' : emailState === 'sent' ? Q.email.sent : Q.email.button}
+                    </button>
+                  </div>
+                  {pdfError && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{pdfError}</div>}
+                  {emailState === 'error' && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{Q.email.error}</div>}
+
+                  {isAdmin && (
+                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+                      {!showOverride ? (
+                        <div style={{ textAlign: 'center' }}>
+                          <button type="button" onClick={() => setShowOverride(true)} style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                            {Q.override.toggle}
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <input type="number" inputMode="numeric" min={0} value={ovMin} onChange={e => setOvMin(e.target.value)} placeholder={Q.override.minLabel} style={inputStyle()} />
+                            <input type="number" inputMode="numeric" min={0} value={ovMax} onChange={e => setOvMax(e.target.value)} placeholder={Q.override.maxLabel} style={inputStyle()} />
+                          </div>
+                          <textarea value={ovReason} onChange={e => setOvReason(e.target.value)} placeholder={Q.override.reasonLabel} maxLength={500} rows={2} style={{ ...inputStyle(), resize: 'vertical' }} />
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button type="button" onClick={() => { setShowOverride(false); setOvError(null); }} style={{ ...secondaryBtnStyle(), padding: '8px 14px' }}>✕</button>
+                            <button type="button" disabled={ovBusy} onClick={() => void onOverride()} style={{ ...primaryBtnStyle(), padding: '8px 16px', opacity: ovBusy ? 0.6 : 1 }}>{ovBusy ? '…' : Q.override.save}</button>
+                          </div>
+                          {ovError && <div style={{ color: 'var(--red-text)', fontSize: 12 }}>{ovError}</div>}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ marginTop: 22, textAlign: 'center' }}>
@@ -469,6 +558,9 @@ function inputStyle(): React.CSSProperties {
 }
 function primaryBtnStyle(): React.CSSProperties {
   return { padding: '13px 32px', borderRadius: 12, border: 'none', background: 'var(--violet)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 8px 22px rgba(124,58,237,0.25)' };
+}
+function secondaryBtnStyle(): React.CSSProperties {
+  return { padding: '13px 24px', borderRadius: 12, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' };
 }
 function sectionTitleStyle(): React.CSSProperties {
   return { fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 0.5 };

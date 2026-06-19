@@ -2474,6 +2474,21 @@ export const pt: Dict = {
         "docTitle": "Orçamento do projeto",
         "summaryHeading": "Resumo do projeto",
         "pricingHeading": "Investimento estimado"
+      },
+      "email": {
+        "button": "Enviar-me este orçamento por e-mail",
+        "sent": "Orçamento enviado para o seu e-mail.",
+        "error": "Não foi possível enviar o e-mail. Tente novamente."
+      },
+      "override": {
+        "toggle": "Ajustar preço (admin)",
+        "minLabel": "Mín (USD)",
+        "maxLabel": "Máx (USD)",
+        "reasonLabel": "Justificação",
+        "save": "Guardar ajuste",
+        "error": "Não foi possível guardar o ajuste.",
+        "invalid": "Introduza um mín/máx (USD) válido e uma breve justificação.",
+        "adjustedNote": "Preço ajustado: {range}"
       }
     }
   },
