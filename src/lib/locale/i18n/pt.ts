@@ -2529,6 +2529,12 @@ export const pt: Dict = {
         "accepted": "Estimativa aceite — entraremos em contacto em breve.",
         "discussionSent": "Pedido enviado — entraremos em contacto para conversar.",
         "error": "Não foi possível guardar a sua decisão. Tente novamente."
+      },
+      "negotiation": {
+        "heading": "Resumo da negociação",
+        "initialLabel": "Estimativa inicial",
+        "budgetLabel": "O seu orçamento",
+        "adjustedLabel": "Preço ajustado"
       }
     }
   },

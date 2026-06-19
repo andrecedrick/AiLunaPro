@@ -2544,6 +2544,12 @@ export const en = {
         "accepted": "Estimate accepted — we'll follow up shortly.",
         "discussionSent": "Request sent — we'll reach out to discuss.",
         "error": "Could not save your decision. Please try again."
+      },
+      "negotiation": {
+        "heading": "Negotiation summary",
+        "initialLabel": "Initial estimate",
+        "budgetLabel": "Your budget",
+        "adjustedLabel": "Adjusted price"
       }
     }
   },

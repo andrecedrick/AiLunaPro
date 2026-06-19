@@ -225,6 +225,14 @@ export function QuoteRequestPage() {
       justification.push(format(prop.justification.ops, { min: String(p.opsCostUpliftPct.minPct), max: String(p.opsCostUpliftPct.maxPct) }));
     }
 
+    // U3 — negotiation summary values (initial / budget / adjusted), localized currency.
+    const neg = pq.negotiation;
+    const initialText = `${money.format(p.priceMinUsd)} – ${money.format(p.priceMaxUsd)}${p.openEnded ? '+' : ''}`;
+    const adjustedText = override ? `${money.format(override.minUsd)} – ${money.format(override.maxUsd)}` : '';
+    const bNum = Number(budgetInput);
+    const bUsd = budgetInput.trim() !== '' && Number.isFinite(bNum) && bNum >= 0 ? convertToUsd(bNum, money.currency) : null;
+    const budgetText = bUsd !== null ? money.format(bUsd) : '';
+
     return {
       docTitle:             pq.pdf.docTitle,
       projectName:          solutionLabel,
@@ -252,6 +260,13 @@ export function QuoteRequestPage() {
       timelineHeading:      prop.timelineHeading,
       timeline:             (timelineMap[tCat] ?? '').split('\n').map(s => s.trim()).filter(Boolean),
       disclaimer:           pq.result.disclaimer,
+      negHeading:           neg.heading,
+      negInitialLabel:      neg.initialLabel,
+      negBudgetLabel:       neg.budgetLabel,
+      negAdjustedLabel:     neg.adjustedLabel,
+      negInitial:           initialText,
+      negBudget:            budgetText,
+      negAdjusted:          adjustedText,
     };
   };
 
@@ -332,6 +347,12 @@ export function QuoteRequestPage() {
         override ? false : preview.openEnded,
       )
     : null;
+
+  // U3 — negotiation summary (on screen). Same values that go into PDF + email.
+  const negInitialText = preview ? `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? '+' : ''}` : '';
+  const negBudgetText = (budgetUsdInput !== null && budgetUsdInput >= 0) ? money.format(budgetUsdInput) : '';
+  const negAdjustedText = override ? `${money.format(override.minUsd)} – ${money.format(override.maxUsd)}` : '';
+  const showNegotiation = !!(negBudgetText || negAdjustedText);
 
   const tierOptions = category ? QUOTE_TIERS[category] : [];
 
@@ -462,9 +483,12 @@ export function QuoteRequestPage() {
                 <div id="quote-generated" style={{ marginTop: 22, padding: 20, borderRadius: 14, background: 'var(--green-soft-bg, #ecfdf5)', border: '1px solid var(--green-text, #059669)' }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center', marginBottom: 12 }}>{Q.generate.success}</div>
 
-                  {override && (
-                    <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--violet-text)', marginBottom: 12 }}>
-                      {format(Q.override.adjustedNote, { range: `${money.format(override.minUsd)} – ${money.format(override.maxUsd)}` })}
+                  {showNegotiation && (
+                    <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: 8, textAlign: 'center' }}>{Q.negotiation.heading}</div>
+                      <NegRow label={Q.negotiation.initialLabel} value={negInitialText} />
+                      {negBudgetText && <NegRow label={Q.negotiation.budgetLabel} value={negBudgetText} />}
+                      {negAdjustedText && <NegRow label={Q.negotiation.adjustedLabel} value={negAdjustedText} accent />}
                     </div>
                   )}
 
@@ -658,6 +682,15 @@ function sectionTitleStyle(): React.CSSProperties {
 }
 function listStyle(): React.CSSProperties {
   return { margin: 0, paddingLeft: 20, fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5 };
+}
+
+function NegRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '3px 0', fontSize: 13 }}>
+      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span style={{ fontWeight: 700, color: accent ? 'var(--violet-text)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    </div>
+  );
 }
 
 function Field({ label, required, error, children }: { label: React.ReactNode; required?: boolean; error?: string; children: React.ReactNode }) {

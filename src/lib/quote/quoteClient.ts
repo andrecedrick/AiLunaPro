@@ -92,6 +92,13 @@ export interface QuotePdfRender {
   timelineHeading:      string;
   timeline:             string[];
   disclaimer:           string;
+  negHeading:           string;
+  negInitialLabel:      string;
+  negBudgetLabel:       string;
+  negAdjustedLabel:     string;
+  negInitial:           string;
+  negBudget:            string;
+  negAdjusted:          string;
 }
 
 /**

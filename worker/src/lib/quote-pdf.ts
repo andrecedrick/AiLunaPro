@@ -98,6 +98,14 @@ export interface QuotePdfInput {
   timeline:        string[];
   // §8 Disclaimer
   disclaimer:      string;
+  // §5b Negotiation summary (U3): labels + values ('' when absent).
+  negHeading:       string;
+  negInitialLabel:  string;
+  negBudgetLabel:   string;
+  negAdjustedLabel: string;
+  negInitial:       string;
+  negBudget:        string;
+  negAdjusted:      string;
 }
 
 /** Hand-built localized cover (logo + title + subtitle + meta rows). Mirrors the
@@ -174,6 +182,13 @@ export function buildQuotePdf(input: QuotePdfInput): Uint8Array {
   // §5 Pricing + how this estimate is calculated
   doc.h2(fold(input.pricingHeading));
   doc.h1(fold(input.rangeText));
+  // §5b Negotiation summary — shown only when a budget or adjustment exists.
+  if (has(input.negBudget) || has(input.negAdjusted)) {
+    doc.h3(fold(input.negHeading));
+    doc.row(fold(input.negInitialLabel), fold(input.negInitial));
+    if (has(input.negBudget)) doc.row(fold(input.negBudgetLabel), fold(input.negBudget));
+    if (has(input.negAdjusted)) doc.row(fold(input.negAdjustedLabel), fold(input.negAdjusted));
+  }
   if (input.justification.length) {
     doc.h3(fold(input.justificationHeading));
     for (const j of input.justification) doc.bullet(fold(j));

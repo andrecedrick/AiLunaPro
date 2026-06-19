@@ -255,6 +255,13 @@ function parseRender(r: Record<string, unknown>, createdAt: string, quoteId: str
     timelineHeading:      str(r.timelineHeading),
     timeline:             strList(r.timeline),
     disclaimer:           str(r.disclaimer, 600),
+    negHeading:           str(r.negHeading, 120),
+    negInitialLabel:      str(r.negInitialLabel, 60),
+    negBudgetLabel:       str(r.negBudgetLabel, 60),
+    negAdjustedLabel:     str(r.negAdjustedLabel, 60),
+    negInitial:           str(r.negInitial, 120),
+    negBudget:            str(r.negBudget, 120),
+    negAdjusted:          str(r.negAdjusted, 120),
   };
 }
 
@@ -368,6 +375,7 @@ quote.post('/api/quote/:quoteId/override', requireAuth(), requireRole(OVERRIDE_R
     try {
       const r = JSON.parse(stored.renderJson) as QuotePdfInput;
       r.rangeText = formatUsdRange(overrideMinUsd, overrideMaxUsd);
+      r.negAdjusted = formatUsdRange(overrideMinUsd, overrideMaxUsd);
       patch.renderJson = JSON.stringify(r);
     } catch { /* leave renderJson as-is */ }
   }
@@ -438,10 +446,13 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const locale = typeof body.locale === 'string' ? body.locale : 'en';
   const slugLang = PDF_LANGS.has(locale) ? locale : 'en';
   const variables: Record<string, string> = {
-    QUOTE_TITLE: render.docTitle,
-    SOLUTION:    render.solutionLabel,
-    RANGE:       render.rangeText,
-    PDF_URL:     pdfUrl,
+    QUOTE_TITLE:  render.docTitle,
+    SOLUTION:     render.solutionLabel,
+    RANGE:        render.rangeText,
+    NEG_INITIAL:  render.negInitial,
+    NEG_BUDGET:   render.negBudget,
+    NEG_ADJUSTED: render.negAdjusted,
+    PDF_URL:      pdfUrl,
   };
 
   const result = await sendTransactional(env.SEQUENZY_API_KEY, { to: recipient, slug: `quote-${slugLang}`, variables });
@@ -547,7 +558,17 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
     decidedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  if (hasBudget) patch.expectedBudgetUsd = Math.round(budget);
+  if (hasBudget) {
+    patch.expectedBudgetUsd = Math.round(budget);
+    // Keep the persisted render in sync so the email/shared PDF shows the budget row.
+    if (typeof stored.renderJson === 'string') {
+      try {
+        const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
+        r.negBudget = `$${Math.round(budget).toLocaleString('en-US')}`;
+        patch.renderJson = JSON.stringify(r);
+      } catch { /* leave renderJson as-is */ }
+    }
+  }
   await firestoreSet(saJson, path, patch, { merge: true });
 
   // Discuss → best-effort admin notification (sales signal). Non-fatal.

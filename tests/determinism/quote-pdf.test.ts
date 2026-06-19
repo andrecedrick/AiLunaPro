@@ -36,6 +36,13 @@ const INPUT: QuotePdfInput = {
   timelineHeading:     'Calendrier indicatif',
   timeline:            ['Découverte et conception — 1–2 semaines', 'Développement et intégration — 4–8 semaines'],
   disclaimer:          'Estimation indicative et non contractuelle.',
+  negHeading:          'Récapitulatif de négociation',
+  negInitialLabel:     'Estimation initiale',
+  negBudgetLabel:      'Votre budget',
+  negAdjustedLabel:    'Prix ajusté',
+  negInitial:          '≈ €27,600 – ≈ €73,600',
+  negBudget:           '≈ €50,000',
+  negAdjusted:         '',
 };
 
 describe('Quote PDF — determinism', () => {

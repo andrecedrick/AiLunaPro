@@ -2529,6 +2529,12 @@ export const es: Dict = {
         "accepted": "Estimación aceptada — te contactaremos en breve.",
         "discussionSent": "Solicitud enviada — nos pondremos en contacto para hablarlo.",
         "error": "No se pudo guardar tu decisión. Inténtalo de nuevo."
+      },
+      "negotiation": {
+        "heading": "Resumen de negociación",
+        "initialLabel": "Estimación inicial",
+        "budgetLabel": "Tu presupuesto",
+        "adjustedLabel": "Precio ajustado"
       }
     }
   },
