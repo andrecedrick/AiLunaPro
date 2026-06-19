@@ -29,6 +29,7 @@ import {
 } from '../lib/quote-shared';
 import { consumeTokens } from '../lib/tokens';
 import { firestoreGet, firestoreSet, firestoreDelete } from '../lib/firestoreAdmin';
+import { buildQuotePdf, type QuotePdfInput } from '../lib/quote-pdf';
 import type { AppEnv } from '../index';
 
 const quote = new Hono<AppEnv>();
@@ -198,6 +199,90 @@ quote.post('/api/quote/generate', requireAuth(), requireRole(GEN_ROLES), async c
     rulesetVersion: scored.rulesetVersion,
     tokensConsumed: charge.tokensConsumed,
     balanceAfter:   charge.balanceAfter,
+  });
+});
+
+/* ── POST /api/quote/pdf — deterministic, localized quote PDF ──────────────
+ *
+ * Renders the EXACT display strings the UI shows (client-supplied, already
+ * localized; RU/ZH resolved to English client-side). Bound to a real stored
+ * quote (auth + org + existence). createdAt comes from the stored quote so the
+ * output is stable. The render payload is persisted for later server-side
+ * regeneration (Q4 email). No PII logging.
+ */
+
+const STR_MAX = 600;
+const LIST_MAX = 12;
+const ITEM_MAX = 200;
+
+function str(v: unknown, max = STR_MAX): string {
+  return typeof v === 'string' ? v.slice(0, max) : '';
+}
+function strList(v: unknown): string[] {
+  return Array.isArray(v) ? v.slice(0, LIST_MAX).map(x => str(x, ITEM_MAX)).filter(Boolean) : [];
+}
+
+interface PdfBody { orgId?: unknown; quoteId?: unknown; render?: unknown }
+
+quote.post('/api/quote/pdf', requireAuth(), requireRole(GEN_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string;
+
+  let body: PdfBody;
+  try { body = (await c.req.json()) as PdfBody; }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const quoteId = safeId(body.quoteId);
+  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
+
+  // Bind to a real, org-owned quote (auth + isolation + existence).
+  const stored = await firestoreGet(saJson, `${COLLECTION(orgId)}/${quoteId}`);
+  if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  const r = (body.render && typeof body.render === 'object') ? body.render as Record<string, unknown> : {};
+  const pdfInput: QuotePdfInput = {
+    createdAt:        typeof stored.createdAt === 'string' ? stored.createdAt : new Date().toISOString(),
+    docTitle:         str(r.docTitle) || 'Project quote',
+    solutionLabel:    str(r.solutionLabel),
+    summaryHeading:   str(r.summaryHeading),
+    summary:          str(r.summary, 2000),
+    pricingHeading:   str(r.pricingHeading),
+    rangeText:        str(r.rangeText, 120),
+    scopeHeading:     str(r.scopeHeading),
+    scope:            strList(r.scope),
+    nextStepsHeading: str(r.nextStepsHeading),
+    nextSteps:        strList(r.nextSteps),
+    paymentNote:      str(r.paymentNote, 600),
+    disclaimer:       str(r.disclaimer, 600),
+  };
+
+  let bytes: Uint8Array;
+  try {
+    bytes = buildQuotePdf(pdfInput);
+  } catch (err) {
+    console.error('[quote] PDF render failed for org:', orgId, 'ray:', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not render the quote PDF.', code: 'PDF_RENDER_FAILED' }, 500);
+  }
+
+  // Persist the render payload (idempotent merge) so Q4 email can regenerate the
+  // same PDF server-side without the client. Best-effort: never block the download.
+  try {
+    await firestoreSet(saJson, `${COLLECTION(orgId)}/${quoteId}`, {
+      renderJson: JSON.stringify(pdfInput),
+      pdfAt:      new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    console.error('[quote] render persist failed for org:', orgId, err instanceof Error ? err.message : '');
+  }
+
+  return c.body(bytes as unknown as Uint8Array<ArrayBuffer>, 200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': `attachment; filename="quote-${quoteId}.pdf"`,
+    'Cache-Control': 'no-store',
   });
 });
 

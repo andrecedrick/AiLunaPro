@@ -26,8 +26,10 @@ import {
   type QuoteCategory, type QuoteTier, type BusinessSize, type Urgency, type BudgetBand,
 } from '../data/quote-config';
 import { computeQuotePreview, type QuotePreview } from '../lib/quote/score';
-import { generateQuote, QuoteGenError } from '../lib/quote/quoteClient';
+import { generateQuote, downloadQuotePdf, QuoteGenError } from '../lib/quote/quoteClient';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
+import { usePreferences } from '../context/PreferencesContext';
+import { EN, pdfLocale } from '../lib/locale/i18n';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
 import { track } from '../lib/analytics/track';
 import { captureSrc } from '../lib/analytics/srcParam';
@@ -51,6 +53,8 @@ export function QuoteRequestPage() {
   const { navigate } = useRoute();
   const { isAuthenticated, isLoading, session } = useAuth();
   const T = useLocale();
+  const money = useMoney();
+  const { language } = usePreferences();
   const [src] = useState(() => captureSrc());
 
   const saved = readFlowProgress('quote')?.state as SavedState | undefined;
@@ -71,6 +75,8 @@ export function QuoteRequestPage() {
   const [genError,   setGenError]   = useState<string | null>(null);
   const [generated,  setGenerated]  = useState(false);
   const [modal,      setModal]      = useState<{ open: boolean; balance: number; required: number }>({ open: false, balance: 0, required: 0 });
+  const [downloading, setDownloading] = useState(false);
+  const [pdfError,    setPdfError]    = useState<string | null>(null);
   // Stable per estimate session: a network retry reuses it (server idempotent,
   // no double charge); reset() mints a fresh one for the next quote.
   const quoteIdRef = useRef<string>('');
@@ -130,6 +136,7 @@ export function QuoteRequestPage() {
     setErrors({});
     setGenerating(false); setGenError(null); setGenerated(false);
     setModal({ open: false, balance: 0, required: 0 });
+    setDownloading(false); setPdfError(null);
     quoteIdRef.current = '';
     clearFlowProgress('quote');
   };
@@ -167,6 +174,41 @@ export function QuoteRequestPage() {
       }
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const onDownloadPdf = async () => {
+    if (downloading || !preview) return;
+    const orgId = session?.orgId;
+    if (!orgId || !quoteIdRef.current) return;
+    setDownloading(true); setPdfError(null);
+    try {
+      // PDF language: Latin → current locale; RU/ZH → English (pdfLocale rule).
+      const useEnglish = pdfLocale(language) !== language;
+      const pq = (useEnglish ? EN.publicTools.quote : Q);
+      const sols  = pq.solutions as Record<string, string>;
+      const scp   = pq.scope as Record<string, string>;
+      const steps = pq.nextSteps as Record<string, string>;
+      await downloadQuotePdf(orgId, quoteIdRef.current, {
+        docTitle:         pq.pdf.docTitle,
+        solutionLabel:    sols[preview.solutionKey] ?? preview.solutionKey,
+        summaryHeading:   pq.pdf.summaryHeading,
+        // User's free-text only when it's in the PDF language (else the ASCII
+        // engine can't render RU/ZH text — server skips an empty summary).
+        summary:          useEnglish ? '' : effectiveDescription,
+        pricingHeading:   pq.pdf.pricingHeading,
+        rangeText:        `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? '+' : ''}`,
+        scopeHeading:     pq.result.scopeHeading,
+        scope:            preview.scopeKeys.map(k => scp[k] ?? k),
+        nextStepsHeading: pq.result.nextStepsHeading,
+        nextSteps:        preview.nextStepKeys.map(k => steps[k] ?? k),
+        paymentNote:      pq.guided.paymentNote,
+        disclaimer:       pq.result.disclaimer,
+      });
+    } catch {
+      setPdfError(Q.generate.error);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -297,7 +339,16 @@ export function QuoteRequestPage() {
             {isAuthenticated ? (
               generated ? (
                 <div id="quote-generated" style={{ marginTop: 22, padding: 20, borderRadius: 14, background: 'var(--green-soft-bg, #ecfdf5)', border: '1px solid var(--green-text, #059669)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{Q.generate.success}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>{Q.generate.success}</div>
+                  <button
+                    type="button"
+                    disabled={downloading}
+                    onClick={() => void onDownloadPdf()}
+                    style={{ ...primaryBtnStyle(), opacity: downloading ? 0.6 : 1, cursor: downloading ? 'wait' : 'pointer' }}
+                  >
+                    {downloading ? '…' : Q.pdf.download}
+                  </button>
+                  {pdfError && <div style={{ marginTop: 10, color: 'var(--red-text)', fontSize: 13 }}>{pdfError}</div>}
                 </div>
               ) : (
                 <div style={{ marginTop: 22, textAlign: 'center' }}>

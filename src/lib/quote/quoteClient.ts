@@ -63,3 +63,45 @@ export async function generateQuote(orgId: string, input: GenerateQuoteInput): P
   }
   return j as GenerateQuoteResult;
 }
+
+/** Already-localized display strings sent to the PDF endpoint (RU/ZH resolved to
+ *  English by the caller per the PDF fallback rule). */
+export interface QuotePdfRender {
+  docTitle:         string;
+  solutionLabel:    string;
+  summaryHeading:   string;
+  summary:          string;
+  pricingHeading:   string;
+  rangeText:        string;
+  scopeHeading:     string;
+  scope:            string[];
+  nextStepsHeading: string;
+  nextSteps:        string[];
+  paymentNote:      string;
+  disclaimer:       string;
+}
+
+/**
+ * Download the deterministic quote PDF for an existing quote. The server binds
+ * it to the stored quote (auth + org) and renders the supplied display strings.
+ * Throws QuoteGenError(code) on failure.
+ */
+export async function downloadQuotePdf(orgId: string, quoteId: string, render: QuotePdfRender): Promise<void> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/quote/pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, quoteId, render }),
+  });
+  if (!res.ok) {
+    const code = await res.json().then((x: { code?: string }) => x.code).catch(() => undefined);
+    throw new QuoteGenError(code ?? `HTTP_${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `quote-${quoteId}.pdf`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

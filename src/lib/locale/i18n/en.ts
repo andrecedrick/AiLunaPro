@@ -2483,6 +2483,12 @@ export const en = {
           "vendorCompare": "Compare solutions / vendors",
           "roadmap": "Get an implementation roadmap"
         }
+      },
+      "pdf": {
+        "download": "Download PDF",
+        "docTitle": "Project quote",
+        "summaryHeading": "Project summary",
+        "pricingHeading": "Estimated investment"
       }
     }
   },

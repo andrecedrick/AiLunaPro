@@ -2469,6 +2469,12 @@ export const ru: Dict = {
           "vendorCompare": "Сравнить решения / поставщиков",
           "roadmap": "Получить дорожную карту внедрения"
         }
+      },
+      "pdf": {
+        "download": "Скачать PDF",
+        "docTitle": "Смета проекта",
+        "summaryHeading": "Краткое описание проекта",
+        "pricingHeading": "Предполагаемые инвестиции"
       }
     }
   },

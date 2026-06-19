@@ -2470,6 +2470,12 @@ export const zh: Dict = {
           "vendorCompare": "比较方案 / 供应商",
           "roadmap": "获取实施路线图"
         }
+      },
+      "pdf": {
+        "download": "下载 PDF",
+        "docTitle": "项目报价",
+        "summaryHeading": "项目概要",
+        "pricingHeading": "预计投资"
       }
     }
   },

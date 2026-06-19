@@ -2468,6 +2468,12 @@ export const it: Dict = {
           "vendorCompare": "Confrontare soluzioni / fornitori",
           "roadmap": "Ottenere una roadmap di implementazione"
         }
+      },
+      "pdf": {
+        "download": "Scarica il PDF",
+        "docTitle": "Preventivo del progetto",
+        "summaryHeading": "Riepilogo del progetto",
+        "pricingHeading": "Investimento stimato"
       }
     }
   },
