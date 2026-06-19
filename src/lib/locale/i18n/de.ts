@@ -2434,6 +2434,14 @@ export const de: Dict = {
         "discoveryCall": "Vereinbaren Sie ein Discovery-Gespräch, um den Umfang zu präzisieren",
         "scoping": "Erhalten Sie ein detailliertes Scoping-Dokument",
         "proposal": "Erhalten Sie ein formelles Angebot & einen Zeitplan"
+      },
+      "generate": {
+        "button": "Offizielles Angebot erstellen",
+        "cost": "{n} Tokens",
+        "loading": "Wird erstellt…",
+        "success": "Ihr Angebot wurde erstellt und in Ihrem Arbeitsbereich gespeichert.",
+        "error": "Angebot konnte nicht erstellt werden. Bitte erneut versuchen.",
+        "needOrg": "Wählen Sie einen Arbeitsbereich, um ein Angebot zu erstellen."
       }
     }
   },

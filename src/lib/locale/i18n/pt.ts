@@ -2434,6 +2434,14 @@ export const pt: Dict = {
         "discoveryCall": "Agende uma reunião de descoberta para refinar o âmbito",
         "scoping": "Receba um documento detalhado de definição de âmbito",
         "proposal": "Obtenha uma proposta formal e um cronograma"
+      },
+      "generate": {
+        "button": "Gerar orçamento oficial",
+        "cost": "{n} tokens",
+        "loading": "A gerar…",
+        "success": "O seu orçamento foi gerado e guardado no seu espaço de trabalho.",
+        "error": "Não foi possível gerar o orçamento. Tente novamente.",
+        "needOrg": "Selecione um espaço de trabalho para gerar um orçamento."
       }
     }
   },

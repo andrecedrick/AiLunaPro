@@ -11,6 +11,7 @@ export const TOKEN_COSTS = {
   'agent.call':         20,
   'report.export.pdf':   5,
   'audit_express.pdf':  10,   // J16.1 — PDF export beyond the 3 free downloads
+  'quote.generation':   50,   // Quote/Devis — paid generation (persist; PDF+email in later phases)
 } as const;
 
 export type TokenAction = keyof typeof TOKEN_COSTS;

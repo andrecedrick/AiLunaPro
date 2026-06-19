@@ -2434,6 +2434,14 @@ export const es: Dict = {
         "discoveryCall": "Reserva una llamada de descubrimiento para afinar el alcance",
         "scoping": "Recibe un documento detallado de alcance",
         "proposal": "Obtén una propuesta formal y un calendario"
+      },
+      "generate": {
+        "button": "Generar presupuesto oficial",
+        "cost": "{n} tokens",
+        "loading": "Generando…",
+        "success": "Tu presupuesto se ha generado y guardado en tu espacio de trabajo.",
+        "error": "No se pudo generar el presupuesto. Inténtalo de nuevo.",
+        "needOrg": "Selecciona un espacio de trabajo para generar un presupuesto."
       }
     }
   },

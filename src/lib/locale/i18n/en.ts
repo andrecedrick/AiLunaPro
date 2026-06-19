@@ -2449,6 +2449,14 @@ export const en = {
         "discoveryCall": "Book a discovery call to refine the scope",
         "scoping": "Receive a detailed scoping document",
         "proposal": "Get a formal proposal & timeline"
+      },
+      "generate": {
+        "button": "Generate official quote",
+        "cost": "{n} tokens",
+        "loading": "Generating…",
+        "success": "Your quote has been generated and saved to your workspace.",
+        "error": "Could not generate the quote. Please try again.",
+        "needOrg": "Select a workspace to generate a quote."
       }
     }
   },

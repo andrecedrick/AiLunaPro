@@ -22,9 +22,12 @@ import { format } from '../lib/locale/i18n';
 import { useMoney } from '../lib/currency/useMoney';
 import {
   QUOTE_CATEGORIES, QUOTE_TIERS, BUSINESS_SIZES, URGENCIES, BUDGET_BANDS,
-  isTierForCategory, type QuoteCategory, type QuoteTier,
+  isTierForCategory,
+  type QuoteCategory, type QuoteTier, type BusinessSize, type Urgency, type BudgetBand,
 } from '../data/quote-config';
 import { computeQuotePreview, type QuotePreview } from '../lib/quote/score';
+import { generateQuote, QuoteGenError } from '../lib/quote/quoteClient';
+import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
 import { track } from '../lib/analytics/track';
 import { captureSrc } from '../lib/analytics/srcParam';
@@ -41,7 +44,7 @@ type SavedState = { category?: string; tier?: string; businessSize?: string; urg
 
 export function QuoteRequestPage() {
   const { navigate } = useRoute();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, session } = useAuth();
   const T = useLocale();
   const [src] = useState(() => captureSrc());
 
@@ -56,6 +59,15 @@ export function QuoteRequestPage() {
 
   const [errors,  setErrors]  = useState<FormErrors>({});
   const [preview, setPreview] = useState<QuotePreview | null>(null);
+
+  // Q2 — token-charged generation (authenticated only).
+  const [generating, setGenerating] = useState(false);
+  const [genError,   setGenError]   = useState<string | null>(null);
+  const [generated,  setGenerated]  = useState(false);
+  const [modal,      setModal]      = useState<{ open: boolean; balance: number; required: number }>({ open: false, balance: 0, required: 0 });
+  // Stable per estimate session: a network retry reuses it (server idempotent,
+  // no double charge); reset() mints a fresh one for the next quote.
+  const quoteIdRef = useRef<string>('');
 
   const Q = T.publicTools.quote;
 
@@ -105,7 +117,46 @@ export function QuoteRequestPage() {
     setCategory(''); setTier(''); setDescription('');
     setBusinessSize(''); setUrgency(''); setBudgetBand('');
     setErrors({});
+    setGenerating(false); setGenError(null); setGenerated(false);
+    setModal({ open: false, balance: 0, required: 0 });
+    quoteIdRef.current = '';
     clearFlowProgress('quote');
+  };
+
+  const onGenerate = async () => {
+    if (generating) return;
+    const orgId = session?.orgId;
+    if (!orgId) { setGenError(Q.generate.needOrg); return; }
+    if (!category || !isTierForCategory(category, tier as string)) return;
+    if (!quoteIdRef.current) {
+      const raw = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `q-${src ?? 'x'}-${preview?.solutionKey ?? ''}`;
+      quoteIdRef.current = raw.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+    }
+    setGenerating(true); setGenError(null);
+    try {
+      await generateQuote(orgId, {
+        quoteId:     quoteIdRef.current,
+        category:    category as QuoteCategory,
+        tier:        tier as QuoteTier,
+        description: description.trim(),
+        ...(businessSize ? { businessSize: businessSize as BusinessSize } : {}),
+        ...(urgency      ? { urgency: urgency as Urgency } : {}),
+        ...(budgetBand   ? { budgetBand: budgetBand as BudgetBand } : {}),
+      });
+      setGenerated(true);
+      track('lead_flow_completed', { flow: 'quote', src: src ?? undefined });
+      requestAnimationFrame(() => {
+        document.getElementById('quote-generated')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } catch (e) {
+      if (e instanceof QuoteGenError && e.code === 'INSUFFICIENT_TOKENS') {
+        setModal({ open: true, balance: e.balance ?? 0, required: e.required ?? 50 });
+      } else {
+        setGenError(Q.generate.error);
+      }
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const tierOptions = category ? QUOTE_TIERS[category] : [];
@@ -197,7 +248,45 @@ export function QuoteRequestPage() {
         )}
 
         {preview && (
-          <EstimateView preview={preview} onReset={reset} anon={!isLoading && !isAuthenticated} onSignup={() => navigate({ name: 'signup' })} />
+          <>
+            <EstimateView preview={preview} onReset={reset} />
+
+            {isAuthenticated ? (
+              generated ? (
+                <div id="quote-generated" style={{ marginTop: 22, padding: 20, borderRadius: 14, background: 'var(--green-soft-bg, #ecfdf5)', border: '1px solid var(--green-text, #059669)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{Q.generate.success}</div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 22, textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    disabled={generating}
+                    onClick={() => void onGenerate()}
+                    style={{ ...primaryBtnStyle(), opacity: generating ? 0.6 : 1, cursor: generating ? 'wait' : 'pointer' }}
+                  >
+                    {generating ? Q.generate.loading : `${Q.generate.button} · ${format(Q.generate.cost, { n: '50' })}`}
+                  </button>
+                  {genError && <div style={{ marginTop: 10, color: 'var(--red-text)', fontSize: 13 }}>{genError}</div>}
+                </div>
+              )
+            ) : (!isLoading && (
+              <div style={{ marginTop: 22, padding: 24, borderRadius: 14, background: 'var(--text-primary)', color: '#fff', textAlign: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{Q.result.ctaHeading}</div>
+                <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>{Q.result.ctaBody}</div>
+                <button type="button" onClick={() => navigate({ name: 'signup' })} style={{ display: 'inline-block', padding: '11px 28px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                  {Q.result.ctaButton}
+                </button>
+              </div>
+            ))}
+
+            <InsufficientTokensModal
+              open={modal.open}
+              onClose={() => setModal(m => ({ ...m, open: false }))}
+              balance={modal.balance}
+              required={modal.required}
+              actionLabel={Q.generate.button}
+            />
+          </>
         )}
       </div>
     </div>
@@ -206,7 +295,7 @@ export function QuoteRequestPage() {
 
 /* ── Estimate view ──────────────────────────────────────── */
 
-function EstimateView({ preview, onReset, anon, onSignup }: { preview: QuotePreview; onReset: () => void; anon: boolean; onSignup: () => void }) {
+function EstimateView({ preview, onReset }: { preview: QuotePreview; onReset: () => void }) {
   const T = useLocale();
   const money = useMoney();
   const Q = T.publicTools.quote;
@@ -258,17 +347,6 @@ function EstimateView({ preview, onReset, anon, onSignup }: { preview: QuotePrev
       <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>
         {Q.result.disclaimer}
       </div>
-
-      {/* Signup CTA — anonymous funnel only */}
-      {anon && (
-        <div style={{ marginTop: 22, padding: 24, borderRadius: 14, background: 'var(--text-primary)', color: '#fff', textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{Q.result.ctaHeading}</div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>{Q.result.ctaBody}</div>
-          <button type="button" onClick={onSignup} style={{ display: 'inline-block', padding: '11px 28px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-            {Q.result.ctaButton}
-          </button>
-        </div>
-      )}
 
       <div style={{ marginTop: 18, textAlign: 'center' }}>
         <button type="button" onClick={onReset} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>

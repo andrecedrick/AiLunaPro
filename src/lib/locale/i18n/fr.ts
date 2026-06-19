@@ -2434,6 +2434,14 @@ export const fr: Dict = {
         "discoveryCall": "Planifiez un appel de découverte pour affiner le périmètre",
         "scoping": "Recevez un document de cadrage détaillé",
         "proposal": "Obtenez une proposition formelle et un calendrier"
+      },
+      "generate": {
+        "button": "Générer le devis officiel",
+        "cost": "{n} tokens",
+        "loading": "Génération…",
+        "success": "Votre devis a été généré et enregistré dans votre espace de travail.",
+        "error": "Impossible de générer le devis. Veuillez réessayer.",
+        "needOrg": "Sélectionnez un espace de travail pour générer un devis."
       }
     }
   },

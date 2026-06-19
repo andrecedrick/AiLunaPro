@@ -2436,6 +2436,14 @@ export const zh: Dict = {
         "discoveryCall": "预约需求沟通电话以细化范围",
         "scoping": "获取详细的范围说明文档",
         "proposal": "获取正式提案与时间表"
+      },
+      "generate": {
+        "button": "生成正式报价",
+        "cost": "{n} tokens",
+        "loading": "正在生成…",
+        "success": "您的报价已生成并保存到您的工作区。",
+        "error": "无法生成报价，请重试。",
+        "needOrg": "请选择一个工作区以生成报价。"
       }
     }
   },

@@ -2434,6 +2434,14 @@ export const it: Dict = {
         "discoveryCall": "Prenota una call di discovery per definire lo scope",
         "scoping": "Ricevi un documento di scope dettagliato",
         "proposal": "Ottieni una proposta formale e una tempistica"
+      },
+      "generate": {
+        "button": "Genera il preventivo ufficiale",
+        "cost": "{n} token",
+        "loading": "Generazione…",
+        "success": "Il tuo preventivo è stato generato e salvato nel tuo spazio di lavoro.",
+        "error": "Impossibile generare il preventivo. Riprova.",
+        "needOrg": "Seleziona uno spazio di lavoro per generare un preventivo."
       }
     }
   },
