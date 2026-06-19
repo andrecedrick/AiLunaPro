@@ -2504,6 +2504,34 @@ export const en = {
         "error": "Could not save the adjustment.",
         "invalid": "Enter a valid min/max (USD) and a short justification.",
         "adjustedNote": "Adjusted price: {range}"
+      },
+      "proposal": {
+        "execSummaryTemplate": "This proposal outlines a {solution} tailored to your goals and existing tools.",
+        "solutionHeading": "Proposed solution",
+        "paymentHeading": "Payment",
+        "timelineHeading": "Indicative timeline",
+        "coverClient": "Prepared for",
+        "coverDate": "Date",
+        "coverValid": "Valid until",
+        "coverRef": "Reference",
+        "solutionDesc": {
+          "ai_agent": "A custom AI agent that automates your selected goals and connects to your existing tools (CRM/ERP, APIs).",
+          "automation": "An automation workflow that links your tools and removes manual, repetitive steps.",
+          "website": "A professional website or web platform built around your business objectives.",
+          "audit": "A feasibility and scoping study that de-risks the project before any build."
+        },
+        "timeline": {
+          "agent": "Discovery & design — 1–2 weeks\nBuild & integration — 4–8 weeks\nTesting & deployment — 1–2 weeks",
+          "website": "Discovery & design — 1–2 weeks\nBuild — 3–6 weeks\nContent & launch — 1 week",
+          "audit": "Assessment — 1 week\nAnalysis & recommendations — 1 week"
+        },
+        "justification": {
+          "heading": "How this estimate is calculated",
+          "market": "Based on 2026 market references for {category} projects at {tier} complexity.",
+          "complexity": "Reflects {tier} project complexity.",
+          "scope": "Covers {count} core workstreams, including integration with your tools.",
+          "ops": "AI agent & automation projects add {min}–{max}% in operating costs (tokens, infrastructure)."
+        }
       }
     }
   },

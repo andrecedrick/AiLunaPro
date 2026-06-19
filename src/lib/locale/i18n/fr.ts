@@ -2489,6 +2489,34 @@ export const fr: Dict = {
         "error": "Impossible d'enregistrer l'ajustement.",
         "invalid": "Saisissez un min/max (USD) valide et une brève justification.",
         "adjustedNote": "Prix ajusté : {range}"
+      },
+      "proposal": {
+        "execSummaryTemplate": "Cette proposition présente {solution} adapté à vos objectifs et à vos outils existants.",
+        "solutionHeading": "Solution proposée",
+        "paymentHeading": "Paiement",
+        "timelineHeading": "Calendrier indicatif",
+        "coverClient": "Préparé pour",
+        "coverDate": "Date",
+        "coverValid": "Valable jusqu'au",
+        "coverRef": "Référence",
+        "solutionDesc": {
+          "ai_agent": "Un agent IA sur mesure qui automatise vos objectifs et se connecte à vos outils existants (CRM/ERP, API).",
+          "automation": "Un flux d'automatisation qui relie vos outils et supprime les tâches manuelles répétitives.",
+          "website": "Un site web ou une plateforme professionnelle construit autour de vos objectifs.",
+          "audit": "Une étude de faisabilité et de cadrage qui réduit les risques avant toute construction."
+        },
+        "timeline": {
+          "agent": "Découverte et conception — 1–2 semaines\nDéveloppement et intégration — 4–8 semaines\nTests et déploiement — 1–2 semaines",
+          "website": "Découverte et conception — 1–2 semaines\nDéveloppement — 3–6 semaines\nContenu et lancement — 1 semaine",
+          "audit": "Évaluation — 1 semaine\nAnalyse et recommandations — 1 semaine"
+        },
+        "justification": {
+          "heading": "Comment cette estimation est calculée",
+          "market": "Basé sur les références de marché 2026 pour les projets {category} de complexité {tier}.",
+          "complexity": "Reflète la complexité {tier} du projet.",
+          "scope": "Couvre {count} chantiers principaux, dont l'intégration à vos outils.",
+          "ops": "Les projets d'agents IA et d'automatisation ajoutent {min}–{max}% de coûts d'exploitation (tokens, infrastructure)."
+        }
       }
     }
   },

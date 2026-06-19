@@ -2491,6 +2491,34 @@ export const zh: Dict = {
         "error": "无法保存调整。",
         "invalid": "请输入有效的最低/最高金额 (USD) 和简短理由。",
         "adjustedNote": "调整后价格：{range}"
+      },
+      "proposal": {
+        "execSummaryTemplate": "本提案介绍为您的目标和现有工具量身定制的{solution}。",
+        "solutionHeading": "建议方案",
+        "paymentHeading": "付款",
+        "timelineHeading": "参考时间表",
+        "coverClient": "致",
+        "coverDate": "日期",
+        "coverValid": "有效期至",
+        "coverRef": "编号",
+        "solutionDesc": {
+          "ai_agent": "定制 AI 智能体，自动化您的目标并接入您现有的工具（CRM/ERP、API）。",
+          "automation": "自动化工作流，连接您的工具并消除手动重复操作。",
+          "website": "围绕您的业务目标打造的专业网站或 Web 平台。",
+          "audit": "可行性与范围研究，在开发前降低项目风险。"
+        },
+        "timeline": {
+          "agent": "调研与设计 — 1–2 周\n开发与集成 — 4–8 周\n测试与部署 — 1–2 周",
+          "website": "调研与设计 — 1–2 周\n开发 — 3–6 周\n内容与上线 — 1 周",
+          "audit": "评估 — 1 周\n分析与建议 — 1 周"
+        },
+        "justification": {
+          "heading": "此估算如何计算",
+          "market": "基于 2026 年市场参考，面向{tier}复杂度的{category}项目。",
+          "complexity": "反映项目的{tier}复杂度。",
+          "scope": "涵盖 {count} 个核心工作流，包括与您工具的集成。",
+          "ops": "AI 智能体与自动化项目额外增加 {min}–{max}% 的运营成本（令牌、基础设施）。"
+        }
       }
     }
   },

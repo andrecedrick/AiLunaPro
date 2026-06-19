@@ -2489,6 +2489,34 @@ export const de: Dict = {
         "error": "Anpassung konnte nicht gespeichert werden.",
         "invalid": "Geben Sie einen gültigen Min/Max-Wert (USD) und eine kurze Begründung ein.",
         "adjustedNote": "Angepasster Preis: {range}"
+      },
+      "proposal": {
+        "execSummaryTemplate": "Dieses Angebot beschreibt {solution}, zugeschnitten auf Ihre Ziele und bestehenden Tools.",
+        "solutionHeading": "Vorgeschlagene Lösung",
+        "paymentHeading": "Zahlung",
+        "timelineHeading": "Indikativer Zeitplan",
+        "coverClient": "Erstellt für",
+        "coverDate": "Datum",
+        "coverValid": "Gültig bis",
+        "coverRef": "Referenz",
+        "solutionDesc": {
+          "ai_agent": "Ein maßgeschneiderter KI-Agent, der Ihre Ziele automatisiert und sich mit Ihren bestehenden Tools (CRM/ERP, APIs) verbindet.",
+          "automation": "Ein Automatisierungs-Workflow, der Ihre Tools verbindet und manuelle, sich wiederholende Schritte beseitigt.",
+          "website": "Eine professionelle Website oder Web-Plattform, ausgerichtet auf Ihre Geschäftsziele.",
+          "audit": "Eine Machbarkeits- und Scoping-Studie, die das Projekt vor dem Bau absichert."
+        },
+        "timeline": {
+          "agent": "Discovery & Konzeption — 1–2 Wochen\nEntwicklung & Integration — 4–8 Wochen\nTests & Deployment — 1–2 Wochen",
+          "website": "Discovery & Konzeption — 1–2 Wochen\nEntwicklung — 3–6 Wochen\nInhalte & Launch — 1 Woche",
+          "audit": "Bewertung — 1 Woche\nAnalyse & Empfehlungen — 1 Woche"
+        },
+        "justification": {
+          "heading": "So wird diese Schätzung berechnet",
+          "market": "Basierend auf 2026er Marktreferenzen für {category}-Projekte mit {tier}-Komplexität.",
+          "complexity": "Spiegelt die {tier}-Komplexität des Projekts wider.",
+          "scope": "Umfasst {count} zentrale Arbeitspakete, einschließlich der Integration Ihrer Tools.",
+          "ops": "KI-Agenten- und Automatisierungsprojekte verursachen zusätzlich {min}–{max}% Betriebskosten (Tokens, Infrastruktur)."
+        }
       }
     }
   },

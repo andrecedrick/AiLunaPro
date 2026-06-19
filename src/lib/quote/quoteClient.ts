@@ -64,21 +64,34 @@ export async function generateQuote(orgId: string, input: GenerateQuoteInput): P
   return j as GenerateQuoteResult;
 }
 
-/** Already-localized display strings sent to the PDF endpoint (RU/ZH resolved to
- *  English by the caller per the PDF fallback rule). */
+/** Already-localized display strings for the 8-section whitepaper PDF (RU/ZH
+ *  resolved to English by the caller per the PDF fallback rule). The server adds
+ *  createdAt + quoteId + cover dates. */
 export interface QuotePdfRender {
-  docTitle:         string;
-  solutionLabel:    string;
-  summaryHeading:   string;
-  summary:          string;
-  pricingHeading:   string;
-  rangeText:        string;
-  scopeHeading:     string;
-  scope:            string[];
-  nextStepsHeading: string;
-  nextSteps:        string[];
-  paymentNote:      string;
-  disclaimer:       string;
+  docTitle:             string;
+  projectName:          string;
+  clientName:           string;
+  labelClient:          string;
+  labelDate:            string;
+  labelValid:           string;
+  labelRef:             string;
+  execHeading:          string;
+  execSummary:          string;
+  summary:              string;
+  solutionHeading:      string;
+  solutionLabel:        string;
+  solutionDescription:  string;
+  scopeHeading:         string;
+  scope:                string[];
+  pricingHeading:       string;
+  rangeText:            string;
+  justificationHeading: string;
+  justification:        string[];
+  paymentHeading:       string;
+  paymentNote:          string;
+  timelineHeading:      string;
+  timeline:             string[];
+  disclaimer:           string;
 }
 
 /**

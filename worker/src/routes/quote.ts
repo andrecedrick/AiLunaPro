@@ -224,6 +224,40 @@ function strList(v: unknown): string[] {
   return Array.isArray(v) ? v.slice(0, LIST_MAX).map(x => str(x, ITEM_MAX)).filter(Boolean) : [];
 }
 
+/** Map a client render payload (already-localized display strings) + the stored
+ *  createdAt + quoteId into the validated 8-section QuotePdfInput. Single source
+ *  of truth for both the download and the email/shared regeneration. */
+function parseRender(r: Record<string, unknown>, createdAt: string, quoteId: string): QuotePdfInput {
+  return {
+    createdAt,
+    docTitle:             str(r.docTitle) || 'Project quote',
+    projectName:          str(r.projectName),
+    clientName:           str(r.clientName, 120),
+    quoteId,
+    labelClient:          str(r.labelClient, 60),
+    labelDate:            str(r.labelDate, 60),
+    labelValid:           str(r.labelValid, 60),
+    labelRef:             str(r.labelRef, 60),
+    execHeading:          str(r.execHeading),
+    execSummary:          str(r.execSummary, 800),
+    summary:              str(r.summary, 2000),
+    solutionHeading:      str(r.solutionHeading),
+    solutionLabel:        str(r.solutionLabel),
+    solutionDescription:  str(r.solutionDescription, 600),
+    scopeHeading:         str(r.scopeHeading),
+    scope:                strList(r.scope),
+    pricingHeading:       str(r.pricingHeading),
+    rangeText:            str(r.rangeText, 120),
+    justificationHeading: str(r.justificationHeading),
+    justification:        strList(r.justification),
+    paymentHeading:       str(r.paymentHeading),
+    paymentNote:          str(r.paymentNote, 600),
+    timelineHeading:      str(r.timelineHeading),
+    timeline:             strList(r.timeline),
+    disclaimer:           str(r.disclaimer, 600),
+  };
+}
+
 interface PdfBody { orgId?: unknown; quoteId?: unknown; render?: unknown }
 
 quote.post('/api/quote/pdf', requireAuth(), requireRole(GEN_ROLES), async c => {
@@ -246,21 +280,8 @@ quote.post('/api/quote/pdf', requireAuth(), requireRole(GEN_ROLES), async c => {
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
 
   const r = (body.render && typeof body.render === 'object') ? body.render as Record<string, unknown> : {};
-  const pdfInput: QuotePdfInput = {
-    createdAt:        typeof stored.createdAt === 'string' ? stored.createdAt : new Date().toISOString(),
-    docTitle:         str(r.docTitle) || 'Project quote',
-    solutionLabel:    str(r.solutionLabel),
-    summaryHeading:   str(r.summaryHeading),
-    summary:          str(r.summary, 2000),
-    pricingHeading:   str(r.pricingHeading),
-    rangeText:        str(r.rangeText, 120),
-    scopeHeading:     str(r.scopeHeading),
-    scope:            strList(r.scope),
-    nextStepsHeading: str(r.nextStepsHeading),
-    nextSteps:        strList(r.nextSteps),
-    paymentNote:      str(r.paymentNote, 600),
-    disclaimer:       str(r.disclaimer, 600),
-  };
+  const createdAt = typeof stored.createdAt === 'string' ? stored.createdAt : new Date().toISOString();
+  const pdfInput = parseRender(r, createdAt, quoteId);
 
   let bytes: Uint8Array;
   try {
@@ -398,21 +419,8 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   let render: QuotePdfInput | null = null;
   if (body.render && typeof body.render === 'object') {
     const r = body.render as Record<string, unknown>;
-    render = {
-      createdAt:        typeof stored.createdAt === 'string' ? stored.createdAt : new Date().toISOString(),
-      docTitle:         str(r.docTitle) || 'Project quote',
-      solutionLabel:    str(r.solutionLabel),
-      summaryHeading:   str(r.summaryHeading),
-      summary:          str(r.summary, 2000),
-      pricingHeading:   str(r.pricingHeading),
-      rangeText:        str(r.rangeText, 120),
-      scopeHeading:     str(r.scopeHeading),
-      scope:            strList(r.scope),
-      nextStepsHeading: str(r.nextStepsHeading),
-      nextSteps:        strList(r.nextSteps),
-      paymentNote:      str(r.paymentNote, 600),
-      disclaimer:       str(r.disclaimer, 600),
-    };
+    const createdAt = typeof stored.createdAt === 'string' ? stored.createdAt : new Date().toISOString();
+    render = parseRender(r, createdAt, quoteId);
     if (typeof stored.overrideMinUsd === 'number' && typeof stored.overrideMaxUsd === 'number') {
       render.rangeText = formatUsdRange(stored.overrideMinUsd, stored.overrideMaxUsd);
     }

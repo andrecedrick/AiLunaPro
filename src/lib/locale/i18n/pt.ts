@@ -2489,6 +2489,34 @@ export const pt: Dict = {
         "error": "Não foi possível guardar o ajuste.",
         "invalid": "Introduza um mín/máx (USD) válido e uma breve justificação.",
         "adjustedNote": "Preço ajustado: {range}"
+      },
+      "proposal": {
+        "execSummaryTemplate": "Esta proposta descreve {solution} adaptado aos seus objetivos e ferramentas existentes.",
+        "solutionHeading": "Solução proposta",
+        "paymentHeading": "Pagamento",
+        "timelineHeading": "Cronograma indicativo",
+        "coverClient": "Preparado para",
+        "coverDate": "Data",
+        "coverValid": "Válido até",
+        "coverRef": "Referência",
+        "solutionDesc": {
+          "ai_agent": "Um agente de IA personalizado que automatiza os seus objetivos e se liga às suas ferramentas existentes (CRM/ERP, APIs).",
+          "automation": "Um fluxo de automação que liga as suas ferramentas e elimina tarefas manuais repetitivas.",
+          "website": "Um site ou plataforma profissional construído em torno dos seus objetivos de negócio.",
+          "audit": "Um estudo de viabilidade e enquadramento que reduz o risco antes de qualquer desenvolvimento."
+        },
+        "timeline": {
+          "agent": "Descoberta e conceção — 1–2 semanas\nDesenvolvimento e integração — 4–8 semanas\nTestes e implementação — 1–2 semanas",
+          "website": "Descoberta e conceção — 1–2 semanas\nDesenvolvimento — 3–6 semanas\nConteúdo e lançamento — 1 semana",
+          "audit": "Avaliação — 1 semana\nAnálise e recomendações — 1 semana"
+        },
+        "justification": {
+          "heading": "Como esta estimativa é calculada",
+          "market": "Com base em referências de mercado de 2026 para projetos {category} de complexidade {tier}.",
+          "complexity": "Reflete a complexidade {tier} do projeto.",
+          "scope": "Abrange {count} frentes de trabalho principais, incluindo a integração com as suas ferramentas.",
+          "ops": "Projetos de agentes de IA e automação acrescentam {min}–{max}% de custos operacionais (tokens, infraestrutura)."
+        }
       }
     }
   },

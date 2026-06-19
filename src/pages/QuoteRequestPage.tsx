@@ -189,33 +189,64 @@ export function QuoteRequestPage() {
     }
   };
 
-  // Build the PDF/email render payload (exact display strings). PDF language:
-  // Latin → current locale; RU/ZH → English (pdfLocale rule). Reflects an override.
+  // Build the 8-section whitepaper render payload (exact display strings). PDF
+  // language: Latin → current locale; RU/ZH → English (pdfLocale rule). Reflects
+  // an override. Justification is deterministic (no LLM).
   const buildRender = () => {
     const p = preview!;
     const useEnglish = pdfLocale(language) !== language;
     const pq = (useEnglish ? EN.publicTools.quote : Q);
-    const sols  = pq.solutions as Record<string, string>;
-    const scp   = pq.scope as Record<string, string>;
-    const steps = pq.nextSteps as Record<string, string>;
+    const sols     = pq.solutions as Record<string, string>;
+    const scp      = pq.scope as Record<string, string>;
+    const services = pq.services as Record<string, string>;
+    const tiers    = pq.tiers as Record<string, string>;
+    const prop     = pq.proposal;
+    const solDesc  = prop.solutionDesc as Record<string, string>;
+    const timelineMap = prop.timeline as Record<string, string>;
+
     const min = override ? override.minUsd : p.priceMinUsd;
     const max = override ? override.maxUsd : p.priceMaxUsd;
     const openEnded = override ? false : p.openEnded;
+    const rangeText = `${money.format(min)} – ${money.format(max)}${openEnded ? '+' : ''}`;
+    const solutionLabel = sols[p.solutionKey] ?? p.solutionKey;
+    const tCat = p.category === 'website' ? 'website' : p.category === 'audit' ? 'audit' : 'agent';
+
+    const justification: string[] = [
+      format(prop.justification.market, { category: services[p.category] ?? p.category, tier: tiers[p.tier] ?? p.tier, range: rangeText }),
+      format(prop.justification.complexity, { tier: tiers[p.tier] ?? p.tier }),
+      format(prop.justification.scope, { count: String(p.scopeKeys.length) }),
+    ];
+    if (p.opsCostUpliftPct) {
+      justification.push(format(prop.justification.ops, { min: String(p.opsCostUpliftPct.minPct), max: String(p.opsCostUpliftPct.maxPct) }));
+    }
+
     return {
-      docTitle:         pq.pdf.docTitle,
-      solutionLabel:    sols[p.solutionKey] ?? p.solutionKey,
-      summaryHeading:   pq.pdf.summaryHeading,
+      docTitle:             pq.pdf.docTitle,
+      projectName:          solutionLabel,
+      clientName:           session?.org?.name ?? '',
+      labelClient:          prop.coverClient,
+      labelDate:            prop.coverDate,
+      labelValid:           prop.coverValid,
+      labelRef:             prop.coverRef,
+      execHeading:          pq.pdf.summaryHeading,
+      execSummary:          format(prop.execSummaryTemplate, { solution: solutionLabel }),
       // User free-text only when it matches the PDF language (the ASCII engine
       // can't render RU/ZH text — the server skips an empty summary).
-      summary:          useEnglish ? '' : effectiveDescription,
-      pricingHeading:   pq.pdf.pricingHeading,
-      rangeText:        `${money.format(min)} – ${money.format(max)}${openEnded ? '+' : ''}`,
-      scopeHeading:     pq.result.scopeHeading,
-      scope:            p.scopeKeys.map(k => scp[k] ?? k),
-      nextStepsHeading: pq.result.nextStepsHeading,
-      nextSteps:        p.nextStepKeys.map(k => steps[k] ?? k),
-      paymentNote:      pq.guided.paymentNote,
-      disclaimer:       pq.result.disclaimer,
+      summary:              useEnglish ? '' : effectiveDescription,
+      solutionHeading:      prop.solutionHeading,
+      solutionLabel,
+      solutionDescription:  solDesc[p.category] ?? '',
+      scopeHeading:         pq.result.scopeHeading,
+      scope:                p.scopeKeys.map(k => scp[k] ?? k),
+      pricingHeading:       pq.pdf.pricingHeading,
+      rangeText,
+      justificationHeading: prop.justification.heading,
+      justification,
+      paymentHeading:       prop.paymentHeading,
+      paymentNote:          pq.guided.paymentNote,
+      timelineHeading:      prop.timelineHeading,
+      timeline:             (timelineMap[tCat] ?? '').split('\n').map(s => s.trim()).filter(Boolean),
+      disclaimer:           pq.result.disclaimer,
     };
   };
 

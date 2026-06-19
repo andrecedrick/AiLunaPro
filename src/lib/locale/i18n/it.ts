@@ -2489,6 +2489,34 @@ export const it: Dict = {
         "error": "Impossibile salvare la modifica.",
         "invalid": "Inserisci un min/max (USD) valido e una breve motivazione.",
         "adjustedNote": "Prezzo modificato: {range}"
+      },
+      "proposal": {
+        "execSummaryTemplate": "Questa proposta descrive {solution} su misura per i tuoi obiettivi e i tuoi strumenti esistenti.",
+        "solutionHeading": "Soluzione proposta",
+        "paymentHeading": "Pagamento",
+        "timelineHeading": "Tempistica indicativa",
+        "coverClient": "Preparato per",
+        "coverDate": "Data",
+        "coverValid": "Valido fino al",
+        "coverRef": "Riferimento",
+        "solutionDesc": {
+          "ai_agent": "Un agente IA su misura che automatizza i tuoi obiettivi e si collega ai tuoi strumenti esistenti (CRM/ERP, API).",
+          "automation": "Un flusso di automazione che collega i tuoi strumenti ed elimina le attività manuali ripetitive.",
+          "website": "Un sito web o una piattaforma professionale costruito attorno ai tuoi obiettivi di business.",
+          "audit": "Uno studio di fattibilità e scoping che riduce i rischi prima di qualsiasi sviluppo."
+        },
+        "timeline": {
+          "agent": "Discovery e progettazione — 1–2 settimane\nSviluppo e integrazione — 4–8 settimane\nTest e rilascio — 1–2 settimane",
+          "website": "Discovery e progettazione — 1–2 settimane\nSviluppo — 3–6 settimane\nContenuti e lancio — 1 settimana",
+          "audit": "Valutazione — 1 settimana\nAnalisi e raccomandazioni — 1 settimana"
+        },
+        "justification": {
+          "heading": "Come viene calcolata questa stima",
+          "market": "Basato su riferimenti di mercato 2026 per progetti {category} di complessità {tier}.",
+          "complexity": "Riflette la complessità {tier} del progetto.",
+          "scope": "Copre {count} aree di lavoro principali, inclusa l'integrazione con i tuoi strumenti.",
+          "ops": "I progetti di agenti IA e automazione aggiungono il {min}–{max}% di costi operativi (token, infrastruttura)."
+        }
       }
     }
   },

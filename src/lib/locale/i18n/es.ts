@@ -2489,6 +2489,34 @@ export const es: Dict = {
         "error": "No se pudo guardar el ajuste.",
         "invalid": "Introduce un mín/máx (USD) válido y una breve justificación.",
         "adjustedNote": "Precio ajustado: {range}"
+      },
+      "proposal": {
+        "execSummaryTemplate": "Esta propuesta describe {solution} adaptado a tus objetivos y herramientas actuales.",
+        "solutionHeading": "Solución propuesta",
+        "paymentHeading": "Pago",
+        "timelineHeading": "Cronograma indicativo",
+        "coverClient": "Preparado para",
+        "coverDate": "Fecha",
+        "coverValid": "Válido hasta",
+        "coverRef": "Referencia",
+        "solutionDesc": {
+          "ai_agent": "Un agente de IA a medida que automatiza tus objetivos y se conecta con tus herramientas actuales (CRM/ERP, API).",
+          "automation": "Un flujo de automatización que conecta tus herramientas y elimina las tareas manuales repetitivas.",
+          "website": "Un sitio web o plataforma profesional creado en torno a tus objetivos de negocio.",
+          "audit": "Un estudio de viabilidad y alcance que reduce el riesgo antes de cualquier desarrollo."
+        },
+        "timeline": {
+          "agent": "Descubrimiento y diseño — 1–2 semanas\nDesarrollo e integración — 4–8 semanas\nPruebas y despliegue — 1–2 semanas",
+          "website": "Descubrimiento y diseño — 1–2 semanas\nDesarrollo — 3–6 semanas\nContenido y lanzamiento — 1 semana",
+          "audit": "Evaluación — 1 semana\nAnálisis y recomendaciones — 1 semana"
+        },
+        "justification": {
+          "heading": "Cómo se calcula esta estimación",
+          "market": "Basado en referencias de mercado de 2026 para proyectos {category} de complejidad {tier}.",
+          "complexity": "Refleja la complejidad {tier} del proyecto.",
+          "scope": "Cubre {count} líneas de trabajo principales, incluida la integración con tus herramientas.",
+          "ops": "Los proyectos de agentes de IA y automatización añaden un {min}–{max}% de costes operativos (tokens, infraestructura)."
+        }
       }
     }
   },
