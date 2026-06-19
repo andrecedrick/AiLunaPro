@@ -22,6 +22,7 @@ export const zh: Dict = {
     toolsSection:          '工具',
     aiRoiCalculator:       'AI ROI 计算器',
     aiMaturityDiagnostic:  'AI 成熟度诊断',
+    requestQuote:          '申请报价',
   },
   shell: {
     complianceSuite:  '合规套件',
@@ -2323,6 +2324,118 @@ export const zh: Dict = {
         "ctaButton": "创建您的免费账户 ↗",
         "ctaFootnote": "继续前往 **dashboard.ailunapro.com**——面向 AI 智能体与解决方案的 AiLuna 平台，是您审计之后的下一步。",
         "rerunButton": "再进行一次计算"
+      }
+    },
+    "quote": {
+      "header": {
+        "title": "申请报价",
+        "subtitle": "即时获取定制 AI 智能体、自动化或网站项目的指示性价格区间。",
+        "freeLine": "免费估算 · 无需账户 · 仅供参考"
+      },
+      "resumeNotice": "欢迎回来——我们已为您恢复之前的选择。",
+      "form": {
+        "serviceLegend": "您需要什么？",
+        "serviceLabel": "服务类型",
+        "servicePlaceholder": "选择一项服务…",
+        "tierLabel": "项目复杂度",
+        "tierPlaceholder": "选择复杂度级别…",
+        "descriptionLabel": "项目描述",
+        "descriptionPlaceholder": "简要描述您的项目、目标以及需要集成的工具。请勿填写机密或个人数据。",
+        "optionalLegend": "补充信息（可选）",
+        "businessSizeLabel": "企业规模",
+        "urgencyLabel": "紧急程度",
+        "budgetBandLabel": "预算范围",
+        "notSpecified": "未指定"
+      },
+      "services": {
+        "ai_agent": "AI 智能体",
+        "automation": "自动化工作流",
+        "website": "网站 / Web 应用",
+        "audit": "可行性审计"
+      },
+      "tiers": {
+        "simple": "简单",
+        "contextual": "情境化（MVP）",
+        "autonomous": "自主",
+        "multi_agent": "多智能体系统",
+        "intermediate": "中级",
+        "complex": "复杂",
+        "custom": "定制 / 量身打造",
+        "feasibility": "可行性研究"
+      },
+      "businessSizes": {
+        "solo": "个人 / 自由职业者",
+        "small": "小型（2–20 人）",
+        "medium": "中型（21–100 人）",
+        "large": "大型（100 人以上）"
+      },
+      "urgencies": {
+        "low": "灵活",
+        "standard": "标准",
+        "high": "紧急"
+      },
+      "budgetBands": {
+        "under_10k": "$10k 以下",
+        "10k_50k": "$10k–$50k",
+        "50k_150k": "$50k–$150k",
+        "over_150k": "$150k 以上"
+      },
+      "requiredMark": "*",
+      "submit": {
+        "idle": "获取我的估算"
+      },
+      "errors": {
+        "service": "请选择一项服务类型。",
+        "tier": "请选择复杂度级别。",
+        "description": "请描述您的项目（至少 20 个字符）。"
+      },
+      "result": {
+        "rangeLabel": "估算价格区间",
+        "openEndedSuffix": "+",
+        "recommendedLabel": "推荐方案",
+        "scopeHeading": "通常包含的内容",
+        "nextStepsHeading": "后续步骤",
+        "opsCostNote": "AI 智能体与自动化项目还会产生运营成本（令牌、基础设施），通常会在开发费用之外额外增加 {min}–{max}%。",
+        "disclaimer": "此为指示性、非合同性的估算，仅用于预算参考——仅供参考。最终价格取决于详细的项目范围。",
+        "ctaHeading": "准备好开始了吗？",
+        "ctaBody": "创建免费的 AiLunaPro 工作区，即可生成带品牌的 PDF 报价并启动您的项目。",
+        "ctaButton": "创建您的免费账户 ↗",
+        "rerunButton": "重新开始"
+      },
+      "solutions": {
+        "ai_agent.simple": "简单 AI 智能体",
+        "ai_agent.contextual": "情境化 AI 智能体（MVP）",
+        "ai_agent.autonomous": "自主 AI 智能体",
+        "ai_agent.multi_agent": "多智能体系统",
+        "automation.simple": "简单自动化工作流",
+        "automation.contextual": "情境化自动化工作流",
+        "automation.autonomous": "自主自动化系统",
+        "automation.multi_agent": "多智能体自动化平台",
+        "website.simple": "简单网站",
+        "website.intermediate": "中级网站",
+        "website.complex": "复杂 Web 平台",
+        "website.custom": "定制 / 量身打造平台",
+        "audit.feasibility": "可行性与范围研究"
+      },
+      "scope": {
+        "discovery": "需求调研工作坊",
+        "design": "方案设计与架构",
+        "integration": "与您的工具集成（CRM/ERP、API）",
+        "deployment": "部署与交接",
+        "monitoring": "监控与支持配置",
+        "mapping": "流程梳理与工作流设计",
+        "build": "构建与开发",
+        "content": "内容与数据配置",
+        "launch": "上线与发布",
+        "assessment": "现状评估",
+        "gapAnalysis": "差距分析",
+        "recommendations": "优先级建议",
+        "roadmap": "实施路线图"
+      },
+      "nextSteps": {
+        "discoveryCall": "预约需求沟通电话以细化范围",
+        "scoping": "获取详细的范围说明文档",
+        "proposal": "获取正式提案与时间表"
       }
     }
   },

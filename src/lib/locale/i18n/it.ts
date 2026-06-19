@@ -20,6 +20,7 @@ export const it: Dict = {
     toolsSection:          'Strumenti',
     aiRoiCalculator:       'Calcolatore ROI IA',
     aiMaturityDiagnostic:  'Diagnosi di maturità IA',
+    requestQuote: 'Richiedi un preventivo',
   },
   shell: {
     complianceSuite:  'Suite di conformità',
@@ -2321,6 +2322,118 @@ export const it: Dict = {
         "ctaButton": "Crea il tuo account gratuito ↗",
         "ctaFootnote": "Prosegue su **dashboard.ailunapro.com** — la piattaforma AiLuna per agenti e soluzioni AI, il passo successivo dopo il tuo audit.",
         "rerunButton": "Esegui un altro calcolo"
+      }
+    },
+    "quote": {
+      "header": {
+        "title": "Richiedi un preventivo",
+        "subtitle": "Ottieni subito una fascia di prezzo indicativa per un progetto personalizzato di agente AI, automazione o sito web.",
+        "freeLine": "Stima gratuita · Nessun account richiesto · Solo a titolo indicativo"
+      },
+      "resumeNotice": "Bentornato — abbiamo ripristinato le tue selezioni precedenti.",
+      "form": {
+        "serviceLegend": "Di cosa hai bisogno?",
+        "serviceLabel": "Tipo di servizio",
+        "servicePlaceholder": "Seleziona un servizio…",
+        "tierLabel": "Complessità del progetto",
+        "tierPlaceholder": "Seleziona un livello di complessità…",
+        "descriptionLabel": "Descrizione del progetto",
+        "descriptionPlaceholder": "Descrivi brevemente il tuo progetto, gli obiettivi e gli strumenti da integrare. Non includere dati riservati o personali.",
+        "optionalLegend": "Qualche dettaglio in più (facoltativo)",
+        "businessSizeLabel": "Dimensione dell'azienda",
+        "urgencyLabel": "Urgenza",
+        "budgetBandLabel": "Fascia di budget",
+        "notSpecified": "Non specificato"
+      },
+      "services": {
+        "ai_agent": "Agente AI",
+        "automation": "Flusso di lavoro di automazione",
+        "website": "Sito web / web app",
+        "audit": "Audit di fattibilità"
+      },
+      "tiers": {
+        "simple": "Semplice",
+        "contextual": "Contestuale (MVP)",
+        "autonomous": "Autonomo",
+        "multi_agent": "Sistema multi-agente",
+        "intermediate": "Intermedio",
+        "complex": "Complesso",
+        "custom": "Personalizzato / su misura",
+        "feasibility": "Studio di fattibilità"
+      },
+      "businessSizes": {
+        "solo": "Solo / freelance",
+        "small": "Piccola (2–20)",
+        "medium": "Media (21–100)",
+        "large": "Grande (100+)"
+      },
+      "urgencies": {
+        "low": "Flessibile",
+        "standard": "Standard",
+        "high": "Urgente"
+      },
+      "budgetBands": {
+        "under_10k": "Meno di $10k",
+        "10k_50k": "$10k–$50k",
+        "50k_150k": "$50k–$150k",
+        "over_150k": "Oltre $150k"
+      },
+      "requiredMark": "*",
+      "submit": {
+        "idle": "Ottieni la mia stima"
+      },
+      "errors": {
+        "service": "Scegli un tipo di servizio.",
+        "tier": "Scegli un livello di complessità.",
+        "description": "Descrivi il tuo progetto (almeno 20 caratteri)."
+      },
+      "result": {
+        "rangeLabel": "Fascia di prezzo stimata",
+        "openEndedSuffix": "+",
+        "recommendedLabel": "Soluzione consigliata",
+        "scopeHeading": "Cosa è solitamente incluso",
+        "nextStepsHeading": "Prossimi passi",
+        "opsCostNote": "I progetti di agenti AI e automazione comportano anche costi operativi (token, infrastruttura) che in genere aggiungono il {min}–{max}% al costo di realizzazione.",
+        "disclaimer": "Stima indicativa e non contrattuale, fornita solo a scopo di budget — a titolo puramente informativo. Il prezzo finale dipende da uno scope dettagliato.",
+        "ctaHeading": "Pronto a procedere?",
+        "ctaBody": "Crea un workspace AiLunaPro gratuito per generare un preventivo PDF brandizzato e avviare il tuo progetto.",
+        "ctaButton": "Crea il tuo account gratuito ↗",
+        "rerunButton": "Ricomincia"
+      },
+      "solutions": {
+        "ai_agent.simple": "Agente AI semplice",
+        "ai_agent.contextual": "Agente AI contestuale (MVP)",
+        "ai_agent.autonomous": "Agente AI autonomo",
+        "ai_agent.multi_agent": "Sistema multi-agente",
+        "automation.simple": "Flusso di lavoro di automazione semplice",
+        "automation.contextual": "Flusso di lavoro di automazione contestuale",
+        "automation.autonomous": "Sistema di automazione autonomo",
+        "automation.multi_agent": "Piattaforma di automazione multi-agente",
+        "website.simple": "Sito web semplice",
+        "website.intermediate": "Sito web intermedio",
+        "website.complex": "Piattaforma web complessa",
+        "website.custom": "Piattaforma personalizzata / su misura",
+        "audit.feasibility": "Studio di fattibilità e definizione dello scope"
+      },
+      "scope": {
+        "discovery": "Workshop di discovery e requisiti",
+        "design": "Progettazione della soluzione e architettura",
+        "integration": "Integrazione con i tuoi strumenti (CRM/ERP, API)",
+        "deployment": "Deployment e consegna",
+        "monitoring": "Configurazione di monitoraggio e supporto",
+        "mapping": "Mappatura dei processi e progettazione del flusso di lavoro",
+        "build": "Realizzazione e sviluppo",
+        "content": "Configurazione di contenuti e dati",
+        "launch": "Lancio e go-live",
+        "assessment": "Valutazione dello stato attuale",
+        "gapAnalysis": "Analisi dei gap",
+        "recommendations": "Raccomandazioni prioritizzate",
+        "roadmap": "Roadmap di implementazione"
+      },
+      "nextSteps": {
+        "discoveryCall": "Prenota una call di discovery per definire lo scope",
+        "scoping": "Ricevi un documento di scope dettagliato",
+        "proposal": "Ottieni una proposta formale e una tempistica"
       }
     }
   },

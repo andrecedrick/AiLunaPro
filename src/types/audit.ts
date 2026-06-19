@@ -85,6 +85,7 @@ export type Route =
   | { name: 'agents/detail'; agentId: string }
   | { name: 'diagnostic' }
   | { name: 'roi-calculator' }
+  | { name: 'quote' }
   | { name: 'help' }
   | { name: 'system-builder' }
   | { name: 'audit-express/saved' }

@@ -8,7 +8,7 @@
 
 import { FX_SNAPSHOT } from '../currency/fxSnapshot';
 
-export type LeadFlowKind = 'diagnostic' | 'roi';
+export type LeadFlowKind = 'diagnostic' | 'roi' | 'quote';
 
 /* ── Pending result (continuity): saved on successful submit, surfaced after
       auth on the guided journey start, cleared once seen/used. No email is

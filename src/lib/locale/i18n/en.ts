@@ -33,6 +33,7 @@ export const en = {
     toolsSection:          'Tools',
     aiRoiCalculator:       'AI ROI Calculator',
     aiMaturityDiagnostic:  'AI Maturity Diagnostic',
+    requestQuote:          'Request a Quote',
   },
   /** App-shell chrome (sidebar header, org switcher, sign-out, pref widget). */
   shell: {
@@ -2336,6 +2337,118 @@ export const en = {
         "ctaButton": "Create your free account ↗",
         "ctaFootnote": "Continues on **dashboard.ailunapro.com** — the AiLuna platform for AI agents and solutions, the next step after your audit.",
         "rerunButton": "Run another calculation"
+      }
+    },
+    "quote": {
+      "header": {
+        "title": "Request a Quote",
+        "subtitle": "Get an instant, indicative price range for a custom AI agent, automation, or website project.",
+        "freeLine": "Free estimate · No account required · Indicative only"
+      },
+      "resumeNotice": "Welcome back — we restored your previous selections.",
+      "form": {
+        "serviceLegend": "What do you need?",
+        "serviceLabel": "Type of service",
+        "servicePlaceholder": "Select a service…",
+        "tierLabel": "Project complexity",
+        "tierPlaceholder": "Select a complexity level…",
+        "descriptionLabel": "Project description",
+        "descriptionPlaceholder": "Briefly describe your project, goals, and the tools to integrate. Please do not include confidential or personal data.",
+        "optionalLegend": "A few more details (optional)",
+        "businessSizeLabel": "Business size",
+        "urgencyLabel": "Urgency",
+        "budgetBandLabel": "Budget range",
+        "notSpecified": "Not specified"
+      },
+      "services": {
+        "ai_agent": "AI agent",
+        "automation": "Automation workflow",
+        "website": "Website / web app",
+        "audit": "Feasibility audit"
+      },
+      "tiers": {
+        "simple": "Simple",
+        "contextual": "Contextual (MVP)",
+        "autonomous": "Autonomous",
+        "multi_agent": "Multi-agent system",
+        "intermediate": "Intermediate",
+        "complex": "Complex",
+        "custom": "Custom / bespoke",
+        "feasibility": "Feasibility study"
+      },
+      "businessSizes": {
+        "solo": "Solo / freelancer",
+        "small": "Small (2–20)",
+        "medium": "Medium (21–100)",
+        "large": "Large (100+)"
+      },
+      "urgencies": {
+        "low": "Flexible",
+        "standard": "Standard",
+        "high": "Urgent"
+      },
+      "budgetBands": {
+        "under_10k": "Under $10k",
+        "10k_50k": "$10k–$50k",
+        "50k_150k": "$50k–$150k",
+        "over_150k": "Over $150k"
+      },
+      "requiredMark": "*",
+      "submit": {
+        "idle": "Get my estimate"
+      },
+      "errors": {
+        "service": "Please choose a type of service.",
+        "tier": "Please choose a complexity level.",
+        "description": "Please describe your project (at least 20 characters)."
+      },
+      "result": {
+        "rangeLabel": "Estimated price range",
+        "openEndedSuffix": "+",
+        "recommendedLabel": "Recommended solution",
+        "scopeHeading": "What's typically included",
+        "nextStepsHeading": "Next steps",
+        "opsCostNote": "AI agent & automation projects also carry operating costs (tokens, infrastructure) that typically add {min}–{max}% on top of the build.",
+        "disclaimer": "Indicative, non-contractual estimate for budgeting purposes only — informational only. Final pricing depends on a detailed scope.",
+        "ctaHeading": "Ready to move forward?",
+        "ctaBody": "Create a free AiLunaPro workspace to generate a branded PDF quote and start your project.",
+        "ctaButton": "Create your free account ↗",
+        "rerunButton": "Start over"
+      },
+      "solutions": {
+        "ai_agent.simple": "Simple AI agent",
+        "ai_agent.contextual": "Contextual AI agent (MVP)",
+        "ai_agent.autonomous": "Autonomous AI agent",
+        "ai_agent.multi_agent": "Multi-agent system",
+        "automation.simple": "Simple automation workflow",
+        "automation.contextual": "Contextual automation workflow",
+        "automation.autonomous": "Autonomous automation system",
+        "automation.multi_agent": "Multi-agent automation platform",
+        "website.simple": "Simple website",
+        "website.intermediate": "Intermediate website",
+        "website.complex": "Complex web platform",
+        "website.custom": "Custom / bespoke platform",
+        "audit.feasibility": "Feasibility & scoping study"
+      },
+      "scope": {
+        "discovery": "Discovery & requirements workshop",
+        "design": "Solution design & architecture",
+        "integration": "Integration with your tools (CRM/ERP, APIs)",
+        "deployment": "Deployment & handover",
+        "monitoring": "Monitoring & support setup",
+        "mapping": "Process mapping & workflow design",
+        "build": "Build & development",
+        "content": "Content & data setup",
+        "launch": "Launch & go-live",
+        "assessment": "Current-state assessment",
+        "gapAnalysis": "Gap analysis",
+        "recommendations": "Prioritized recommendations",
+        "roadmap": "Implementation roadmap"
+      },
+      "nextSteps": {
+        "discoveryCall": "Book a discovery call to refine the scope",
+        "scoping": "Receive a detailed scoping document",
+        "proposal": "Get a formal proposal & timeline"
       }
     }
   },

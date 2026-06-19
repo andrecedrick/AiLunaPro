@@ -20,6 +20,7 @@ export const de: Dict = {
     toolsSection:          'Tools',
     aiRoiCalculator:       'KI-ROI-Rechner',
     aiMaturityDiagnostic:  'KI-Reifegrad-Diagnose',
+    requestQuote:          'Angebot anfordern',
   },
   shell: {
     complianceSuite:  'Compliance-Suite',
@@ -2321,6 +2322,118 @@ export const de: Dict = {
         "ctaButton": "Kostenloses Konto erstellen ↗",
         "ctaFootnote": "Geht weiter auf **dashboard.ailunapro.com** — der AiLuna-Plattform für KI-Agenten und -Lösungen, dem nächsten Schritt nach Ihrem Audit.",
         "rerunButton": "Weitere Berechnung durchführen"
+      }
+    },
+    "quote": {
+      "header": {
+        "title": "Angebot anfordern",
+        "subtitle": "Erhalten Sie sofort eine indikative Preisspanne für ein individuelles KI-Agenten-, Automatisierungs- oder Website-Projekt.",
+        "freeLine": "Kostenlose Schätzung · Kein Konto erforderlich · Nur indikativ"
+      },
+      "resumeNotice": "Willkommen zurück — wir haben Ihre vorherigen Eingaben wiederhergestellt.",
+      "form": {
+        "serviceLegend": "Was benötigen Sie?",
+        "serviceLabel": "Art der Leistung",
+        "servicePlaceholder": "Leistung auswählen…",
+        "tierLabel": "Projektkomplexität",
+        "tierPlaceholder": "Komplexitätsstufe auswählen…",
+        "descriptionLabel": "Projektbeschreibung",
+        "descriptionPlaceholder": "Beschreiben Sie kurz Ihr Projekt, Ihre Ziele und die zu integrierenden Tools. Bitte fügen Sie keine vertraulichen oder personenbezogenen Daten hinzu.",
+        "optionalLegend": "Ein paar weitere Angaben (optional)",
+        "businessSizeLabel": "Unternehmensgröße",
+        "urgencyLabel": "Dringlichkeit",
+        "budgetBandLabel": "Budgetrahmen",
+        "notSpecified": "Nicht angegeben"
+      },
+      "services": {
+        "ai_agent": "KI-Agent",
+        "automation": "Automatisierungs-Workflow",
+        "website": "Website / Web-App",
+        "audit": "Machbarkeitsprüfung"
+      },
+      "tiers": {
+        "simple": "Einfach",
+        "contextual": "Kontextbezogen (MVP)",
+        "autonomous": "Autonom",
+        "multi_agent": "Multi-Agenten-System",
+        "intermediate": "Mittel",
+        "complex": "Komplex",
+        "custom": "Individuell / maßgeschneidert",
+        "feasibility": "Machbarkeitsstudie"
+      },
+      "businessSizes": {
+        "solo": "Solo / Freelancer",
+        "small": "Klein (2–20)",
+        "medium": "Mittel (21–100)",
+        "large": "Groß (100+)"
+      },
+      "urgencies": {
+        "low": "Flexibel",
+        "standard": "Standard",
+        "high": "Dringend"
+      },
+      "budgetBands": {
+        "under_10k": "Unter $10k",
+        "10k_50k": "$10k–$50k",
+        "50k_150k": "$50k–$150k",
+        "over_150k": "Über $150k"
+      },
+      "requiredMark": "*",
+      "submit": {
+        "idle": "Meine Schätzung erhalten"
+      },
+      "errors": {
+        "service": "Bitte wählen Sie eine Art der Leistung.",
+        "tier": "Bitte wählen Sie eine Komplexitätsstufe.",
+        "description": "Bitte beschreiben Sie Ihr Projekt (mindestens 20 Zeichen)."
+      },
+      "result": {
+        "rangeLabel": "Geschätzte Preisspanne",
+        "openEndedSuffix": "+",
+        "recommendedLabel": "Empfohlene Lösung",
+        "scopeHeading": "Was typischerweise enthalten ist",
+        "nextStepsHeading": "Nächste Schritte",
+        "opsCostNote": "KI-Agenten- und Automatisierungsprojekte verursachen zudem Betriebskosten (Tokens, Infrastruktur), die typischerweise {min}–{max}% auf die Entwicklung aufschlagen.",
+        "disclaimer": "Indikative, unverbindliche Schätzung ausschließlich zu Budgetierungszwecken — nur zu Informationszwecken. Der endgültige Preis hängt von einem detaillierten Leistungsumfang ab.",
+        "ctaHeading": "Bereit, den nächsten Schritt zu gehen?",
+        "ctaBody": "Erstellen Sie einen kostenlosen AiLunaPro-Workspace, um ein gebrandetes PDF-Angebot zu erstellen und Ihr Projekt zu starten.",
+        "ctaButton": "Kostenloses Konto erstellen ↗",
+        "rerunButton": "Von vorne beginnen"
+      },
+      "solutions": {
+        "ai_agent.simple": "Einfacher KI-Agent",
+        "ai_agent.contextual": "Kontextbezogener KI-Agent (MVP)",
+        "ai_agent.autonomous": "Autonomer KI-Agent",
+        "ai_agent.multi_agent": "Multi-Agenten-System",
+        "automation.simple": "Einfacher Automatisierungs-Workflow",
+        "automation.contextual": "Kontextbezogener Automatisierungs-Workflow",
+        "automation.autonomous": "Autonomes Automatisierungssystem",
+        "automation.multi_agent": "Multi-Agenten-Automatisierungsplattform",
+        "website.simple": "Einfache Website",
+        "website.intermediate": "Mittlere Website",
+        "website.complex": "Komplexe Web-Plattform",
+        "website.custom": "Individuelle / maßgeschneiderte Plattform",
+        "audit.feasibility": "Machbarkeits- und Scoping-Studie"
+      },
+      "scope": {
+        "discovery": "Discovery- & Anforderungs-Workshop",
+        "design": "Lösungsdesign & Architektur",
+        "integration": "Integration mit Ihren Tools (CRM/ERP, APIs)",
+        "deployment": "Bereitstellung & Übergabe",
+        "monitoring": "Einrichtung von Monitoring & Support",
+        "mapping": "Prozessabbildung & Workflow-Design",
+        "build": "Aufbau & Entwicklung",
+        "content": "Einrichtung von Inhalten & Daten",
+        "launch": "Launch & Go-live",
+        "assessment": "Bewertung des Ist-Zustands",
+        "gapAnalysis": "Gap-Analyse",
+        "recommendations": "Priorisierte Empfehlungen",
+        "roadmap": "Umsetzungs-Roadmap"
+      },
+      "nextSteps": {
+        "discoveryCall": "Vereinbaren Sie ein Discovery-Gespräch, um den Umfang zu präzisieren",
+        "scoping": "Erhalten Sie ein detailliertes Scoping-Dokument",
+        "proposal": "Erhalten Sie ein formelles Angebot & einen Zeitplan"
       }
     }
   },
