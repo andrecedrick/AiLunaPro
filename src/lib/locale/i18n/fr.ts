@@ -2517,6 +2517,18 @@ export const fr: Dict = {
           "scope": "Couvre {count} chantiers principaux, dont l'intégration à vos outils.",
           "ops": "Les projets d'agents IA et d'automatisation ajoutent {min}–{max}% de coûts d'exploitation (tokens, infrastructure)."
         }
+      },
+      "decision": {
+        "budgetLabel": "Votre budget (facultatif)",
+        "budgetPlaceholder": "ex. 50000",
+        "verdictBelow": "Votre budget est inférieur à la fourchette estimée.",
+        "verdictWithin": "Votre budget se situe dans la fourchette estimée.",
+        "verdictAbove": "Votre budget est supérieur à la fourchette estimée.",
+        "accept": "Accepter cette estimation",
+        "discuss": "Discuter / demander un ajustement",
+        "accepted": "Estimation acceptée — nous revenons vers vous rapidement.",
+        "discussionSent": "Demande envoyée — nous vous contacterons pour en discuter.",
+        "error": "Impossible d'enregistrer votre choix. Veuillez réessayer."
       }
     }
   },

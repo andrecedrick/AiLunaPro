@@ -25,8 +25,9 @@ import {
   isTierForCategory,
   type QuoteCategory, type QuoteTier, type BusinessSize, type Urgency, type BudgetBand,
 } from '../data/quote-config';
-import { computeQuotePreview, type QuotePreview } from '../lib/quote/score';
-import { generateQuote, downloadQuotePdf, emailQuote, overrideQuotePrice, QuoteGenError } from '../lib/quote/quoteClient';
+import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/quote/score';
+import { convertToUsd } from '../lib/currency/fxSnapshot';
+import { generateQuote, downloadQuotePdf, emailQuote, overrideQuotePrice, recordDecision, QuoteGenError } from '../lib/quote/quoteClient';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
 import { usePreferences } from '../context/PreferencesContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
@@ -77,6 +78,9 @@ export function QuoteRequestPage() {
   const [modal,      setModal]      = useState<{ open: boolean; balance: number; required: number }>({ open: false, balance: 0, required: 0 });
   const [downloading, setDownloading] = useState(false);
   const [pdfError,    setPdfError]    = useState<string | null>(null);
+  // U2 — budget + client decision.
+  const [budgetInput, setBudgetInput] = useState('');
+  const [decisionState, setDecisionState] = useState<'idle' | 'saving' | 'accepted' | 'discussion' | 'error'>('idle');
   // Q4 — email + admin price override.
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [override,   setOverride]   = useState<{ minUsd: number; maxUsd: number } | null>(null);
@@ -147,6 +151,7 @@ export function QuoteRequestPage() {
     setGenerating(false); setGenError(null); setGenerated(false);
     setModal({ open: false, balance: 0, required: 0 });
     setDownloading(false); setPdfError(null);
+    setBudgetInput(''); setDecisionState('idle');
     setEmailState('idle'); setOverride(null); setShowOverride(false);
     setOvMin(''); setOvMax(''); setOvReason(''); setOvBusy(false); setOvError(null);
     quoteIdRef.current = '';
@@ -299,6 +304,35 @@ export function QuoteRequestPage() {
     }
   };
 
+  const onDecision = async (decision: 'accepted' | 'discussion') => {
+    if (decisionState === 'saving' || !preview) return;
+    const orgId = session?.orgId;
+    if (!orgId || !quoteIdRef.current) return;
+    setDecisionState('saving');
+    try {
+      const budgetNum = Number(budgetInput);
+      const expectedBudgetUsd = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum >= 0
+        ? Math.round(convertToUsd(budgetNum, money.currency))
+        : undefined;
+      await recordDecision(orgId, quoteIdRef.current, { decision, ...(expectedBudgetUsd !== undefined ? { expectedBudgetUsd } : {}) });
+      setDecisionState(decision);
+    } catch {
+      setDecisionState('error');
+    }
+  };
+
+  // U2 — budget comparison (display currency → USD; compared to the shown price).
+  const budgetUsdInput = budgetInput.trim() !== '' && Number.isFinite(Number(budgetInput))
+    ? convertToUsd(Number(budgetInput), money.currency) : null;
+  const budgetVerdict = (preview && budgetUsdInput !== null && budgetUsdInput >= 0)
+    ? compareBudget(
+        budgetUsdInput,
+        override ? override.minUsd : preview.priceMinUsd,
+        override ? override.maxUsd : preview.priceMaxUsd,
+        override ? false : preview.openEnded,
+      )
+    : null;
+
   const tierOptions = category ? QUOTE_TIERS[category] : [];
 
   return (
@@ -444,6 +478,32 @@ export function QuoteRequestPage() {
                   </div>
                   {pdfError && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{pdfError}</div>}
                   {emailState === 'error' && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{Q.email.error}</div>}
+
+                  {/* U2 — your budget + decision (accept / discuss) */}
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)', textAlign: 'center' }}>
+                    {(decisionState === 'accepted' || decisionState === 'discussion') ? (
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>
+                        {decisionState === 'accepted' ? Q.decision.accepted : Q.decision.discussionSent}
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{Q.decision.budgetLabel}</label>
+                          <input type="number" inputMode="numeric" min={0} value={budgetInput} onChange={e => setBudgetInput(e.target.value)} placeholder={Q.decision.budgetPlaceholder} style={{ ...inputStyle(), maxWidth: 150 }} />
+                        </div>
+                        {budgetVerdict && (
+                          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                            {budgetVerdict === 'below' ? Q.decision.verdictBelow : budgetVerdict === 'above' ? Q.decision.verdictAbove : Q.decision.verdictWithin}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('accepted')} style={{ ...primaryBtnStyle(), padding: '10px 20px' }}>{Q.decision.accept}</button>
+                          <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('discussion')} style={{ ...secondaryBtnStyle(), padding: '10px 18px' }}>{Q.decision.discuss}</button>
+                        </div>
+                        {decisionState === 'error' && <div style={{ marginTop: 8, color: 'var(--red-text)', fontSize: 12 }}>{Q.decision.error}</div>}
+                      </>
+                    )}
+                  </div>
 
                   {isAdmin && (
                     <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>

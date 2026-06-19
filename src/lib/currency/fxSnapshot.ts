@@ -42,3 +42,9 @@ export const FX_SNAPSHOT: FxSnapshot = {
 export function convertFromUsd(amountUsd: number, to: Currency): number {
   return amountUsd * (FX_SNAPSHOT.rates[to] ?? 1);
 }
+
+/** Convert a display-currency amount back to USD base (deterministic inverse). */
+export function convertToUsd(amount: number, from: Currency): number {
+  const rate = FX_SNAPSHOT.rates[from] ?? 1;
+  return rate === 0 ? 0 : amount / rate;
+}

@@ -36,6 +36,19 @@ export interface QuotePreview {
   opsCostUpliftPct: { minPct: number; maxPct: number } | null;
 }
 
+export type BudgetVerdict = 'below' | 'within' | 'above';
+
+/**
+ * Compare a USD budget against the estimated range. Pure + deterministic. For an
+ * open-ended range (max is a floor, not a ceiling) anything at/above min is
+ * "within". Display-only — never affects the estimate (no new pricing logic).
+ */
+export function compareBudget(budgetUsd: number, minUsd: number, maxUsd: number, openEnded: boolean): BudgetVerdict {
+  if (budgetUsd < minUsd) return 'below';
+  if (!openEnded && budgetUsd > maxUsd) return 'above';
+  return 'within';
+}
+
 export function computeQuotePreview(inputs: QuotePreviewInputs): QuotePreview {
   const byTier = QUOTE_RANGES[inputs.category];
   const range = byTier[inputs.tier];

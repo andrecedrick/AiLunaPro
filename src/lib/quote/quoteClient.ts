@@ -135,6 +135,22 @@ export async function overrideQuotePrice(
   return { overrideMinUsd: j.overrideMinUsd ?? input.minUsd, overrideMaxUsd: j.overrideMaxUsd ?? input.maxUsd };
 }
 
+/** Record the client's pricing decision (accept / discuss) + optional expected
+ *  budget (USD) on the quote. Non-binding, intent only. */
+export async function recordDecision(
+  orgId: string, quoteId: string, input: { decision: 'accepted' | 'discussion'; expectedBudgetUsd?: number },
+): Promise<{ status: string }> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/quote/${encodeURIComponent(quoteId)}/decision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, ...input }),
+  });
+  const j = await res.json().catch(() => null) as ({ status?: string; code?: string }) | null;
+  if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
+  return { status: j.status ?? input.decision };
+}
+
 /** Email the quote to the signed-in user as a tokenized PDF link (no attachment).
  *  `render` is persisted server-side so the link regenerates the same PDF. */
 export async function emailQuote(

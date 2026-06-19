@@ -2517,6 +2517,18 @@ export const es: Dict = {
           "scope": "Cubre {count} líneas de trabajo principales, incluida la integración con tus herramientas.",
           "ops": "Los proyectos de agentes de IA y automatización añaden un {min}–{max}% de costes operativos (tokens, infraestructura)."
         }
+      },
+      "decision": {
+        "budgetLabel": "Tu presupuesto (opcional)",
+        "budgetPlaceholder": "ej. 50000",
+        "verdictBelow": "Tu presupuesto está por debajo del rango estimado.",
+        "verdictWithin": "Tu presupuesto está dentro del rango estimado.",
+        "verdictAbove": "Tu presupuesto está por encima del rango estimado.",
+        "accept": "Aceptar esta estimación",
+        "discuss": "Discutir / solicitar ajuste",
+        "accepted": "Estimación aceptada — te contactaremos en breve.",
+        "discussionSent": "Solicitud enviada — nos pondremos en contacto para hablarlo.",
+        "error": "No se pudo guardar tu decisión. Inténtalo de nuevo."
       }
     }
   },

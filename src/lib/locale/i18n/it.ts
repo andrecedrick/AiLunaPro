@@ -2517,6 +2517,18 @@ export const it: Dict = {
           "scope": "Copre {count} aree di lavoro principali, inclusa l'integrazione con i tuoi strumenti.",
           "ops": "I progetti di agenti IA e automazione aggiungono il {min}–{max}% di costi operativi (token, infrastruttura)."
         }
+      },
+      "decision": {
+        "budgetLabel": "Il tuo budget (facoltativo)",
+        "budgetPlaceholder": "es. 50000",
+        "verdictBelow": "Il tuo budget è inferiore alla fascia stimata.",
+        "verdictWithin": "Il tuo budget rientra nella fascia stimata.",
+        "verdictAbove": "Il tuo budget è superiore alla fascia stimata.",
+        "accept": "Accetta questa stima",
+        "discuss": "Discuti / richiedi una modifica",
+        "accepted": "Stima accettata — ti ricontatteremo a breve.",
+        "discussionSent": "Richiesta inviata — ti contatteremo per discuterne.",
+        "error": "Impossibile salvare la tua scelta. Riprova."
       }
     }
   },

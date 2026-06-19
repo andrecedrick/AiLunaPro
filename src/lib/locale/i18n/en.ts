@@ -2532,6 +2532,18 @@ export const en = {
           "scope": "Covers {count} core workstreams, including integration with your tools.",
           "ops": "AI agent & automation projects add {min}–{max}% in operating costs (tokens, infrastructure)."
         }
+      },
+      "decision": {
+        "budgetLabel": "Your budget (optional)",
+        "budgetPlaceholder": "e.g. 50000",
+        "verdictBelow": "Your budget is below the estimated range.",
+        "verdictWithin": "Your budget is within the estimated range.",
+        "verdictAbove": "Your budget is above the estimated range.",
+        "accept": "Accept this estimate",
+        "discuss": "Discuss / request adjustment",
+        "accepted": "Estimate accepted — we'll follow up shortly.",
+        "discussionSent": "Request sent — we'll reach out to discuss.",
+        "error": "Could not save your decision. Please try again."
       }
     }
   },

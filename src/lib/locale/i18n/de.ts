@@ -2517,6 +2517,18 @@ export const de: Dict = {
           "scope": "Umfasst {count} zentrale Arbeitspakete, einschließlich der Integration Ihrer Tools.",
           "ops": "KI-Agenten- und Automatisierungsprojekte verursachen zusätzlich {min}–{max}% Betriebskosten (Tokens, Infrastruktur)."
         }
+      },
+      "decision": {
+        "budgetLabel": "Ihr Budget (optional)",
+        "budgetPlaceholder": "z. B. 50000",
+        "verdictBelow": "Ihr Budget liegt unter dem geschätzten Bereich.",
+        "verdictWithin": "Ihr Budget liegt im geschätzten Bereich.",
+        "verdictAbove": "Ihr Budget liegt über dem geschätzten Bereich.",
+        "accept": "Diese Schätzung annehmen",
+        "discuss": "Besprechen / Anpassung anfragen",
+        "accepted": "Schätzung angenommen — wir melden uns in Kürze.",
+        "discussionSent": "Anfrage gesendet — wir melden uns zur Besprechung.",
+        "error": "Ihre Entscheidung konnte nicht gespeichert werden. Bitte erneut versuchen."
       }
     }
   },

@@ -2517,6 +2517,18 @@ export const pt: Dict = {
           "scope": "Abrange {count} frentes de trabalho principais, incluindo a integração com as suas ferramentas.",
           "ops": "Projetos de agentes de IA e automação acrescentam {min}–{max}% de custos operacionais (tokens, infraestrutura)."
         }
+      },
+      "decision": {
+        "budgetLabel": "O seu orçamento (opcional)",
+        "budgetPlaceholder": "ex. 50000",
+        "verdictBelow": "O seu orçamento está abaixo da faixa estimada.",
+        "verdictWithin": "O seu orçamento está dentro da faixa estimada.",
+        "verdictAbove": "O seu orçamento está acima da faixa estimada.",
+        "accept": "Aceitar esta estimativa",
+        "discuss": "Discutir / solicitar ajuste",
+        "accepted": "Estimativa aceite — entraremos em contacto em breve.",
+        "discussionSent": "Pedido enviado — entraremos em contacto para conversar.",
+        "error": "Não foi possível guardar a sua decisão. Tente novamente."
       }
     }
   },

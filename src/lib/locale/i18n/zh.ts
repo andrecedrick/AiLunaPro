@@ -2519,6 +2519,18 @@ export const zh: Dict = {
           "scope": "涵盖 {count} 个核心工作流，包括与您工具的集成。",
           "ops": "AI 智能体与自动化项目额外增加 {min}–{max}% 的运营成本（令牌、基础设施）。"
         }
+      },
+      "decision": {
+        "budgetLabel": "您的预算（可选）",
+        "budgetPlaceholder": "例如 50000",
+        "verdictBelow": "您的预算低于估算区间。",
+        "verdictWithin": "您的预算在估算区间内。",
+        "verdictAbove": "您的预算高于估算区间。",
+        "accept": "接受此估算",
+        "discuss": "讨论 / 请求调整",
+        "accepted": "已接受估算——我们将尽快跟进。",
+        "discussionSent": "请求已发送——我们将与您联系沟通。",
+        "error": "无法保存您的选择，请重试。"
       }
     }
   },

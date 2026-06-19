@@ -507,4 +507,64 @@ quote.get('/api/quote/shared/:token', async c => {
   });
 });
 
+/* ── POST /api/quote/:quoteId/decision — client pricing decision ───────────
+ *
+ * Member+ roles. Records a NON-BINDING intent (accept | discuss) + an optional
+ * expected budget (USD). "discuss" notifies the admin (best-effort) if
+ * ADMIN_EMAIL is set. No pricing/billing change.
+ */
+
+interface DecisionBody { orgId?: unknown; decision?: unknown; expectedBudgetUsd?: unknown }
+
+quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string;
+  const quoteId = safeId(c.req.param('quoteId'));
+  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
+
+  let body: DecisionBody;
+  try { body = (await c.req.json()) as DecisionBody; }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const decision = body.decision === 'accepted' ? 'accepted'
+    : body.decision === 'discussion' ? 'discussion' : null;
+  if (!decision) return c.json({ error: 'Invalid decision.', code: 'INVALID_DECISION' }, 400);
+
+  const budget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
+  const hasBudget = Number.isFinite(budget) && budget >= 0 && budget <= PRICE_MAX;
+
+  const path = `${COLLECTION(orgId)}/${quoteId}`;
+  const stored = await firestoreGet(saJson, path);
+  if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  const patch: Record<string, string | number> = {
+    decision,
+    status:    decision,
+    decidedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  if (hasBudget) patch.expectedBudgetUsd = Math.round(budget);
+  await firestoreSet(saJson, path, patch, { merge: true });
+
+  // Discuss → best-effort admin notification (sales signal). Non-fatal.
+  if (decision === 'discussion' && env.ADMIN_EMAIL) {
+    const recipient = c.get('email') as string | undefined;
+    await sendTransactional(env.SEQUENZY_API_KEY, {
+      to:   env.ADMIN_EMAIL,
+      slug: 'quote-discussion-admin',
+      variables: {
+        QUOTE_ID:       quoteId,
+        CUSTOMER_EMAIL: recipient ?? '',
+        BUDGET:         hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '',
+      },
+    });
+  }
+
+  return c.json({ ok: true, status: decision });
+});
+
 export default quote;
