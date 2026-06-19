@@ -21,7 +21,7 @@ import { useLocale } from '../context/LocaleContext';
 import { format } from '../lib/locale/i18n';
 import { useMoney } from '../lib/currency/useMoney';
 import {
-  QUOTE_CATEGORIES, QUOTE_TIERS, BUSINESS_SIZES, URGENCIES, BUDGET_BANDS,
+  QUOTE_CATEGORIES, QUOTE_TIERS, BUSINESS_SIZES, URGENCIES, BUDGET_BANDS, SUGGESTION_KEYS,
   isTierForCategory,
   type QuoteCategory, type QuoteTier, type BusinessSize, type Urgency, type BudgetBand,
 } from '../data/quote-config';
@@ -40,7 +40,12 @@ interface FormErrors {
   description?: string;
 }
 
-type SavedState = { category?: string; tier?: string; businessSize?: string; urgency?: string; budgetBand?: string };
+type SavedState = { category?: string; tier?: string; picks?: string[]; businessSize?: string; urgency?: string; budgetBand?: string };
+
+/** Combine selected goal chips (localized labels) + free text into one description. */
+function buildDescription(picks: string[], suggestions: Record<string, string>, details: string): string {
+  return [...picks.map(k => suggestions[k] ?? k), details.trim()].filter(Boolean).join('. ');
+}
 
 export function QuoteRequestPage() {
   const { navigate } = useRoute();
@@ -52,7 +57,8 @@ export function QuoteRequestPage() {
   const [resumed] = useState(() => Boolean(saved && (saved.category || saved.tier)));
   const [category,    setCategory]    = useState<QuoteCategory | ''>((saved?.category as QuoteCategory | undefined) ?? '');
   const [tier,        setTier]        = useState<QuoteTier | ''>((saved?.tier as QuoteTier | undefined) ?? '');
-  const [description, setDescription] = useState('');
+  const [picks,       setPicks]       = useState<string[]>(Array.isArray(saved?.picks) ? saved!.picks! : []);
+  const [details,     setDetails]     = useState('');
   const [businessSize, setBusinessSize] = useState<string>(saved?.businessSize ?? '');
   const [urgency,      setUrgency]      = useState<string>(saved?.urgency ?? '');
   const [budgetBand,   setBudgetBand]   = useState<string>(saved?.budgetBand ?? '');
@@ -70,18 +76,22 @@ export function QuoteRequestPage() {
   const quoteIdRef = useRef<string>('');
 
   const Q = T.publicTools.quote;
+  const suggestions = Q.guided.suggestions as Record<string, string>;
+  const effectiveDescription = buildDescription(picks, suggestions, details);
+  const togglePick = (k: string) => setPicks(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]);
 
-  // Persist NON-PII selections only (never the description); signal flow start once.
+  // Persist NON-PII selections only (category/tier/goal-keys/qualifiers) — never
+  // the free-text details. Signal flow start once.
   const flowStartedRef = useRef(false);
   useEffect(() => {
     if (preview) return;
-    if (!category && !tier) return;
+    if (!category && !tier && picks.length === 0) return;
     if (!flowStartedRef.current) {
       flowStartedRef.current = true;
       if (!resumed) track('lead_flow_started', { flow: 'quote', src: src ?? undefined });
     }
-    saveFlowProgress('quote', { category, tier, businessSize, urgency, budgetBand });
-  }, [category, tier, businessSize, urgency, budgetBand, preview, resumed]);
+    saveFlowProgress('quote', { category, tier, picks, businessSize, urgency, budgetBand });
+  }, [category, tier, picks, businessSize, urgency, budgetBand, preview, resumed]);
 
   // Keep the estimate live once revealed (recompute on a valid category/tier).
   useEffect(() => {
@@ -95,6 +105,7 @@ export function QuoteRequestPage() {
   const onPickCategory = (next: QuoteCategory | '') => {
     setCategory(next);
     setTier('');        // tiers are category-specific
+    setPicks([]);       // goal suggestions are category-specific
     setPreview(null);   // re-reveal after the new tier is chosen
   };
 
@@ -102,7 +113,7 @@ export function QuoteRequestPage() {
     const err: FormErrors = {};
     if (!category) err.service = Q.errors.service;
     if (!category || !isTierForCategory(category, tier as string)) err.tier = Q.errors.tier;
-    if (description.trim().length < DESCRIPTION_MIN) err.description = Q.errors.description;
+    if (picks.length === 0 && details.trim().length < DESCRIPTION_MIN) err.description = Q.guided.selectError;
     setErrors(err);
     if (Object.keys(err).length > 0) return;
     setPreview(computeQuotePreview({ category: category as QuoteCategory, tier: tier as QuoteTier }));
@@ -114,7 +125,7 @@ export function QuoteRequestPage() {
 
   const reset = () => {
     setPreview(null);
-    setCategory(''); setTier(''); setDescription('');
+    setCategory(''); setTier(''); setPicks([]); setDetails('');
     setBusinessSize(''); setUrgency(''); setBudgetBand('');
     setErrors({});
     setGenerating(false); setGenError(null); setGenerated(false);
@@ -138,7 +149,7 @@ export function QuoteRequestPage() {
         quoteId:     quoteIdRef.current,
         category:    category as QuoteCategory,
         tier:        tier as QuoteTier,
-        description: description.trim(),
+        description: effectiveDescription,
         ...(businessSize ? { businessSize: businessSize as BusinessSize } : {}),
         ...(urgency      ? { urgency: urgency as Urgency } : {}),
         ...(budgetBand   ? { budgetBand: budgetBand as BudgetBand } : {}),
@@ -150,7 +161,7 @@ export function QuoteRequestPage() {
       });
     } catch (e) {
       if (e instanceof QuoteGenError && e.code === 'INSUFFICIENT_TOKENS') {
-        setModal({ open: true, balance: e.balance ?? 0, required: e.required ?? 50 });
+        setModal({ open: true, balance: e.balance ?? 0, required: e.required ?? 150 });
       } else {
         setGenError(Q.generate.error);
       }
@@ -203,14 +214,46 @@ export function QuoteRequestPage() {
             </select>
           </Field>
 
-          <Field label={Q.form.descriptionLabel} required error={errors.description}>
+          {/* Smart guidance: selectable goal chips (per category) + free text. */}
+          {category && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+                {Q.guided.goalsLabel} <span style={{ color: 'var(--red-text)' }}>{Q.requiredMark}</span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {SUGGESTION_KEYS[category].map(k => {
+                  const on = picks.includes(k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => togglePick(k)}
+                      aria-pressed={on}
+                      style={{
+                        padding: '7px 12px', borderRadius: 999, cursor: 'pointer',
+                        fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                        border: on ? '1.5px solid var(--violet)' : '1px solid var(--border)',
+                        background: on ? 'var(--brand-tint-bg, rgba(124,58,237,0.08))' : 'var(--surface-2)',
+                        color: on ? 'var(--violet-text)' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {on ? '✓ ' : ''}{suggestions[k] ?? k}
+                    </button>
+                  );
+                })}
+              </div>
+              {errors.description && <div style={{ color: 'var(--red-text)', fontSize: 12, marginTop: 6 }}>{errors.description}</div>}
+            </div>
+          )}
+
+          <Field label={Q.guided.detailsLabel}>
             <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder={Q.form.descriptionPlaceholder}
+              value={details}
+              onChange={e => setDetails(e.target.value)}
+              placeholder={Q.guided.detailsPlaceholder}
               maxLength={2000}
-              rows={4}
-              style={{ ...inputStyle(), resize: 'vertical', minHeight: 88 }}
+              rows={3}
+              style={{ ...inputStyle(), resize: 'vertical', minHeight: 72 }}
             />
           </Field>
         </fieldset>
@@ -342,6 +385,11 @@ function EstimateView({ preview, onReset }: { preview: QuotePreview; onReset: ()
           {format(Q.result.opsCostNote, { min: String(preview.opsCostUpliftPct.minPct), max: String(preview.opsCostUpliftPct.maxPct) })}
         </div>
       )}
+
+      {/* B2B payment model (informational only — no automated in-app billing). */}
+      <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
+        {Q.guided.paymentNote}
+      </div>
 
       {/* Disclaimer (always visible) */}
       <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>

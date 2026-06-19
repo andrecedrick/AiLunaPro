@@ -2442,6 +2442,32 @@ export const pt: Dict = {
         "success": "O seu orçamento foi gerado e guardado no seu espaço de trabalho.",
         "error": "Não foi possível gerar o orçamento. Tente novamente.",
         "needOrg": "Selecione um espaço de trabalho para gerar um orçamento."
+      },
+      "guided": {
+        "goalsLabel": "Objetivos comuns — selecione os que se aplicam",
+        "detailsLabel": "Mais alguma coisa? (opcional)",
+        "detailsPlaceholder": "Adicione detalhes: ferramentas a integrar, prazos, requisitos essenciais… Não inclua dados confidenciais ou pessoais.",
+        "paymentNote": "Em projetos personalizados, o pagamento é normalmente feito por transferência bancária mediante fatura — não há faturação automática na aplicação. Esta estimativa é indicativa e não contratual.",
+        "selectError": "Selecione pelo menos um objetivo ou adicione uma breve descrição.",
+        "suggestions": {
+          "support": "Automatizar o apoio ao cliente",
+          "crm": "Ligar a IA ao meu CRM",
+          "workflows": "Automatizar fluxos de trabalho internos",
+          "dataEntry": "Automatizar a introdução de dados",
+          "reporting": "Relatórios e análises automatizados",
+          "integrations": "Integrar as minhas ferramentas atuais",
+          "notifications": "Notificações e alertas automatizados",
+          "dataSync": "Sincronizar dados entre sistemas",
+          "showcase": "Apresentar a minha empresa",
+          "leads": "Gerar leads",
+          "ecommerce": "Vender online (e-commerce)",
+          "dashboard": "Painel / portal interno",
+          "booking": "Reservas / marcações online",
+          "feasibility": "Avaliar a viabilidade",
+          "readiness": "Verificar a preparação para IA / EU AI Act",
+          "vendorCompare": "Comparar soluções / fornecedores",
+          "roadmap": "Obter um roteiro de implementação"
+        }
       }
     }
   },

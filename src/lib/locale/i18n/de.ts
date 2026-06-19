@@ -2442,6 +2442,32 @@ export const de: Dict = {
         "success": "Ihr Angebot wurde erstellt und in Ihrem Arbeitsbereich gespeichert.",
         "error": "Angebot konnte nicht erstellt werden. Bitte erneut versuchen.",
         "needOrg": "Wählen Sie einen Arbeitsbereich, um ein Angebot zu erstellen."
+      },
+      "guided": {
+        "goalsLabel": "Häufige Ziele — wählen Sie passende aus",
+        "detailsLabel": "Sonst noch etwas? (optional)",
+        "detailsPlaceholder": "Ergänzen Sie Details: zu integrierende Tools, Zeitrahmen, Must-haves… Bitte keine vertraulichen oder personenbezogenen Daten angeben.",
+        "paymentNote": "Bei individuellen Projekten erfolgt die Zahlung in der Regel per Banküberweisung gegen Rechnung — es gibt keine automatische In-App-Abrechnung. Diese Schätzung ist unverbindlich und nicht vertraglich.",
+        "selectError": "Wählen Sie mindestens ein Ziel oder fügen Sie eine kurze Beschreibung hinzu.",
+        "suggestions": {
+          "support": "Kundensupport automatisieren",
+          "crm": "KI mit meinem CRM verbinden",
+          "workflows": "Interne Arbeitsabläufe automatisieren",
+          "dataEntry": "Dateneingabe automatisieren",
+          "reporting": "Automatisiertes Reporting & Auswertungen",
+          "integrations": "Meine bestehenden Tools integrieren",
+          "notifications": "Automatisierte Benachrichtigungen & Warnungen",
+          "dataSync": "Daten zwischen Systemen synchronisieren",
+          "showcase": "Mein Unternehmen präsentieren",
+          "leads": "Leads generieren",
+          "ecommerce": "Online verkaufen (E-Commerce)",
+          "dashboard": "Internes Dashboard / Portal",
+          "booking": "Online-Buchung / Terminplanung",
+          "feasibility": "Machbarkeit bewerten",
+          "readiness": "KI- / EU-AI-Act-Bereitschaft prüfen",
+          "vendorCompare": "Lösungen / Anbieter vergleichen",
+          "roadmap": "Umsetzungs-Roadmap erhalten"
+        }
       }
     }
   },

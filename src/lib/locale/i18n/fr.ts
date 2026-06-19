@@ -2442,6 +2442,32 @@ export const fr: Dict = {
         "success": "Votre devis a été généré et enregistré dans votre espace de travail.",
         "error": "Impossible de générer le devis. Veuillez réessayer.",
         "needOrg": "Sélectionnez un espace de travail pour générer un devis."
+      },
+      "guided": {
+        "goalsLabel": "Objectifs courants — sélectionnez ceux qui s'appliquent",
+        "detailsLabel": "Autre chose ? (facultatif)",
+        "detailsPlaceholder": "Ajoutez des précisions : outils à intégrer, calendrier, incontournables… Merci de ne pas inclure de données confidentielles ou personnelles.",
+        "paymentNote": "Pour les projets sur mesure, le paiement se fait généralement par virement bancaire sur facture — il n'y a pas de facturation automatisée dans l'application. Cette estimation est indicative et non contractuelle.",
+        "selectError": "Sélectionnez au moins un objectif ou ajoutez une brève description.",
+        "suggestions": {
+          "support": "Automatiser le support client",
+          "crm": "Connecter l'IA à mon CRM",
+          "workflows": "Automatiser les flux de travail internes",
+          "dataEntry": "Automatiser la saisie de données",
+          "reporting": "Reporting et analyses automatisés",
+          "integrations": "Intégrer mes outils existants",
+          "notifications": "Notifications et alertes automatisées",
+          "dataSync": "Synchroniser les données entre systèmes",
+          "showcase": "Présenter mon entreprise",
+          "leads": "Générer des prospects",
+          "ecommerce": "Vendre en ligne (e-commerce)",
+          "dashboard": "Tableau de bord / portail interne",
+          "booking": "Réservation / prise de rendez-vous en ligne",
+          "feasibility": "Évaluer la faisabilité",
+          "readiness": "Vérifier la conformité IA / EU AI Act",
+          "vendorCompare": "Comparer les solutions / prestataires",
+          "roadmap": "Obtenir une feuille de route de mise en œuvre"
+        }
       }
     }
   },

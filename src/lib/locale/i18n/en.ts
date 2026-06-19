@@ -2457,6 +2457,32 @@ export const en = {
         "success": "Your quote has been generated and saved to your workspace.",
         "error": "Could not generate the quote. Please try again.",
         "needOrg": "Select a workspace to generate a quote."
+      },
+      "guided": {
+        "goalsLabel": "Common goals — select any that apply",
+        "detailsLabel": "Anything else? (optional)",
+        "detailsPlaceholder": "Add specifics: tools to integrate, timeline, must-haves… Please don't include confidential or personal data.",
+        "paymentNote": "For custom projects, payment is typically made by bank transfer (wire) against an invoice — there is no automated in-app billing. This estimate is indicative and non-contractual.",
+        "selectError": "Select at least one goal or add a short description.",
+        "suggestions": {
+          "support": "Automate customer support",
+          "crm": "Connect AI to my CRM",
+          "workflows": "Automate internal workflows",
+          "dataEntry": "Automate data entry",
+          "reporting": "Automated reporting & insights",
+          "integrations": "Integrate my existing tools",
+          "notifications": "Automated notifications & alerts",
+          "dataSync": "Sync data between systems",
+          "showcase": "Showcase my company",
+          "leads": "Generate leads",
+          "ecommerce": "Sell online (e-commerce)",
+          "dashboard": "Internal dashboard / portal",
+          "booking": "Online booking / scheduling",
+          "feasibility": "Assess feasibility",
+          "readiness": "Check AI / EU AI Act readiness",
+          "vendorCompare": "Compare solutions / vendors",
+          "roadmap": "Get an implementation roadmap"
+        }
       }
     }
   },

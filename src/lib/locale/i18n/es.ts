@@ -2442,6 +2442,32 @@ export const es: Dict = {
         "success": "Tu presupuesto se ha generado y guardado en tu espacio de trabajo.",
         "error": "No se pudo generar el presupuesto. Inténtalo de nuevo.",
         "needOrg": "Selecciona un espacio de trabajo para generar un presupuesto."
+      },
+      "guided": {
+        "goalsLabel": "Objetivos habituales — selecciona los que apliquen",
+        "detailsLabel": "¿Algo más? (opcional)",
+        "detailsPlaceholder": "Añade detalles: herramientas a integrar, plazos, imprescindibles… No incluyas datos confidenciales ni personales.",
+        "paymentNote": "En los proyectos a medida, el pago suele realizarse por transferencia bancaria contra factura: no hay facturación automática en la app. Esta estimación es indicativa y no contractual.",
+        "selectError": "Selecciona al menos un objetivo o añade una breve descripción.",
+        "suggestions": {
+          "support": "Automatizar la atención al cliente",
+          "crm": "Conectar la IA a mi CRM",
+          "workflows": "Automatizar flujos de trabajo internos",
+          "dataEntry": "Automatizar la entrada de datos",
+          "reporting": "Informes y análisis automatizados",
+          "integrations": "Integrar mis herramientas actuales",
+          "notifications": "Notificaciones y alertas automatizadas",
+          "dataSync": "Sincronizar datos entre sistemas",
+          "showcase": "Mostrar mi empresa",
+          "leads": "Generar clientes potenciales",
+          "ecommerce": "Vender en línea (e-commerce)",
+          "dashboard": "Panel / portal interno",
+          "booking": "Reservas / citas en línea",
+          "feasibility": "Evaluar la viabilidad",
+          "readiness": "Comprobar la preparación para IA / EU AI Act",
+          "vendorCompare": "Comparar soluciones / proveedores",
+          "roadmap": "Obtener una hoja de ruta de implementación"
+        }
       }
     }
   },

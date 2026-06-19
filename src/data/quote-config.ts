@@ -78,6 +78,19 @@ export const SCOPE_KEYS: Record<QuoteCategory, readonly string[]> = {
 
 export const NEXT_STEP_KEYS = ['discoveryCall', 'scoping', 'proposal'] as const;
 
+/**
+ * Smart-form guidance — per-category selectable goal suggestions (chips). Keys
+ * resolve to localized labels (publicTools.quote.guided.suggestions.*). Picking
+ * chips builds a good project description for non-expert users; free text is
+ * combined on top. Frontend-only (the estimate never depends on the text).
+ */
+export const SUGGESTION_KEYS: Record<QuoteCategory, readonly string[]> = {
+  ai_agent:   ['support', 'crm', 'workflows', 'dataEntry', 'reporting'],
+  automation: ['workflows', 'crm', 'integrations', 'notifications', 'dataSync'],
+  website:    ['showcase', 'leads', 'ecommerce', 'dashboard', 'booking'],
+  audit:      ['feasibility', 'readiness', 'vendorCompare', 'roadmap'],
+};
+
 /* Optional segmentation qualifiers — captured for the eventual quote; never
  * affect the price (no dynamic pricing). */
 export const BUSINESS_SIZES = ['solo', 'small', 'medium', 'large'] as const;

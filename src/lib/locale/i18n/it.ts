@@ -2442,6 +2442,32 @@ export const it: Dict = {
         "success": "Il tuo preventivo è stato generato e salvato nel tuo spazio di lavoro.",
         "error": "Impossibile generare il preventivo. Riprova.",
         "needOrg": "Seleziona uno spazio di lavoro per generare un preventivo."
+      },
+      "guided": {
+        "goalsLabel": "Obiettivi comuni — seleziona quelli pertinenti",
+        "detailsLabel": "Altro? (facoltativo)",
+        "detailsPlaceholder": "Aggiungi dettagli: strumenti da integrare, tempistiche, requisiti irrinunciabili… Non includere dati riservati o personali.",
+        "paymentNote": "Per i progetti su misura, il pagamento avviene di norma tramite bonifico bancario dietro fattura: non è prevista la fatturazione automatica nell'app. Questa stima è indicativa e non contrattuale.",
+        "selectError": "Seleziona almeno un obiettivo o aggiungi una breve descrizione.",
+        "suggestions": {
+          "support": "Automatizzare l'assistenza clienti",
+          "crm": "Collegare l'IA al mio CRM",
+          "workflows": "Automatizzare i flussi di lavoro interni",
+          "dataEntry": "Automatizzare l'inserimento dati",
+          "reporting": "Report e analisi automatizzati",
+          "integrations": "Integrare i miei strumenti esistenti",
+          "notifications": "Notifiche e avvisi automatizzati",
+          "dataSync": "Sincronizzare i dati tra sistemi",
+          "showcase": "Presentare la mia azienda",
+          "leads": "Generare contatti",
+          "ecommerce": "Vendere online (e-commerce)",
+          "dashboard": "Dashboard / portale interno",
+          "booking": "Prenotazioni / appuntamenti online",
+          "feasibility": "Valutare la fattibilità",
+          "readiness": "Verificare la conformità IA / EU AI Act",
+          "vendorCompare": "Confrontare soluzioni / fornitori",
+          "roadmap": "Ottenere una roadmap di implementazione"
+        }
       }
     }
   },

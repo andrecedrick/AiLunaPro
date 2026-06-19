@@ -2444,6 +2444,32 @@ export const zh: Dict = {
         "success": "您的报价已生成并保存到您的工作区。",
         "error": "无法生成报价，请重试。",
         "needOrg": "请选择一个工作区以生成报价。"
+      },
+      "guided": {
+        "goalsLabel": "常见目标 — 选择适用项",
+        "detailsLabel": "还有其他需求吗？（可选）",
+        "detailsPlaceholder": "补充细节：需集成的工具、时间安排、必备功能……请勿填写机密或个人数据。",
+        "paymentNote": "对于定制项目，通常按发票通过银行转账付款——应用内没有自动计费。此估算仅供参考，不具合同约束力。",
+        "selectError": "请至少选择一个目标或添加简短描述。",
+        "suggestions": {
+          "support": "自动化客户支持",
+          "crm": "将 AI 接入我的 CRM",
+          "workflows": "自动化内部工作流",
+          "dataEntry": "自动化数据录入",
+          "reporting": "自动化报表与洞察",
+          "integrations": "集成我现有的工具",
+          "notifications": "自动化通知与提醒",
+          "dataSync": "在系统之间同步数据",
+          "showcase": "展示我的公司",
+          "leads": "获取销售线索",
+          "ecommerce": "在线销售（电商）",
+          "dashboard": "内部仪表板 / 门户",
+          "booking": "在线预订 / 预约",
+          "feasibility": "评估可行性",
+          "readiness": "检查 AI / 欧盟 AI 法案合规度",
+          "vendorCompare": "比较方案 / 供应商",
+          "roadmap": "获取实施路线图"
+        }
       }
     }
   },
