@@ -33,7 +33,7 @@ import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnSt
 import { usePreferences } from '../context/PreferencesContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
-import { track } from '../lib/analytics/track';
+import { emit } from '../lib/analytics/events';
 import { captureSrc } from '../lib/analytics/srcParam';
 
 const DESCRIPTION_MIN = 20;
@@ -109,7 +109,7 @@ export function QuoteRequestPage() {
     if (!category && !tier && picks.length === 0) return;
     if (!flowStartedRef.current) {
       flowStartedRef.current = true;
-      if (!resumed) track('lead_flow_started', { flow: 'quote', src: src ?? undefined });
+      if (!resumed) emit('lead_flow_started', { flow: 'quote', src: src ?? undefined });
     }
     saveFlowProgress('quote', { category, tier, picks, businessSize, urgency, budgetBand });
   }, [category, tier, picks, businessSize, urgency, budgetBand, preview, resumed]);
@@ -138,7 +138,7 @@ export function QuoteRequestPage() {
     setErrors(err);
     if (Object.keys(err).length > 0) return;
     setPreview(computeQuotePreview({ category: category as QuoteCategory, tier: tier as QuoteTier }));
-    track('score_viewed', { flow: 'quote', src: src ?? undefined });
+    emit('score_viewed', { flow: 'quote', src: src ?? undefined });
     requestAnimationFrame(() => {
       document.getElementById('quote-estimate')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -180,7 +180,7 @@ export function QuoteRequestPage() {
         ...(budgetBand   ? { budgetBand: budgetBand as BudgetBand } : {}),
       });
       setGenerated(true);
-      track('lead_flow_completed', { flow: 'quote', src: src ?? undefined });
+      emit('lead_flow_completed', { flow: 'quote', src: src ?? undefined });
       requestAnimationFrame(() => {
         document.getElementById('quote-generated')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
@@ -278,6 +278,7 @@ export function QuoteRequestPage() {
     setDownloading(true); setPdfError(null);
     try {
       await downloadQuotePdf(orgId, quoteIdRef.current, buildRender());
+      emit('quote_pdf_downloaded', { flow: 'quote', src: src ?? undefined });
     } catch {
       setPdfError(Q.generate.error);
     } finally {
@@ -291,7 +292,8 @@ export function QuoteRequestPage() {
     if (!orgId || !quoteIdRef.current) return;
     setEmailState('sending');
     try {
-      await emailQuote(orgId, quoteIdRef.current, language, buildRender());
+      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender());
+      emit('quote_emailed', { flow: 'quote', emailed: r.emailed, src: src ?? undefined });
       setEmailState('sent');
     } catch {
       setEmailState('error');
@@ -331,6 +333,7 @@ export function QuoteRequestPage() {
         ? Math.round(convertToUsd(budgetNum, money.currency))
         : undefined;
       await recordDecision(orgId, quoteIdRef.current, { decision, ...(expectedBudgetUsd !== undefined ? { expectedBudgetUsd } : {}) });
+      emit('quote_decision', { flow: 'quote', decision, src: src ?? undefined });
       setDecisionState(decision);
     } catch {
       setDecisionState('error');
@@ -514,7 +517,7 @@ export function QuoteRequestPage() {
                       <>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
                           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{Q.decision.budgetLabel}</label>
-                          <input type="number" inputMode="numeric" min={0} value={budgetInput} onChange={e => setBudgetInput(e.target.value)} placeholder={Q.decision.budgetPlaceholder} style={{ ...inputStyle(), maxWidth: 150 }} />
+                          <input type="number" inputMode="numeric" min={0} value={budgetInput} onChange={e => setBudgetInput(e.target.value)} onBlur={() => { if (budgetVerdict) emit('quote_budget_entered', { flow: 'quote', verdict: budgetVerdict, src: src ?? undefined }); }} placeholder={Q.decision.budgetPlaceholder} style={{ ...inputStyle(), maxWidth: 150 }} />
                         </div>
                         {budgetVerdict && (
                           <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10 }}>
@@ -572,7 +575,7 @@ export function QuoteRequestPage() {
               <div style={{ marginTop: 22, padding: 24, borderRadius: 14, background: 'var(--text-primary)', color: '#fff', textAlign: 'center' }}>
                 <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{Q.result.ctaHeading}</div>
                 <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>{Q.result.ctaBody}</div>
-                <button type="button" onClick={() => navigate({ name: 'signup' })} style={{ display: 'inline-block', padding: '11px 28px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                <button type="button" onClick={() => { emit('cta_clicked', { flow: 'quote', target: 'signup', src: src ?? undefined }); navigate({ name: 'signup' }); }} style={{ display: 'inline-block', padding: '11px 28px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                   {Q.result.ctaButton}
                 </button>
               </div>
