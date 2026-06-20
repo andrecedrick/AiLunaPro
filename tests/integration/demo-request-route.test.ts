@@ -12,8 +12,12 @@ vi.mock('../../worker/src/middleware/auth', async (orig) => {
   const actual = await orig<typeof import('../../worker/src/middleware/auth')>();
   return {
     ...actual,
-    verifyIdToken: vi.fn(async (token?: string) =>
-      token === 'owner-token' ? 'uid-1' : token === 'outsider-token' ? 'uid-9' : null),
+    // The route uses the VERIFIED token email as identity (C3 anti-spoof fix).
+    verifyIdTokenClaims: vi.fn(async (token?: string) =>
+      token === 'owner-token'     ? { uid: 'uid-1', email: 'owner@example.com' }
+      : token === 'noemail-token' ? { uid: 'uid-1' }                              // member, no email claim
+      : token === 'outsider-token' ? { uid: 'uid-9', email: 'out@example.com' }
+      : null),
   };
 });
 
@@ -57,9 +61,25 @@ describe('POST /api/demo-request (B2.2)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('validates name and email at the boundary', async () => {
+  it('requires a name at the boundary', async () => {
     expect((await post({ ...VALID, name: '  ' }, 'owner-token')).status).toBe(400);
-    expect((await post({ ...VALID, email: 'not-an-email' }, 'owner-token')).status).toBe(400);
+  });
+
+  it('uses the verified token email and ignores a spoofed body email (C3)', async () => {
+    const res = await post({ ...VALID, email: 'victim@competitor.com' }, 'owner-token');
+    expect(res.status).toBe(200);
+    const { id } = await res.json() as { id: string };
+    // Identity is the token email — the client-supplied body email is ignored.
+    expect(state.docs.get(`demo_requests/${id}`)!.email).toBe('owner@example.com');
+  });
+
+  it('falls back to a validated body email only when the token carries no email claim', async () => {
+    // No token email → body email is used, and still validated.
+    expect((await post({ ...VALID, email: 'not-an-email' }, 'noemail-token')).status).toBe(400);
+    const res = await post({ ...VALID, email: 'Contact@Example.com ' }, 'noemail-token');
+    expect(res.status).toBe(200);
+    const { id } = await res.json() as { id: string };
+    expect(state.docs.get(`demo_requests/${id}`)!.email).toBe('contact@example.com');  // trimmed + lowercased
   });
 
   it('persists a bounded, normalized doc to the worker-only demo_requests store', async () => {
@@ -71,7 +91,7 @@ describe('POST /api/demo-request (B2.2)', () => {
 
     const doc = state.docs.get(`demo_requests/${id}`)!;
     expect(doc).toBeTruthy();
-    expect(doc.email).toBe('aaron@example.com');   // lowercased + trimmed
+    expect(doc.email).toBe('owner@example.com');   // verified token email (not body)
     expect(doc.name).toBe('Aaron Fox');
     expect(doc.orgId).toBe('orgA');
     expect(doc.uid).toBe('uid-1');

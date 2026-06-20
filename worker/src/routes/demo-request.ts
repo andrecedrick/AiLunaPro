@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono';
 import type { AppEnv } from '../index';
-import { verifyIdToken } from '../middleware/auth';
+import { verifyIdTokenClaims } from '../middleware/auth';
 import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
 
 /**
@@ -23,18 +23,18 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const demoRequest = new Hono<AppEnv>();
 
-async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string } | Response> {
+async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string; email?: string } | Response> {
   const env = c.env as unknown as Bindings;
   c.header('Cache-Control', 'no-store');
   const authHeader = c.req.header('Authorization') ?? '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-  const uid = await verifyIdToken(bearer, env.FIREBASE_PROJECT_ID);
-  if (!uid) return c.json({ error: 'Sign in required.', code: 'AUTH_REQUIRED' }, 401);
+  const claims = await verifyIdTokenClaims(bearer, env.FIREBASE_PROJECT_ID);
+  if (!claims) return c.json({ error: 'Sign in required.', code: 'AUTH_REQUIRED' }, 401);
   if (!orgId) return c.json({ error: 'orgId required.', code: 'ORG_REQUIRED' }, 400);
   if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 500);
-  const member = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/members/${uid}`);
+  const member = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/members/${claims.uid}`);
   if (!member) return c.json({ error: 'Not a member of this workspace.', code: 'FORBIDDEN' }, 403);
-  return { uid };
+  return { uid: claims.uid, email: claims.email };
 }
 
 demoRequest.post('/api/demo-request', async c => {
@@ -49,9 +49,14 @@ demoRequest.post('/api/demo-request', async c => {
 
   // Validate at the boundary; trim + cap lengths so the store stays bounded.
   const name    = typeof body.name === 'string' ? body.name.trim().slice(0, 120) : '';
-  const email   = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 200) : '';
   const company = typeof body.company === 'string' ? body.company.trim().slice(0, 120) : '';
   const message = typeof body.message === 'string' ? body.message.trim().slice(0, 2000) : '';
+  // Identity email = the VERIFIED token email, never the client-supplied value
+  // (an authenticated member could otherwise file a request as anyone). Fall
+  // back to a validated body email only when the token carries no email claim
+  // (rare non-password providers).
+  const bodyEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 200) : '';
+  const email = g.email ? g.email.trim().toLowerCase().slice(0, 200) : bodyEmail;
   if (!name) return c.json({ error: 'Name is required.', code: 'INVALID_NAME' }, 400);
   if (!EMAIL_RE.test(email)) return c.json({ error: 'A valid email is required.', code: 'INVALID_EMAIL' }, 400);
 

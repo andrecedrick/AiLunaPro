@@ -13,8 +13,9 @@
  *   3. subscription.metadata.orgId
  * → if none found, 400 with clear message.
  *
- * Auth:    requires Firebase JWT (uid extracted but not strictly enforced
- *          against orgId membership in J1.2 test mode — logged for J2 hardening).
+ * Auth:    requires Firebase JWT; the caller must be an owner/billing member of
+ *          the Stripe-resolved org (membership enforced below). orgId is never
+ *          taken from the request body — only from the Stripe session/sub.
  */
 
 import { Hono } from 'hono';
@@ -32,7 +33,6 @@ const sync = new Hono<AppEnv>();
 
 interface SyncBody {
   sessionId: string;
-  orgId?:    string; // optional — fallback if Stripe session metadata is missing
 }
 
 sync.post('/api/billing/sync-session', requireAuth(), async c => {
@@ -101,12 +101,15 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
     ? await stripe.subscriptions.retrieve(subRaw, { expand: ['items.data.price'] })
     : (subRaw as Stripe.Subscription);
 
-  // ── orgId resolution: Stripe-first, body fallback ─────
+  // ── orgId resolution: Stripe-ONLY ────────────────────
+  // The org is derived solely from the Stripe session/subscription. We must NOT
+  // fall back to a client-supplied body.orgId: a billing-role member could pass
+  // a metadata-less paid session id + their own orgId and bind a subscription
+  // they never paid for to their workspace (plan forgery). No Stripe org = 400.
   const orgId =
     session.client_reference_id
     ?? (session.metadata?.orgId as string | undefined)
-    ?? (sub.metadata?.orgId as string | undefined)
-    ?? body.orgId;
+    ?? (sub.metadata?.orgId as string | undefined);
 
   if (!orgId) {
     console.error('[sync-session] no orgId found anywhere');
