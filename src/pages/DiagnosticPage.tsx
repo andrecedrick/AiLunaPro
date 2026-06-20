@@ -25,6 +25,7 @@ import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgres
 import { track } from '../lib/analytics/track';
 import { captureSrc, getSrc, withSrc } from '../lib/analytics/srcParam';
 import { computeDiagnosticPreview, type DiagnosticPreview } from '../lib/diagnostic/score';
+import { fieldsetStyle, legendStyle, inputStyle } from '../components/ui-tools';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
@@ -203,18 +204,9 @@ export function DiagnosticPage() {
               {DIAGNOSTIC_QUESTIONS.map((q, i) => (
                 <fieldset
                   key={q.id}
-                  style={{
-                    border: '1px solid var(--border)',
-                    borderRadius: 12,
-                    padding: '18px 20px',
-                    background: 'var(--surface)',
-                    margin: 0,
-                  }}
+                  style={{ ...fieldsetStyle(), margin: 0 }}
                 >
-                  <legend style={{
-                    padding: '0 8px', fontSize: 13, fontWeight: 700,
-                    color: 'var(--violet-text)', textTransform: 'uppercase', letterSpacing: 0.5,
-                  }}>
+                  <legend style={legendStyle()}>
                     {format(T.publicTools.diagnostic.questionLegend, { n: i + 1, total: DIAGNOSTIC_QUESTIONS.length })}
                   </legend>
                   <div style={{
@@ -311,13 +303,7 @@ export function DiagnosticPage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder={T.publicTools.diagnostic.leadCapture.emailPlaceholder}
-                style={{
-                  width: '100%', padding: '10px 12px', fontSize: 14,
-                  border: '1px solid var(--border)', borderRadius: 8,
-                  background: 'var(--surface-2)', color: 'var(--text-primary)',
-                  marginBottom: errors.email ? 4 : 14,
-                  boxSizing: 'border-box',
-                }}
+                style={{ ...inputStyle(), marginBottom: errors.email ? 4 : 14 }}
               />
               {errors.email && (
                 <div style={{ color: 'var(--red-text)', fontSize: 12, marginBottom: 14 }}>{errors.email}</div>
@@ -332,13 +318,7 @@ export function DiagnosticPage() {
                 onChange={e => setCompany(e.target.value)}
                 placeholder={T.publicTools.diagnostic.leadCapture.companyNamePlaceholder}
                 maxLength={120}
-                style={{
-                  width: '100%', padding: '10px 12px', fontSize: 14,
-                  border: '1px solid var(--border)', borderRadius: 8,
-                  background: 'var(--surface-2)', color: 'var(--text-primary)',
-                  marginBottom: 16,
-                  boxSizing: 'border-box',
-                }}
+                style={{ ...inputStyle(), marginBottom: 16 }}
               />
 
               {/* Helper text above consent */}

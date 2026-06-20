@@ -29,6 +29,7 @@ import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/qu
 import { convertToUsd } from '../lib/currency/fxSnapshot';
 import { generateQuote, downloadQuotePdf, emailQuote, overrideQuotePrice, recordDecision, QuoteGenError } from '../lib/quote/quoteClient';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
+import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnStyle, sectionTitleStyle, listStyle, Field } from '../components/ui-tools';
 import { usePreferences } from '../context/PreferencesContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
@@ -660,48 +661,13 @@ function EstimateView({ preview, onReset }: { preview: QuotePreview; onReset: ()
   );
 }
 
-/* ── Local atoms ────────────────────────────────────────── */
-
-function fieldsetStyle(): React.CSSProperties {
-  return { border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px', background: 'var(--surface)', margin: '0 0 18px' };
-}
-function legendStyle(): React.CSSProperties {
-  return { padding: '0 8px', fontSize: 13, fontWeight: 700, color: 'var(--violet-text)', textTransform: 'uppercase', letterSpacing: 0.5 };
-}
-function inputStyle(): React.CSSProperties {
-  return { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-primary)', boxSizing: 'border-box', fontFamily: 'inherit' };
-}
-function primaryBtnStyle(): React.CSSProperties {
-  return { padding: '13px 32px', borderRadius: 12, border: 'none', background: 'var(--violet)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 8px 22px rgba(124,58,237,0.25)' };
-}
-function secondaryBtnStyle(): React.CSSProperties {
-  return { padding: '13px 24px', borderRadius: 12, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' };
-}
-function sectionTitleStyle(): React.CSSProperties {
-  return { fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 0.5 };
-}
-function listStyle(): React.CSSProperties {
-  return { margin: 0, paddingLeft: 20, fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5 };
-}
+/* ── Local atoms (page-specific) ─────────────────────────── */
 
 function NegRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '3px 0', fontSize: 13 }}>
       <span style={{ color: 'var(--text-muted)' }}>{label}</span>
       <span style={{ fontWeight: 700, color: accent ? 'var(--violet-text)' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-    </div>
-  );
-}
-
-function Field({ label, required, error, children }: { label: React.ReactNode; required?: boolean; error?: string; children: React.ReactNode }) {
-  const T = useLocale();
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-        {label} {required && <span style={{ color: 'var(--red-text)' }}>{T.publicTools.quote.requiredMark}</span>}
-      </label>
-      {children}
-      {error && <div style={{ color: 'var(--red-text)', fontSize: 12, marginTop: 4 }}>{error}</div>}
     </div>
   );
 }

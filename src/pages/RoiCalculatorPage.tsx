@@ -27,6 +27,7 @@ import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgres
 import { track } from '../lib/analytics/track';
 import { captureSrc, getSrc, withSrc } from '../lib/analytics/srcParam';
 import { computeRoiPreview, type RoiPreview } from '../lib/roi/score';
+import { fieldsetStyle, legendStyle, inputStyle, Field, Stat } from '../components/ui-tools';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
@@ -552,59 +553,7 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
   );
 }
 
-/* ── Local atoms ────────────────────────────────────────── */
-
-function fieldsetStyle(): React.CSSProperties {
-  return {
-    border: '1px solid var(--border)',
-    borderRadius: 12,
-    padding: '18px 20px',
-    background: 'var(--surface)',
-    margin: '0 0 18px',
-  };
-}
-function legendStyle(): React.CSSProperties {
-  return {
-    padding: '0 8px', fontSize: 13, fontWeight: 700,
-    color: 'var(--violet-text)', textTransform: 'uppercase', letterSpacing: 0.5,
-  };
-}
-function inputStyle(): React.CSSProperties {
-  return {
-    width: '100%', padding: '10px 12px', fontSize: 14,
-    border: '1px solid var(--border)', borderRadius: 8,
-    background: 'var(--surface-2)', color: 'var(--text-primary)',
-    boxSizing: 'border-box', fontFamily: 'inherit',
-  };
-}
-
-function Field({ label, required, error, children }: { label: React.ReactNode; required?: boolean; error?: string; children: React.ReactNode }) {
-  const T = useLocale();
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-        {label} {required && <span style={{ color: 'var(--red-text)' }}>{T.publicTools.roi.requiredMark}</span>}
-      </label>
-      {children}
-      {error && (
-        <div style={{ color: 'var(--red-text)', fontSize: 12, marginTop: 4 }}>{error}</div>
-      )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-        {value}
-      </div>
-    </div>
-  );
-}
+/* ── Local atoms (page-specific) ─────────────────────────── */
 
 function humanizeSlug(slug: string): string {
   return slug
