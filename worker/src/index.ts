@@ -53,6 +53,7 @@ import demoRequestRoutes     from './routes/demo-request';
 import auditExpressDocumentRoutes from './routes/audit-express-document';
 import feedbackPublicRoutes  from './routes/feedback-public';
 import supportRoutes         from './routes/support';
+import lunaRoutes            from './routes/luna';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -95,6 +96,10 @@ export type AppEnv = {
     // Q4 — Sequenzy transactional email (operator secret) + optional admin BCC.
     SEQUENZY_API_KEY?:             string;
     ADMIN_EMAIL?:                  string;
+    // S3 Phase 2 — Luna AI chat (Anthropic Messages API, claude-haiku-4-5).
+    // Operator sets via `wrangler secret put ANTHROPIC_API_KEY --env production`.
+    // Absent → Luna falls back to the deterministic responder (no error).
+    ANTHROPIC_API_KEY?:            string;
   };
   Variables: {
     uid:    string;
@@ -179,6 +184,7 @@ app.route('/', demoRequestRoutes);
 app.route('/', auditExpressDocumentRoutes);
 app.route('/', feedbackPublicRoutes);
 app.route('/', supportRoutes);
+app.route('/', lunaRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

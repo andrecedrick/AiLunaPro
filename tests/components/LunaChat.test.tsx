@@ -1,24 +1,41 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+/* S3 Phase 2 — Luna chat UI. Each turn calls askLunaAI(); on success it renders
+ * the AI reply + allowlisted action, and on { fallback: true } it uses the
+ * deterministic answerLuna(). The action button navigates in-app. */
+
+const { askLunaAI } = vi.hoisted(() => ({ askLunaAI: vi.fn() }));
+vi.mock('../../src/lib/luna/lunaChatClient', () => ({ askLunaAI }));
+
 import { LunaChat } from '../../src/components/luna/LunaChat';
 
-/* S3 Phase 1 — Luna chat UI. Deterministic: the reply comes from answerLuna()
- * (real, no LLM/network). A Luna reply's action button navigates in-app. */
+beforeEach(() => { askLunaAI.mockReset(); askLunaAI.mockResolvedValue({ fallback: true }); });
 
-describe('LunaChat (S3 Phase 1)', () => {
-  it('greets, answers a question, and its action navigates', () => {
+describe('LunaChat (S3 Phase 2)', () => {
+  it('renders the AI reply and its allowlisted action navigates', async () => {
+    askLunaAI.mockResolvedValue({ text: 'Open your reports here.', action: { label: 'View reports', route: 'reports' } });
     const onNavigate = vi.fn();
     render(<LunaChat routeName="dashboard" onNavigate={onNavigate} />);
 
-    // Greeting present.
-    expect(screen.getByText(/I'm Luna/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Ask Luna'), { target: { value: 'where are my reports?' } });
+    fireEvent.click(screen.getByLabelText('Send'));
+
+    expect(await screen.findByText('Open your reports here.')).toBeTruthy();
+    fireEvent.click(screen.getByText(/View reports/));
+    expect(onNavigate).toHaveBeenCalledWith({ name: 'reports' });
+  });
+
+  it('falls back to the deterministic answer when the server signals fallback', async () => {
+    askLunaAI.mockResolvedValue({ fallback: true });
+    const onNavigate = vi.fn();
+    render(<LunaChat routeName="dashboard" onNavigate={onNavigate} />);
 
     fireEvent.change(screen.getByLabelText('Ask Luna'), { target: { value: 'how do I start an audit?' } });
     fireEvent.click(screen.getByLabelText('Send'));
 
-    // User message echoed + a Luna action rendered.
-    expect(screen.getByText('how do I start an audit?')).toBeTruthy();
-    const action = screen.getByText(/Start a new audit/);
+    // Deterministic answerLuna provides the audit action.
+    const action = await screen.findByText(/Start a new audit/);
     fireEvent.click(action);
     expect(onNavigate).toHaveBeenCalledWith({ name: 'audit/new' });
   });

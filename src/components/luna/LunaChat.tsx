@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { answerLuna } from '../../lib/luna/answer';
+import { askLunaAI } from '../../lib/luna/lunaChatClient';
 import type { LunaAction } from '../../lib/luna/guidance';
 import type { Route } from '../../types/audit';
 
@@ -26,16 +27,40 @@ const GREETING: Msg = {
 export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; onNavigate: (r: Route) => void }) {
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState('');
+  const [pending, setPending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' }); }, [messages]);
+  useEffect(() => { endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' }); }, [messages, pending]);
 
-  const send = () => {
+  const send = async () => {
     const q = input.trim();
-    if (!q) return;
-    const ans = answerLuna(q, routeName);
-    setMessages(m => [...m, { role: 'user', text: q }, { role: 'luna', text: ans.text, actions: ans.actions }]);
+    if (!q || pending) return;
     setInput('');
+    // History BEFORE this turn (state closure is pre-append); strip is server-side too.
+    const history = messages.map(m => ({ role: (m.role === 'luna' ? 'assistant' : 'user') as 'assistant' | 'user', text: m.text }));
+    setMessages(m => [...m, { role: 'user', text: q }]);
+    setPending(true);
+
+    let reply: Msg;
+    try {
+      const r = await askLunaAI(q, routeName, history);
+      if (r.fallback || !r.text) {
+        const a = answerLuna(q, routeName);
+        reply = { role: 'luna', text: a.text, actions: a.actions };
+      } else {
+        reply = {
+          role: 'luna',
+          text: r.text,
+          // Server already validated route against the allowlist (all param-less routes).
+          actions: r.action ? [{ label: r.action.label, route: { name: r.action.route } as Route }] : [],
+        };
+      }
+    } catch {
+      const a = answerLuna(q, routeName);
+      reply = { role: 'luna', text: a.text, actions: a.actions };
+    }
+    setMessages(m => [...m, reply]);
+    setPending(false);
   };
 
   const bubble = (role: 'user' | 'luna'): CSSProperties => ({
@@ -71,6 +96,9 @@ export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; 
             )}
           </div>
         ))}
+        {pending && (
+          <div style={{ ...bubble('luna'), color: 'var(--text-muted)' }} aria-label="Luna is typing">…</div>
+        )}
         <div ref={endRef} />
       </div>
 
@@ -79,7 +107,7 @@ export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; 
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
           rows={2}
           placeholder="Ask Luna…"
           aria-label="Ask Luna"
@@ -90,10 +118,10 @@ export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; 
           }}
         />
         <button
-          type="button" onClick={send} disabled={input.trim().length === 0} aria-label="Send"
+          type="button" onClick={() => void send()} disabled={input.trim().length === 0 || pending} aria-label="Send"
           style={{
-            padding: '10px 16px', borderRadius: 10, border: 'none', cursor: input.trim() ? 'pointer' : 'not-allowed',
-            background: input.trim() ? 'var(--violet)' : 'var(--surface-2)', color: input.trim() ? '#fff' : 'var(--text-muted)',
+            padding: '10px 16px', borderRadius: 10, border: 'none', cursor: input.trim() && !pending ? 'pointer' : 'not-allowed',
+            background: input.trim() && !pending ? 'var(--violet)' : 'var(--surface-2)', color: input.trim() && !pending ? '#fff' : 'var(--text-muted)',
             fontWeight: 700, fontSize: 13,
           }}
         >→</button>
