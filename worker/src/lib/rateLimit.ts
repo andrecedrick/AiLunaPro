@@ -64,3 +64,38 @@ export async function checkCooldown(
     return { ok: true };
   }
 }
+
+/**
+ * Per-key daily counter — a hard ceiling on usage of a metered action (e.g. a
+ * paid-API call) per user per calendar day (UTC). Complements checkCooldown
+ * (which bounds rate but not total). Read-modify-write, so a tiny overcount is
+ * possible under heavy concurrency — acceptable for a cost cap. Fails open.
+ *
+ * Stores `public_rate_limits/{bucket}__{hash(key)}` = { day, count }.
+ */
+export async function checkDailyCap(
+  saJson: string,
+  bucket: string,
+  key: string,
+  cap: number,
+): Promise<{ ok: boolean; remaining?: number }> {
+  let h: string;
+  try { h = await hashIp(key); } catch { return { ok: true }; }
+
+  const day  = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const path = `public_rate_limits/${bucket}__${h}`;
+
+  try {
+    const meta = await firestoreGetWithMeta(saJson, path);
+    const d    = meta?.data as { day?: string; count?: number } | undefined;
+    const count = (d?.day === day && typeof d.count === 'number') ? d.count : 0;
+    if (count >= cap) return { ok: false, remaining: 0 };
+    await firestoreSet(saJson, path, {
+      day, count: count + 1, updatedAt: new Date().toISOString(),
+    }, { merge: false });
+    return { ok: true, remaining: cap - count - 1 };
+  } catch (err) {
+    console.warn('[rateLimit] daily-cap check failed, allowing:', err);
+    return { ok: true };
+  }
+}

@@ -9,16 +9,17 @@
  * failure (no key, API error, refusal) the response is { fallback: true } and the
  * frontend falls back to the deterministic answerLuna().
  *
- * Privacy: NOTHING is stored. The message text is NEVER logged (dlog records
- * only outcome flags). Stateless — no Firestore writes.
+ * Privacy: message + reply CONTENT is never stored and never logged (dlog
+ * records outcome flags only). The only Firestore write is the rate-limit
+ * bookkeeping — a one-way-hashed uid + a timestamp/daily-count, no content.
  */
 
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
-import { checkCooldown } from '../lib/rateLimit';
+import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
 import { dlog } from '../lib/log';
 import {
-  callLunaLLM, sanitizeInput, clampHistory, isPricingQuestion,
+  callLunaLLM, sanitizeInput, sanitizeRouteName, clampHistory, isPricingQuestion,
 } from '../lib/luna-llm';
 import type { AppEnv } from '../index';
 
@@ -26,9 +27,11 @@ const luna = new Hono<AppEnv>();
 
 interface LunaBody { message?: unknown; routeName?: unknown; history?: unknown }
 
-// Per-user throttle: one message per this window (anti-spam + cost cap). A
-// conversational pace is well within it; rapid-fire is blocked.
+// Per-user throttle: one message per this window (anti-burst). Conversational
+// pace is well within it; rapid-fire is blocked.
 const THROTTLE_MS = 2500;
+// Hard per-user daily ceiling on model calls — bounds worst-case cost.
+const DAILY_CAP = 100;
 
 luna.post('/api/luna/chat', requireAuth(), async c => {
   const env = c.env as AppEnv['Bindings'] & { ANTHROPIC_API_KEY?: string; FIREBASE_SERVICE_ACCOUNT_JSON?: string };
@@ -40,7 +43,8 @@ luna.post('/api/luna/chat', requireAuth(), async c => {
 
   const message = typeof body.message === 'string' ? sanitizeInput(body.message) : '';
   if (!message) return c.json({ error: 'message is required', code: 'INVALID_MESSAGE' }, 400);
-  const routeName = typeof body.routeName === 'string' ? body.routeName.slice(0, 60) : 'dashboard';
+  // routeName is interpolated into the system prompt — reduce to a safe route-id shape.
+  const routeName = sanitizeRouteName(body.routeName);
 
   // Strict pricing guard — never calls the model.
   if (isPricingQuestion(message)) {
@@ -50,11 +54,16 @@ luna.post('/api/luna/chat', requireAuth(), async c => {
     });
   }
 
-  // Per-user rate limit (keyed by uid via the cooldown primitive).
+  // Per-user rate limit (keyed by uid): anti-burst cooldown + a hard daily cap
+  // that bounds worst-case cost per user.
   if (env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     const rl = await checkCooldown(env.FIREBASE_SERVICE_ACCOUNT_JSON, 'luna', uid, THROTTLE_MS);
     if (!rl.ok) {
       return c.json({ error: 'Please wait a moment before sending another message.', code: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, 429);
+    }
+    const cap = await checkDailyCap(env.FIREBASE_SERVICE_ACCOUNT_JSON, 'luna_day', uid, DAILY_CAP);
+    if (!cap.ok) {
+      return c.json({ error: 'Daily Luna limit reached. Please try again tomorrow.', code: 'DAILY_LIMIT' }, 429);
     }
   }
 

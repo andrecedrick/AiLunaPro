@@ -24,12 +24,26 @@ export interface LunaReply { text: string; action?: { label: string; route: stri
 /** Pricing / purchase-decision phrasing — Luna must NOT advise; handled before any model call. */
 export const PRICING_GUARD = [
   'cheap', 'cheaper', 'discount', 'negotiate', 'worth it', 'should i pay',
-  'should i buy', 'refund', 'best plan for me', 'which plan should',
+  'should i buy', 'should i upgrade', 'refund', 'best plan for me',
+  'which plan', 'how much', 'pricing', 'upgrade to', 'per month', 'per year',
+  'subscription cost', 'plan cost',
 ];
 
 export function isPricingQuestion(q: string): boolean {
   const s = q.toLowerCase();
   return PRICING_GUARD.some(k => s.includes(k));
+}
+
+/**
+ * Reduce a client-supplied route name to a safe route-id shape ([a-z0-9/_-]).
+ * routeName is interpolated into the system prompt as context; stripping quotes,
+ * spaces, and punctuation prevents an attacker from breaking out of the quoted
+ * context to inject instructions. Unknown-but-clean values are harmless.
+ */
+export function sanitizeRouteName(raw: unknown): string {
+  if (typeof raw !== 'string') return 'dashboard';
+  const clean = raw.toLowerCase().replace(/[^a-z0-9/_-]/g, '').slice(0, 40);
+  return clean || 'dashboard';
 }
 
 /** Scrub a user message: drop control chars + markup, collapse whitespace, cap length. */
