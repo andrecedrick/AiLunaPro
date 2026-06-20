@@ -403,6 +403,20 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_COOLDOWN_MS = 15_000;
 const EMAIL_DAILY_CAP = 20;
 
+// Part 4 — last-resort language inference from the Cloudflare edge country when
+// the client doesn't supply a usable locale. Only the 6 templated languages map;
+// everything else (incl. ru/zh) falls back to English, matching the PDF rule.
+const COUNTRY_LANG: Record<string, string> = {
+  FR: 'fr', BE: 'fr', LU: 'fr', MC: 'fr',
+  DE: 'de', AT: 'de', CH: 'de',
+  ES: 'es', MX: 'es', AR: 'es', CO: 'es', CL: 'es', PE: 'es',
+  IT: 'it',
+  PT: 'pt', BR: 'pt',
+};
+function countryToLang(cc: string | undefined): string {
+  return cc ? (COUNTRY_LANG[cc.toUpperCase()] ?? 'en') : 'en';
+}
+
 interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown; clientEmail?: unknown }
 
 quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c => {
@@ -466,8 +480,13 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const { token } = await signShareToken(secret, orgId, quoteId, 1, SHARE_TTL, now);
   const pdfUrl = `${new URL(c.req.url).origin}/api/quote/shared/${token}`;
 
-  const locale = typeof body.locale === 'string' ? body.locale : 'en';
-  const slugLang = PDF_LANGS.has(locale) ? locale : 'en';
+  // Part 4 — resolve the email language: client-provided locale first (app
+  // language → browser language are already merged client-side), then the CF edge
+  // country, then English. Only the 6 templated languages are honored.
+  const baseLocale = (typeof body.locale === 'string' ? body.locale : '').toLowerCase().split('-')[0];
+  const slugLang = PDF_LANGS.has(baseLocale)
+    ? baseLocale
+    : countryToLang(c.req.header('CF-IPCountry'));
   const variables: Record<string, string> = {
     QUOTE_TITLE:  render.docTitle,
     SOLUTION:     render.solutionLabel,
@@ -599,6 +618,38 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
     }
   }
   await firestoreSet(saJson, path, patch, { merge: true });
+
+  // Part 2 — on accept, open a DRAFT invoice. No amount, no email, no Stripe, no
+  // charge: the admin confirms the final amount (Step B) before any invoice email
+  // or payment link is generated. Idempotent — one invoice per quote, and an
+  // already-created invoice is never reset (preserves a confirmed amount/status).
+  if (decision === 'accepted') {
+    const invPath = `invoices/quote_${quoteId}`;
+    const existingInv = await firestoreGet(saJson, invPath);
+    if (!existingInv) {
+      const customerEmail = c.get('email') as string | undefined;
+      const rangeMinUsd = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
+        : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
+      const rangeMaxUsd = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
+        : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
+      const invoice = {
+        id:            `quote_${quoteId}`,
+        quoteId,
+        orgId,
+        customerEmail: customerEmail ?? '',
+        rangeMinUsd,
+        rangeMaxUsd,
+        amount:        null,     // admin sets at confirm time (Step B)
+        currency:      'usd',
+        status:        'draft',
+        source:        'quote',
+        schemaVersion: 1,
+        createdAt:     new Date().toISOString(),
+      };
+      try { await firestoreSet(saJson, invPath, invoice as unknown as Parameters<typeof firestoreSet>[2]); }
+      catch (err) { console.error('[quote] invoice draft create failed:', err instanceof Error ? err.message : ''); }
+    }
+  }
 
   // Discuss → best-effort admin notification (sales signal). Non-fatal.
   if (decision === 'discussion' && env.ADMIN_EMAIL) {

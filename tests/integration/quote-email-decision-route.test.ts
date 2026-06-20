@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const seq = vi.hoisted(() => ({ sends: [] as Array<Record<string, unknown>> }));
 const rl  = vi.hoisted(() => ({ cooldown: vi.fn(async () => ({ ok: true })), cap: vi.fn(async () => ({ ok: true })) }));
-const store = vi.hoisted(() => ({ writes: new Map<string, Record<string, unknown>>(), stored: null as Record<string, unknown> | null }));
+const store = vi.hoisted(() => ({ writes: new Map<string, Record<string, unknown>>(), invoices: new Map<string, Record<string, unknown>>(), stored: null as Record<string, unknown> | null }));
 
 vi.mock('../../worker/src/middleware/auth', () => ({
   requireAuth: () => async (c: { req: { header: (k: string) => string | undefined }; set: (k: string, v: unknown) => void }, next: () => Promise<void>) => {
@@ -31,8 +31,12 @@ vi.mock('../../worker/src/lib/sequenzy', () => ({
 }));
 vi.mock('../../worker/src/lib/rateLimit', () => ({ checkCooldown: rl.cooldown, checkDailyCap: rl.cap }));
 vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
-  firestoreGet: vi.fn(async (_sa: string, path: string) => (path.includes('/quotes/') ? store.stored : null)),
+  firestoreGet: vi.fn(async (_sa: string, path: string) => {
+    if (path.startsWith('invoices/')) return store.invoices.get(path) ?? null;
+    return path.includes('/quotes/') ? store.stored : null;
+  }),
   firestoreSet: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>) => {
+    if (path.startsWith('invoices/')) store.invoices.set(path, data);
     store.writes.set(path, { ...(store.writes.get(path) ?? {}), ...data });
   }),
   firestoreDelete: vi.fn(async () => {}),
@@ -58,10 +62,10 @@ const decisionReq = (quoteId: string, body: unknown) =>
   quote.request(`/api/quote/${quoteId}/decision`, { method: 'POST', headers: H(), body: JSON.stringify(body) }, ENV);
 
 beforeEach(() => {
-  seq.sends.length = 0; store.writes.clear();
+  seq.sends.length = 0; store.writes.clear(); store.invoices.clear();
   rl.cooldown.mockResolvedValue({ ok: true }); rl.cap.mockResolvedValue({ ok: true });
   store.stored = {
-    createdAt: '2026-06-20T00:00:00.000Z',
+    createdAt: '2026-06-20T00:00:00.000Z', priceMinUsd: 10000, priceMaxUsd: 20000,
     renderJson: JSON.stringify({ docTitle: 'Quote for Acme', solutionLabel: 'AI Agent', rangeText: '$10k–$20k', negInitial: '$15k', negBudget: '', negAdjusted: '' }),
   };
   vi.clearAllMocks();
@@ -90,6 +94,42 @@ describe('POST /api/quote/email (B2 — client recipient + reply-to + rate limit
     const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' });
     expect(res.status).toBe(429);
     expect(seq.sends.length).toBe(0);
+  });
+
+  it('falls back to the CF edge country language when no locale is supplied (Part 4)', async () => {
+    const res = await quote.request('/api/quote/email',
+      { method: 'POST', headers: { ...H(), 'CF-IPCountry': 'FR' }, body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1' }) }, ENV);
+    expect(res.status).toBe(200);
+    expect(seq.sends.some(s => s.slug === 'quote-fr')).toBe(true);   // FR edge → French template
+  });
+});
+
+describe('accept → draft invoice (Part 2)', () => {
+  it('opens a draft invoice (no amount, no email) on accept', async () => {
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(200);
+    const inv = store.invoices.get('invoices/quote_q1')!;
+    expect(inv.status).toBe('draft');
+    expect(inv.amount).toBeNull();                 // admin confirms later (Step B)
+    expect(inv.customerEmail).toBe('owner@acme.com');
+    expect(inv.quoteId).toBe('q1');
+    expect(inv.rangeMinUsd).toBe(10000);
+    expect(inv.rangeMaxUsd).toBe(20000);
+    expect(seq.sends.length).toBe(0);              // no invoice email at draft time
+  });
+
+  it('is idempotent — never overwrites an already-created invoice', async () => {
+    store.invoices.set('invoices/quote_q1', { status: 'pending', amount: 5000 });
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(200);
+    const inv = store.invoices.get('invoices/quote_q1')!;
+    expect(inv.status).toBe('pending');            // confirmed invoice preserved
+    expect(inv.amount).toBe(5000);
+  });
+
+  it('does not open an invoice on discuss', async () => {
+    await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'hi' });
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
   });
 });
 

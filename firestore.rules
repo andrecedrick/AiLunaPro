@@ -190,6 +190,21 @@ service cloud.firestore {
 
 
     // ─────────────────────────────────────────────────────────────────────────
+    // /invoices/{id}                        ← Quote invoicing (Part 2)
+    //
+    // Draft/pending invoices opened when a client accepts a quote. Worker is the
+    // only reader/writer (service account bypasses rules); client access is
+    // closed. Holds quoteId, customerEmail, range, amount, status — admin triage
+    // and confirmation are backend-only. No customer bank/card data is stored.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /invoices/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
     // /users/{userId}
     //
     // User profiles, created on first sign-in.
