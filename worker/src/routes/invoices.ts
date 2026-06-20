@@ -14,6 +14,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { firestoreRunQuery, firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
 import { sendTransactional } from '../lib/sequenzy';
+import { formatBankDetails } from '../lib/bank-details';
 import type { AppEnv } from '../index';
 
 const invoices = new Hono<AppEnv>();
@@ -101,15 +102,11 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
     return c.json({ ok: true, status: typeof inv.status === 'string' ? inv.status : 'pending', alreadyConfirmed: true });
   }
 
-  // Bank-transfer details from the org settings doc (optional, admin-managed).
-  let iban = '', bic = '', accountName = '';
+  // Region-aware bank-transfer details from the org settings doc (optional).
+  let bankDetails = '';
   try {
     const settings = await firestoreGet(saJson, `organizations/${orgId}/settings/billing`) as Record<string, unknown> | null;
-    if (settings) {
-      iban        = typeof settings.iban === 'string' ? settings.iban : '';
-      bic         = typeof settings.bic === 'string' ? settings.bic : '';
-      accountName = typeof settings.accountName === 'string' ? settings.accountName : '';
-    }
+    bankDetails = formatBankDetails(settings);
   } catch { /* bank details optional */ }
 
   // Persist amount + pending. NO Stripe execution: the payment link is a
@@ -133,9 +130,7 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
         PROJECT:      project,
         AMOUNT:       `$${amount.toLocaleString('en-US')}`,
         PAYMENT_LINK: `${appBase}/#/invoices`, // placeholder until Stripe Checkout
-        IBAN:         iban,
-        BIC:          bic,
-        ACCOUNT_NAME: accountName,
+        BANK_DETAILS: bankDetails,
       },
     });
     emailed = res.ok;

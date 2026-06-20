@@ -472,6 +472,21 @@ service cloud.firestore {
 
 
       // ───────────────────────────────────────────────────────────────────
+      // /organizations/{orgId}/settings/{docId}
+      //
+      // Org settings incl. bank-transfer details (IBAN / account / routing).
+      // Sensitive — worker-only via the service account; the billing-settings
+      // form reads/writes through GET/PUT /api/org/billing-settings (owner/admin),
+      // never the client SDK. Client read/write denied.
+      // ───────────────────────────────────────────────────────────────────
+
+      match /settings/{docId} {
+        allow read:  if false;
+        allow write: if false;
+      }
+
+
+      // ───────────────────────────────────────────────────────────────────
       // /organizations/{orgId}/subscriptions/{docId}
       //
       // Live subscription state synced from Stripe by Cloudflare Worker

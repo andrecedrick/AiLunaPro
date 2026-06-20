@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
+import { BankDetailsCard } from '../../components/billing/BankDetailsCard';
 
 /**
  * Settings — Organization.
@@ -152,6 +153,9 @@ export function OrgPage() {
           Plan management lives in Billing.
         </p>
       </div>
+
+      {/* Bank-transfer details (region-aware; shown on invoices) */}
+      <BankDetailsCard />
 
       {/* Danger zone */}
       {isOwner && (
