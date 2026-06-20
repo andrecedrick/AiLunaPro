@@ -30,7 +30,7 @@ export function InvoicesPage() {
   const [amountInput, setAmountInput] = useState('');
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [confirmError, setConfirmError] = useState(false);
-  const [sentId, setSentId] = useState<string | null>(null);
+  const [sentInfo, setSentInfo] = useState<{ id: string; emailed: boolean } | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -66,9 +66,9 @@ export function InvoicesPage() {
     if (!Number.isFinite(amount) || amount <= 0) { setConfirmError(true); return; }
     setConfirmBusy(true); setConfirmError(false);
     try {
-      await confirmInvoice(orgId, inv.id, Math.round(amount));
+      const r = await confirmInvoice(orgId, inv.id, Math.round(amount));
       setItems(list => (list ?? []).map(x => x.id === inv.id ? { ...x, amount: Math.round(amount), status: 'pending' } : x));
-      setSentId(inv.id);
+      setSentInfo({ id: inv.id, emailed: r.emailed });   // surface whether the email actually went out
       setConfirmingId(null);
     } catch {
       setConfirmError(true);
@@ -91,11 +91,13 @@ export function InvoicesPage() {
         </div>
       </div>
 
-      {sentId === inv.id && (
-        <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>{I.sent} ✅</div>
+      {sentInfo?.id === inv.id && (
+        sentInfo.emailed
+          ? <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>✅ {I.sent}</div>
+          : <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: '#b45309' }}>⚠ {I.sentNoEmail}</div>
       )}
 
-      {isAdmin && inv.status === 'draft' && sentId !== inv.id && (
+      {isAdmin && inv.status === 'draft' && sentInfo?.id !== inv.id && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
           {confirmingId === inv.id ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

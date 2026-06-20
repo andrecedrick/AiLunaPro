@@ -15,6 +15,7 @@ import { requireRole } from '../middleware/requireRole';
 import { firestoreRunQuery, firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
 import { sendTransactional } from '../lib/sequenzy';
 import { formatBankDetails } from '../lib/bank-details';
+import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
 const invoices = new Hono<AppEnv>();
@@ -121,22 +122,29 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
     : typeof inv.quoteId === 'string' ? inv.quoteId : id;
   const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
   let emailed = false;
+  let emailError: string | undefined;
   if (customer) {
     const res = await sendTransactional(env.SEQUENZY_API_KEY, {
       to:      customer,
       slug:    'invoice-client',
       replyTo: env.ADMIN_EMAIL,
       variables: {
-        PROJECT:      project,
-        AMOUNT:       `$${amount.toLocaleString('en-US')}`,
-        PAYMENT_LINK: `${appBase}/#/invoices`, // placeholder until Stripe Checkout
+        PROJECT:     project,
+        AMOUNT:      `$${amount.toLocaleString('en-US')}`,
+        INVOICE_URL: `${appBase}/#/invoices`, // "View your invoice" (placeholder pay link until Stripe Checkout)
         BANK_DETAILS: bankDetails,
       },
     });
     emailed = res.ok;
+    emailError = res.error;
+    // Surface a failed send loudly in the logs (no PII — status only). The most
+    // common cause is an unset SEQUENZY_API_KEY or a missing invoice-client template.
+    if (!emailed) console.warn('[invoices] confirm email NOT sent (check SEQUENZY_API_KEY / invoice-client):', res.error ?? 'unknown');
   }
+  // Outcome log — id + flags only, no customer data.
+  dlog(env, '[invoices] confirmed', id, 'emailed=', emailed);
 
-  return c.json({ ok: true, status: 'pending', amount, emailed });
+  return c.json({ ok: true, status: 'pending', amount, emailed, ...(emailError ? { emailError } : {}) });
 });
 
 export default invoices;

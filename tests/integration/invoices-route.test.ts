@@ -74,6 +74,7 @@ describe('POST /api/invoices/:id/confirm (Step B)', () => {
     expect(res.status).toBe(200);
     const j = await res.json() as { status: string; emailed: boolean };
     expect(j.status).toBe('pending');
+    expect(j.emailed).toBe(true);                        // delivery confirmed to the caller
     const doc = state.docs.get('invoices/quote_a')!;
     expect(doc.status).toBe('pending');
     expect(doc.amount).toBe(15000);
@@ -82,7 +83,7 @@ describe('POST /api/invoices/:id/confirm (Step B)', () => {
     const v = send.variables as Record<string, string>;
     expect(v.PROJECT).toBe('Acme bot');
     expect(v.AMOUNT).toBe('$15,000');
-    expect(v.PAYMENT_LINK).toContain('/#/invoices');   // placeholder until Stripe
+    expect(v.INVOICE_URL).toContain('/#/invoices');      // "View your invoice" link
   });
 
   it('rejects confirming an invoice from another org (cross-org guard)', async () => {
