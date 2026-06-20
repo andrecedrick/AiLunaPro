@@ -34,8 +34,21 @@ export const en = {
     aiRoiCalculator:       'AI ROI Calculator',
     aiMaturityDiagnostic:  'AI Maturity Diagnostic',
     requestQuote:          'Request a Quote',
+    invoices:              'Invoices',
   },
   /** App-shell chrome (sidebar header, org switcher, sign-out, pref widget). */
+  invoices: {
+    title: 'Invoices',
+    subtitle: 'Invoices created when a client accepts a quote.',
+    loading: 'Loading…',
+    error: 'Could not load your invoices. Please try again.',
+    empty: 'No invoices yet.',
+    quoteLabel: 'Quote',
+    statusDraft: 'Draft',
+    statusPending: 'Pending',
+    statusPaid: 'Paid',
+    amountPending: 'To be confirmed',
+  },
   shell: {
     complianceSuite:  'Compliance Suite',
     signOut:          'Sign out',

@@ -22,6 +22,7 @@ const NAV_ROUTES: Partial<Record<string, Route>> = {
   help: { name: 'help' },
   settings: { name: 'settings/profile' },
   billing:  { name: 'billing' },
+  invoices: { name: 'invoices' },
 };
 
 /* Map current route → nav item id that should appear active. */
@@ -47,6 +48,7 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'settings/preferences') return 'settings';
   if (name === 'settings/billing')     return 'settings';
   if (name === 'billing')              return 'billing';
+  if (name === 'invoices')             return 'invoices';
   return '';
 }
 
@@ -507,6 +509,8 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
             if (item.id === 'team' && role === 'client') return false;
             // K0: Hide Agents catalog for client
             if (item.id === 'agents' && role === 'client') return false;
+            // Invoices follow the quote flow roles (owner/admin/billing/member) — hide for client
+            if (item.id === 'invoices' && role === 'client') return false;
             return true;
           })
           .map(item => (

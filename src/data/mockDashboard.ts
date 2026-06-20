@@ -222,5 +222,6 @@ export const mockNavItems = [
   { id: 'team', label: 'Team', icon: 'team', active: false },
   { id: 'settings', label: 'Settings', icon: 'settings', active: false },
   { id: 'billing', label: 'Billing', icon: 'billing', active: false },
+  { id: 'invoices', label: 'Invoices', icon: 'reports', active: false },
   { id: 'help', label: 'Help', icon: 'help', active: false },
 ];
