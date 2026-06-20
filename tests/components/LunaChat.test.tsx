@@ -7,6 +7,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 const { askLunaAI } = vi.hoisted(() => ({ askLunaAI: vi.fn() }));
 vi.mock('../../src/lib/luna/lunaChatClient', () => ({ askLunaAI }));
+vi.mock('../../src/context/PreferencesContext', () => ({ usePreferences: () => ({ language: 'en' }) }));
 
 import { LunaChat } from '../../src/components/luna/LunaChat';
 

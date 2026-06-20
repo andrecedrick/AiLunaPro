@@ -1,18 +1,18 @@
 /**
- * LunaChat — S3 Phase 1 (deterministic chat, NO LLM).
+ * LunaChat — Luna chat UI (S3 Phase 2 + L1).
  *
- * A simple chat layout inside the Luna panel. Each user message is answered
- * client-side by answerLuna() — a deterministic keyword match over the product's
- * guidance/help topics. No backend call, no storage, no PII leaves the browser.
- * Luna replies can carry in-app deep-link actions (reusing the guidance routes).
- *
- * Phase 2 will replace answerLuna() with a Claude-backed endpoint; the UI here
- * stays the same.
+ * Each user message is answered by the Claude-backed /api/luna/chat (askLunaAI),
+ * with the deterministic answerLuna() as the fallback on any failure. Replies
+ * are rendered through RichText (so **bold** product terms style nicely, never
+ * literal markdown) and may carry one in-app deep-link action. The reply is
+ * requested in the user's app language. No storage; no PII leaves the browser.
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { answerLuna } from '../../lib/luna/answer';
 import { askLunaAI } from '../../lib/luna/lunaChatClient';
+import { usePreferences } from '../../context/PreferencesContext';
+import { RichText } from '../RichText';
 import type { LunaAction } from '../../lib/luna/guidance';
 import type { Route } from '../../types/audit';
 
@@ -24,7 +24,30 @@ const GREETING: Msg = {
   actions: [],
 };
 
+/** Action deep-link pill — design-system styled, with a subtle hover lift. */
+function ActionPill({ label, onClick }: { label: string; onClick: () => void }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button" onClick={onClick}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, marginRight: 8,
+        padding: '8px 14px', borderRadius: 999, cursor: 'pointer',
+        border: '1px solid var(--violet)', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12.5,
+        background: hover ? 'var(--violet)' : 'rgba(124,58,237,0.06)',
+        color: hover ? '#fff' : 'var(--violet-text)',
+        transform: hover ? 'translateY(-1px)' : 'none',
+        transition: 'background 0.15s ease, color 0.15s ease, transform 0.15s ease',
+      }}
+    >
+      {label} <span aria-hidden style={{ fontWeight: 800 }}>→</span>
+    </button>
+  );
+}
+
 export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; onNavigate: (r: Route) => void }) {
+  const { language } = usePreferences();
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
@@ -43,7 +66,7 @@ export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; 
 
     let reply: Msg;
     try {
-      const r = await askLunaAI(q, routeName, history);
+      const r = await askLunaAI(q, routeName, history, language);
       if (r.fallback || !r.text) {
         const a = answerLuna(q, routeName);
         reply = { role: 'luna', text: a.text, actions: a.actions };
@@ -71,26 +94,17 @@ export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; 
     color: role === 'user' ? '#fff' : 'var(--text-primary)',
     border: role === 'user' ? 'none' : '1px solid var(--border)',
   });
-  const actionBtn: CSSProperties = {
-    display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, marginRight: 6,
-    padding: '6px 12px', borderRadius: 9, cursor: 'pointer',
-    background: 'transparent', border: '1px solid var(--violet)', color: 'var(--violet-text)',
-    fontWeight: 600, fontSize: 12.5, fontFamily: 'var(--font-body)',
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0 }}>
       {/* Messages */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', maxHeight: '52vh', paddingRight: 2 }}>
         {messages.map((m, i) => (
           <div key={i} style={bubble(m.role)}>
-            <div>{m.text}</div>
+            <div><RichText t={m.text} /></div>
             {m.role === 'luna' && m.actions && m.actions.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap' }}>
                 {m.actions.map(a => (
-                  <button key={a.label} type="button" style={actionBtn} onClick={() => onNavigate(a.route)}>
-                    {a.label} <span aria-hidden style={{ fontWeight: 800 }}>→</span>
-                  </button>
+                  <ActionPill key={a.label} label={a.label} onClick={() => onNavigate(a.route)} />
                 ))}
               </div>
             )}

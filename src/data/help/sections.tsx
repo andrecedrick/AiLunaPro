@@ -17,6 +17,7 @@ import type { ReactNode } from 'react';
 import type { Dict } from '../../lib/locale/i18n/en';
 import { Callout } from '../../components/help/Callout';
 import { FlowDiagram } from '../../components/help/FlowDiagram';
+import { RichText } from '../../components/RichText';
 
 export interface HelpSection {
   id:    string;
@@ -50,29 +51,9 @@ const p: React.CSSProperties = { margin: '0 0 12px', fontSize: 14, lineHeight: 1
 const ul: React.CSSProperties = { margin: '0 0 12px 20px', padding: 0, fontSize: 14, lineHeight: 1.65, color: 'var(--text-secondary)' };
 const li: React.CSSProperties = { marginBottom: 4 };
 const h3: React.CSSProperties = { fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '18px 0 8px', textTransform: 'uppercase', letterSpacing: 0.4 };
-const codeStyle: React.CSSProperties = { background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4, fontSize: 12, fontFamily: 'monospace', color: 'var(--text-primary)' };
 const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 12 };
 const thStyle: React.CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', fontWeight: 700 };
 const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' };
-
-const Code = ({ children }: { children: ReactNode }) => <code style={codeStyle}>{children}</code>;
-
-/* Inline rich-text: renders **bold**, *italic*, `code` markers. Deterministic,
- * no markdown lib. Markers are preserved verbatim across translations. */
-function RichText({ t }: { t: string }) {
-  const parts = t.split(/(\*\*.+?\*\*|`[^`]+`|\*.+?\*)/g);
-  return (
-    <>
-      {parts.map((seg, i) => {
-        if (!seg) return null;
-        if (seg.startsWith('**') && seg.endsWith('**')) return <strong key={i}>{seg.slice(2, -2)}</strong>;
-        if (seg.startsWith('`')  && seg.endsWith('`'))  return <Code key={i}>{seg.slice(1, -1)}</Code>;
-        if (seg.startsWith('*')  && seg.endsWith('*'))  return <em key={i}>{seg.slice(1, -1)}</em>;
-        return <span key={i}>{seg}</span>;
-      })}
-    </>
-  );
-}
 
 /* Prose paragraph / list item built from a marked string. */
 const P  = ({ t }: { t: string }) => <p style={p}><RichText t={t} /></p>;

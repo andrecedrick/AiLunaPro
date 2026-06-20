@@ -21,34 +21,34 @@ function mockFetch(status: number, body: unknown) {
 describe('askLunaAI', () => {
   it('returns the AI reply + action on success', async () => {
     mockFetch(200, { text: 'Here is help', action: { label: 'View reports', route: 'reports' } });
-    const r = await askLunaAI('where are my reports', 'dashboard', []);
+    const r = await askLunaAI('where are my reports', 'dashboard', [], 'en');
     expect(r).toEqual({ text: 'Here is help', action: { label: 'View reports', route: 'reports' } });
   });
 
   it('falls back when the server signals fallback', async () => {
     mockFetch(200, { fallback: true });
-    expect(await askLunaAI('q', 'dashboard', [])).toEqual({ fallback: true });
+    expect(await askLunaAI('q', 'dashboard', [], 'en')).toEqual({ fallback: true });
   });
 
   it('surfaces a wait message on 429 (not a fallback)', async () => {
     mockFetch(429, { error: 'slow down', code: 'RATE_LIMITED' });
-    const r = await askLunaAI('q', 'dashboard', []);
+    const r = await askLunaAI('q', 'dashboard', [], 'en');
     expect(r.fallback).toBeFalsy();
     expect(r.text).toMatch(/wait a moment/i);
   });
 
   it('falls back on a non-200 error', async () => {
     mockFetch(500, { error: 'boom' });
-    expect(await askLunaAI('q', 'dashboard', [])).toEqual({ fallback: true });
+    expect(await askLunaAI('q', 'dashboard', [], 'en')).toEqual({ fallback: true });
   });
 
   it('falls back when not authenticated', async () => {
     getIdToken.mockRejectedValueOnce(new Error('not authed'));
-    expect(await askLunaAI('q', 'dashboard', [])).toEqual({ fallback: true });
+    expect(await askLunaAI('q', 'dashboard', [], 'en')).toEqual({ fallback: true });
   });
 
   it('falls back on a network error', async () => {
     globalThis.fetch = vi.fn(async () => { throw new Error('network'); }) as unknown as typeof fetch;
-    expect(await askLunaAI('q', 'dashboard', [])).toEqual({ fallback: true });
+    expect(await askLunaAI('q', 'dashboard', [], 'en')).toEqual({ fallback: true });
   });
 });

@@ -22,6 +22,7 @@ export async function askLunaAI(
   message: string,
   routeName: string,
   history: LunaHistoryTurn[],
+  lang: string,
 ): Promise<LunaAiReply> {
   let token: string;
   try { token = await getIdToken(); } catch { return { fallback: true }; }
@@ -30,7 +31,7 @@ export async function askLunaAI(
     const res = await fetch(`${WORKER_BASE}/api/luna/chat`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ message, routeName, history }),
+      body:    JSON.stringify({ message, routeName, history, lang }),
     });
     if (res.status === 429) return { text: 'Please wait a moment before sending another message.' };
     if (!res.ok) return { fallback: true };

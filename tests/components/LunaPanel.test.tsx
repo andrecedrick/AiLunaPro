@@ -8,6 +8,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 let mockRoute: { name: string } = { name: 'registry' };
 const navigate = vi.fn();
 vi.mock('../../src/context/RouteContext', () => ({ useRoute: () => ({ route: mockRoute, navigate }) }));
+vi.mock('../../src/context/PreferencesContext', () => ({ usePreferences: () => ({ language: 'en' }) }));
 
 import { LunaPanel } from '../../src/components/luna/LunaPanel';
 import { getLunaGuidance } from '../../src/lib/luna/guidance';

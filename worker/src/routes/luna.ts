@@ -19,13 +19,13 @@ import { requireAuth } from '../middleware/auth';
 import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
 import { dlog } from '../lib/log';
 import {
-  callLunaLLM, sanitizeInput, sanitizeRouteName, clampHistory, isPricingQuestion,
+  callLunaLLM, sanitizeInput, sanitizeRouteName, sanitizeLang, clampHistory, isPricingQuestion,
 } from '../lib/luna-llm';
 import type { AppEnv } from '../index';
 
 const luna = new Hono<AppEnv>();
 
-interface LunaBody { message?: unknown; routeName?: unknown; history?: unknown }
+interface LunaBody { message?: unknown; routeName?: unknown; history?: unknown; lang?: unknown }
 
 // Per-user throttle: one message per this window (anti-burst). Conversational
 // pace is well within it; rapid-fire is blocked.
@@ -45,6 +45,7 @@ luna.post('/api/luna/chat', requireAuth(), async c => {
   if (!message) return c.json({ error: 'message is required', code: 'INVALID_MESSAGE' }, 400);
   // routeName is interpolated into the system prompt — reduce to a safe route-id shape.
   const routeName = sanitizeRouteName(body.routeName);
+  const lang = sanitizeLang(body.lang);
 
   // Strict pricing guard — never calls the model.
   if (isPricingQuestion(message)) {
@@ -75,7 +76,7 @@ luna.post('/api/luna/chat', requireAuth(), async c => {
 
   try {
     const history = clampHistory(body.history);
-    const reply = await callLunaLLM(env.ANTHROPIC_API_KEY, message, routeName, history);
+    const reply = await callLunaLLM(env.ANTHROPIC_API_KEY, message, routeName, history, lang);
     // PII: never log the message or the reply text — outcome only.
     dlog(env, '[luna] reply ok — route:', reply.action?.route ?? '-');
     return c.json(reply);
