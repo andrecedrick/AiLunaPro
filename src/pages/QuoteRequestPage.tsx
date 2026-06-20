@@ -28,6 +28,7 @@ import {
 import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/quote/score';
 import { convertToUsd } from '../lib/currency/fxSnapshot';
 import { generateQuote, downloadQuotePdf, emailQuote, overrideQuotePrice, recordDecision, QuoteGenError } from '../lib/quote/quoteClient';
+import { tokenCost } from '../lib/tokens/costs';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
 import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
 import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnStyle, sectionTitleStyle, listStyle, Field } from '../components/ui-tools';
@@ -187,7 +188,7 @@ export function QuoteRequestPage() {
       });
     } catch (e) {
       if (e instanceof QuoteGenError && e.code === 'INSUFFICIENT_TOKENS') {
-        setModal({ open: true, balance: e.balance ?? 0, required: e.required ?? 150 });
+        setModal({ open: true, balance: e.balance ?? 0, required: e.required ?? tokenCost('quote.generation') });
       } else {
         setGenError(Q.generate.error);
       }
@@ -570,7 +571,7 @@ export function QuoteRequestPage() {
                     onClick={() => void onGenerate()}
                     style={{ ...primaryBtnStyle(), opacity: generating ? 0.6 : 1, cursor: generating ? 'wait' : 'pointer' }}
                   >
-                    {generating ? Q.generate.loading : `${Q.generate.button} · ${format(Q.generate.cost, { n: '50' })}`}
+                    {generating ? Q.generate.loading : `${Q.generate.button} · ${format(Q.generate.cost, { n: tokenCost('quote.generation') })}`}
                   </button>
                   {genError && <div style={{ marginTop: 10, color: 'var(--red-text)', fontSize: 13 }}>{genError}</div>}
                 </div>

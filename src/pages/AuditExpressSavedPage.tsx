@@ -6,6 +6,7 @@ import { format } from '../lib/locale/i18n';
 import {
   listSavedAudits, deleteSavedAudit, downloadSavedAudit, renameAudit, SavedAuditError, type SavedAuditItem,
 } from '../lib/auditExpress/savedClient';
+import { tokenCost } from '../lib/tokens/costs';
 
 /**
  * Saved Audit Express (J15 P1.1) — lists the org's saved audits and lets the
@@ -157,7 +158,7 @@ export function AuditExpressSavedPage() {
               {format(T.savedAudits.pdfLimitModal.title, { freeCount: 3 })}
             </h2>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 18px' }}>
-              {format(T.savedAudits.pdfLimitModal.body, { tokenCost: 10 })}
+              {format(T.savedAudits.pdfLimitModal.body, { tokenCost: tokenCost('audit_express.pdf') })}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <button type="button" style={btn('primary')} disabled={busy === limitFor} onClick={() => onDownload(limitFor, true)}>
