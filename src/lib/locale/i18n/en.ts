@@ -48,6 +48,13 @@ export const en = {
     statusPending: 'Pending',
     statusPaid: 'Paid',
     amountPending: 'To be confirmed',
+    confirmSend: 'Confirm and send invoice',
+    amountLabel: 'Final amount (USD)',
+    confirmBtn: 'Confirm & send',
+    cancel: 'Cancel',
+    sent: 'Invoice sent',
+    confirmError: 'Could not send. Please try again.',
+    pendingHeading: 'Pending confirmation',
   },
   shell: {
     complianceSuite:  'Compliance Suite',

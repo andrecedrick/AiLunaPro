@@ -12,13 +12,16 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
-import { firestoreRunQuery } from '../lib/firestoreAdmin';
+import { firestoreRunQuery, firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { sendTransactional } from '../lib/sequenzy';
 import type { AppEnv } from '../index';
 
 const invoices = new Hono<AppEnv>();
 
 type RoleList = Parameters<typeof requireRole>[0];
 const INVOICE_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
+const CONFIRM_ROLES: RoleList = ['owner', 'admin']; // confirming + sending is admin-only
+const AMOUNT_MAX = 10_000_000;
 
 invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -59,6 +62,86 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
   items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 
   return c.json({ ok: true, invoices: items });
+});
+
+/* ── POST /api/invoices/:id/confirm — admin confirms + sends the invoice ────
+ *
+ * Owner/admin only. The admin sets the final amount; the invoice goes draft →
+ * pending and the invoice-client email is sent to the customer. NO Stripe
+ * execution yet: the payment link is a placeholder (bank transfer is the live
+ * method). Idempotent — a non-draft invoice is returned unchanged, never re-sent.
+ * Cross-org guard: the invoice must belong to the caller's membership-verified org.
+ */
+invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string; // membership-verified
+  const id = (c.req.param('id') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+  if (!id) return c.json({ error: 'Invalid invoice id.', code: 'INVALID_ID' }, 400);
+
+  let body: { amount?: unknown };
+  try { body = await c.req.json() as { amount?: unknown }; }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const amount = typeof body.amount === 'number' ? Math.round(body.amount) : NaN;
+  if (!Number.isFinite(amount) || amount <= 0 || amount > AMOUNT_MAX) {
+    return c.json({ error: 'A valid amount is required.', code: 'INVALID_AMOUNT' }, 400);
+  }
+
+  const invPath = `invoices/${id}`;
+  const inv = await firestoreGet(saJson, invPath) as Record<string, unknown> | null;
+  if (!inv) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
+  // Cross-org guard: an admin of org A must not touch org B's invoice.
+  if (inv.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
+  // Idempotent: only a draft can be confirmed; an already-sent invoice is returned as-is.
+  if (inv.status !== 'draft') {
+    return c.json({ ok: true, status: typeof inv.status === 'string' ? inv.status : 'pending', alreadyConfirmed: true });
+  }
+
+  // Bank-transfer details from the org settings doc (optional, admin-managed).
+  let iban = '', bic = '', accountName = '';
+  try {
+    const settings = await firestoreGet(saJson, `organizations/${orgId}/settings/billing`) as Record<string, unknown> | null;
+    if (settings) {
+      iban        = typeof settings.iban === 'string' ? settings.iban : '';
+      bic         = typeof settings.bic === 'string' ? settings.bic : '';
+      accountName = typeof settings.accountName === 'string' ? settings.accountName : '';
+    }
+  } catch { /* bank details optional */ }
+
+  // Persist amount + pending. NO Stripe execution: the payment link is a
+  // placeholder (app invoices page) until Stripe Checkout is wired.
+  await firestoreSet(saJson, invPath, {
+    amount, status: 'pending', confirmedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  // Send the invoice to the customer (best-effort, non-fatal).
+  const appBase  = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+  const project  = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
+    : typeof inv.quoteId === 'string' ? inv.quoteId : id;
+  const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
+  let emailed = false;
+  if (customer) {
+    const res = await sendTransactional(env.SEQUENZY_API_KEY, {
+      to:      customer,
+      slug:    'invoice-client',
+      replyTo: env.ADMIN_EMAIL,
+      variables: {
+        PROJECT:      project,
+        AMOUNT:       `$${amount.toLocaleString('en-US')}`,
+        PAYMENT_LINK: `${appBase}/#/invoices`, // placeholder until Stripe Checkout
+        IBAN:         iban,
+        BIC:          bic,
+        ACCOUNT_NAME: accountName,
+      },
+    });
+    emailed = res.ok;
+  }
+
+  return c.json({ ok: true, status: 'pending', amount, emailed });
 });
 
 export default invoices;

@@ -34,6 +34,13 @@ export const pt: Dict = {
     statusPending: 'Pendente',
     statusPaid: 'Paga',
     amountPending: 'A confirmar',
+    confirmSend: 'Confirmar e enviar fatura',
+    amountLabel: 'Valor final (USD)',
+    confirmBtn: 'Confirmar e enviar',
+    cancel: 'Cancelar',
+    sent: 'Fatura enviada',
+    confirmError: 'Não foi possível enviar. Tente novamente.',
+    pendingHeading: 'A aguardar confirmação',
   },
   shell: {
     complianceSuite:  'Suite de conformidade',

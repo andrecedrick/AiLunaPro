@@ -35,6 +35,13 @@ export const ru: Dict = {
     statusPending: 'В ожидании',
     statusPaid: 'Оплачен',
     amountPending: 'Уточняется',
+    confirmSend: 'Подтвердить и отправить счёт',
+    amountLabel: 'Итоговая сумма (USD)',
+    confirmBtn: 'Подтвердить и отправить',
+    cancel: 'Отмена',
+    sent: 'Счёт отправлен',
+    confirmError: 'Не удалось отправить. Повторите попытку.',
+    pendingHeading: 'Ожидает подтверждения',
   },
   shell: {
     complianceSuite:  'Пакет соответствия',

@@ -105,17 +105,21 @@ describe('POST /api/quote/email (B2 — client recipient + reply-to + rate limit
 });
 
 describe('accept → draft invoice (Part 2)', () => {
-  it('opens a draft invoice (no amount, no email) on accept', async () => {
+  it('opens a draft invoice on accept and notifies the admin (no customer email yet)', async () => {
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
     expect(res.status).toBe(200);
     const inv = store.invoices.get('invoices/quote_q1')!;
     expect(inv.status).toBe('draft');
-    expect(inv.amount).toBeNull();                 // admin confirms later (Step B)
+    expect(inv.amount).toBeNull();                 // admin confirms the amount later (Step B)
     expect(inv.customerEmail).toBe('owner@acme.com');
     expect(inv.quoteId).toBe('q1');
     expect(inv.rangeMinUsd).toBe(10000);
     expect(inv.rangeMaxUsd).toBe(20000);
-    expect(seq.sends.length).toBe(0);              // no invoice email at draft time
+    // No invoice-client (customer) email at draft time; the admin IS notified (Part 1).
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeFalsy();
+    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending');
+    expect(admin).toBeTruthy();
+    expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('owner@acme.com');
   });
 
   it('is idempotent — never overwrites an already-created invoice', async () => {

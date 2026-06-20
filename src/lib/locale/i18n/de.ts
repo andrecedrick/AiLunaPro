@@ -34,6 +34,13 @@ export const de: Dict = {
     statusPending: 'Ausstehend',
     statusPaid: 'Bezahlt',
     amountPending: 'Wird bestätigt',
+    confirmSend: 'Bestätigen und Rechnung senden',
+    amountLabel: 'Endbetrag (USD)',
+    confirmBtn: 'Bestätigen & senden',
+    cancel: 'Abbrechen',
+    sent: 'Rechnung gesendet',
+    confirmError: 'Senden fehlgeschlagen. Bitte erneut versuchen.',
+    pendingHeading: 'Bestätigung ausstehend',
   },
   shell: {
     complianceSuite:  'Compliance-Suite',

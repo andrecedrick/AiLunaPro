@@ -36,6 +36,13 @@ export const zh: Dict = {
     statusPending: '待处理',
     statusPaid: '已支付',
     amountPending: '待确认',
+    confirmSend: '确认并发送发票',
+    amountLabel: '最终金额（USD）',
+    confirmBtn: '确认并发送',
+    cancel: '取消',
+    sent: '发票已发送',
+    confirmError: '发送失败，请重试。',
+    pendingHeading: '待确认',
   },
   shell: {
     complianceSuite:  '合规套件',

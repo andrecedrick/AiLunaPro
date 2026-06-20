@@ -640,22 +640,49 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
         : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
       const rangeMaxUsd = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
         : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
+      // Project title + range text from the persisted render (for the invoice + admin email).
+      let quoteTitle = quoteId;
+      let rangeText = rangeMinUsd != null && rangeMaxUsd != null ? formatUsdRange(rangeMinUsd, rangeMaxUsd) : '';
+      if (typeof stored.renderJson === 'string') {
+        try {
+          const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
+          if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle;
+          if (typeof r.rangeText === 'string' && r.rangeText) rangeText = r.rangeText;
+        } catch { /* keep defaults */ }
+      }
       const invoice = {
         id:            `quote_${quoteId}`,
         quoteId,
         orgId,
+        quoteTitle,
         customerEmail: customerEmail ?? '',
         rangeMinUsd,
         rangeMaxUsd,
-        amount:        null,     // admin sets at confirm time (Step B)
+        amount:        null,     // admin sets at confirm time
         currency:      'usd',
         status:        'draft',
         source:        'quote',
         schemaVersion: 1,
         createdAt:     new Date().toISOString(),
       };
-      try { await firestoreSet(saJson, invPath, invoice as unknown as Parameters<typeof firestoreSet>[2]); }
-      catch (err) { console.error('[quote] invoice draft create failed:', err instanceof Error ? err.message : ''); }
+      try {
+        await firestoreSet(saJson, invPath, invoice as unknown as Parameters<typeof firestoreSet>[2]);
+        // Part 1 — notify the admin that a draft invoice awaits confirmation. Best-effort, non-fatal.
+        if (env.ADMIN_EMAIL) {
+          const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+          await sendTransactional(env.SEQUENZY_API_KEY, {
+            to:      env.ADMIN_EMAIL,
+            slug:    'invoice-admin-pending',
+            replyTo: customerEmail,
+            variables: {
+              QUOTE_TITLE:    quoteTitle,
+              CUSTOMER_EMAIL: customerEmail ?? '',
+              RANGE:          rangeText,
+              PANEL_URL:      `${appBase}/#/invoices`,
+            },
+          });
+        }
+      } catch (err) { console.error('[quote] invoice draft create failed:', err instanceof Error ? err.message : ''); }
     }
   }
 
