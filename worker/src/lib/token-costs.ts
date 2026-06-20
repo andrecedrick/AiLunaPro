@@ -12,6 +12,7 @@ export const TOKEN_COSTS = {
   'report.export.pdf':   5,
   'audit_express.pdf':  10,   // J16.1 — PDF export beyond the 3 free downloads
   'quote.generation':  150,   // Quote/Devis — paid generation (persist; PDF+email in later phases)
+  'luna.message':       50,   // Luna AI chat — per message after the 3 free/day (L2)
 } as const;
 
 export type TokenAction = keyof typeof TOKEN_COSTS;

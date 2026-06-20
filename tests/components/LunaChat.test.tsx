@@ -8,6 +8,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 const { askLunaAI } = vi.hoisted(() => ({ askLunaAI: vi.fn() }));
 vi.mock('../../src/lib/luna/lunaChatClient', () => ({ askLunaAI }));
 vi.mock('../../src/context/PreferencesContext', () => ({ usePreferences: () => ({ language: 'en' }) }));
+vi.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ session: { orgId: 'o1' } }) }));
 
 import { LunaChat } from '../../src/components/luna/LunaChat';
 
@@ -39,6 +40,18 @@ describe('LunaChat (S3 Phase 2)', () => {
     const action = await screen.findByText(/Start a new audit/);
     fireEvent.click(action);
     expect(onNavigate).toHaveBeenCalledWith({ name: 'audit/new' });
+  });
+
+  it('on 402 (needTokens) calls onNeedTokens and shows the free-limit message', async () => {
+    askLunaAI.mockResolvedValue({ needTokens: { balance: 10, required: 50 } });
+    const onNeedTokens = vi.fn();
+    render(<LunaChat routeName="dashboard" onNavigate={vi.fn()} onNeedTokens={onNeedTokens} />);
+
+    fireEvent.change(screen.getByLabelText('Ask Luna'), { target: { value: 'tell me more' } });
+    fireEvent.click(screen.getByLabelText('Send'));
+
+    expect(await screen.findByText(/free Luna messages/i)).toBeTruthy();
+    expect(onNeedTokens).toHaveBeenCalledWith({ balance: 10, required: 50 });
   });
 
   it('disables Send while the input is empty', () => {

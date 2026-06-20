@@ -12,11 +12,17 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { answerLuna } from '../../lib/luna/answer';
 import { askLunaAI } from '../../lib/luna/lunaChatClient';
 import { usePreferences } from '../../context/PreferencesContext';
+import { useAuth } from '../../context/AuthContext';
 import { RichText } from '../RichText';
 import type { LunaAction } from '../../lib/luna/guidance';
 import type { Route } from '../../types/audit';
 
 interface Msg { role: 'user' | 'luna'; text: string; actions?: LunaAction[] }
+
+/** Idempotency key per message (safe-retry token charge); jsdom-safe fallback. */
+function newId(): string {
+  try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+}
 
 const GREETING: Msg = {
   role: 'luna',
@@ -46,8 +52,13 @@ function ActionPill({ label, onClick }: { label: string; onClick: () => void }) 
   );
 }
 
-export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; onNavigate: (r: Route) => void }) {
+export function LunaChat({ routeName, onNavigate, onNeedTokens }: {
+  routeName: Route['name'];
+  onNavigate: (r: Route) => void;
+  onNeedTokens?: (info: { balance: number; required: number }) => void;
+}) {
   const { language } = usePreferences();
+  const { session } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
@@ -66,8 +77,15 @@ export function LunaChat({ routeName, onNavigate }: { routeName: Route['name']; 
 
     let reply: Msg;
     try {
-      const r = await askLunaAI(q, routeName, history, language);
-      if (r.fallback || !r.text) {
+      const r = await askLunaAI({
+        message: q, routeName, history, lang: language,
+        orgId: session?.orgId ?? '', eventId: newId(),
+      });
+      if (r.needTokens) {
+        // Free quota exhausted + insufficient tokens → hand off to the upsell modal.
+        onNeedTokens?.(r.needTokens);
+        reply = { role: 'luna', text: "You've used your 3 free Luna messages for today. Top up tokens to keep chatting." };
+      } else if (r.fallback || !r.text) {
         const a = answerLuna(q, routeName);
         reply = { role: 'luna', text: a.text, actions: a.actions };
       } else {

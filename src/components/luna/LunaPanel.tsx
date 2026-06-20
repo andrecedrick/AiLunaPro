@@ -12,7 +12,11 @@ import type { Route } from '../../types/audit';
  * active, and a Help Center link. No LLM, no free text input, no PII.
  * Always dismissible (Esc / overlay / close); never blocks navigation.
  */
-export function LunaPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function LunaPanel({ open, onClose, onNeedTokens }: {
+  open: boolean;
+  onClose: () => void;
+  onNeedTokens?: (info: { balance: number; required: number }) => void;
+}) {
   const { route, navigate } = useRoute();
   const [mode, setMode] = useState<'guide' | 'ask'>('guide');
 
@@ -84,7 +88,7 @@ export function LunaPanel({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
 
         {mode === 'ask' ? (
-          <LunaChat routeName={route.name} onNavigate={go} />
+          <LunaChat routeName={route.name} onNavigate={go} onNeedTokens={onNeedTokens} />
         ) : (
         <>
         {/* Where you are */}

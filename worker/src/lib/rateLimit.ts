@@ -99,3 +99,39 @@ export async function checkDailyCap(
     return { ok: true };
   }
 }
+
+/**
+ * Read-only today's count for a key (UTC day). Returns 0 on a new day, missing
+ * doc, or any error (fail-generous — the caller treats it as "still has free
+ * quota"). Pair with incrDailyCount to commit only after the metered action
+ * actually succeeds (so failed/fallback calls never consume the free quota).
+ */
+export async function getDailyCount(saJson: string, bucket: string, key: string): Promise<number> {
+  let h: string;
+  try { h = await hashIp(key); } catch { return 0; }
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    const meta = await firestoreGetWithMeta(saJson, `public_rate_limits/${bucket}__${h}`);
+    const d = meta?.data as { day?: string; count?: number } | undefined;
+    return (d?.day === day && typeof d.count === 'number') ? d.count : 0;
+  } catch (err) {
+    console.warn('[rateLimit] getDailyCount failed, returning 0:', err);
+    return 0;
+  }
+}
+
+/** Increment today's count for a key by 1 (best-effort; resets on a new day). */
+export async function incrDailyCount(saJson: string, bucket: string, key: string): Promise<void> {
+  let h: string;
+  try { h = await hashIp(key); } catch { return; }
+  const day  = new Date().toISOString().slice(0, 10);
+  const path = `public_rate_limits/${bucket}__${h}`;
+  try {
+    const meta = await firestoreGetWithMeta(saJson, path);
+    const d = meta?.data as { day?: string; count?: number } | undefined;
+    const count = (d?.day === day && typeof d.count === 'number') ? d.count : 0;
+    await firestoreSet(saJson, path, { day, count: count + 1, updatedAt: new Date().toISOString() }, { merge: false });
+  } catch (err) {
+    console.warn('[rateLimit] incrDailyCount failed:', err);
+  }
+}

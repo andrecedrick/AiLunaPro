@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { LunaPanel } from '../luna/LunaPanel';
 import { SupportModal } from '../support/SupportModal';
+import { InsufficientTokensModal } from '../tokens/InsufficientTokensModal';
 import { TokenBadge } from '../tokens/TokenBadge';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
@@ -47,6 +48,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const [notifOpen, setNotifOpen] = useState(false);
   const [lunaOpen,  setLunaOpen]  = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [lunaTokens, setLunaTokens] = useState<{ balance: number; required: number } | null>(null);
   const [search, setSearch] = useState('');
 
   const dateRef = useRef<HTMLDivElement>(null);
@@ -312,7 +314,20 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
       >
         <span aria-hidden>✨</span> {T.topbar.luna.label}
       </button>
-      <LunaPanel open={lunaOpen} onClose={() => setLunaOpen(false)} />
+      <LunaPanel
+        open={lunaOpen}
+        onClose={() => setLunaOpen(false)}
+        onNeedTokens={(info) => { setLunaOpen(false); setLunaTokens(info); }}
+      />
+      {lunaTokens && (
+        <InsufficientTokensModal
+          open
+          onClose={() => setLunaTokens(null)}
+          balance={lunaTokens.balance}
+          required={lunaTokens.required}
+          actionLabel={T.topbar.luna.label}
+        />
+      )}
 
       <ThemeToggle />
 

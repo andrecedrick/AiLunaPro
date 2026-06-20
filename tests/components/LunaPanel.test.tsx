@@ -9,6 +9,7 @@ let mockRoute: { name: string } = { name: 'registry' };
 const navigate = vi.fn();
 vi.mock('../../src/context/RouteContext', () => ({ useRoute: () => ({ route: mockRoute, navigate }) }));
 vi.mock('../../src/context/PreferencesContext', () => ({ usePreferences: () => ({ language: 'en' }) }));
+vi.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ session: { orgId: 'o1' } }) }));
 
 import { LunaPanel } from '../../src/components/luna/LunaPanel';
 import { getLunaGuidance } from '../../src/lib/luna/guidance';

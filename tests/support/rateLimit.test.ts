@@ -15,7 +15,7 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
   firestoreSet: setSpy,
 }));
 
-import { checkCooldown, checkDailyCap } from '../../worker/src/lib/rateLimit';
+import { checkCooldown, checkDailyCap, getDailyCount, incrDailyCount } from '../../worker/src/lib/rateLimit';
 
 beforeEach(() => { vi.clearAllMocks(); });
 
@@ -91,5 +91,29 @@ describe('checkDailyCap', () => {
     getMeta.mockRejectedValue(new Error('down'));
     const r = await checkDailyCap('sa', 'luna_day', 'uid-1', 100);
     expect(r.ok).toBe(true);
+  });
+});
+
+describe('getDailyCount / incrDailyCount (free-quota split)', () => {
+  it('reads today\'s count, 0 on a new day / missing / error', async () => {
+    getMeta.mockResolvedValueOnce({ data: { day: TODAY, count: 2 } });
+    expect(await getDailyCount('sa', 'luna_free', 'uid-1')).toBe(2);
+    getMeta.mockResolvedValueOnce({ data: { day: '2000-01-01', count: 9 } });
+    expect(await getDailyCount('sa', 'luna_free', 'uid-1')).toBe(0);
+    getMeta.mockResolvedValueOnce(null);
+    expect(await getDailyCount('sa', 'luna_free', 'uid-1')).toBe(0);
+    getMeta.mockRejectedValueOnce(new Error('down'));
+    expect(await getDailyCount('sa', 'luna_free', 'uid-1')).toBe(0);
+  });
+
+  it('increments today\'s count (resets on a new day)', async () => {
+    getMeta.mockResolvedValueOnce({ data: { day: TODAY, count: 2 } });
+    await incrDailyCount('sa', 'luna_free', 'uid-1');
+    expect(setSpy.mock.calls[0][2]).toMatchObject({ day: TODAY, count: 3 });
+
+    setSpy.mockClear();
+    getMeta.mockResolvedValueOnce({ data: { day: '2000-01-01', count: 9 } });
+    await incrDailyCount('sa', 'luna_free', 'uid-1');
+    expect(setSpy.mock.calls[0][2]).toMatchObject({ day: TODAY, count: 1 });
   });
 });
