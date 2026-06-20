@@ -487,8 +487,14 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const slugLang = PDF_LANGS.has(baseLocale)
     ? baseLocale
     : countryToLang(c.req.header('CF-IPCountry'));
+  // FIX 2 — Accept / Discuss deep-links into the app (the user completes the
+  // action in-UI). Deliberately NOT a mutate-on-GET link, so an email scanner
+  // that prefetches the URL can never accidentally accept a proposal.
+  const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
   const variables: Record<string, string> = {
     QUOTE_TITLE:  render.docTitle,
+    ACCEPT_URL:   `${appBase}/#/quote?action=accept&src=email`,
+    DISCUSS_URL:  `${appBase}/#/quote?action=discuss&src=email`,
     SOLUTION:     render.solutionLabel,
     RANGE:        render.rangeText,
     NEG_INITIAL:  render.negInitial,

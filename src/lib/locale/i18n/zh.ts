@@ -2494,7 +2494,7 @@ export const zh: Dict = {
         "goalsLabel": "常见目标 — 选择适用项",
         "detailsLabel": "还有其他需求吗？（可选）",
         "detailsPlaceholder": "补充细节：需集成的工具、时间安排、必备功能……请勿填写机密或个人数据。",
-        "paymentNote": "对于定制项目，通常按发票通过银行转账付款——应用内没有自动计费。此估算仅供参考，不具合同约束力。",
+        "paymentNote": "对于定制项目，通常按发票通过银行转账付款。项目确认后将生成最终发票。此估算仅供参考，不具合同约束力。",
         "selectError": "请至少选择一个目标或添加简短描述。",
         "suggestions": {
           "support": "自动化客户支持",
@@ -2567,7 +2567,17 @@ export const zh: Dict = {
           "ops": "AI 智能体与自动化项目额外增加 {min}–{max}% 的运营成本（令牌、基础设施）。"
         }
       },
+      "flow": {
+        "heading": "工作流程",
+        "s1": "接受方案",
+        "s2": "我们确认最终金额",
+        "s3": "您收到发票",
+        "s4": "您完成付款"
+      },
       "decision": {
+        "invoiceDraftTitle": "发票已创建（草稿）",
+        "invoiceStatusDraft": "草稿",
+        "invoiceWaiting": "我们将确认最终金额，然后向您发送发票。",
         "adjustHeading": "想要调整或讨论此报价吗？",
         "messagePlaceholder": "添加留言 — 您希望调整什么？",
         "messageSend": "发送请求",

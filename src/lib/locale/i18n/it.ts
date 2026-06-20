@@ -2492,7 +2492,7 @@ export const it: Dict = {
         "goalsLabel": "Obiettivi comuni — seleziona quelli pertinenti",
         "detailsLabel": "Altro? (facoltativo)",
         "detailsPlaceholder": "Aggiungi dettagli: strumenti da integrare, tempistiche, requisiti irrinunciabili… Non includere dati riservati o personali.",
-        "paymentNote": "Per i progetti su misura, il pagamento avviene di norma tramite bonifico bancario dietro fattura: non è prevista la fatturazione automatica nell'app. Questa stima è indicativa e non contrattuale.",
+        "paymentNote": "Per i progetti su misura, il pagamento avviene di norma tramite bonifico bancario dietro fattura. Una fattura finale verrà generata dopo la validazione del progetto. Questa stima è indicativa e non contrattuale.",
         "selectError": "Seleziona almeno un obiettivo o aggiungi una breve descrizione.",
         "suggestions": {
           "support": "Automatizzare l'assistenza clienti",
@@ -2565,7 +2565,17 @@ export const it: Dict = {
           "ops": "I progetti di agenti IA e automazione aggiungono il {min}–{max}% di costi operativi (token, infrastruttura)."
         }
       },
+      "flow": {
+        "heading": "Come funziona",
+        "s1": "Accetta la proposta",
+        "s2": "Confermiamo l'importo finale",
+        "s3": "Ricevi la tua fattura",
+        "s4": "Effettui il pagamento"
+      },
       "decision": {
+        "invoiceDraftTitle": "Fattura creata (bozza)",
+        "invoiceStatusDraft": "Bozza",
+        "invoiceWaiting": "Confermeremo l'importo finale e poi ti invieremo la fattura.",
         "adjustHeading": "Vuoi modificare o discutere questo preventivo?",
         "messagePlaceholder": "Aggiungi un messaggio — cosa vorresti modificare?",
         "messageSend": "Invia richiesta",

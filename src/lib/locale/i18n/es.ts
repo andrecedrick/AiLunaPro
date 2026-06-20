@@ -2492,7 +2492,7 @@ export const es: Dict = {
         "goalsLabel": "Objetivos habituales — selecciona los que apliquen",
         "detailsLabel": "¿Algo más? (opcional)",
         "detailsPlaceholder": "Añade detalles: herramientas a integrar, plazos, imprescindibles… No incluyas datos confidenciales ni personales.",
-        "paymentNote": "En los proyectos a medida, el pago suele realizarse por transferencia bancaria contra factura: no hay facturación automática en la app. Esta estimación es indicativa y no contractual.",
+        "paymentNote": "En los proyectos a medida, el pago suele realizarse por transferencia bancaria contra factura. Se generará una factura final tras la validación del proyecto. Esta estimación es indicativa y no contractual.",
         "selectError": "Selecciona al menos un objetivo o añade una breve descripción.",
         "suggestions": {
           "support": "Automatizar la atención al cliente",
@@ -2565,7 +2565,17 @@ export const es: Dict = {
           "ops": "Los proyectos de agentes de IA y automatización añaden un {min}–{max}% de costes operativos (tokens, infraestructura)."
         }
       },
+      "flow": {
+        "heading": "Cómo funciona",
+        "s1": "Acepta la propuesta",
+        "s2": "Confirmamos el importe final",
+        "s3": "Recibes tu factura",
+        "s4": "Realizas el pago"
+      },
       "decision": {
+        "invoiceDraftTitle": "Factura creada (borrador)",
+        "invoiceStatusDraft": "Borrador",
+        "invoiceWaiting": "Confirmaremos el importe final y luego te enviaremos tu factura.",
         "adjustHeading": "¿Quieres ajustar o comentar este presupuesto?",
         "messagePlaceholder": "Añade un mensaje — ¿qué te gustaría ajustar?",
         "messageSend": "Enviar solicitud",

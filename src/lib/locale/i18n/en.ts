@@ -2507,7 +2507,7 @@ export const en = {
         "goalsLabel": "Common goals — select any that apply",
         "detailsLabel": "Anything else? (optional)",
         "detailsPlaceholder": "Add specifics: tools to integrate, timeline, must-haves… Please don't include confidential or personal data.",
-        "paymentNote": "For custom projects, payment is typically made by bank transfer (wire) against an invoice — there is no automated in-app billing. This estimate is indicative and non-contractual.",
+        "paymentNote": "For custom projects, payment is typically made by bank transfer (wire) against an invoice. A final invoice will be generated after project validation. This estimate is indicative and non-contractual.",
         "selectError": "Select at least one goal or add a short description.",
         "suggestions": {
           "support": "Automate customer support",
@@ -2580,7 +2580,17 @@ export const en = {
           "ops": "AI agent & automation projects add {min}–{max}% in operating costs (tokens, infrastructure)."
         }
       },
+      "flow": {
+        "heading": "How it works",
+        "s1": "Accept the proposal",
+        "s2": "We confirm the final amount",
+        "s3": "You receive your invoice",
+        "s4": "You complete the payment"
+      },
       "decision": {
+        "invoiceDraftTitle": "Invoice created (draft)",
+        "invoiceStatusDraft": "Draft",
+        "invoiceWaiting": "We'll confirm the final amount, then send your invoice.",
         "adjustHeading": "Want to adjust or discuss this quote?",
         "messagePlaceholder": "Add a message — what would you like to adjust?",
         "messageSend": "Send request",

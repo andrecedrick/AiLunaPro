@@ -527,9 +527,19 @@ export function QuoteRequestPage() {
                   {/* U2 — your budget + decision (accept / discuss) */}
                   <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)', textAlign: 'center' }}>
                     {(decisionState === 'accepted' || decisionState === 'discussion') ? (
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>
-                        {decisionState === 'accepted' ? Q.decision.accepted : Q.decision.discussionSent}
-                      </div>
+                      decisionState === 'discussion' ? (
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>{Q.decision.discussionSent}</div>
+                      ) : (
+                        /* FIX 4 — a draft invoice is opened on accept (no payment, no amount yet) */
+                        <div style={{ maxWidth: 360, margin: '0 auto', textAlign: 'left', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>{Q.decision.invoiceDraftTitle}</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--violet-text)', background: 'rgba(124,58,237,0.10)', borderRadius: 999, padding: '3px 10px' }}>{Q.decision.invoiceStatusDraft}</span>
+                          </div>
+                          {negInitialText && <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>{negInitialText}</div>}
+                          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>{Q.decision.invoiceWaiting}</div>
+                        </div>
+                      )
                     ) : (
                       <>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>{Q.decision.adjustHeading}</div>
@@ -559,6 +569,19 @@ export function QuoteRequestPage() {
                         {decisionState === 'error' && <div style={{ marginTop: 8, color: 'var(--red-text)', fontSize: 12 }}>{Q.decision.error}</div>}
                       </>
                     )}
+                  </div>
+
+                  {/* FIX 5 — explain the quote → invoice → payment flow */}
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: 10, textAlign: 'center' }}>{Q.flow.heading}</div>
+                    <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8, maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
+                      {[Q.flow.s1, Q.flow.s2, Q.flow.s3, Q.flow.s4].map((s, i) => (
+                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+                          <span style={{ flex: '0 0 auto', width: 20, height: 20, borderRadius: 999, background: 'var(--violet)', color: '#fff', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ol>
                   </div>
 
                   {isAdmin && (

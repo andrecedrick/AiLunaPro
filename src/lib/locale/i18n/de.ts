@@ -2492,7 +2492,7 @@ export const de: Dict = {
         "goalsLabel": "Häufige Ziele — wählen Sie passende aus",
         "detailsLabel": "Sonst noch etwas? (optional)",
         "detailsPlaceholder": "Ergänzen Sie Details: zu integrierende Tools, Zeitrahmen, Must-haves… Bitte keine vertraulichen oder personenbezogenen Daten angeben.",
-        "paymentNote": "Bei individuellen Projekten erfolgt die Zahlung in der Regel per Banküberweisung gegen Rechnung — es gibt keine automatische In-App-Abrechnung. Diese Schätzung ist unverbindlich und nicht vertraglich.",
+        "paymentNote": "Bei individuellen Projekten erfolgt die Zahlung in der Regel per Banküberweisung gegen Rechnung. Nach der Projektfreigabe wird eine finale Rechnung erstellt. Diese Schätzung ist unverbindlich und nicht vertraglich.",
         "selectError": "Wählen Sie mindestens ein Ziel oder fügen Sie eine kurze Beschreibung hinzu.",
         "suggestions": {
           "support": "Kundensupport automatisieren",
@@ -2565,7 +2565,17 @@ export const de: Dict = {
           "ops": "KI-Agenten- und Automatisierungsprojekte verursachen zusätzlich {min}–{max}% Betriebskosten (Tokens, Infrastruktur)."
         }
       },
+      "flow": {
+        "heading": "So funktioniert es",
+        "s1": "Angebot annehmen",
+        "s2": "Wir bestätigen den Endbetrag",
+        "s3": "Sie erhalten Ihre Rechnung",
+        "s4": "Sie führen die Zahlung aus"
+      },
       "decision": {
+        "invoiceDraftTitle": "Rechnung erstellt (Entwurf)",
+        "invoiceStatusDraft": "Entwurf",
+        "invoiceWaiting": "Wir bestätigen den Endbetrag und senden Ihnen dann Ihre Rechnung.",
         "adjustHeading": "Möchten Sie dieses Angebot anpassen oder besprechen?",
         "messagePlaceholder": "Fügen Sie eine Nachricht hinzu — was möchten Sie anpassen?",
         "messageSend": "Anfrage senden",

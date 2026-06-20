@@ -2492,7 +2492,7 @@ export const fr: Dict = {
         "goalsLabel": "Objectifs courants — sélectionnez ceux qui s'appliquent",
         "detailsLabel": "Autre chose ? (facultatif)",
         "detailsPlaceholder": "Ajoutez des précisions : outils à intégrer, calendrier, incontournables… Merci de ne pas inclure de données confidentielles ou personnelles.",
-        "paymentNote": "Pour les projets sur mesure, le paiement se fait généralement par virement bancaire sur facture — il n'y a pas de facturation automatisée dans l'application. Cette estimation est indicative et non contractuelle.",
+        "paymentNote": "Pour les projets sur mesure, le paiement se fait généralement par virement bancaire sur facture. Une facture finale sera générée après validation du projet. Cette estimation est indicative et non contractuelle.",
         "selectError": "Sélectionnez au moins un objectif ou ajoutez une brève description.",
         "suggestions": {
           "support": "Automatiser le support client",
@@ -2565,7 +2565,17 @@ export const fr: Dict = {
           "ops": "Les projets d'agents IA et d'automatisation ajoutent {min}–{max}% de coûts d'exploitation (tokens, infrastructure)."
         }
       },
+      "flow": {
+        "heading": "Comment ça marche",
+        "s1": "Acceptez la proposition",
+        "s2": "Nous confirmons le montant final",
+        "s3": "Vous recevez votre facture",
+        "s4": "Vous effectuez le paiement"
+      },
       "decision": {
+        "invoiceDraftTitle": "Facture créée (brouillon)",
+        "invoiceStatusDraft": "Brouillon",
+        "invoiceWaiting": "Nous confirmerons le montant final, puis vous enverrons votre facture.",
         "adjustHeading": "Vous souhaitez ajuster ou discuter ce devis ?",
         "messagePlaceholder": "Ajoutez un message — que souhaitez-vous ajuster ?",
         "messageSend": "Envoyer la demande",
