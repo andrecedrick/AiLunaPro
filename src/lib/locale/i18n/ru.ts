@@ -2200,6 +2200,26 @@ export const ru: Dict = {
       }
     }
   },
+  feedback: {
+    "title": "Как впечатления?",
+    "satisfactionLabel": "Оцените ваш опыт",
+    "sat1": "Очень плохо",
+    "sat2": "Плохо",
+    "sat3": "Нормально",
+    "sat4": "Хорошо",
+    "sat5": "Отлично",
+    "difficultyLabel": "Было удобно пользоваться?",
+    "diffEasy": "Легко",
+    "diffOk": "Нормально",
+    "diffHard": "Сложно",
+    "blockerLabel": "Что помешало вам продолжить?",
+    "blockerPlaceholder": "Необязательно — расскажите, что помешало",
+    "suggestionLabel": "Что можно улучшить?",
+    "suggestionPlaceholder": "Необязательно",
+    "submit": "Отправить",
+    "success": "Спасибо — мы читаем каждый отзыв.",
+    "dismissAria": "Закрыть отзыв"
+  },
   publicTools: {
     "diagnostic": {
       "header": {

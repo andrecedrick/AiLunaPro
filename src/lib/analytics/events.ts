@@ -20,6 +20,8 @@ export type Flow = 'quote' | 'roi' | 'diagnostic';
 export type BudgetVerdict = 'below' | 'within' | 'above';
 /** U2 client pricing decision. */
 export type QuoteDecision = 'accepted' | 'discussion';
+/** S1 — which tool result a feedback submission came from. */
+export type FeedbackSource = 'quote' | 'diagnostic' | 'roi' | 'audit';
 
 /** Acquisition tag (?src) — added to every funnel event for attribution. */
 type Src = { src?: string };
@@ -38,6 +40,10 @@ export interface EventMap {
   quote_emailed:        { flow: 'quote'; emailed: boolean } & Src;
   quote_budget_entered: { flow: 'quote'; verdict: BudgetVerdict } & Src;
   quote_decision:       { flow: 'quote'; decision: QuoteDecision } & Src;
+  // S1 — feedback. NO free-text / PII in events; the blocker/suggestion text is
+  // stored server-side only. satisfaction is a 1–5 rating (not PII).
+  feedback_submitted:   { source: FeedbackSource; satisfaction: number } & Src;
+  feedback_dismissed:   { source: FeedbackSource } & Src;
 }
 
 /** All registered event names (for tests / reference). */

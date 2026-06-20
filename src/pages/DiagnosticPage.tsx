@@ -26,6 +26,7 @@ import { track } from '../lib/analytics/track';
 import { captureSrc, getSrc, withSrc } from '../lib/analytics/srcParam';
 import { computeDiagnosticPreview, type DiagnosticPreview } from '../lib/diagnostic/score';
 import { fieldsetStyle, legendStyle, inputStyle } from '../components/ui-tools';
+import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
@@ -530,6 +531,8 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
           {T.publicTools.diagnostic.result.retakeButton}
         </button>
       </div>
+
+      <FeedbackPrompt source="diagnostic" />
     </div>
   );
 }

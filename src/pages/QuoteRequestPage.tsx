@@ -29,6 +29,7 @@ import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/qu
 import { convertToUsd } from '../lib/currency/fxSnapshot';
 import { generateQuote, downloadQuotePdf, emailQuote, overrideQuotePrice, recordDecision, QuoteGenError } from '../lib/quote/quoteClient';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
+import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
 import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnStyle, sectionTitleStyle, listStyle, Field } from '../components/ui-tools';
 import { usePreferences } from '../context/PreferencesContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
@@ -484,6 +485,7 @@ export function QuoteRequestPage() {
 
             {isAuthenticated ? (
               generated ? (
+                <>
                 <div id="quote-generated" style={{ marginTop: 22, padding: 20, borderRadius: 14, background: 'var(--green-soft-bg, #ecfdf5)', border: '1px solid var(--green-text, #059669)' }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center', marginBottom: 12 }}>{Q.generate.success}</div>
 
@@ -558,6 +560,8 @@ export function QuoteRequestPage() {
                     </div>
                   )}
                 </div>
+                <FeedbackPrompt source="quote" />
+                </>
               ) : (
                 <div style={{ marginTop: 22, textAlign: 'center' }}>
                   <button

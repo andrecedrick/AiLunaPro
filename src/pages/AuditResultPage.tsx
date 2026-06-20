@@ -22,6 +22,7 @@ import { Disclaimer } from '../components/result/Disclaimer';
 import { AssistanceTeaser } from '../components/result/AssistanceTeaser';
 import { ResultActions } from '../components/result/ResultActions';
 import { PostResultTools } from '../components/result/PostResultTools';
+import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
 import { JourneyNext } from '../components/journey/JourneyNext';
 
 /**
@@ -154,6 +155,8 @@ export function AuditResultPage() {
       {/* Change B: subtle post-result re-engagement with the quick tools (below the
           primary actions so it never competes with them). */}
       <PostResultTools />
+
+      <FeedbackPrompt source="audit" />
     </div>
   );
 }

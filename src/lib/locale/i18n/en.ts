@@ -2214,6 +2214,26 @@ export const en = {
       }
     }
   },
+  feedback: {
+    "title": "How was this experience?",
+    "satisfactionLabel": "Rate your experience",
+    "sat1": "Very poor",
+    "sat2": "Poor",
+    "sat3": "Okay",
+    "sat4": "Good",
+    "sat5": "Excellent",
+    "difficultyLabel": "How easy was it to use?",
+    "diffEasy": "Easy",
+    "diffOk": "Okay",
+    "diffHard": "Hard",
+    "blockerLabel": "What prevented you from going further?",
+    "blockerPlaceholder": "Optional — tell us what got in the way",
+    "suggestionLabel": "Anything we could improve?",
+    "suggestionPlaceholder": "Optional",
+    "submit": "Send feedback",
+    "success": "Thanks — we read every note.",
+    "dismissAria": "Dismiss feedback"
+  },
   publicTools: {
     "diagnostic": {
       "header": {

@@ -2201,6 +2201,26 @@ export const zh: Dict = {
       }
     }
   },
+  feedback: {
+    "title": "这次体验如何？",
+    "satisfactionLabel": "为你的体验评分",
+    "sat1": "很差",
+    "sat2": "较差",
+    "sat3": "一般",
+    "sat4": "不错",
+    "sat5": "很好",
+    "difficultyLabel": "使用起来容易吗？",
+    "diffEasy": "容易",
+    "diffOk": "一般",
+    "diffHard": "困难",
+    "blockerLabel": "是什么让你没能继续？",
+    "blockerPlaceholder": "选填——告诉我们遇到了什么问题",
+    "suggestionLabel": "有什么可以改进的吗？",
+    "suggestionPlaceholder": "选填",
+    "submit": "提交",
+    "success": "谢谢——我们会认真阅读每条反馈。",
+    "dismissAria": "关闭反馈"
+  },
   publicTools: {
     "diagnostic": {
       "header": {

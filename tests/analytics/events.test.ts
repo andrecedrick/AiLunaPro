@@ -66,3 +66,19 @@ describe('analytics/events — F1 quote funnel registry', () => {
     ]);
   });
 });
+
+describe('analytics/events — S1 feedback', () => {
+  it('forwards feedback events carrying only source / satisfaction / src (no free text)', () => {
+    emit('feedback_submitted', { source: 'quote', satisfaction: 5, src: 'seo' });
+    emit('feedback_dismissed', { source: 'audit', src: 'seo' });
+    expect(trackSpy).toHaveBeenCalledWith('feedback_submitted', { source: 'quote', satisfaction: 5, src: 'seo' });
+    expect(trackSpy).toHaveBeenCalledWith('feedback_dismissed', { source: 'audit', src: 'seo' });
+    const allowed = new Set(['source', 'satisfaction', 'src']);
+    for (const [, props] of trackSpy.mock.calls as [string, Record<string, unknown>][]) {
+      for (const k of Object.keys(props ?? {})) {
+        expect(allowed.has(k), `feedback payload key ${k}`).toBe(true);
+        expect(['blocker', 'suggestion', 'text', 'email']).not.toContain(k);
+      }
+    }
+  });
+});

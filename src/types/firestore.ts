@@ -555,3 +555,28 @@ export interface ActivityLog {
   changes?: Record<string, { before: unknown; after: unknown }>;
   createdAt: Date;
 }
+
+/**
+ * /public_feedback/{id}                            ← S1 (User feedback)
+ *
+ * Anonymous, no-PII product feedback captured after a tool result. Worker-only
+ * writes (service account); client rules deny all access. NEVER carries uid /
+ * email / organizationId — anonymous even when submitted from an authenticated
+ * surface. 90-day retention via expiresAt (Firestore TTL).
+ */
+export interface PublicFeedback {
+  id: string;
+  source: 'quote' | 'diagnostic' | 'roi' | 'audit';
+  /** Satisfaction rating, integer 1–5. */
+  satisfaction: number;
+  difficulty: 'easy' | 'ok' | 'hard' | null;
+  /** Free-text answer to "What prevented you from going further?" (sanitised, ≤500). */
+  blocker: string | null;
+  /** Free-text improvement suggestion (sanitised, ≤500). */
+  suggestion: string | null;
+  cf: { country: string | null };
+  schemaVersion: number;
+  createdAt: Date;
+  /** 90-day TTL. */
+  expiresAt?: Date;
+}

@@ -2199,6 +2199,26 @@ export const fr: Dict = {
       }
     }
   },
+  feedback: {
+    "title": "Comment s'est passée cette expérience ?",
+    "satisfactionLabel": "Évaluez votre expérience",
+    "sat1": "Très insatisfait",
+    "sat2": "Insatisfait",
+    "sat3": "Correct",
+    "sat4": "Satisfait",
+    "sat5": "Excellent",
+    "difficultyLabel": "Était-ce facile à utiliser ?",
+    "diffEasy": "Facile",
+    "diffOk": "Correct",
+    "diffHard": "Difficile",
+    "blockerLabel": "Qu'est-ce qui vous a empêché d'aller plus loin ?",
+    "blockerPlaceholder": "Facultatif — dites-nous ce qui a bloqué",
+    "suggestionLabel": "Quelque chose à améliorer ?",
+    "suggestionPlaceholder": "Facultatif",
+    "submit": "Envoyer",
+    "success": "Merci — nous lisons chaque retour.",
+    "dismissAria": "Fermer le retour"
+  },
   publicTools: {
     "diagnostic": {
       "header": {

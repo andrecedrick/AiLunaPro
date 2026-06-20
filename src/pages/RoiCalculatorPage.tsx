@@ -28,6 +28,7 @@ import { track } from '../lib/analytics/track';
 import { captureSrc, getSrc, withSrc } from '../lib/analytics/srcParam';
 import { computeRoiPreview, type RoiPreview } from '../lib/roi/score';
 import { fieldsetStyle, legendStyle, inputStyle, Field, Stat } from '../components/ui-tools';
+import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
 
 const AFFILIATE_URL = 'https://dashboard.ailunapro.com/register?aff=P60NPGHAAFGD';
 
@@ -549,6 +550,8 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
           {T.publicTools.roi.result.rerunButton}
         </button>
       </div>
+
+      <FeedbackPrompt source="roi" />
     </div>
   );
 }

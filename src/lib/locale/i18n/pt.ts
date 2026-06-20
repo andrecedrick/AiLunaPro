@@ -2199,6 +2199,26 @@ export const pt: Dict = {
       }
     }
   },
+  feedback: {
+    "title": "Como foi esta experiência?",
+    "satisfactionLabel": "Avalie a sua experiência",
+    "sat1": "Muito má",
+    "sat2": "Má",
+    "sat3": "Razoável",
+    "sat4": "Boa",
+    "sat5": "Excelente",
+    "difficultyLabel": "Foi fácil de usar?",
+    "diffEasy": "Fácil",
+    "diffOk": "Razoável",
+    "diffHard": "Difícil",
+    "blockerLabel": "O que o impediu de avançar?",
+    "blockerPlaceholder": "Opcional — diga-nos o que o bloqueou",
+    "suggestionLabel": "Há algo que possamos melhorar?",
+    "suggestionPlaceholder": "Opcional",
+    "submit": "Enviar",
+    "success": "Obrigado — lemos cada comentário.",
+    "dismissAria": "Fechar comentário"
+  },
   publicTools: {
     "diagnostic": {
       "header": {

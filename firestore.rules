@@ -161,6 +161,21 @@ service cloud.firestore {
 
 
     // ─────────────────────────────────────────────────────────────────────────
+    // /public_feedback/{id}                ← S1 (User feedback)
+    //
+    // Anonymous, no-PII product feedback (satisfaction / difficulty / blocker /
+    // suggestion) captured after a tool result. Worker is the only writer
+    // (service account bypasses rules). Closed to all client-side access.
+    // 90-day retention via doc.expiresAt; TTL deletion handled separately.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /public_feedback/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
     // /users/{userId}
     //
     // User profiles, created on first sign-in.
