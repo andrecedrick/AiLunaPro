@@ -42,7 +42,7 @@ describe('LunaChat (S3 Phase 2)', () => {
     expect(onNavigate).toHaveBeenCalledWith({ name: 'audit/new' });
   });
 
-  it('on 402 (needTokens) calls onNeedTokens and shows the free-limit message', async () => {
+  it('on 402 (needTokens) shows an in-chat upsell; the CTA opens the token modal', async () => {
     askLunaAI.mockResolvedValue({ needTokens: { balance: 10, required: 50 } });
     const onNeedTokens = vi.fn();
     render(<LunaChat routeName="dashboard" onNavigate={vi.fn()} onNeedTokens={onNeedTokens} />);
@@ -50,7 +50,10 @@ describe('LunaChat (S3 Phase 2)', () => {
     fireEvent.change(screen.getByLabelText('Ask Luna'), { target: { value: 'tell me more' } });
     fireEvent.click(screen.getByLabelText('Send'));
 
-    expect(await screen.findByText(/free Luna messages/i)).toBeTruthy();
+    // Clear in-chat upsell (cost + balance); the modal opens only on the CTA click.
+    expect(await screen.findByText(/Luna messages today/i)).toBeTruthy();
+    expect(onNeedTokens).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText(/Get more tokens/));
     expect(onNeedTokens).toHaveBeenCalledWith({ balance: 10, required: 50 });
   });
 

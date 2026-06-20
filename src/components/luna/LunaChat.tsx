@@ -17,7 +17,7 @@ import { RichText } from '../RichText';
 import type { LunaAction } from '../../lib/luna/guidance';
 import type { Route } from '../../types/audit';
 
-interface Msg { role: 'user' | 'luna'; text: string; actions?: LunaAction[] }
+interface Msg { role: 'user' | 'luna'; text: string; actions?: LunaAction[]; upsell?: { balance: number; required: number } }
 
 /** Idempotency key per message (safe-retry token charge); jsdom-safe fallback. */
 function newId(): string {
@@ -30,19 +30,25 @@ const GREETING: Msg = {
   actions: [],
 };
 
-/** Action deep-link pill — design-system styled, with a subtle hover lift. */
-function ActionPill({ label, onClick }: { label: string; onClick: () => void }) {
+/** Action pill — design-system styled with a subtle hover lift. `primary` makes
+ *  it a filled CTA (used for the token upsell); otherwise an outline deep-link. */
+function ActionPill({ label, onClick, primary }: { label: string; onClick: () => void; primary?: boolean }) {
   const [hover, setHover] = useState(false);
+  const background = primary
+    ? (hover ? '#6d28d9' : 'var(--violet)')
+    : (hover ? 'var(--violet)' : 'rgba(124,58,237,0.06)');
+  const color = primary || hover ? '#fff' : 'var(--violet-text)';
   return (
     <button
       type="button" onClick={onClick}
       onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, marginRight: 8,
-        padding: '8px 14px', borderRadius: 999, cursor: 'pointer',
-        border: '1px solid var(--violet)', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 12.5,
-        background: hover ? 'var(--violet)' : 'rgba(124,58,237,0.06)',
-        color: hover ? '#fff' : 'var(--violet-text)',
+        padding: primary ? '9px 16px' : '8px 14px', borderRadius: 999, cursor: 'pointer',
+        border: primary ? 'none' : '1px solid var(--violet)',
+        fontFamily: 'var(--font-body)', fontWeight: primary ? 700 : 600, fontSize: 12.5,
+        background, color,
+        boxShadow: primary ? '0 4px 12px rgba(124,58,237,0.25)' : 'none',
         transform: hover ? 'translateY(-1px)' : 'none',
         transition: 'background 0.15s ease, color 0.15s ease, transform 0.15s ease',
       }}
@@ -82,9 +88,14 @@ export function LunaChat({ routeName, onNavigate, onNeedTokens }: {
         orgId: session?.orgId ?? '', eventId: newId(),
       });
       if (r.needTokens) {
-        // Free quota exhausted + insufficient tokens → hand off to the upsell modal.
-        onNeedTokens?.(r.needTokens);
-        reply = { role: 'luna', text: "You've used your 3 free Luna messages for today. Top up tokens to keep chatting." };
+        // Free quota exhausted + insufficient tokens → in-chat upsell bubble with a
+        // primary CTA (opens the token modal on click). Cost/balance bolded by RichText.
+        const { balance, required } = r.needTokens;
+        reply = {
+          role: 'luna',
+          text: `You've used your **3 free** Luna messages today. Each message now costs **${required} tokens** — your balance is **${balance}**. Top up to keep chatting with me.`,
+          upsell: r.needTokens,
+        };
       } else if (r.fallback || !r.text) {
         const a = answerLuna(q, routeName);
         reply = { role: 'luna', text: a.text, actions: a.actions };
@@ -124,6 +135,11 @@ export function LunaChat({ routeName, onNavigate, onNeedTokens }: {
                 {m.actions.map(a => (
                   <ActionPill key={a.label} label={a.label} onClick={() => onNavigate(a.route)} />
                 ))}
+              </div>
+            )}
+            {m.role === 'luna' && m.upsell && (
+              <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                <ActionPill primary label="Get more tokens" onClick={() => onNeedTokens?.(m.upsell!)} />
               </div>
             )}
           </div>
