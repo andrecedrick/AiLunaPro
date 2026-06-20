@@ -4,9 +4,11 @@
  *   POST /api/quote/generate
  *
  * Auth + org-membership + role gated (owner/admin/billing/member; client → 403).
- * Token-charged (consumeTokens 'quote.generation' = 50), deterministic estimate
- * (reuses scoreQuote from Q0), persisted under the org. No PDF, no email yet
- * (Q3/Q4). No Stripe change. No PII logging.
+ * Token-charged (consumeTokens 'quote.generation' = 150), deterministic estimate
+ * (reuses scoreQuote from Q0), persisted under the org. This module also serves
+ * the PDF, the localized email (Sequenzy), the accept/discuss decision, and the
+ * draft-invoice opened on accept. No payment / Stripe / charge beyond the
+ * generation token cost. No PII logging.
  *
  * Idempotency / no-double-charge:
  *   - Client sends a stable `quoteId` per estimate session.
