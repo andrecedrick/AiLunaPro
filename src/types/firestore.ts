@@ -580,3 +580,27 @@ export interface PublicFeedback {
   /** 90-day TTL. */
   expiresAt?: Date;
 }
+
+/**
+ * /support_tickets/{id}                            ← S2 (Support tickets)
+ *
+ * Structured issue reports (bug / question / billing). Hybrid auth: email is the
+ * verified token email when authenticated, else client-provided. Worker-only
+ * writes (service account); client rules deny all access. No PII beyond the
+ * submitter email. Separate from feedback + Luna by design.
+ */
+export interface SupportTicket {
+  id: string;
+  type: 'bug' | 'question' | 'billing';
+  /** Sanitised, ≤2000 chars. */
+  description: string;
+  email: string;
+  priority: 'low' | 'medium' | 'high' | null;
+  context: { route: string | null; locale: string | null; appVersion: string | null } | null;
+  /** Firebase UID when submitted by an authenticated user; null when anonymous. Opaque, not PII. */
+  uid: string | null;
+  cf: { country: string | null };
+  status: 'open';
+  schemaVersion: number;
+  createdAt: Date;
+}

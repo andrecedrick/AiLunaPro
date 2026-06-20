@@ -2201,6 +2201,31 @@ export const zh: Dict = {
       }
     }
   },
+  support: {
+    "cta": "联系支持",
+    "title": "联系支持",
+    "subtitle": "报告问题或提出疑问——我们会通过邮件回复。",
+    "typeLabel": "关于什么？",
+    "typeBug": "故障",
+    "typeQuestion": "问题",
+    "typeBilling": "账单",
+    "descriptionLabel": "描述一下",
+    "descriptionPlaceholder": "发生了什么？步骤、你的预期，以及任何有用的信息。",
+    "emailLabel": "邮箱",
+    "emailPlaceholder": "you@company.com",
+    "priorityLabel": "优先级",
+    "optional": "（选填）",
+    "prioLow": "低",
+    "prioMedium": "中",
+    "prioHigh": "高",
+    "submit": "发送",
+    "submitting": "发送中…",
+    "success": "谢谢——你的消息已发送，我们会通过邮件回复。",
+    "close": "关闭",
+    "errType": "请选择类型。",
+    "errDescription": "请描述问题。",
+    "errEmail": "请输入有效的邮箱。"
+  },
   feedback: {
     "title": "这次体验如何？",
     "satisfactionLabel": "为你的体验评分",

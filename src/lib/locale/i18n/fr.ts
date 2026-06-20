@@ -2199,6 +2199,31 @@ export const fr: Dict = {
       }
     }
   },
+  support: {
+    "cta": "Contacter le support",
+    "title": "Contacter le support",
+    "subtitle": "Signalez un problème ou posez une question — nous répondons par e-mail.",
+    "typeLabel": "De quoi s'agit-il ?",
+    "typeBug": "Bug",
+    "typeQuestion": "Question",
+    "typeBilling": "Facturation",
+    "descriptionLabel": "Décrivez",
+    "descriptionPlaceholder": "Que s'est-il passé ? Étapes, ce que vous attendiez, tout ce qui peut aider.",
+    "emailLabel": "E-mail",
+    "emailPlaceholder": "vous@entreprise.com",
+    "priorityLabel": "Priorité",
+    "optional": "(facultatif)",
+    "prioLow": "Basse",
+    "prioMedium": "Moyenne",
+    "prioHigh": "Haute",
+    "submit": "Envoyer",
+    "submitting": "Envoi…",
+    "success": "Merci — votre message a été envoyé. Nous répondrons par e-mail.",
+    "close": "Fermer",
+    "errType": "Veuillez choisir un type.",
+    "errDescription": "Veuillez décrire le problème.",
+    "errEmail": "Veuillez saisir un e-mail valide."
+  },
   feedback: {
     "title": "Comment s'est passée cette expérience ?",
     "satisfactionLabel": "Évaluez votre expérience",

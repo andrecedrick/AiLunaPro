@@ -2214,6 +2214,31 @@ export const en = {
       }
     }
   },
+  support: {
+    "cta": "Contact support",
+    "title": "Contact support",
+    "subtitle": "Report an issue or ask a question — we'll reply by email.",
+    "typeLabel": "What's this about?",
+    "typeBug": "Bug",
+    "typeQuestion": "Question",
+    "typeBilling": "Billing",
+    "descriptionLabel": "Describe it",
+    "descriptionPlaceholder": "What happened? Steps, what you expected, anything that helps.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@company.com",
+    "priorityLabel": "Priority",
+    "optional": "(optional)",
+    "prioLow": "Low",
+    "prioMedium": "Medium",
+    "prioHigh": "High",
+    "submit": "Send",
+    "submitting": "Sending…",
+    "success": "Thanks — your message was sent. We'll reply by email.",
+    "close": "Close",
+    "errType": "Please choose a type.",
+    "errDescription": "Please describe the issue.",
+    "errEmail": "Please enter a valid email."
+  },
   feedback: {
     "title": "How was this experience?",
     "satisfactionLabel": "Rate your experience",

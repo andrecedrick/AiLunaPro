@@ -176,6 +176,20 @@ service cloud.firestore {
 
 
     // ─────────────────────────────────────────────────────────────────────────
+    // /support_tickets/{id}                ← S2 (Support tickets)
+    //
+    // Structured issue reports (bug / question / billing), hybrid auth. Worker
+    // is the only writer (service account bypasses rules); client access is
+    // closed. No PII beyond the submitter email. Admin triage is backend-only.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    match /support_tickets/{id} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
     // /users/{userId}
     //
     // User profiles, created on first sign-in.

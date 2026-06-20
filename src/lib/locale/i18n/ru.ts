@@ -2200,6 +2200,31 @@ export const ru: Dict = {
       }
     }
   },
+  support: {
+    "cta": "Связаться с поддержкой",
+    "title": "Связаться с поддержкой",
+    "subtitle": "Сообщите о проблеме или задайте вопрос — мы ответим по электронной почте.",
+    "typeLabel": "О чём речь?",
+    "typeBug": "Ошибка",
+    "typeQuestion": "Вопрос",
+    "typeBilling": "Оплата",
+    "descriptionLabel": "Опишите",
+    "descriptionPlaceholder": "Что произошло? Шаги, что вы ожидали, любые полезные детали.",
+    "emailLabel": "Эл. почта",
+    "emailPlaceholder": "you@company.com",
+    "priorityLabel": "Приоритет",
+    "optional": "(необязательно)",
+    "prioLow": "Низкий",
+    "prioMedium": "Средний",
+    "prioHigh": "Высокий",
+    "submit": "Отправить",
+    "submitting": "Отправка…",
+    "success": "Спасибо — ваше сообщение отправлено. Мы ответим по эл. почте.",
+    "close": "Закрыть",
+    "errType": "Выберите тип.",
+    "errDescription": "Опишите проблему.",
+    "errEmail": "Введите корректный адрес эл. почты."
+  },
   feedback: {
     "title": "Как впечатления?",
     "satisfactionLabel": "Оцените ваш опыт",

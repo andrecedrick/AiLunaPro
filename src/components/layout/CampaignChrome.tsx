@@ -1,6 +1,8 @@
-import type { ReactNode, CSSProperties } from 'react';
+import { useState, type ReactNode, type CSSProperties } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRoute } from '../../context/RouteContext';
+import { useLocale } from '../../context/LocaleContext';
+import { SupportModal } from '../support/SupportModal';
 
 /**
  * B1 — minimal adaptive chrome for the public/chromeless campaign pages
@@ -13,6 +15,8 @@ const LOGO_URL = 'https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/
 export function CampaignChrome({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const { navigate } = useRoute();
+  const T = useLocale();
+  const [supportOpen, setSupportOpen] = useState(false);
   const authed = !!session;
 
   const link: CSSProperties = {
@@ -36,6 +40,7 @@ export function CampaignChrome({ children }: { children: ReactNode }) {
           <img src={LOGO_URL} alt="AiLunaPro" style={{ height: 26, width: 'auto' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <button type="button" style={{ ...link, color: 'var(--text-secondary)' }} onClick={() => setSupportOpen(true)}>{T.support.cta}</button>
           {authed ? (
             <button type="button" style={link} onClick={() => navigate({ name: 'dashboard' })}>← Back to app</button>
           ) : (
@@ -47,6 +52,7 @@ export function CampaignChrome({ children }: { children: ReactNode }) {
         </div>
       </header>
       {children}
+      {supportOpen && <SupportModal open onClose={() => setSupportOpen(false)} />}
     </div>
   );
 }

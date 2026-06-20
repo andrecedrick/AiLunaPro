@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { LunaPanel } from '../luna/LunaPanel';
+import { SupportModal } from '../support/SupportModal';
 import { TokenBadge } from '../tokens/TokenBadge';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
@@ -45,6 +46,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const [customTo,   setCustomTo]   = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
   const [lunaOpen,  setLunaOpen]  = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const dateRef = useRef<HTMLDivElement>(null);
@@ -275,6 +277,25 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
       </div>
 
       <TokenBadge />
+
+      {/* S2: Contact support — opens the support-ticket modal */}
+      <button
+        type="button"
+        onClick={() => setSupportOpen(true)}
+        aria-label={T.support.cta}
+        title={T.support.cta}
+        style={{
+          width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+          background: 'var(--input-bg)', border: '1px solid var(--input-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', color: 'var(--text-secondary)',
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </button>
+      {supportOpen && <SupportModal open onClose={() => setSupportOpen(false)} />}
 
       {/* B4: Luna AI Copilot — named, route-aware, rule-based guide */}
       <button

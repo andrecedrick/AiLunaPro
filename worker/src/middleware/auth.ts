@@ -89,3 +89,28 @@ export async function verifyIdToken(token: string | undefined, projectId: string
     return null;
   }
 }
+
+/**
+ * Like verifyIdToken but also returns the verified email claim. For hybrid
+ * routes (e.g. support tickets) that want the authenticated user's email
+ * server-side rather than trusting a client-supplied value. Never throws;
+ * returns null when missing/invalid.
+ */
+export async function verifyIdTokenClaims(
+  token: string | undefined,
+  projectId: string | undefined,
+): Promise<{ uid: string; email?: string } | null> {
+  if (!token || !projectId) return null;
+  try {
+    const { payload } = await jwtVerify(token, getJwks(), {
+      issuer:   `https://securetoken.google.com/${projectId}`,
+      audience: projectId,
+      algorithms: ['RS256'],
+    });
+    const uid = typeof payload.sub === 'string' ? payload.sub : '';
+    if (!uid) return null;
+    return { uid, email: typeof payload.email === 'string' ? payload.email : undefined };
+  } catch {
+    return null;
+  }
+}
