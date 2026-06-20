@@ -2522,6 +2522,8 @@ export const ru: Dict = {
         "pricingHeading": "Предполагаемые инвестиции"
       },
       "email": {
+        "clientLabel": "Email клиента (необязательно) — оставьте пустым, чтобы отправить себе",
+        "clientPlaceholder": "client@company.com",
         "button": "Отправить смету мне на e-mail",
         "sent": "Смета отправлена на вашу почту.",
         "error": "Не удалось отправить письмо. Повторите попытку."
@@ -2565,6 +2567,9 @@ export const ru: Dict = {
         }
       },
       "decision": {
+        "adjustHeading": "Хотите скорректировать или обсудить это предложение?",
+        "messagePlaceholder": "Добавьте сообщение — что бы вы хотели скорректировать?",
+        "messageSend": "Отправить запрос",
         "budgetLabel": "Ваш бюджет (необязательно)",
         "budgetPlaceholder": "напр. 50000",
         "verdictBelow": "Ваш бюджет ниже расчётного диапазона.",

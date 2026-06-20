@@ -31,6 +31,8 @@ import { consumeTokens } from '../lib/tokens';
 import { firestoreGet, firestoreSet, firestoreDelete } from '../lib/firestoreAdmin';
 import { buildQuotePdf, formatUsdRange, type QuotePdfInput } from '../lib/quote-pdf';
 import { sendTransactional } from '../lib/sequenzy';
+import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
+import { sanitizeText } from '../lib/support-shared';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import type { AppEnv } from '../index';
 
@@ -396,8 +398,12 @@ quote.post('/api/quote/:quoteId/override', requireAuth(), requireRole(OVERRIDE_R
 const EMAIL_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
 const PDF_LANGS = new Set(['en', 'fr', 'es', 'de', 'it', 'pt']);
 const SHARE_TTL = 14 * 24 * 3600; // 14 days
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Anti-abuse caps for the now-arbitrary-recipient email endpoint (B2).
+const EMAIL_COOLDOWN_MS = 15_000;
+const EMAIL_DAILY_CAP = 20;
 
-interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown }
+interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown; clientEmail?: unknown }
 
 quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -406,8 +412,8 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
 
   const orgId = c.get('orgId') as string;
-  const recipient = c.get('email') as string | undefined;
-  if (!recipient) return c.json({ error: 'No email on your account.', code: 'NO_EMAIL' }, 400);
+  const uid = c.get('uid') as string;
+  const tokenEmail = c.get('email') as string | undefined;
 
   const secret = env.AUDIT_SHARE_SECRET;
   if (!secret) return c.json({ error: 'Email links are not enabled.', code: 'SHARE_DISABLED' }, 503);
@@ -415,6 +421,15 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   let body: EmailBody;
   try { body = (await c.req.json()) as EmailBody; }
   catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  // B2 — optional client recipient. The user may send the quote to their client;
+  // if no valid client email is given, it goes to the caller's own token email.
+  // The verified token email is always the reply-to, so client replies reach the
+  // sender — and the client address is never trusted as the caller's identity.
+  const clientEmailRaw = typeof body.clientEmail === 'string' ? body.clientEmail.trim().toLowerCase().slice(0, 200) : '';
+  const clientEmail = clientEmailRaw && EMAIL_RE.test(clientEmailRaw) ? clientEmailRaw : '';
+  const recipient = clientEmail || tokenEmail;
+  if (!recipient) return c.json({ error: 'No email to send to.', code: 'NO_EMAIL' }, 400);
 
   const quoteId = safeId(body.quoteId);
   if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
@@ -439,6 +454,14 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   }
   if (!render) return c.json({ error: 'Generate the quote PDF first.', code: 'PDF_NOT_READY' }, 400);
 
+  // B2 anti-abuse: cap the per-user send rate so this endpoint can't be used to
+  // relay mail to arbitrary addresses. Both checks fail open on a store error so
+  // a legitimate send is never blocked by a flaky rate-limit store.
+  const cd = await checkCooldown(saJson, 'quote_email', uid, EMAIL_COOLDOWN_MS);
+  if (!cd.ok) return c.json({ error: 'Please wait a moment before sending another email.', code: 'RATE_LIMITED', retryAfterSec: cd.retryAfterSec }, 429);
+  const cap = await checkDailyCap(saJson, 'quote_email', uid, EMAIL_DAILY_CAP);
+  if (!cap.ok) return c.json({ error: 'Daily email limit reached. Please try again tomorrow.', code: 'DAILY_LIMIT' }, 429);
+
   const now = Math.floor(Date.now() / 1000);
   const { token } = await signShareToken(secret, orgId, quoteId, 1, SHARE_TTL, now);
   const pdfUrl = `${new URL(c.req.url).origin}/api/quote/shared/${token}`;
@@ -455,13 +478,14 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
     PDF_URL:      pdfUrl,
   };
 
-  const result = await sendTransactional(env.SEQUENZY_API_KEY, { to: recipient, slug: `quote-${slugLang}`, variables });
+  const result = await sendTransactional(env.SEQUENZY_API_KEY, { to: recipient, slug: `quote-${slugLang}`, variables, replyTo: tokenEmail });
 
   if (body.sendAdminCopy === true && env.ADMIN_EMAIL) {
     await sendTransactional(env.SEQUENZY_API_KEY, {
       to: env.ADMIN_EMAIL,
       slug: 'quote-admin',
       variables: { ...variables, CUSTOMER_EMAIL: recipient },
+      replyTo: tokenEmail,
     });
   }
 
@@ -525,7 +549,7 @@ quote.get('/api/quote/shared/:token', async c => {
  * ADMIN_EMAIL is set. No pricing/billing change.
  */
 
-interface DecisionBody { orgId?: unknown; decision?: unknown; expectedBudgetUsd?: unknown }
+interface DecisionBody { orgId?: unknown; decision?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
 
 quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -548,6 +572,10 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
   const budget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
   const hasBudget = Number.isFinite(budget) && budget >= 0 && budget <= PRICE_MAX;
 
+  // B3 — optional negotiation message (sanitized: control chars stripped, markup
+  // defanged, capped 2000). Stored on the quote doc only — no separate collection.
+  const message = typeof body.message === 'string' ? sanitizeText(body.message, 2000) : null;
+
   const path = `${COLLECTION(orgId)}/${quoteId}`;
   const stored = await firestoreGet(saJson, path);
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
@@ -558,6 +586,7 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
     decidedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  if (message) patch.discussionMessage = message;
   if (hasBudget) {
     patch.expectedBudgetUsd = Math.round(budget);
     // Keep the persisted render in sync so the email/shared PDF shows the budget row.
@@ -573,14 +602,27 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
 
   // Discuss → best-effort admin notification (sales signal). Non-fatal.
   if (decision === 'discussion' && env.ADMIN_EMAIL) {
-    const recipient = c.get('email') as string | undefined;
+    const customerEmail = c.get('email') as string | undefined;
+    // Non-PII context line composed from the stored quote (title · solution · range).
+    let context = quoteId;
+    if (typeof stored.renderJson === 'string') {
+      try {
+        const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
+        const parts = [r.docTitle, r.solutionLabel, r.rangeText].filter((v): v is string => typeof v === 'string');
+        if (parts.length) context = parts.join(' · ');
+      } catch { /* keep quoteId as context */ }
+    }
     await sendTransactional(env.SEQUENZY_API_KEY, {
-      to:   env.ADMIN_EMAIL,
-      slug: 'quote-discussion-admin',
+      to:      env.ADMIN_EMAIL,
+      slug:    'quote-discussion-admin',
+      replyTo: customerEmail,
       variables: {
-        QUOTE_ID:       quoteId,
-        CUSTOMER_EMAIL: recipient ?? '',
-        BUDGET:         hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '',
+        TYPE:     'discussion',
+        MESSAGE:  message ?? '',
+        EMAIL:    customerEmail ?? '',
+        CONTEXT:  context,
+        BUDGET:   hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '',
+        QUOTE_ID: quoteId,
       },
     });
   }

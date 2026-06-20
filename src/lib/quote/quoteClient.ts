@@ -145,7 +145,7 @@ export async function overrideQuotePrice(
 /** Record the client's pricing decision (accept / discuss) + optional expected
  *  budget (USD) on the quote. Non-binding, intent only. */
 export async function recordDecision(
-  orgId: string, quoteId: string, input: { decision: 'accepted' | 'discussion'; expectedBudgetUsd?: number },
+  orgId: string, quoteId: string, input: { decision: 'accepted' | 'discussion'; expectedBudgetUsd?: number; message?: string },
 ): Promise<{ status: string }> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/quote/${encodeURIComponent(quoteId)}/decision`, {
@@ -161,13 +161,13 @@ export async function recordDecision(
 /** Email the quote to the signed-in user as a tokenized PDF link (no attachment).
  *  `render` is persisted server-side so the link regenerates the same PDF. */
 export async function emailQuote(
-  orgId: string, quoteId: string, locale: string, render: QuotePdfRender, sendAdminCopy = false,
+  orgId: string, quoteId: string, locale: string, render: QuotePdfRender, sendAdminCopy = false, clientEmail?: string,
 ): Promise<{ emailed: boolean }> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/quote/email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ orgId, quoteId, locale, render, sendAdminCopy }),
+    body: JSON.stringify({ orgId, quoteId, locale, render, sendAdminCopy, ...(clientEmail ? { clientEmail } : {}) }),
   });
   const j = await res.json().catch(() => null) as ({ emailed?: boolean; code?: string }) | null;
   if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);

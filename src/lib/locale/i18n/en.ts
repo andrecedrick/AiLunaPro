@@ -2536,6 +2536,8 @@ export const en = {
         "pricingHeading": "Estimated investment"
       },
       "email": {
+        "clientLabel": "Client email (optional) — leave empty to send to yourself",
+        "clientPlaceholder": "client@company.com",
         "button": "Email me this quote",
         "sent": "Quote sent to your inbox.",
         "error": "Could not send the email. Please try again."
@@ -2579,6 +2581,9 @@ export const en = {
         }
       },
       "decision": {
+        "adjustHeading": "Want to adjust or discuss this quote?",
+        "messagePlaceholder": "Add a message — what would you like to adjust?",
+        "messageSend": "Send request",
         "budgetLabel": "Your budget (optional)",
         "budgetPlaceholder": "e.g. 50000",
         "verdictBelow": "Your budget is below the estimated range.",

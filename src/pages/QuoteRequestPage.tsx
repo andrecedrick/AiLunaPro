@@ -84,8 +84,12 @@ export function QuoteRequestPage() {
   // U2 — budget + client decision.
   const [budgetInput, setBudgetInput] = useState('');
   const [decisionState, setDecisionState] = useState<'idle' | 'saving' | 'accepted' | 'discussion' | 'error'>('idle');
-  // Q4 — email + admin price override.
+  // B3 — negotiation message (reveal-on-Discuss).
+  const [showDiscuss, setShowDiscuss] = useState(false);
+  const [discussMessage, setDiscussMessage] = useState('');
+  // Q4 — email + admin price override. B2 adds an optional client recipient.
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [clientEmail, setClientEmail] = useState('');
   const [override,   setOverride]   = useState<{ minUsd: number; maxUsd: number } | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [ovMin, setOvMin] = useState('');
@@ -294,7 +298,7 @@ export function QuoteRequestPage() {
     if (!orgId || !quoteIdRef.current) return;
     setEmailState('sending');
     try {
-      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender());
+      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, clientEmail.trim() || undefined);
       emit('quote_emailed', { flow: 'quote', emailed: r.emailed, src: src ?? undefined });
       setEmailState('sent');
     } catch {
@@ -334,7 +338,12 @@ export function QuoteRequestPage() {
       const expectedBudgetUsd = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum >= 0
         ? Math.round(convertToUsd(budgetNum, money.currency))
         : undefined;
-      await recordDecision(orgId, quoteIdRef.current, { decision, ...(expectedBudgetUsd !== undefined ? { expectedBudgetUsd } : {}) });
+      const msg = decision === 'discussion' ? discussMessage.trim() : '';
+      await recordDecision(orgId, quoteIdRef.current, {
+        decision,
+        ...(expectedBudgetUsd !== undefined ? { expectedBudgetUsd } : {}),
+        ...(msg ? { message: msg } : {}),
+      });
       emit('quote_decision', { flow: 'quote', decision, src: src ?? undefined });
       setDecisionState(decision);
     } catch {
@@ -507,6 +516,11 @@ export function QuoteRequestPage() {
                       {emailState === 'sending' ? '…' : emailState === 'sent' ? Q.email.sent : Q.email.button}
                     </button>
                   </div>
+                  {/* B2 — optional client recipient (empty → sent to the signed-in user). */}
+                  <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder={Q.email.clientPlaceholder} aria-label={Q.email.clientLabel} style={{ ...inputStyle(), maxWidth: 260 }} />
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{Q.email.clientLabel}</div>
+                  </div>
                   {pdfError && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{pdfError}</div>}
                   {emailState === 'error' && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{Q.email.error}</div>}
 
@@ -518,6 +532,7 @@ export function QuoteRequestPage() {
                       </div>
                     ) : (
                       <>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>{Q.decision.adjustHeading}</div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
                           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{Q.decision.budgetLabel}</label>
                           <input type="number" inputMode="numeric" min={0} value={budgetInput} onChange={e => setBudgetInput(e.target.value)} onBlur={() => { if (budgetVerdict) emit('quote_budget_entered', { flow: 'quote', verdict: budgetVerdict, src: src ?? undefined }); }} placeholder={Q.decision.budgetPlaceholder} style={{ ...inputStyle(), maxWidth: 150 }} />
@@ -527,10 +542,20 @@ export function QuoteRequestPage() {
                             {budgetVerdict === 'below' ? Q.decision.verdictBelow : budgetVerdict === 'above' ? Q.decision.verdictAbove : Q.decision.verdictWithin}
                           </div>
                         )}
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                          <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('accepted')} style={{ ...primaryBtnStyle(), padding: '10px 20px' }}>{Q.decision.accept}</button>
-                          <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('discussion')} style={{ ...secondaryBtnStyle(), padding: '10px 18px' }}>{Q.decision.discuss}</button>
-                        </div>
+                        {!showDiscuss ? (
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('accepted')} style={{ ...primaryBtnStyle(), padding: '10px 20px' }}>{Q.decision.accept}</button>
+                            <button type="button" disabled={decisionState === 'saving'} onClick={() => setShowDiscuss(true)} style={{ ...secondaryBtnStyle(), padding: '10px 18px' }}>{Q.decision.discuss}</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'grid', gap: 8, maxWidth: 360, margin: '0 auto' }}>
+                            <textarea value={discussMessage} onChange={e => setDiscussMessage(e.target.value)} rows={3} maxLength={2000} placeholder={Q.decision.messagePlaceholder} aria-label={Q.decision.messagePlaceholder} style={{ ...inputStyle(), resize: 'vertical' }} />
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                              <button type="button" onClick={() => { setShowDiscuss(false); setDiscussMessage(''); }} style={{ ...secondaryBtnStyle(), padding: '8px 14px' }}>✕</button>
+                              <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('discussion')} style={{ ...primaryBtnStyle(), padding: '10px 20px' }}>{Q.decision.messageSend}</button>
+                            </div>
+                          </div>
+                        )}
                         {decisionState === 'error' && <div style={{ marginTop: 8, color: 'var(--red-text)', fontSize: 12 }}>{Q.decision.error}</div>}
                       </>
                     )}

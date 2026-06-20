@@ -2523,6 +2523,8 @@ export const zh: Dict = {
         "pricingHeading": "预计投资"
       },
       "email": {
+        "clientLabel": "客户邮箱（可选）— 留空则发送给您自己",
+        "clientPlaceholder": "client@company.com",
         "button": "将此报价发送到我的邮箱",
         "sent": "报价已发送到您的邮箱。",
         "error": "无法发送邮件，请重试。"
@@ -2566,6 +2568,9 @@ export const zh: Dict = {
         }
       },
       "decision": {
+        "adjustHeading": "想要调整或讨论此报价吗？",
+        "messagePlaceholder": "添加留言 — 您希望调整什么？",
+        "messageSend": "发送请求",
         "budgetLabel": "您的预算（可选）",
         "budgetPlaceholder": "例如 50000",
         "verdictBelow": "您的预算低于估算区间。",

@@ -2521,6 +2521,8 @@ export const it: Dict = {
         "pricingHeading": "Investimento stimato"
       },
       "email": {
+        "clientLabel": "Email del cliente (facoltativa) — lascia vuoto per inviarla a te",
+        "clientPlaceholder": "cliente@azienda.com",
         "button": "Inviami questo preventivo via e-mail",
         "sent": "Preventivo inviato alla tua casella.",
         "error": "Impossibile inviare l'e-mail. Riprova."
@@ -2564,6 +2566,9 @@ export const it: Dict = {
         }
       },
       "decision": {
+        "adjustHeading": "Vuoi modificare o discutere questo preventivo?",
+        "messagePlaceholder": "Aggiungi un messaggio — cosa vorresti modificare?",
+        "messageSend": "Invia richiesta",
         "budgetLabel": "Il tuo budget (facoltativo)",
         "budgetPlaceholder": "es. 50000",
         "verdictBelow": "Il tuo budget è inferiore alla fascia stimata.",

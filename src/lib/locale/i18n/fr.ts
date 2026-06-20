@@ -2521,6 +2521,8 @@ export const fr: Dict = {
         "pricingHeading": "Investissement estimé"
       },
       "email": {
+        "clientLabel": "E-mail du client (facultatif) — laissez vide pour vous l'envoyer",
+        "clientPlaceholder": "client@entreprise.com",
         "button": "M'envoyer ce devis par e-mail",
         "sent": "Devis envoyé dans votre boîte mail.",
         "error": "Impossible d'envoyer l'e-mail. Veuillez réessayer."
@@ -2564,6 +2566,9 @@ export const fr: Dict = {
         }
       },
       "decision": {
+        "adjustHeading": "Vous souhaitez ajuster ou discuter ce devis ?",
+        "messagePlaceholder": "Ajoutez un message — que souhaitez-vous ajuster ?",
+        "messageSend": "Envoyer la demande",
         "budgetLabel": "Votre budget (facultatif)",
         "budgetPlaceholder": "ex. 50000",
         "verdictBelow": "Votre budget est inférieur à la fourchette estimée.",
