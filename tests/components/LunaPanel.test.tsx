@@ -30,7 +30,14 @@ describe('LunaPanel (B4)', () => {
     expect(screen.getByText('Luna — your guide')).toBeTruthy();
     expect(screen.getByText(/AI tool inventory/)).toBeTruthy();           // registry purpose
     expect(screen.getByText('Open the design guide')).toBeTruthy();      // registry action
-    expect(screen.getByText(/Deterministic guidance · no AI chat/)).toBeTruthy();
+    expect(screen.getByText(/Deterministic · no LLM yet/)).toBeTruthy();
+  });
+
+  it('switches to the deterministic Ask Luna chat tab', () => {
+    render(<LunaPanel open onClose={() => {}} />);
+    fireEvent.click(screen.getByText('Ask Luna'));
+    expect(screen.getByText(/I'm Luna/)).toBeTruthy();       // chat greeting
+    expect(screen.getByLabelText('Ask Luna')).toBeTruthy();  // chat input
   });
 
   it('actions navigate and close the panel', () => {
