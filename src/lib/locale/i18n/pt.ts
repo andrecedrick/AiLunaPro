@@ -2679,6 +2679,12 @@ export const pt: Dict = {
         "title": "Acompanhamento do seu pedido",
         "intro": "Veja em que ponto do nosso processo está o seu pedido. Iremos enviar-lhe um e-mail em cada etapa.",
         "reviewNote": "Um especialista está a analisar o seu pedido e irá confirmar o valor final.",
+        "nextStep": "Passo seguinte: um administrador irá confirmar o valor.",
+        "openPanel": "Abrir o painel de faturas",
+        "stateReview": "Em análise",
+        "stateNegotiation": "Negociação",
+        "stateWaiting": "A aguardar administrador",
+        "stateInvoice": "Fatura",
         "back": "Voltar à ferramenta de orçamentos"
       }
     }

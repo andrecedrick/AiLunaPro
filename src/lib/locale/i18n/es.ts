@@ -2679,6 +2679,12 @@ export const es: Dict = {
         "title": "Seguimiento de tu solicitud",
         "intro": "Aquí puedes ver en qué punto de nuestro proceso está tu solicitud. Te enviaremos un correo en cada paso.",
         "reviewNote": "Un experto está revisando tu solicitud y confirmará el importe final.",
+        "nextStep": "Siguiente paso: un administrador confirmará el importe.",
+        "openPanel": "Abrir el panel de facturas",
+        "stateReview": "Revisión",
+        "stateNegotiation": "Negociación",
+        "stateWaiting": "Esperando al administrador",
+        "stateInvoice": "Factura",
         "back": "Volver a la herramienta de presupuestos"
       }
     }

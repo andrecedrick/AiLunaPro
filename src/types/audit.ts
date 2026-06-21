@@ -86,9 +86,9 @@ export type Route =
   | { name: 'diagnostic' }
   | { name: 'roi-calculator' }
   | { name: 'quote' }
-  | { name: 'quote/result' }
-  | { name: 'quote/status' }
-  | { name: 'invoices' }
+  | { name: 'quote/result'; quoteId?: string }
+  | { name: 'quote/status'; quoteId?: string }
+  | { name: 'invoices'; quoteId?: string }
   | { name: 'help' }
   | { name: 'system-builder' }
   | { name: 'audit-express/saved' }

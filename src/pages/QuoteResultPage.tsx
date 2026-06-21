@@ -27,13 +27,16 @@ import { confirmQuoteDecisionByToken } from '../lib/quote/quoteClient';
 // Roles that may see the Invoices surface (mirrors the sidebar gate; 'client' excluded).
 const INVOICE_ROLES = ['owner', 'admin', 'billing', 'member'];
 
-function hashFlags(): { action: 'accept' | 'discuss'; fromEmail: boolean; token: string } {
+function hashFlags(): { action: 'accept' | 'discuss'; fromEmail: boolean; token: string; quoteId: string } {
   const h = typeof window !== 'undefined' ? window.location.hash : '';
   const m = /[?&]t=([^&]+)/.exec(h);
+  const qid = /[?&]quoteId=([^&]+)/.exec(h);
+  const dec = (s: string): string => { try { return decodeURIComponent(s); } catch { return ''; } };
   return {
     action:    /[?&]action=discuss/i.test(h) ? 'discuss' : 'accept',
     fromEmail: /[?&]src=email/i.test(h),
-    token:     m ? decodeURIComponent(m[1]) : '',
+    token:     m ? dec(m[1]) : '',
+    quoteId:   qid ? dec(qid[1]) : '',
   };
 }
 
@@ -43,7 +46,7 @@ export function QuoteResultPage() {
   const { navigate } = useRoute();
   const { session } = useAuth();
   const A = useLocale().publicTools.quote.accepted;
-  const { action, fromEmail, token } = hashFlags();
+  const { action, fromEmail, token, quoteId } = hashFlags();
   const canViewInvoice = !!session && INVOICE_ROLES.includes(session.role ?? '');
   const [phase, setPhase] = useState<'idle' | 'confirming' | 'done' | 'error'>('idle');
   const goQuote = () => navigate({ name: 'quote' });
@@ -65,9 +68,9 @@ export function QuoteResultPage() {
       </ul>
       <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
         {canViewInvoice
-          ? <button type="button" onClick={() => navigate({ name: 'invoices' })} style={primaryBtnStyle()}>{A.viewInvoice}</button>
-          : <button type="button" onClick={() => navigate({ name: 'quote/status' })} style={primaryBtnStyle()}>{A.trackCta}</button>}
-        {canViewInvoice && <button type="button" onClick={() => navigate({ name: 'quote/status' })} style={linkBtn}>{A.trackCta}</button>}
+          ? <button type="button" onClick={() => navigate({ name: 'invoices', ...(quoteId ? { quoteId } : {}) })} style={primaryBtnStyle()}>{A.viewInvoice}</button>
+          : <button type="button" onClick={() => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}) })} style={primaryBtnStyle()}>{A.trackCta}</button>}
+        {canViewInvoice && <button type="button" onClick={() => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}) })} style={linkBtn}>{A.trackCta}</button>}
         <button type="button" onClick={goQuote} style={linkBtn}>{A.back}</button>
       </div>
     </div>

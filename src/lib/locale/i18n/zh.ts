@@ -2681,6 +2681,12 @@ export const zh: Dict = {
         "title": "跟踪您的请求",
         "intro": "这里显示您的请求在我们流程中的进度。每一步我们都会通过邮件通知您。",
         "reviewNote": "专家正在审核您的请求，并将确认最终金额。",
+        "nextStep": "下一步：管理员将确认金额。",
+        "openPanel": "打开发票面板",
+        "stateReview": "审核中",
+        "stateNegotiation": "协商中",
+        "stateWaiting": "等待管理员",
+        "stateInvoice": "发票",
         "back": "返回报价工具"
       }
     }

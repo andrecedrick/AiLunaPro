@@ -2679,6 +2679,12 @@ export const it: Dict = {
         "title": "Monitoraggio della tua richiesta",
         "intro": "Ecco a che punto è la tua richiesta nel nostro processo. Ti invieremo un'email a ogni passaggio.",
         "reviewNote": "Un esperto sta esaminando la tua richiesta e confermerà l'importo finale.",
+        "nextStep": "Passaggio successivo: un amministratore confermerà l'importo.",
+        "openPanel": "Apri il pannello delle fatture",
+        "stateReview": "In revisione",
+        "stateNegotiation": "In trattativa",
+        "stateWaiting": "In attesa dell'amministratore",
+        "stateInvoice": "Fattura",
         "back": "Torna allo strumento preventivi"
       }
     }

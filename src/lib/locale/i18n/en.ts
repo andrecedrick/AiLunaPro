@@ -2695,6 +2695,12 @@ export const en = {
         "title": "Tracking your request",
         "intro": "Here's where your request is in our process. We'll email you at each step.",
         "reviewNote": "An expert is reviewing your request and will confirm the final amount.",
+        "nextStep": "Next step: an admin will confirm the amount.",
+        "openPanel": "Open the invoices panel",
+        "stateReview": "Review",
+        "stateNegotiation": "Negotiation",
+        "stateWaiting": "Waiting for admin",
+        "stateInvoice": "Invoice",
         "back": "Back to the quote tool"
       }
     }

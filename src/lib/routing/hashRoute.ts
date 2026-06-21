@@ -34,16 +34,22 @@ export function routeToHash(route: Route): string | null {
     case 'help':
       return currentHash().startsWith('#/help') ? currentHash() : '#/help';
 
-    // Public quote-result page — the email Accept/Discuss CTA lands here with
-    // ?action=accept|discuss. Preserve that query so QuoteResultPage can read it
-    // (the in-app accept navigates from #/quote, so it canonicalises cleanly).
+    // Public quote flow — the in-app submit carries quoteId so the confirmation /
+    // status pages can deep-link to the exact quote; the email Accept/Discuss CTA
+    // lands here with ?action/?t, which the preserve-currentHash branch keeps.
     case 'quote/result':
-      return currentHash().startsWith('#/quote/result') ? currentHash() : '#/quote/result';
+      return route.quoteId ? `#/quote/result?quoteId=${encodeURIComponent(route.quoteId)}`
+        : currentHash().startsWith('#/quote/result') ? currentHash() : '#/quote/result';
+    case 'quote/status':
+      return route.quoteId ? `#/quote/status?quoteId=${encodeURIComponent(route.quoteId)}`
+        : currentHash().startsWith('#/quote/status') ? currentHash() : '#/quote/status';
 
-    // Invoices — email CTAs deep-link with ?invoiceId / ?quoteId. Preserve that
-    // query so InvoicesPage can focus + scroll to the exact card.
+    // Invoices — email CTAs + the status page deep-link with ?quoteId / ?invoiceId.
+    // Serialize an explicit quoteId; otherwise preserve the landing query so
+    // InvoicesPage can focus + scroll to the exact card.
     case 'invoices':
-      return currentHash().startsWith('#/invoices') ? currentHash() : '#/invoices';
+      return route.quoteId ? `#/invoices?quoteId=${encodeURIComponent(route.quoteId)}`
+        : currentHash().startsWith('#/invoices') ? currentHash() : '#/invoices';
 
     case 'dashboard':
       return '#/';

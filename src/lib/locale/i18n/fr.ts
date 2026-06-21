@@ -2679,6 +2679,12 @@ export const fr: Dict = {
         "title": "Suivi de votre demande",
         "intro": "Voici où en est votre demande dans notre processus. Nous vous écrirons à chaque étape.",
         "reviewNote": "Un expert examine votre demande et confirmera le montant final.",
+        "nextStep": "Étape suivante : un administrateur confirmera le montant.",
+        "openPanel": "Ouvrir le panneau des factures",
+        "stateReview": "Examen",
+        "stateNegotiation": "Négociation",
+        "stateWaiting": "En attente de l'administrateur",
+        "stateInvoice": "Facture",
         "back": "Retour à l'outil de devis"
       }
     }
