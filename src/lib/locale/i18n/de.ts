@@ -2619,11 +2619,12 @@ export const de: Dict = {
         }
       },
       "accepted": {
-        "title": "Angebot angenommen",
-        "s1": "Ihre Anfrage wurde gesendet",
+        "title": "Ihre Antwort wurde gesendet",
+        "s1": "Wir prüfen Ihre Anfrage",
         "s2": "Ein Experte bestätigt den Endbetrag",
         "s3": "Sie erhalten eine Rechnung",
         "s4": "Anschließend führen Sie die Zahlung aus",
+        "trackCta": "Anfrage verfolgen",
         "viewInvoice": "Rechnung anzeigen",
         "emailTitle": "Nur noch ein Schritt",
         "emailBody": "Um zu bestätigen und Ihre Rechnung zu erhalten, nehmen Sie das Angebot in Ihrem AiLunaPro-Arbeitsbereich an.",
@@ -2656,7 +2657,7 @@ export const de: Dict = {
         "verdictBelow": "Ihr Budget liegt unter dem geschätzten Bereich.",
         "verdictWithin": "Ihr Budget liegt im geschätzten Bereich.",
         "verdictAbove": "Ihr Budget liegt über dem geschätzten Bereich.",
-        "accept": "Diese Schätzung annehmen",
+        "accept": "Antwort absenden",
         "discuss": "Preisanpassung anfragen",
         "accepted": "Schätzung angenommen — wir melden uns in Kürze.",
         "discussionSent": "Anfrage gesendet — wir melden uns zur Besprechung.",
@@ -2667,6 +2668,18 @@ export const de: Dict = {
         "initialLabel": "Erste Schätzung",
         "budgetLabel": "Ihr Budget",
         "adjustedLabel": "Angepasster Preis"
+      },
+      "progress": {
+        "submit": "Absenden",
+        "review": "Prüfung",
+        "validation": "Validierung",
+        "invoice": "Rechnung"
+      },
+      "status": {
+        "title": "Verfolgung Ihrer Anfrage",
+        "intro": "Hier sehen Sie, wo sich Ihre Anfrage in unserem Prozess befindet. Wir benachrichtigen Sie bei jedem Schritt per E-Mail.",
+        "reviewNote": "Ein Experte prüft Ihre Anfrage und bestätigt den Endbetrag.",
+        "back": "Zurück zum Angebots-Tool"
       }
     }
   },

@@ -87,6 +87,7 @@ export type Route =
   | { name: 'roi-calculator' }
   | { name: 'quote' }
   | { name: 'quote/result' }
+  | { name: 'quote/status' }
   | { name: 'invoices' }
   | { name: 'help' }
   | { name: 'system-builder' }

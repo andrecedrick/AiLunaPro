@@ -44,6 +44,7 @@ const DiagnosticPage       = lazy(() => import('./pages/DiagnosticPage').then(m 
 const RoiCalculatorPage    = lazy(() => import('./pages/RoiCalculatorPage').then(m => ({ default: m.RoiCalculatorPage })));
 const QuoteRequestPage     = lazy(() => import('./pages/QuoteRequestPage').then(m => ({ default: m.QuoteRequestPage })));
 const QuoteResultPage      = lazy(() => import('./pages/QuoteResultPage').then(m => ({ default: m.QuoteResultPage })));
+const QuoteStatusPage      = lazy(() => import('./pages/QuoteStatusPage').then(m => ({ default: m.QuoteStatusPage })));
 const InvoicesPage         = lazy(() => import('./pages/InvoicesPage').then(m => ({ default: m.InvoicesPage })));
 const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
@@ -249,6 +250,8 @@ function AppShell() {
       navigate({ name: 'roi-calculator' });
     } else if (h.startsWith('#/quote/result')) {
       navigate({ name: 'quote/result' });
+    } else if (h.startsWith('#/quote/status')) {
+      navigate({ name: 'quote/status' });
     } else if (h.startsWith('#/quote')) {
       navigate({ name: 'quote' });
     } else if (h.startsWith('#/help')) {
@@ -490,11 +493,20 @@ function AppShell() {
     );
   }
 
-  /* ── Quote result: post-accept confirmation (also the email Accept landing). ── */
+  /* ── Quote result: post-submit confirmation (also the email Accept landing). ── */
   if (route.name === 'quote/result') {
     return (
       <Suspense fallback={<PageFallback />}>
         <CampaignChrome><QuoteResultPage /></CampaignChrome>
+      </Suspense>
+    );
+  }
+
+  /* ── Quote status: public state-tracking view (progress indicator). ── */
+  if (route.name === 'quote/status') {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <CampaignChrome><QuoteStatusPage /></CampaignChrome>
       </Suspense>
     );
   }

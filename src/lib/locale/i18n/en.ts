@@ -2635,11 +2635,12 @@ export const en = {
         }
       },
       "accepted": {
-        "title": "Proposal accepted",
-        "s1": "Your request has been sent",
+        "title": "Your response has been sent",
+        "s1": "We are reviewing your request",
         "s2": "An expert will confirm the final amount",
         "s3": "You will receive an invoice",
         "s4": "Then you complete the payment",
+        "trackCta": "Track your request",
         "viewInvoice": "View your invoice",
         "emailTitle": "One step to go",
         "emailBody": "To confirm and receive your invoice, accept the quote in your AiLunaPro workspace.",
@@ -2672,7 +2673,7 @@ export const en = {
         "verdictBelow": "Your budget is below the estimated range.",
         "verdictWithin": "Your budget is within the estimated range.",
         "verdictAbove": "Your budget is above the estimated range.",
-        "accept": "Accept this estimate",
+        "accept": "Submit your response",
         "discuss": "Request a price adjustment",
         "accepted": "Estimate accepted — we'll follow up shortly.",
         "discussionSent": "Request sent — we'll reach out to discuss.",
@@ -2683,6 +2684,18 @@ export const en = {
         "initialLabel": "Initial estimate",
         "budgetLabel": "Your budget",
         "adjustedLabel": "Adjusted price"
+      },
+      "progress": {
+        "submit": "Submit",
+        "review": "Review",
+        "validation": "Validation",
+        "invoice": "Invoice"
+      },
+      "status": {
+        "title": "Tracking your request",
+        "intro": "Here's where your request is in our process. We'll email you at each step.",
+        "reviewNote": "An expert is reviewing your request and will confirm the final amount.",
+        "back": "Back to the quote tool"
       }
     }
   },

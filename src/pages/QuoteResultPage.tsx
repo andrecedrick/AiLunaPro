@@ -21,6 +21,7 @@ import { useRoute } from '../context/RouteContext';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
 import { primaryBtnStyle } from '../components/ui-tools';
+import { QuoteProgress } from '../components/QuoteProgress';
 import { confirmQuoteDecisionByToken } from '../lib/quote/quoteClient';
 
 // Roles that may see the Invoices surface (mirrors the sidebar gate; 'client' excluded).
@@ -47,22 +48,27 @@ export function QuoteResultPage() {
   const [phase, setPhase] = useState<'idle' | 'confirming' | 'done' | 'error'>('idle');
   const goQuote = () => navigate({ name: 'quote' });
 
-  // Truthful success checklist (in-app accept, or a successful email confirm).
+  // Waiting/confirmation state (in-app submit, or a successful email confirm):
+  // progress stepper at "Review", what-happens-next checklist, track CTA.
   const successView = (
-    <div style={{ maxWidth: 480, margin: '0 auto', padding: '56px 20px', textAlign: 'center' }}>
-      <div style={{ fontSize: 44, lineHeight: 1, marginBottom: 14 }} aria-hidden>✅</div>
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: '48px 20px', textAlign: 'center' }}>
+      <QuoteProgress active={2} />
+      <div style={{ fontSize: 40, lineHeight: 1, marginBottom: 12 }} aria-hidden>✅</div>
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 16px' }}>{A.title}</h1>
       <ul style={{ listStyle: 'none', margin: '0 auto 24px', padding: 0, display: 'grid', gap: 12, maxWidth: 360, textAlign: 'left' }}>
         {[A.s1, A.s2, A.s3, A.s4].map((s, i) => (
           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            <span style={{ flex: '0 0 auto', color: 'var(--green-text, #059669)', fontWeight: 800 }} aria-hidden>✅</span>
+            <span style={{ flex: '0 0 auto', color: 'var(--green-text, #059669)', fontWeight: 800 }} aria-hidden>{i === 0 ? '⏳' : '✅'}</span>
             <span>{s}</span>
           </li>
         ))}
       </ul>
       <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
-        {canViewInvoice && <button type="button" onClick={() => navigate({ name: 'invoices' })} style={primaryBtnStyle()}>{A.viewInvoice}</button>}
-        <button type="button" onClick={goQuote} style={canViewInvoice ? linkBtn : primaryBtnStyle()}>{A.back}</button>
+        {canViewInvoice
+          ? <button type="button" onClick={() => navigate({ name: 'invoices' })} style={primaryBtnStyle()}>{A.viewInvoice}</button>
+          : <button type="button" onClick={() => navigate({ name: 'quote/status' })} style={primaryBtnStyle()}>{A.trackCta}</button>}
+        {canViewInvoice && <button type="button" onClick={() => navigate({ name: 'quote/status' })} style={linkBtn}>{A.trackCta}</button>}
+        <button type="button" onClick={goQuote} style={linkBtn}>{A.back}</button>
       </div>
     </div>
   );

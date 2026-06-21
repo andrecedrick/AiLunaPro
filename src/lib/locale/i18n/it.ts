@@ -2619,11 +2619,12 @@ export const it: Dict = {
         }
       },
       "accepted": {
-        "title": "Proposta accettata",
-        "s1": "La tua richiesta è stata inviata",
+        "title": "La tua risposta è stata inviata",
+        "s1": "Stiamo esaminando la tua richiesta",
         "s2": "Un esperto confermerà l'importo finale",
         "s3": "Riceverai una fattura",
         "s4": "Poi effettui il pagamento",
+        "trackCta": "Monitora la tua richiesta",
         "viewInvoice": "Vedi la tua fattura",
         "emailTitle": "Manca un passaggio",
         "emailBody": "Per confermare e ricevere la tua fattura, accetta la proposta nel tuo spazio di lavoro AiLunaPro.",
@@ -2656,7 +2657,7 @@ export const it: Dict = {
         "verdictBelow": "Il tuo budget è inferiore alla fascia stimata.",
         "verdictWithin": "Il tuo budget rientra nella fascia stimata.",
         "verdictAbove": "Il tuo budget è superiore alla fascia stimata.",
-        "accept": "Accetta questa stima",
+        "accept": "Invia la tua risposta",
         "discuss": "Richiedi un adeguamento del prezzo",
         "accepted": "Stima accettata — ti ricontatteremo a breve.",
         "discussionSent": "Richiesta inviata — ti contatteremo per discuterne.",
@@ -2667,6 +2668,18 @@ export const it: Dict = {
         "initialLabel": "Stima iniziale",
         "budgetLabel": "Il tuo budget",
         "adjustedLabel": "Prezzo modificato"
+      },
+      "progress": {
+        "submit": "Invia",
+        "review": "Revisione",
+        "validation": "Convalida",
+        "invoice": "Fattura"
+      },
+      "status": {
+        "title": "Monitoraggio della tua richiesta",
+        "intro": "Ecco a che punto è la tua richiesta nel nostro processo. Ti invieremo un'email a ogni passaggio.",
+        "reviewNote": "Un esperto sta esaminando la tua richiesta e confermerà l'importo finale.",
+        "back": "Torna allo strumento preventivi"
       }
     }
   },

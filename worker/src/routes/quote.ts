@@ -721,8 +721,9 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
     const r = await sendTransactional(env.SEQUENZY_API_KEY, {
       to: env.ADMIN_EMAIL, slug: 'quote-discussion-admin', replyTo: customerEmail,
       variables: {
-        TYPE: 'discussion', MESSAGE: message ?? '', EMAIL: customerEmail ?? '',
-        CONTEXT: context, BUDGET: budgetText, QUOTE_ID: quoteId,
+        // CHANGE 4 — always show the budget (never a blank row) + the client message.
+        TYPE: 'discussion', MESSAGE: message || 'No message provided', EMAIL: customerEmail ?? '',
+        CONTEXT: context, BUDGET: budgetText || 'Not specified', QUOTE_ID: quoteId,
       },
     });
     if (!r.ok) console.warn('[quote] quote-discussion-admin NOT sent:', r.error ?? 'unknown');

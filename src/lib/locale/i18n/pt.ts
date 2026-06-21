@@ -2619,11 +2619,12 @@ export const pt: Dict = {
         }
       },
       "accepted": {
-        "title": "Proposta aceite",
-        "s1": "O seu pedido foi enviado",
+        "title": "A sua resposta foi enviada",
+        "s1": "Estamos a analisar o seu pedido",
         "s2": "Um especialista irá confirmar o valor final",
         "s3": "Irá receber uma fatura",
         "s4": "Depois efetua o pagamento",
+        "trackCta": "Acompanhar o seu pedido",
         "viewInvoice": "Ver a sua fatura",
         "emailTitle": "Falta um passo",
         "emailBody": "Para confirmar e receber a sua fatura, aceite a proposta no seu espaço de trabalho AiLunaPro.",
@@ -2656,7 +2657,7 @@ export const pt: Dict = {
         "verdictBelow": "O seu orçamento está abaixo da faixa estimada.",
         "verdictWithin": "O seu orçamento está dentro da faixa estimada.",
         "verdictAbove": "O seu orçamento está acima da faixa estimada.",
-        "accept": "Aceitar esta estimativa",
+        "accept": "Enviar a sua resposta",
         "discuss": "Solicitar um ajuste de preço",
         "accepted": "Estimativa aceite — entraremos em contacto em breve.",
         "discussionSent": "Pedido enviado — entraremos em contacto para conversar.",
@@ -2667,6 +2668,18 @@ export const pt: Dict = {
         "initialLabel": "Estimativa inicial",
         "budgetLabel": "O seu orçamento",
         "adjustedLabel": "Preço ajustado"
+      },
+      "progress": {
+        "submit": "Enviar",
+        "review": "Análise",
+        "validation": "Validação",
+        "invoice": "Fatura"
+      },
+      "status": {
+        "title": "Acompanhamento do seu pedido",
+        "intro": "Veja em que ponto do nosso processo está o seu pedido. Iremos enviar-lhe um e-mail em cada etapa.",
+        "reviewNote": "Um especialista está a analisar o seu pedido e irá confirmar o valor final.",
+        "back": "Voltar à ferramenta de orçamentos"
       }
     }
   },

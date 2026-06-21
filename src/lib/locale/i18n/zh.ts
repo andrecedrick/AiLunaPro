@@ -2621,11 +2621,12 @@ export const zh: Dict = {
         }
       },
       "accepted": {
-        "title": "提案已接受",
-        "s1": "您的请求已发送",
+        "title": "您的回复已发送",
+        "s1": "我们正在审核您的请求",
         "s2": "专家将确认最终金额",
         "s3": "您将收到一张发票",
         "s4": "随后您完成付款",
+        "trackCta": "跟踪您的请求",
         "viewInvoice": "查看您的发票",
         "emailTitle": "仅剩一步",
         "emailBody": "如需确认并接收您的发票，请在您的 AiLunaPro 工作区中接受此报价。",
@@ -2658,7 +2659,7 @@ export const zh: Dict = {
         "verdictBelow": "您的预算低于估算区间。",
         "verdictWithin": "您的预算在估算区间内。",
         "verdictAbove": "您的预算高于估算区间。",
-        "accept": "接受此估算",
+        "accept": "提交您的回复",
         "discuss": "请求价格调整",
         "accepted": "已接受估算——我们将尽快跟进。",
         "discussionSent": "请求已发送——我们将与您联系沟通。",
@@ -2669,6 +2670,18 @@ export const zh: Dict = {
         "initialLabel": "初始估算",
         "budgetLabel": "您的预算",
         "adjustedLabel": "调整后价格"
+      },
+      "progress": {
+        "submit": "提交",
+        "review": "审核",
+        "validation": "验证",
+        "invoice": "发票"
+      },
+      "status": {
+        "title": "跟踪您的请求",
+        "intro": "这里显示您的请求在我们流程中的进度。每一步我们都会通过邮件通知您。",
+        "reviewNote": "专家正在审核您的请求，并将确认最终金额。",
+        "back": "返回报价工具"
       }
     }
   },
