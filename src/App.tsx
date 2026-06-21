@@ -46,6 +46,7 @@ const QuoteRequestPage     = lazy(() => import('./pages/QuoteRequestPage').then(
 const QuoteResultPage      = lazy(() => import('./pages/QuoteResultPage').then(m => ({ default: m.QuoteResultPage })));
 const QuoteStatusPage      = lazy(() => import('./pages/QuoteStatusPage').then(m => ({ default: m.QuoteStatusPage })));
 const InvoicesPage         = lazy(() => import('./pages/InvoicesPage').then(m => ({ default: m.InvoicesPage })));
+const AdminCenterPage      = lazy(() => import('./pages/AdminCenterPage').then(m => ({ default: m.AdminCenterPage })));
 const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
 const AuditExpressSavedPage = lazy(() => import('./pages/AuditExpressSavedPage').then(m => ({ default: m.AuditExpressSavedPage })));
@@ -93,6 +94,8 @@ function PageOutlet() {
         return <TeamPage />;
       case 'invoices':
         return <InvoicesPage />;
+      case 'admin':
+        return <AdminCenterPage />;
       case 'settings/profile':
         return <ProfilePage />;
       case 'settings/org':
@@ -258,6 +261,8 @@ function AppShell() {
       // Email CTAs deep-link here (#/invoices?invoiceId=… / ?quoteId=…); the query
       // stays in the hash for InvoicesPage to focus + scroll to the exact card.
       navigate({ name: 'invoices' });
+    } else if (h.startsWith('#/admin')) {
+      navigate({ name: 'admin' });
     } else if (h.startsWith('#/help')) {
       navigate({ name: 'help' });
     } else if (h.startsWith('#/operator')) {

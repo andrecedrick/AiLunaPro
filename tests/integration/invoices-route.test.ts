@@ -165,7 +165,7 @@ describe('POST /api/invoices/finalize (admin sets amount → the invoice is born
   });
 
   it('is idempotent — never recreates / re-amounts / re-sends once the invoice exists', async () => {
-    state.docs.set('invoices/quote_qX', { status: 'pending', amount: 9000 });
+    state.docs.set('invoices/quote_qX', { orgId: 'orgA', status: 'pending', amount: 9000 });
     const res = await finalize('qX', 15000);
     expect(res.status).toBe(200);
     expect((await res.json() as { alreadyFinalized?: boolean }).alreadyFinalized).toBe(true);

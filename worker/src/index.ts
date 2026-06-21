@@ -98,6 +98,10 @@ export type AppEnv = {
     // Q4 — Sequenzy transactional email (operator secret) + optional admin BCC.
     SEQUENZY_API_KEY?:             string;
     ADMIN_EMAIL?:                  string;
+    // Multi-admin notifications — comma-separated emails that receive quote/invoice
+    // admin notifications (accept/discuss). De-duped with ADMIN_EMAIL; also used
+    // (with PLATFORM_ADMIN_EMAILS) to gate the Admin Center. `wrangler secret put`.
+    ADMIN_EMAILS?:                 string;
     // S3 Phase 2 — Luna AI chat (Anthropic Messages API, claude-haiku-4-5).
     // Operator sets via `wrangler secret put ANTHROPIC_API_KEY --env production`.
     // Absent → Luna falls back to the deterministic responder (no error).

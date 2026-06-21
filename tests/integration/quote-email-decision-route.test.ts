@@ -262,3 +262,13 @@ describe('GET /api/quote/pending (admin pricing queue)', () => {
     expect((await res.json() as { quotes: unknown[] }).quotes).toEqual([]);
   });
 });
+
+describe('multi-admin notifications (PART 3)', () => {
+  it('notifies EVERY admin (ADMIN_EMAILS + ADMIN_EMAIL), de-duped + lower-cased', async () => {
+    const ENV2 = { ...ENV, ADMIN_EMAILS: 'A@x.com, b@x.com, admin@x.com' } as unknown as Record<string, unknown>;
+    await quote.request('/api/quote/q1/decision', { method: 'POST', headers: H(), body: JSON.stringify({ orgId: 'orgA', decision: 'accepted' }) }, ENV2);
+    const to = seq.sends.filter(s => s.slug === 'invoice-admin-pending').map(s => s.to);
+    expect(new Set(to)).toEqual(new Set(['a@x.com', 'b@x.com', 'admin@x.com']));  // admin@x.com (ADMIN_EMAIL) not doubled
+    expect(to.length).toBe(3);
+  });
+});

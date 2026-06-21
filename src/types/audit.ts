@@ -89,6 +89,7 @@ export type Route =
   | { name: 'quote/result'; quoteId?: string }
   | { name: 'quote/status'; quoteId?: string }
   | { name: 'invoices'; quoteId?: string }
+  | { name: 'admin' }
   | { name: 'help' }
   | { name: 'system-builder' }
   | { name: 'audit-express/saved' }

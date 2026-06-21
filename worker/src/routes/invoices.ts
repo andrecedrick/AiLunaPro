@@ -192,6 +192,9 @@ invoices.post('/api/invoices/finalize', requireAuth(), requireRole(CONFIRM_ROLES
   const invPath = `invoices/quote_${quoteId}`;
   const existing = await firestoreGet(saJson, invPath) as Record<string, unknown> | null;
   if (existing) {
+    // Defense-in-depth on the flat invoices/ collection: the org-scoped quote lookup
+    // above already prevents reaching another org's invoice, but assert it explicitly.
+    if (existing.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
     // Already finalized — never recreate / re-amount / re-send (idempotent).
     return c.json({ ok: true, status: typeof existing.status === 'string' ? existing.status : 'pending', invoiceId: `quote_${quoteId}`, alreadyFinalized: true });
   }

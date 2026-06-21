@@ -28,6 +28,8 @@ async function getIdToken(): Promise<string | null> {
 
 export interface PlatformMe {
   isPlatformAdmin: boolean;
+  /** Super admin = platform operator OR a quote/invoice admin (ADMIN_EMAILS). Gates the Admin Center. */
+  isSuperAdmin: boolean;
   /** Caller's own verified-email state. null when unknown (mock/no token/error). */
   emailVerified: boolean | null;
 }
@@ -39,24 +41,25 @@ export async function fetchPlatformMe(): Promise<PlatformMe> {
   // NOTE: base URL is WORKER_BASE (VITE_WORKER_URL), same as stripeClient.
   // In DEV it is '' (relative, proxied by Vite); in PROD it is the API origin.
   // Do NOT gate on truthiness of the base — '' is a valid relative base.
-  if (authLayer === 'mock') return { isPlatformAdmin: false, emailVerified: null };
+  if (authLayer === 'mock') return { isPlatformAdmin: false, isSuperAdmin: false, emailVerified: null };
 
   const token = await getIdToken();
-  if (!token) return { isPlatformAdmin: false, emailVerified: null };
+  if (!token) return { isPlatformAdmin: false, isSuperAdmin: false, emailVerified: null };
 
   try {
     const res = await fetch(`${WORKER_BASE}/api/platform/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) return { isPlatformAdmin: false, emailVerified: null };
-    const data = (await res.json()) as { isPlatformAdmin?: boolean; emailVerified?: boolean };
+    if (!res.ok) return { isPlatformAdmin: false, isSuperAdmin: false, emailVerified: null };
+    const data = (await res.json()) as { isPlatformAdmin?: boolean; isSuperAdmin?: boolean; emailVerified?: boolean };
     return {
       isPlatformAdmin: data.isPlatformAdmin === true,
+      isSuperAdmin: data.isSuperAdmin === true,
       emailVerified: typeof data.emailVerified === 'boolean' ? data.emailVerified : null,
     };
   } catch {
     // Fail-closed (e.g. ERR_BLOCKED_BY_CLIENT from an ad-blocker/privacy ext).
-    return { isPlatformAdmin: false, emailVerified: null };
+    return { isPlatformAdmin: false, isSuperAdmin: false, emailVerified: null };
   }
 }
 

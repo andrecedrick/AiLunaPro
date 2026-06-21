@@ -12,7 +12,7 @@
 
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
-import { isPlatformAdmin } from '../lib/platformAdmin';
+import { isPlatformAdmin, isSuperAdmin } from '../lib/platformAdmin';
 import type { AppEnv } from '../index';
 
 const platform = new Hono<AppEnv>();
@@ -22,6 +22,9 @@ platform.get('/api/platform/me', requireAuth(), c => {
   const emailVerified = c.get('emailVerified') === true;
   return c.json({
     isPlatformAdmin: isPlatformAdmin(c.env, email, emailVerified),
+    // Super admin = platform operator OR a quote/invoice admin (ADMIN_EMAILS).
+    // Gates the (org-scoped) Admin Center UI; never echoes the email/allowlist.
+    isSuperAdmin:    isSuperAdmin(c.env, email, emailVerified),
     emailVerified,
   });
 });

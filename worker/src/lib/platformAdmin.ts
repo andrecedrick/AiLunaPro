@@ -42,6 +42,36 @@ export function isPlatformAdmin(
 }
 
 /**
+ * SUPER_ADMIN — a verified email in PLATFORM_ADMIN_EMAILS OR ADMIN_EMAILS.
+ * Platform operators plus the quote/invoice admin recipients. Verified-email
+ * gated, fail-closed (empty allowlists → false). Used only to gate the (org-
+ * scoped) Admin Center UI; server-side data access stays role-gated per org.
+ */
+export function isSuperAdmin(
+  env: AppEnv['Bindings'],
+  email: string | undefined,
+  emailVerified: boolean | undefined,
+): boolean {
+  if (isPlatformAdmin(env, email, emailVerified)) return true;
+  if (!email || emailVerified !== true) return false;
+  return parseAllowlist(env.ADMIN_EMAILS).includes(email.toLowerCase());
+}
+
+/**
+ * The admin notification recipients for quote/invoice events: every email in
+ * ADMIN_EMAILS, plus the legacy single ADMIN_EMAIL, de-duplicated (case-folded).
+ * Empty when neither is configured (callers then skip the notification).
+ */
+export function adminRecipients(env: AppEnv['Bindings']): string[] {
+  const set = new Set<string>(parseAllowlist(env.ADMIN_EMAILS));
+  if (env.ADMIN_EMAIL) {
+    const single = env.ADMIN_EMAIL.trim().toLowerCase();
+    if (single) set.add(single);
+  }
+  return [...set];
+}
+
+/**
  * Hono middleware that rejects (403) any non-platform-admin request.
  * Use to protect operator-only routes. Assumes requireAuth() ran first
  * (so `email`/`emailVerified` context vars are set).

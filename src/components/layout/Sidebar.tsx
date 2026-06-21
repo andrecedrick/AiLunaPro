@@ -411,6 +411,16 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
   const T = useLocale();
   const activeId = routeToActiveId(route.name);
 
+  // Admin Center is gated on super-admin (email in ADMIN_EMAILS / PLATFORM_ADMIN_EMAILS).
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void import('../../lib/platform/platformService').then(m => m.fetchPlatformMe())
+      .then(s => { if (alive) setIsSuperAdmin(s.isSuperAdmin); })
+      .catch(() => { /* fail-closed: stay hidden */ });
+    return () => { alive = false; };
+  }, [session?.userId]);
+
   const user = session?.user;
   // Icons-only rail applies on desktop only; on mobile the drawer shows full width.
   const iconsOnly = collapsed && !isMobile;
@@ -562,6 +572,17 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
           iconsOnly={iconsOnly}
           onClick={() => { setSrc('menu-quote'); navigate({ name: 'quote' }); onNavigate?.(); }}
         />
+        {/* Admin Center — super admins only (ADMIN_EMAILS / PLATFORM_ADMIN_EMAILS). */}
+        {isSuperAdmin && (
+          <NavItem
+            id="admin"
+            icon="billing"
+            label={T.adminCenter.nav}
+            active={activeId === 'admin'}
+            iconsOnly={iconsOnly}
+            onClick={() => { navigate({ name: 'admin' }); onNavigate?.(); }}
+          />
+        )}
       </nav>
 
       {/* Language + Currency preferences (hidden in the collapsed rail) */}

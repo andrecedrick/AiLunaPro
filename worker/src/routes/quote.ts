@@ -37,6 +37,7 @@ import { sendTransactional } from '../lib/sequenzy';
 import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
 import { sanitizeText } from '../lib/support-shared';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
+import { adminRecipients } from '../lib/platformAdmin';
 import type { AppEnv } from '../index';
 
 const quote = new Hono<AppEnv>();
@@ -700,36 +701,44 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   }
   const budgetText = hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '';
 
-  // FIX 2 — notify the admin that the client RESPONDED so they can review + set the
+  // Notify EVERY admin (ADMIN_EMAILS + ADMIN_EMAIL, de-duped). Each send is
+  // best-effort and independent — one failure never blocks the others (graceful).
+  const admins = adminRecipients(env);
+
+  // FIX 2 — notify the admins that the client RESPONDED so they can review + set the
   // final amount on the Invoices/pricing panel. No invoice exists yet (FIX 1).
-  if (decision === 'accepted' && env.ADMIN_EMAIL) {
-    const r = await sendTransactional(env.SEQUENZY_API_KEY, {
-      to: env.ADMIN_EMAIL, slug: 'invoice-admin-pending', replyTo: customerEmail,
-      variables: {
-        QUOTE_TITLE: quoteTitle, CUSTOMER_EMAIL: customerEmail ?? '', RANGE: rangeText,
-        // Deep-link to the exact quote in the pricing queue (highlights + scrolls to it).
-        BUDGET: budgetText || 'Not specified', PANEL_URL: `${appBase}/#/invoices?quoteId=${encodeURIComponent(quoteId)}`,
-      },
-    });
-    if (!r.ok) console.warn('[quote] accept admin-notify NOT sent (check SEQUENZY_API_KEY / invoice-admin-pending):', r.error ?? 'unknown');
+  if (decision === 'accepted' && admins.length) {
+    for (const to of admins) {
+      const r = await sendTransactional(env.SEQUENZY_API_KEY, {
+        to, slug: 'invoice-admin-pending', replyTo: customerEmail,
+        variables: {
+          QUOTE_TITLE: quoteTitle, CUSTOMER_EMAIL: customerEmail ?? '', RANGE: rangeText,
+          // Deep-link to the exact quote in the pricing queue (highlights + scrolls to it).
+          BUDGET: budgetText || 'Not specified', PANEL_URL: `${appBase}/#/invoices?quoteId=${encodeURIComponent(quoteId)}`,
+        },
+      });
+      if (!r.ok) console.warn('[quote] accept admin-notify NOT sent to an admin (check SEQUENZY_API_KEY / invoice-admin-pending):', r.error ?? 'unknown');
+    }
   } else if (decision === 'accepted') {
-    console.warn('[quote] ADMIN_EMAIL unset — no admin notification sent for accepted quote', quoteId);
+    console.warn('[quote] no admin recipients (ADMIN_EMAILS/ADMIN_EMAIL unset) — no notification for accepted quote', quoteId);
   }
 
   // Discuss/negotiation → admin notification carrying the client's budget + message.
-  if (decision === 'discussion' && env.ADMIN_EMAIL) {
+  if (decision === 'discussion' && admins.length) {
     const context = [quoteTitle, solutionLabel, rangeText].filter(Boolean).join(' · ') || quoteId;
-    const r = await sendTransactional(env.SEQUENZY_API_KEY, {
-      to: env.ADMIN_EMAIL, slug: 'quote-discussion-admin', replyTo: customerEmail,
-      variables: {
-        // CHANGE 4 — always show the budget (never a blank row) + the client message.
-        TYPE: 'discussion', MESSAGE: message || 'No message provided', EMAIL: customerEmail ?? '',
-        CONTEXT: context, BUDGET: budgetText || 'Not specified', QUOTE_ID: quoteId,
-      },
-    });
-    if (!r.ok) console.warn('[quote] quote-discussion-admin NOT sent:', r.error ?? 'unknown');
+    for (const to of admins) {
+      const r = await sendTransactional(env.SEQUENZY_API_KEY, {
+        to, slug: 'quote-discussion-admin', replyTo: customerEmail,
+        variables: {
+          // CHANGE 4 — always show the budget (never a blank row) + the client message.
+          TYPE: 'discussion', MESSAGE: message || 'No message provided', EMAIL: customerEmail ?? '',
+          CONTEXT: context, BUDGET: budgetText || 'Not specified', QUOTE_ID: quoteId,
+        },
+      });
+      if (!r.ok) console.warn('[quote] quote-discussion-admin NOT sent to an admin:', r.error ?? 'unknown');
+    }
   } else if (decision === 'discussion') {
-    console.warn('[quote] ADMIN_EMAIL unset — no discussion notification sent for', quoteId);
+    console.warn('[quote] no admin recipients (ADMIN_EMAILS/ADMIN_EMAIL unset) — no discussion notification for', quoteId);
   }
 }
 
