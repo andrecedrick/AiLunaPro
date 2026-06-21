@@ -75,6 +75,8 @@ export const ru: Dict = {
     finalizeBtn: 'Подтвердить сумму и создать счёт',
     invoicesHeading: 'Счета',
     resendBtn: 'Отправить письмо со счётом повторно',
+    fromEmail: 'Открыто из вашего письма',
+    notFound: 'Не удалось найти это предложение или счёт.',
   },
   shell: {
     complianceSuite:  'Пакет соответствия',

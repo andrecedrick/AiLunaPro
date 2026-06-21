@@ -76,6 +76,8 @@ export const zh: Dict = {
     finalizeBtn: '确认金额并创建发票',
     invoicesHeading: '发票',
     resendBtn: '重新发送发票邮件',
+    fromEmail: '从您的邮件打开',
+    notFound: '未找到此报价或发票。',
   },
   shell: {
     complianceSuite:  '合规套件',

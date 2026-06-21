@@ -74,6 +74,8 @@ export const it: Dict = {
     finalizeBtn: 'Conferma importo e crea fattura',
     invoicesHeading: 'Fatture',
     resendBtn: 'Reinvia l’email della fattura',
+    fromEmail: 'Aperto dalla tua email',
+    notFound: 'Impossibile trovare questo preventivo o questa fattura.',
   },
   shell: {
     complianceSuite:  'Suite di conformità',

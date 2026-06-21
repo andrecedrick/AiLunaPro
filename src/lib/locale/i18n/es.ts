@@ -74,6 +74,8 @@ export const es: Dict = {
     finalizeBtn: 'Confirmar importe y crear factura',
     invoicesHeading: 'Facturas',
     resendBtn: 'Reenviar correo de la factura',
+    fromEmail: 'Abierto desde tu correo',
+    notFound: 'No se ha podido encontrar este presupuesto o factura.',
   },
   shell: {
     complianceSuite:  'Suite de cumplimiento',

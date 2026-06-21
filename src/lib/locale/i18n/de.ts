@@ -74,6 +74,8 @@ export const de: Dict = {
     finalizeBtn: 'Betrag bestätigen & Rechnung erstellen',
     invoicesHeading: 'Rechnungen',
     resendBtn: 'Rechnungs-E-Mail erneut senden',
+    fromEmail: 'Aus Ihrer E-Mail geöffnet',
+    notFound: 'Dieses Angebot oder diese Rechnung konnte nicht gefunden werden.',
   },
   shell: {
     complianceSuite:  'Compliance-Suite',

@@ -89,6 +89,8 @@ export const en = {
     finalizeBtn: 'Confirm amount & create invoice',
     invoicesHeading: 'Invoices',
     resendBtn: 'Re-send invoice email',
+    fromEmail: 'Opened from your email',
+    notFound: 'This quote or invoice could not be found.',
   },
   shell: {
     complianceSuite:  'Compliance Suite',

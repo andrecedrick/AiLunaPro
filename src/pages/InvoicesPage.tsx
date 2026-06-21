@@ -72,19 +72,24 @@ export function InvoicesPage() {
     setAmount(q.rangeMaxUsd != null ? String(q.rangeMaxUsd) : q.expectedBudgetUsd != null ? String(q.expectedBudgetUsd) : '');
   };
 
-  // Deep-link focus (FIX 3/5): once data loads, scroll to the targeted card; for a
-  // pending quote, auto-open its pricing form so the admin can act immediately.
+  // Deep-link focus: once data loads, auto-open the targeted quote's pricing form
+  // and scroll to the card. FIX 4 — scroll after paint (rAF) and only once (the
+  // ref guard), so there is no flicker and no re-scroll on reload() after finalise.
   useEffect(() => {
     if (focused.current || (!focus.invoiceId && !focus.quoteId) || items === null) return;
     if (focus.quoteId && pending) {
       const q = pending.find(p => p.quoteId === focus.quoteId);
       if (q && activeId === null) openPricing(q);
     }
+    const esc = (s: string) => s.replace(/["\\]/g, '');
     const sel = focus.invoiceId
-      ? `[data-focus-invoice="${focus.invoiceId.replace(/["\\]/g, '')}"]`
-      : `[data-focus-quote="${focus.quoteId.replace(/["\\]/g, '')}"]`;
-    const el = typeof document !== 'undefined' ? document.querySelector(sel) : null;
-    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); focused.current = true; }
+      ? `[data-focus-invoice="${esc(focus.invoiceId)}"]`
+      : `[data-focus-quote="${esc(focus.quoteId)}"], [data-focus-quoteof="${esc(focus.quoteId)}"]`;
+    const raf = requestAnimationFrame(() => {
+      const el = typeof document !== 'undefined' ? document.querySelector(sel) : null;
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); focused.current = true; }
+    });
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, pending]);
 
@@ -113,12 +118,21 @@ export function InvoicesPage() {
     finally { setResendId(null); }
   };
 
+  // Focus matching — a quoteId matches the pending queue card OR (if already
+  // finalised) the resulting invoice card; an invoiceId matches the invoice card.
+  const hasFocus = !!(focus.invoiceId || focus.quoteId);
+  const isQueueFocused = (q: PendingQuote) => !!focus.quoteId && q.quoteId === focus.quoteId;
+  const isInvoiceFocused = (inv: InvoiceItem) =>
+    (!!focus.invoiceId && inv.id === focus.invoiceId) ||
+    (!!focus.quoteId && (inv.quoteId === focus.quoteId || inv.id === `quote_${focus.quoteId}`));
+
   /* ── Pricing-queue card (admin) ── */
   const queueCard = (q: PendingQuote) => {
     const negotiating = q.stage === 'negotiation';
-    const focused = focus.quoteId === q.quoteId;
+    const isFocused = isQueueFocused(q);
     return (
-      <div key={q.quoteId} data-focus-quote={q.quoteId} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: focused ? focusRing : undefined }}>
+      <div key={q.quoteId} data-focus-quote={q.quoteId} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: isFocused ? focusRing : undefined }}>
+        {isFocused && <div style={{ marginBottom: 10, fontSize: 12, fontWeight: 700, color: 'var(--violet-text)' }}>📧 {I.fromEmail}</div>}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{q.quoteTitle || `${I.quoteLabel} · ${q.quoteId.slice(0, 8)}`}</div>
@@ -164,8 +178,11 @@ export function InvoicesPage() {
   };
 
   /* ── Finalised-invoice card ── */
-  const invoiceCard = (inv: InvoiceItem) => (
-    <div key={inv.id} data-focus-invoice={inv.id} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: focus.invoiceId === inv.id ? focusRing : undefined }}>
+  const invoiceCard = (inv: InvoiceItem) => {
+    const isFocused = isInvoiceFocused(inv);
+    return (
+    <div key={inv.id} data-focus-invoice={inv.id} data-focus-quoteof={inv.quoteId} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: isFocused ? focusRing : undefined }}>
+      {isFocused && <div style={{ marginBottom: 10, fontSize: 12, fontWeight: 700, color: 'var(--violet-text)' }}>📧 {I.fromEmail}</div>}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{inv.quoteTitle && inv.quoteTitle.trim() ? inv.quoteTitle : `${I.quoteLabel} · ${inv.quoteId}`}</div>
@@ -191,10 +208,14 @@ export function InvoicesPage() {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   // Finalised invoices only — drafts (legacy) never shown (FIX 7).
   const invoiceList = (items ?? []).filter(i => i.status !== 'draft');
+  // Deep-link present but no matching card after load → safe not-found message (FIX 5).
+  const focusNotFound = hasFocus && items !== null &&
+    !((pending ?? []).some(isQueueFocused) || invoiceList.some(isInvoiceFocused));
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 20px' }}>
@@ -207,6 +228,11 @@ export function InvoicesPage() {
         <div style={{ padding: 18, color: 'var(--text-muted)', fontSize: 14 }}>{I.loading}</div>
       ) : (
         <div style={{ display: 'grid', gap: 26 }}>
+          {/* FIX 5 — deep-link target missing: clear, safe message (no silent generic view). */}
+          {focusNotFound && (
+            <div style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--amber-soft-bg, #fef3c7)', border: '1px solid #f59e0b', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600 }}>⚠ {I.notFound}</div>
+          )}
+
           {/* Pricing queue (admin) */}
           {isAdmin && (
             <div style={{ display: 'grid', gap: 10 }}>
