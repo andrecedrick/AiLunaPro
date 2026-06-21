@@ -89,7 +89,7 @@ export function validateBankSettings(input: Record<string, unknown>): { ok: true
     else if ((f === 'bic' || f === 'swiftCode') && !SWIFT_RE.test(raw.replace(/\s+/g, '').toUpperCase())) errors[f] = 'invalid';
     else if (f === 'routingNumber' && !ROUTING_RE.test(raw.replace(/\s+/g, ''))) errors[f] = 'invalid';
     else if (f === 'accountNumber' && !ACCT_RE.test(raw)) errors[f] = 'invalid';
-    (v as Record<string, unknown>)[f] =
+    (v as unknown as Record<string, unknown>)[f] =
       f === 'iban' || f === 'bic' || f === 'swiftCode' ? raw.replace(/\s+/g, '').toUpperCase() : raw;
   }
 
