@@ -158,6 +158,22 @@ export async function recordDecision(
   return { status: j.status ?? input.decision };
 }
 
+/** Record a decision from the email Accept/Discuss CTA — PUBLIC, no auth. The HMAC
+ *  action token (carried in the email link) is the gate; the worker binds it to the
+ *  quote, opens the draft invoice, and notifies the admin. */
+export async function confirmQuoteDecisionByToken(
+  token: string, decision: 'accepted' | 'discussion', opts?: { message?: string },
+): Promise<{ status: string }> {
+  const res = await fetch(`${WORKER_BASE}/api/quote/decision/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, decision, ...(opts?.message ? { message: opts.message } : {}) }),
+  });
+  const j = await res.json().catch(() => null) as ({ status?: string; code?: string }) | null;
+  if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
+  return { status: j.status ?? decision };
+}
+
 /** Email the quote to the signed-in user as a tokenized PDF link (no attachment).
  *  `render` is persisted server-side so the link regenerates the same PDF. */
 export async function emailQuote(

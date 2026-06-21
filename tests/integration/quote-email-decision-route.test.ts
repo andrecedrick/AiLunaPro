@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const seq = vi.hoisted(() => ({ sends: [] as Array<Record<string, unknown>> }));
 const rl  = vi.hoisted(() => ({ cooldown: vi.fn(async () => ({ ok: true })), cap: vi.fn(async () => ({ ok: true })) }));
 const store = vi.hoisted(() => ({ writes: new Map<string, Record<string, unknown>>(), invoices: new Map<string, Record<string, unknown>>(), stored: null as Record<string, unknown> | null }));
+const share = vi.hoisted(() => ({ verify: vi.fn() }));
 
 vi.mock('../../worker/src/middleware/auth', () => ({
   requireAuth: () => async (c: { req: { header: (k: string) => string | undefined }; set: (k: string, v: unknown) => void }, next: () => Promise<void>) => {
@@ -43,7 +44,7 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
 }));
 vi.mock('../../worker/src/lib/audit-express-share', () => ({
   signShareToken: vi.fn(async () => ({ token: 'tok' })),
-  verifyShareToken: vi.fn(),
+  verifyShareToken: (...args: unknown[]) => share.verify(...args),
 }));
 
 import quote from '../../worker/src/routes/quote';
@@ -60,6 +61,10 @@ const emailReq = (body: unknown) =>
   quote.request('/api/quote/email', { method: 'POST', headers: H(), body: JSON.stringify(body) }, ENV);
 const decisionReq = (quoteId: string, body: unknown) =>
   quote.request(`/api/quote/${quoteId}/decision`, { method: 'POST', headers: H(), body: JSON.stringify(body) }, ENV);
+// Public token-gated email confirm — no auth headers (the HMAC token is the gate).
+const confirmReq = (body: unknown) =>
+  quote.request('/api/quote/decision/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, ENV);
+const okV2 = { ok: true, payload: { orgId: 'orgA', auditId: 'q1', exp: 9_999_999_999, shareVersion: 2 } };
 
 beforeEach(() => {
   seq.sends.length = 0; store.writes.clear(); store.invoices.clear();
@@ -69,6 +74,7 @@ beforeEach(() => {
     renderJson: JSON.stringify({ docTitle: 'Quote for Acme', solutionLabel: 'AI Agent', rangeText: '$10k–$20k', negInitial: '$15k', negBudget: '', negAdjusted: '' }),
   };
   vi.clearAllMocks();
+  share.verify.mockReset();
   rl.cooldown.mockResolvedValue({ ok: true }); rl.cap.mockResolvedValue({ ok: true });
 });
 
@@ -176,5 +182,81 @@ describe('POST /api/quote/:id/decision (B3 — discussion message)', () => {
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
     expect(res.status).toBe(200);
     expect(seq.sends.find(s => s.slug === 'quote-discussion-admin')).toBeFalsy();
+  });
+});
+
+describe('POST /api/quote/decision/confirm (public token-gated email accept)', () => {
+  it('accepts with a valid v2 action token: records decision, opens the invoice, notifies admin', async () => {
+    store.stored!.customerEmail = 'client@co.com';            // recipient persisted at email time
+    share.verify.mockResolvedValue(okV2);
+    const res = await confirmReq({ token: 'tok', decision: 'accepted' });
+    expect(res.status).toBe(200);
+    expect((await res.json() as { status: string }).status).toBe('accepted');
+    const inv = store.invoices.get('invoices/quote_q1')!;
+    expect(inv.status).toBe('draft');
+    expect(inv.customerEmail).toBe('client@co.com');         // addressed to the persisted recipient, not the caller
+    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending');
+    expect(admin).toBeTruthy();
+    expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('client@co.com');
+  });
+
+  it('rejects a v1 PDF-link token (wrong share version) — no invoice', async () => {
+    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'q1', exp: 9_999_999_999, shareVersion: 1 } });
+    const res = await confirmReq({ token: 'tok', decision: 'accepted' });
+    expect(res.status).toBe(401);
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
+    expect(seq.sends.length).toBe(0);
+  });
+
+  it('rejects an invalid token (401) and an expired token (410)', async () => {
+    share.verify.mockResolvedValueOnce({ ok: false, code: 'SHARE_INVALID' });
+    expect((await confirmReq({ token: 'bad', decision: 'accepted' })).status).toBe(401);
+    share.verify.mockResolvedValueOnce({ ok: false, code: 'SHARE_EXPIRED' });
+    expect((await confirmReq({ token: 'old', decision: 'accepted' })).status).toBe(410);
+    expect(store.invoices.size).toBe(0);
+  });
+
+  it('records a discussion via token and notifies the admin (no invoice)', async () => {
+    share.verify.mockResolvedValue(okV2);
+    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'Can we lower it?' });
+    expect(res.status).toBe(200);
+    expect(seq.sends.find(s => s.slug === 'quote-discussion-admin')).toBeTruthy();
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
+  });
+
+  it('is idempotent — a re-confirm never overwrites an already-created invoice', async () => {
+    store.invoices.set('invoices/quote_q1', { status: 'pending', amount: 5000 });
+    share.verify.mockResolvedValue(okV2);
+    const res = await confirmReq({ token: 'tok', decision: 'accepted' });
+    expect(res.status).toBe(200);
+    const inv = store.invoices.get('invoices/quote_q1')!;
+    expect(inv.status).toBe('pending');     // confirmed invoice preserved
+    expect(inv.amount).toBe(5000);
+  });
+
+  it('rejects an unknown decision value (400)', async () => {
+    share.verify.mockResolvedValue(okV2);
+    expect((await confirmReq({ token: 'tok', decision: 'maybe' })).status).toBe(400);
+  });
+
+  it('is single-effect: a repeat confirm on an already-decided quote is an idempotent no-op', async () => {
+    store.stored!.decidedAt = '2026-06-21T00:00:00.000Z';
+    store.stored!.decision = 'accepted';
+    share.verify.mockResolvedValue(okV2);
+    // A leaked token replayed with a different decision must NOT re-write or re-notify.
+    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'spam the admin' });
+    expect(res.status).toBe(200);
+    expect((await res.json() as { alreadyRecorded?: boolean }).alreadyRecorded).toBe(true);
+    expect(seq.sends.length).toBe(0);          // no admin email re-sent
+    expect(store.invoices.size).toBe(0);       // no new invoice
+  });
+
+  it('rate-limits replay bursts (per-quote cooldown → 429, nothing recorded)', async () => {
+    share.verify.mockResolvedValue(okV2);
+    rl.cooldown.mockResolvedValueOnce({ ok: false, retryAfterSec: 8 });
+    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'x' });
+    expect(res.status).toBe(429);
+    expect(seq.sends.length).toBe(0);
+    expect(store.invoices.size).toBe(0);
   });
 });

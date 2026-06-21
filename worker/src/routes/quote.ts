@@ -404,6 +404,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Anti-abuse caps for the now-arbitrary-recipient email endpoint (B2).
 const EMAIL_COOLDOWN_MS = 15_000;
 const EMAIL_DAILY_CAP = 20;
+// Public token-confirm: a per-quote cooldown bounds replay bursts of the 14-day
+// bearer token (the primary control is the single-effect "already decided" guard).
+const CONFIRM_COOLDOWN_MS = 10_000;
 
 // Part 4 — last-resort language inference from the Cloudflare edge country when
 // the client doesn't supply a usable locale. Only the 6 templated languages map;
@@ -454,6 +457,12 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const stored = await firestoreGet(saJson, path);
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
 
+  // Persist the recipient so a later token-gated email accept addresses the draft
+  // invoice + client invoice email to the right person (the unauthenticated email
+  // caller's identity is never trusted — only this server-recorded value is used).
+  try { await firestoreSet(saJson, path, { customerEmail: recipient }, { merge: true }); }
+  catch (err) { console.error('[quote] recipient persist failed:', err instanceof Error ? err.message : ''); }
+
   // Persist the render payload if supplied (so the shared link can regenerate it).
   let render: QuotePdfInput | null = null;
   if (body.render && typeof body.render === 'object') {
@@ -481,6 +490,9 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const now = Math.floor(Date.now() / 1000);
   const { token } = await signShareToken(secret, orgId, quoteId, 1, SHARE_TTL, now);
   const pdfUrl = `${new URL(c.req.url).origin}/api/quote/shared/${token}`;
+  // Distinct action token (v2) for the Accept/Discuss CTAs — only this version is
+  // accepted by POST /api/quote/decision/confirm, so a forwarded PDF link can't accept.
+  const { token: actionToken } = await signShareToken(secret, orgId, quoteId, QUOTE_ACTION_SHARE_VERSION, SHARE_TTL, now);
 
   // Part 4 — resolve the email language: client-provided locale first (app
   // language → browser language are already merged client-side), then the CF edge
@@ -495,8 +507,8 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
   const variables: Record<string, string> = {
     QUOTE_TITLE:  render.docTitle,
-    ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email`,
-    DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email`,
+    ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email&t=${actionToken}`,
+    DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email&t=${actionToken}`,
     SOLUTION:     render.solutionLabel,
     RANGE:        render.rangeText,
     NEG_INITIAL:  render.negInitial,
@@ -576,6 +588,113 @@ quote.get('/api/quote/shared/:token', async c => {
  * ADMIN_EMAIL is set. No pricing/billing change.
  */
 
+// Action-token version for the email Accept/Discuss CTAs. Distinct from the v1
+// PDF-link token so a forwarded PDF URL can never be used to accept a proposal.
+const QUOTE_ACTION_SHARE_VERSION = 2;
+
+/* Shared core for both the authed in-app decision and the public token-gated email
+ * confirm: write the decision, open the draft invoice on accept (idempotent — one
+ * per quote, never reset), and notify the admin. Best-effort emails (non-fatal).
+ * No HTTP concerns here — callers resolve orgId/quoteId/customerEmail + validate. */
+async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
+  orgId: string; quoteId: string; stored: Record<string, unknown>;
+  decision: 'accepted' | 'discussion'; hasBudget: boolean; budget: number;
+  message: string | null; customerEmail: string | undefined; appBase: string;
+}): Promise<void> {
+  const { orgId, quoteId, stored, decision, hasBudget, budget, message, customerEmail, appBase } = a;
+
+  const patch: Record<string, string | number> = {
+    decision, status: decision,
+    decidedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  };
+  if (message) patch.discussionMessage = message;
+  if (hasBudget) {
+    patch.expectedBudgetUsd = Math.round(budget);
+    // Keep the persisted render in sync so the email/shared PDF shows the budget row.
+    if (typeof stored.renderJson === 'string') {
+      try {
+        const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
+        r.negBudget = `$${Math.round(budget).toLocaleString('en-US')}`;
+        patch.renderJson = JSON.stringify(r);
+      } catch { /* leave renderJson as-is */ }
+    }
+  }
+  await firestoreSet(saJson, `${COLLECTION(orgId)}/${quoteId}`, patch, { merge: true });
+
+  // On accept, open a DRAFT invoice. No amount, no email, no Stripe, no charge: the
+  // admin confirms the final amount (Step B) before any client invoice/payment link.
+  if (decision === 'accepted') {
+    const invPath = `invoices/quote_${quoteId}`;
+    const existingInv = await firestoreGet(saJson, invPath);
+    if (!existingInv) {
+      const rangeMinUsd = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
+        : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
+      const rangeMaxUsd = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
+        : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
+      let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
+      let rangeText = rangeMinUsd != null && rangeMaxUsd != null ? formatUsdRange(rangeMinUsd, rangeMaxUsd) : '';
+      if (typeof stored.renderJson === 'string') {
+        try {
+          const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
+          if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle;
+          if (typeof r.rangeText === 'string' && r.rangeText) rangeText = r.rangeText;
+        } catch { /* keep defaults */ }
+      }
+      const invoice = {
+        id: `quote_${quoteId}`, quoteId, orgId, quoteTitle,
+        customerEmail: customerEmail ?? '',
+        rangeMinUsd, rangeMaxUsd,
+        // The client's expected budget (USD) carried onto the invoice so the admin
+        // sees what the customer expects to pay when confirming the final amount.
+        expectedBudgetUsd: hasBudget ? Math.round(budget) : null,
+        amount: null, currency: 'usd', status: 'draft', source: 'quote',
+        schemaVersion: 1, createdAt: new Date().toISOString(),
+      };
+      try {
+        await firestoreSet(saJson, invPath, invoice as unknown as Parameters<typeof firestoreSet>[2]);
+        // Notify the admin that a draft invoice awaits confirmation. Best-effort,
+        // non-fatal, but logged loudly so a missing ADMIN_EMAIL / send failure is never silent.
+        if (env.ADMIN_EMAIL) {
+          const r = await sendTransactional(env.SEQUENZY_API_KEY, {
+            to: env.ADMIN_EMAIL, slug: 'invoice-admin-pending', replyTo: customerEmail,
+            variables: {
+              QUOTE_TITLE: quoteTitle, CUSTOMER_EMAIL: customerEmail ?? '', RANGE: rangeText,
+              // Surface the client's expected budget so the admin can set a fair amount.
+              BUDGET: hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : 'Not specified',
+              PANEL_URL: `${appBase}/#/invoices`,
+            },
+          });
+          if (!r.ok) console.warn('[quote] invoice-admin-pending NOT sent (check SEQUENZY_API_KEY / template invoice-admin-pending):', r.error ?? 'unknown');
+        } else {
+          console.warn('[quote] ADMIN_EMAIL unset — no admin notification sent for accepted quote', quoteId);
+        }
+      } catch (err) { console.error('[quote] invoice draft create failed:', err instanceof Error ? err.message : ''); }
+    }
+  }
+
+  // Discuss → best-effort admin notification (sales signal). Non-fatal.
+  if (decision === 'discussion' && env.ADMIN_EMAIL) {
+    let context = quoteId;
+    if (typeof stored.renderJson === 'string') {
+      try {
+        const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
+        const parts = [r.docTitle, r.solutionLabel, r.rangeText].filter((v): v is string => typeof v === 'string');
+        if (parts.length) context = parts.join(' · ');
+      } catch { /* keep quoteId as context */ }
+    }
+    const r = await sendTransactional(env.SEQUENZY_API_KEY, {
+      to: env.ADMIN_EMAIL, slug: 'quote-discussion-admin', replyTo: customerEmail,
+      variables: {
+        TYPE: 'discussion', MESSAGE: message ?? '', EMAIL: customerEmail ?? '',
+        CONTEXT: context, BUDGET: hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '', QUOTE_ID: quoteId,
+      },
+    });
+    if (!r.ok) console.warn('[quote] quote-discussion-admin NOT sent:', r.error ?? 'unknown');
+  } else if (decision === 'discussion') {
+    console.warn('[quote] ADMIN_EMAIL unset — no discussion notification sent for', quoteId);
+  }
+}
+
 interface DecisionBody { orgId?: unknown; decision?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
 
 quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLES), async c => {
@@ -603,131 +722,81 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
   // defanged, capped 2000). Stored on the quote doc only — no separate collection.
   const message = typeof body.message === 'string' ? sanitizeText(body.message, 2000) : null;
 
-  const path = `${COLLECTION(orgId)}/${quoteId}`;
-  const stored = await firestoreGet(saJson, path);
+  const stored = await firestoreGet(saJson, `${COLLECTION(orgId)}/${quoteId}`);
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
 
-  const patch: Record<string, string | number> = {
-    decision,
-    status:    decision,
-    decidedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  if (message) patch.discussionMessage = message;
-  if (hasBudget) {
-    patch.expectedBudgetUsd = Math.round(budget);
-    // Keep the persisted render in sync so the email/shared PDF shows the budget row.
-    if (typeof stored.renderJson === 'string') {
-      try {
-        const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
-        r.negBudget = `$${Math.round(budget).toLocaleString('en-US')}`;
-        patch.renderJson = JSON.stringify(r);
-      } catch { /* leave renderJson as-is */ }
-    }
-  }
-  await firestoreSet(saJson, path, patch, { merge: true });
+  const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+  await applyQuoteDecision(env, saJson, {
+    orgId, quoteId, stored, decision, hasBudget, budget, message,
+    customerEmail: c.get('email') as string | undefined, appBase,
+  });
+  return c.json({ ok: true, status: decision });
+});
 
-  // Part 2 — on accept, open a DRAFT invoice. No amount, no email, no Stripe, no
-  // charge: the admin confirms the final amount (Step B) before any invoice email
-  // or payment link is generated. Idempotent — one invoice per quote, and an
-  // already-created invoice is never reset (preserves a confirmed amount/status).
-  if (decision === 'accepted') {
-    const invPath = `invoices/quote_${quoteId}`;
-    const existingInv = await firestoreGet(saJson, invPath);
-    if (!existingInv) {
-      const customerEmail = c.get('email') as string | undefined;
-      const rangeMinUsd = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
-        : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
-      const rangeMaxUsd = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
-        : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
-      // Project title + range text from the persisted render (for the invoice + admin email).
-      // Fallback to a short reference (not the raw UUID) when no PDF render exists yet.
-      let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
-      let rangeText = rangeMinUsd != null && rangeMaxUsd != null ? formatUsdRange(rangeMinUsd, rangeMaxUsd) : '';
-      if (typeof stored.renderJson === 'string') {
-        try {
-          const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
-          if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle;
-          if (typeof r.rangeText === 'string' && r.rangeText) rangeText = r.rangeText;
-        } catch { /* keep defaults */ }
-      }
-      const invoice = {
-        id:            `quote_${quoteId}`,
-        quoteId,
-        orgId,
-        quoteTitle,
-        customerEmail: customerEmail ?? '',
-        rangeMinUsd,
-        rangeMaxUsd,
-        // The client's expected budget (USD) carried onto the invoice so the admin
-        // sees what the customer expects to pay when confirming the final amount.
-        expectedBudgetUsd: hasBudget ? Math.round(budget) : null,
-        amount:        null,     // admin sets at confirm time
-        currency:      'usd',
-        status:        'draft',
-        source:        'quote',
-        schemaVersion: 1,
-        createdAt:     new Date().toISOString(),
-      };
-      try {
-        await firestoreSet(saJson, invPath, invoice as unknown as Parameters<typeof firestoreSet>[2]);
-        // Part 1 — notify the admin that a draft invoice awaits confirmation. Best-effort,
-        // non-fatal, but logged loudly so a missing ADMIN_EMAIL / send failure is never silent.
-        if (env.ADMIN_EMAIL) {
-          const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-          const r = await sendTransactional(env.SEQUENZY_API_KEY, {
-            to:      env.ADMIN_EMAIL,
-            slug:    'invoice-admin-pending',
-            replyTo: customerEmail,
-            variables: {
-              QUOTE_TITLE:    quoteTitle,
-              CUSTOMER_EMAIL: customerEmail ?? '',
-              RANGE:          rangeText,
-              // Surface the client's expected budget so the admin can set a fair
-              // confirmed amount. Internal English notification — the template
-              // always renders the row, so send a clear "Not specified" fallback.
-              BUDGET:         hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : 'Not specified',
-              PANEL_URL:      `${appBase}/#/invoices`,
-            },
-          });
-          if (!r.ok) console.warn('[quote] invoice-admin-pending NOT sent (check SEQUENZY_API_KEY / template invoice-admin-pending):', r.error ?? 'unknown');
-        } else {
-          console.warn('[quote] ADMIN_EMAIL unset — no admin notification sent for accepted quote', quoteId);
-        }
-      } catch (err) { console.error('[quote] invoice draft create failed:', err instanceof Error ? err.message : ''); }
-    }
+/* ── POST /api/quote/decision/confirm — PUBLIC, token-gated email accept/discuss ──
+ *
+ * The quote email's Accept/Discuss CTAs carry an HMAC action token (shareVersion 2,
+ * distinct from the v1 PDF-link token so a forwarded PDF URL can't accept). The
+ * unauthenticated recipient lands on #/quote/result and clicks Confirm, which POSTs
+ * here — POST-only by design, so an email scanner prefetching the GET link can never
+ * accept. The token binds {orgId, quoteId}; the action records a NON-BINDING decision
+ * + opens a DRAFT invoice (no amount, no charge) + notifies the admin. Idempotent. */
+interface TokenDecisionBody { token?: unknown; decision?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
+
+quote.post('/api/quote/decision/confirm', async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+  const secret = env.AUDIT_SHARE_SECRET;
+  if (!secret) return c.json({ error: 'Links are not enabled.', code: 'SHARE_DISABLED' }, 503);
+
+  let body: TokenDecisionBody;
+  try { body = (await c.req.json()) as TokenDecisionBody; }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  // The HMAC token IS the gate (no auth): verify signature + expiry, then require
+  // the dedicated ACTION version so a v1 PDF-link token can never accept.
+  const token = typeof body.token === 'string' ? body.token : '';
+  const v = await verifyShareToken(secret, token, Math.floor(Date.now() / 1000));
+  if (!v.ok) return c.json(
+    { error: v.code === 'SHARE_EXPIRED' ? 'This link has expired.' : 'This link is invalid.', code: v.code },
+    v.code === 'SHARE_EXPIRED' ? 410 : 401,
+  );
+  if (v.payload.shareVersion !== QUOTE_ACTION_SHARE_VERSION) {
+    return c.json({ error: 'This link is invalid.', code: 'SHARE_INVALID' }, 401);
   }
 
-  // Discuss → best-effort admin notification (sales signal). Non-fatal.
-  if (decision === 'discussion' && env.ADMIN_EMAIL) {
-    const customerEmail = c.get('email') as string | undefined;
-    // Non-PII context line composed from the stored quote (title · solution · range).
-    let context = quoteId;
-    if (typeof stored.renderJson === 'string') {
-      try {
-        const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
-        const parts = [r.docTitle, r.solutionLabel, r.rangeText].filter((v): v is string => typeof v === 'string');
-        if (parts.length) context = parts.join(' · ');
-      } catch { /* keep quoteId as context */ }
-    }
-    const r = await sendTransactional(env.SEQUENZY_API_KEY, {
-      to:      env.ADMIN_EMAIL,
-      slug:    'quote-discussion-admin',
-      replyTo: customerEmail,
-      variables: {
-        TYPE:     'discussion',
-        MESSAGE:  message ?? '',
-        EMAIL:    customerEmail ?? '',
-        CONTEXT:  context,
-        BUDGET:   hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '',
-        QUOTE_ID: quoteId,
-      },
-    });
-    if (!r.ok) console.warn('[quote] quote-discussion-admin NOT sent:', r.error ?? 'unknown');
-  } else if (decision === 'discussion') {
-    console.warn('[quote] ADMIN_EMAIL unset — no discussion notification sent for', quoteId);
+  const decision = body.decision === 'accepted' ? 'accepted'
+    : body.decision === 'discussion' ? 'discussion' : null;
+  if (!decision) return c.json({ error: 'Invalid decision.', code: 'INVALID_DECISION' }, 400);
+  const budget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
+  const hasBudget = Number.isFinite(budget) && budget >= 0 && budget <= PRICE_MAX;
+  const message = typeof body.message === 'string' ? sanitizeText(body.message, 2000) : null;
+
+  const { orgId, auditId: quoteId } = v.payload;
+
+  // Per-quote cooldown bounds replay bursts of the 14-day bearer token (fail-open:
+  // a flaky rate-limit store never blocks a legitimate confirm).
+  const cd = await checkCooldown(saJson, 'quote_confirm', `${orgId}:${quoteId}`, CONFIRM_COOLDOWN_MS);
+  if (!cd.ok) return c.json({ error: 'Please wait a moment before retrying.', code: 'RATE_LIMITED', retryAfterSec: cd.retryAfterSec }, 429);
+
+  const stored = await firestoreGet(saJson, `${COLLECTION(orgId)}/${quoteId}`);
+  if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  // Single-effect guard: this token is a replayable bearer credential, so a repeat
+  // POST must NOT re-write the decision or re-notify the admin. First confirm wins;
+  // later ones are idempotent no-ops (closes admin-email flooding + decision tampering
+  // via a leaked/forwarded link). The authed in-app path is unaffected.
+  if (typeof stored.decidedAt === 'string' && stored.decidedAt) {
+    return c.json({ ok: true, status: typeof stored.decision === 'string' ? stored.decision : decision, alreadyRecorded: true });
   }
 
+  // Address the invoice + client email to the recipient persisted when the quote
+  // was emailed (the unauthenticated caller's identity is never trusted).
+  const customerEmail = typeof stored.customerEmail === 'string' && stored.customerEmail ? stored.customerEmail : undefined;
+  const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+  await applyQuoteDecision(env, saJson, { orgId, quoteId, stored, decision, hasBudget, budget, message, customerEmail, appBase });
   return c.json({ ok: true, status: decision });
 });
 
