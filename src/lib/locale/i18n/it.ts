@@ -54,6 +54,7 @@ export const it: Dict = {
     statusPending: 'In attesa',
     statusPaid: 'Pagata',
     amountPending: 'Da confermare',
+    clientBudget: 'Budget del cliente',
     confirmSend: 'Conferma e invia fattura',
     amountLabel: 'Importo finale (USD)',
     confirmBtn: 'Conferma e invia',
@@ -2608,10 +2609,15 @@ export const it: Dict = {
       },
       "accepted": {
         "title": "Proposta accettata",
-        "prepared": "La tua fattura è in preparazione.",
-        "adminConfirm": "Un amministratore confermerà l'importo finale e poi ti invierà la fattura via email.",
-        "discussTitle": "Richiesta ricevuta",
-        "discussBody": "Abbiamo ricevuto la tua richiesta e ti contatteremo per modificare la proposta.",
+        "s1": "La tua richiesta è stata inviata",
+        "s2": "Un esperto confermerà l'importo finale",
+        "s3": "Riceverai una fattura",
+        "s4": "Poi effettui il pagamento",
+        "viewInvoice": "Vedi la tua fattura",
+        "emailTitle": "Manca un passaggio",
+        "emailBody": "Per confermare e ricevere la tua fattura, accetta la proposta nel tuo spazio di lavoro AiLunaPro.",
+        "discussTitle": "Richiedi un adeguamento del prezzo",
+        "discussBody": "Per richiedere una modifica, rispondi all'email della tua proposta e ti ricontatteremo.",
         "back": "Torna allo strumento preventivi"
       },
       "flow": {
@@ -2622,9 +2628,6 @@ export const it: Dict = {
         "s4": "Effettui il pagamento"
       },
       "decision": {
-        "invoiceDraftTitle": "Fattura creata (bozza)",
-        "invoiceStatusDraft": "Bozza",
-        "invoiceWaiting": "Confermeremo l'importo finale e poi ti invieremo la fattura.",
         "adjustHeading": "Vuoi modificare o discutere questo preventivo?",
         "messagePlaceholder": "Aggiungi un messaggio — cosa vorresti modificare?",
         "messageSend": "Invia richiesta",
@@ -2634,7 +2637,7 @@ export const it: Dict = {
         "verdictWithin": "Il tuo budget rientra nella fascia stimata.",
         "verdictAbove": "Il tuo budget è superiore alla fascia stimata.",
         "accept": "Accetta questa stima",
-        "discuss": "Discuti / richiedi una modifica",
+        "discuss": "Richiedi un adeguamento del prezzo",
         "accepted": "Stima accettata — ti ricontatteremo a breve.",
         "discussionSent": "Richiesta inviata — ti contatteremo per discuterne.",
         "error": "Impossibile salvare la tua scelta. Riprova."

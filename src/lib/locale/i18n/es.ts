@@ -54,6 +54,7 @@ export const es: Dict = {
     statusPending: 'Pendiente',
     statusPaid: 'Pagada',
     amountPending: 'Por confirmar',
+    clientBudget: 'Presupuesto del cliente',
     confirmSend: 'Confirmar y enviar factura',
     amountLabel: 'Importe final (USD)',
     confirmBtn: 'Confirmar y enviar',
@@ -2608,10 +2609,15 @@ export const es: Dict = {
       },
       "accepted": {
         "title": "Propuesta aceptada",
-        "prepared": "Tu factura se está preparando.",
-        "adminConfirm": "Un administrador confirmará el importe final y luego te enviará la factura por correo.",
-        "discussTitle": "Solicitud recibida",
-        "discussBody": "Hemos recibido tu solicitud y te contactaremos para ajustar la propuesta.",
+        "s1": "Tu solicitud ha sido enviada",
+        "s2": "Un experto confirmará el importe final",
+        "s3": "Recibirás una factura",
+        "s4": "Después realizas el pago",
+        "viewInvoice": "Ver tu factura",
+        "emailTitle": "Un paso por dar",
+        "emailBody": "Para confirmar y recibir tu factura, acepta la propuesta en tu espacio de trabajo de AiLunaPro.",
+        "discussTitle": "Solicitar un ajuste de precio",
+        "discussBody": "Para solicitar un cambio, responde al correo de tu propuesta y te daremos seguimiento.",
         "back": "Volver a la herramienta de presupuestos"
       },
       "flow": {
@@ -2622,9 +2628,6 @@ export const es: Dict = {
         "s4": "Realizas el pago"
       },
       "decision": {
-        "invoiceDraftTitle": "Factura creada (borrador)",
-        "invoiceStatusDraft": "Borrador",
-        "invoiceWaiting": "Confirmaremos el importe final y luego te enviaremos tu factura.",
         "adjustHeading": "¿Quieres ajustar o comentar este presupuesto?",
         "messagePlaceholder": "Añade un mensaje — ¿qué te gustaría ajustar?",
         "messageSend": "Enviar solicitud",
@@ -2634,7 +2637,7 @@ export const es: Dict = {
         "verdictWithin": "Tu presupuesto está dentro del rango estimado.",
         "verdictAbove": "Tu presupuesto está por encima del rango estimado.",
         "accept": "Aceptar esta estimación",
-        "discuss": "Discutir / solicitar ajuste",
+        "discuss": "Solicitar un ajuste de precio",
         "accepted": "Estimación aceptada — te contactaremos en breve.",
         "discussionSent": "Solicitud enviada — nos pondremos en contacto para hablarlo.",
         "error": "No se pudo guardar tu decisión. Inténtalo de nuevo."

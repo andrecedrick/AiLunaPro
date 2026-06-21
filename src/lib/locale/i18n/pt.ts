@@ -54,6 +54,7 @@ export const pt: Dict = {
     statusPending: 'Pendente',
     statusPaid: 'Paga',
     amountPending: 'A confirmar',
+    clientBudget: 'Orçamento do cliente',
     confirmSend: 'Confirmar e enviar fatura',
     amountLabel: 'Valor final (USD)',
     confirmBtn: 'Confirmar e enviar',
@@ -2608,10 +2609,15 @@ export const pt: Dict = {
       },
       "accepted": {
         "title": "Proposta aceite",
-        "prepared": "A sua fatura está a ser preparada.",
-        "adminConfirm": "Um administrador irá confirmar o valor final e depois enviar-lhe a fatura por email.",
-        "discussTitle": "Pedido recebido",
-        "discussBody": "Recebemos o seu pedido e entraremos em contacto para ajustar a proposta.",
+        "s1": "O seu pedido foi enviado",
+        "s2": "Um especialista irá confirmar o valor final",
+        "s3": "Irá receber uma fatura",
+        "s4": "Depois efetua o pagamento",
+        "viewInvoice": "Ver a sua fatura",
+        "emailTitle": "Falta um passo",
+        "emailBody": "Para confirmar e receber a sua fatura, aceite a proposta no seu espaço de trabalho AiLunaPro.",
+        "discussTitle": "Solicitar um ajuste de preço",
+        "discussBody": "Para solicitar uma alteração, responda ao e-mail da sua proposta e iremos dar seguimento.",
         "back": "Voltar à ferramenta de orçamentos"
       },
       "flow": {
@@ -2622,9 +2628,6 @@ export const pt: Dict = {
         "s4": "Efetua o pagamento"
       },
       "decision": {
-        "invoiceDraftTitle": "Fatura criada (rascunho)",
-        "invoiceStatusDraft": "Rascunho",
-        "invoiceWaiting": "Vamos confirmar o valor final e depois enviar a sua fatura.",
         "adjustHeading": "Quer ajustar ou discutir este orçamento?",
         "messagePlaceholder": "Adicione uma mensagem — o que gostaria de ajustar?",
         "messageSend": "Enviar pedido",
@@ -2634,7 +2637,7 @@ export const pt: Dict = {
         "verdictWithin": "O seu orçamento está dentro da faixa estimada.",
         "verdictAbove": "O seu orçamento está acima da faixa estimada.",
         "accept": "Aceitar esta estimativa",
-        "discuss": "Discutir / solicitar ajuste",
+        "discuss": "Solicitar um ajuste de preço",
         "accepted": "Estimativa aceite — entraremos em contacto em breve.",
         "discussionSent": "Pedido enviado — entraremos em contacto para conversar.",
         "error": "Não foi possível guardar a sua decisão. Tente novamente."

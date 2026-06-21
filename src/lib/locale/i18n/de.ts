@@ -54,6 +54,7 @@ export const de: Dict = {
     statusPending: 'Ausstehend',
     statusPaid: 'Bezahlt',
     amountPending: 'Wird bestätigt',
+    clientBudget: 'Kundenbudget',
     confirmSend: 'Bestätigen und Rechnung senden',
     amountLabel: 'Endbetrag (USD)',
     confirmBtn: 'Bestätigen & senden',
@@ -2608,10 +2609,15 @@ export const de: Dict = {
       },
       "accepted": {
         "title": "Angebot angenommen",
-        "prepared": "Ihre Rechnung wird vorbereitet.",
-        "adminConfirm": "Ein Administrator bestätigt den Endbetrag und sendet Ihnen dann die Rechnung per E-Mail.",
-        "discussTitle": "Anfrage erhalten",
-        "discussBody": "Wir haben Ihre Anfrage erhalten und melden uns, um das Angebot anzupassen.",
+        "s1": "Ihre Anfrage wurde gesendet",
+        "s2": "Ein Experte bestätigt den Endbetrag",
+        "s3": "Sie erhalten eine Rechnung",
+        "s4": "Anschließend führen Sie die Zahlung aus",
+        "viewInvoice": "Rechnung anzeigen",
+        "emailTitle": "Nur noch ein Schritt",
+        "emailBody": "Um zu bestätigen und Ihre Rechnung zu erhalten, nehmen Sie das Angebot in Ihrem AiLunaPro-Arbeitsbereich an.",
+        "discussTitle": "Preisanpassung anfragen",
+        "discussBody": "Um eine Änderung anzufragen, antworten Sie auf Ihre Angebots-E-Mail, und wir melden uns bei Ihnen.",
         "back": "Zurück zum Angebots-Tool"
       },
       "flow": {
@@ -2622,9 +2628,6 @@ export const de: Dict = {
         "s4": "Sie führen die Zahlung aus"
       },
       "decision": {
-        "invoiceDraftTitle": "Rechnung erstellt (Entwurf)",
-        "invoiceStatusDraft": "Entwurf",
-        "invoiceWaiting": "Wir bestätigen den Endbetrag und senden Ihnen dann Ihre Rechnung.",
         "adjustHeading": "Möchten Sie dieses Angebot anpassen oder besprechen?",
         "messagePlaceholder": "Fügen Sie eine Nachricht hinzu — was möchten Sie anpassen?",
         "messageSend": "Anfrage senden",
@@ -2634,7 +2637,7 @@ export const de: Dict = {
         "verdictWithin": "Ihr Budget liegt im geschätzten Bereich.",
         "verdictAbove": "Ihr Budget liegt über dem geschätzten Bereich.",
         "accept": "Diese Schätzung annehmen",
-        "discuss": "Besprechen / Anpassung anfragen",
+        "discuss": "Preisanpassung anfragen",
         "accepted": "Schätzung angenommen — wir melden uns in Kürze.",
         "discussionSent": "Anfrage gesendet — wir melden uns zur Besprechung.",
         "error": "Ihre Entscheidung konnte nicht gespeichert werden. Bitte erneut versuchen."

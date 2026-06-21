@@ -122,6 +122,23 @@ describe('accept → draft invoice (Part 2)', () => {
     expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('owner@acme.com');
   });
 
+  it('carries the client budget onto the invoice + admin email (Part 1)', async () => {
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 1500 });
+    expect(res.status).toBe(200);
+    const inv = store.invoices.get('invoices/quote_q1')!;
+    expect(inv.expectedBudgetUsd).toBe(1500);
+    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending')!;
+    expect((admin!.variables as Record<string, string>).BUDGET).toBe('$1,500');   // shown so the admin sets a fair amount
+  });
+
+  it('marks the budget "Not specified" when the client gave none (no blank row)', async () => {
+    await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    const inv = store.invoices.get('invoices/quote_q1')!;
+    expect(inv.expectedBudgetUsd).toBeNull();
+    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending')!;
+    expect((admin!.variables as Record<string, string>).BUDGET).toBe('Not specified');
+  });
+
   it('is idempotent — never overwrites an already-created invoice', async () => {
     store.invoices.set('invoices/quote_q1', { status: 'pending', amount: 5000 });
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });

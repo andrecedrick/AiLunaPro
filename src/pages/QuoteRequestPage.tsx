@@ -528,20 +528,10 @@ export function QuoteRequestPage() {
 
                   {/* U2 — your budget + decision (accept / discuss) */}
                   <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)', textAlign: 'center' }}>
-                    {(decisionState === 'accepted' || decisionState === 'discussion') ? (
-                      decisionState === 'discussion' ? (
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>{Q.decision.discussionSent}</div>
-                      ) : (
-                        /* FIX 4 — a draft invoice is opened on accept (no payment, no amount yet) */
-                        <div style={{ maxWidth: 360, margin: '0 auto', textAlign: 'left', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                            <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>{Q.decision.invoiceDraftTitle}</span>
-                            <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--violet-text)', background: 'rgba(124,58,237,0.10)', borderRadius: 999, padding: '3px 10px' }}>{Q.decision.invoiceStatusDraft}</span>
-                          </div>
-                          {negInitialText && <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>{negInitialText}</div>}
-                          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>{Q.decision.invoiceWaiting}</div>
-                        </div>
-                      )
+                    {/* Accept navigates to #/quote/result (the confirmation surface), so only the
+                        discussion-sent state paints here; the decision form shows otherwise. */}
+                    {decisionState === 'discussion' ? (
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>{Q.decision.discussionSent}</div>
                     ) : (
                       <>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>{Q.decision.adjustHeading}</div>
@@ -555,9 +545,11 @@ export function QuoteRequestPage() {
                           </div>
                         )}
                         {!showDiscuss ? (
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('accepted')} style={{ ...primaryBtnStyle(), padding: '10px 20px' }}>{Q.decision.accept}</button>
-                            <button type="button" disabled={decisionState === 'saving'} onClick={() => setShowDiscuss(true)} style={{ ...secondaryBtnStyle(), padding: '10px 18px' }}>{Q.decision.discuss}</button>
+                          /* PART 2/3 — Accept is the single primary CTA; "request a price
+                             adjustment" is a de-emphasised text link below it (not co-equal). */
+                          <div style={{ display: 'grid', gap: 12, justifyItems: 'center' }}>
+                            <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('accepted')} style={{ ...primaryBtnStyle(), padding: '13px 36px', fontSize: 15 }}>{Q.decision.accept}</button>
+                            <button type="button" disabled={decisionState === 'saving'} onClick={() => setShowDiscuss(true)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textDecoration: 'underline', padding: 0 }}>{Q.decision.discuss}</button>
                           </div>
                         ) : (
                           <div style={{ display: 'grid', gap: 8, maxWidth: 360, margin: '0 auto' }}>

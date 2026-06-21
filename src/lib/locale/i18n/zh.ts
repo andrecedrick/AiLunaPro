@@ -56,6 +56,7 @@ export const zh: Dict = {
     statusPending: '待处理',
     statusPaid: '已支付',
     amountPending: '待确认',
+    clientBudget: '客户预算',
     confirmSend: '确认并发送发票',
     amountLabel: '最终金额（USD）',
     confirmBtn: '确认并发送',
@@ -2610,10 +2611,15 @@ export const zh: Dict = {
       },
       "accepted": {
         "title": "提案已接受",
-        "prepared": "您的发票正在准备中。",
-        "adminConfirm": "管理员将确认最终金额，然后通过电子邮件向您发送发票。",
-        "discussTitle": "已收到请求",
-        "discussBody": "我们已收到您的请求，将与您联系以调整提案。",
+        "s1": "您的请求已发送",
+        "s2": "专家将确认最终金额",
+        "s3": "您将收到一张发票",
+        "s4": "随后您完成付款",
+        "viewInvoice": "查看您的发票",
+        "emailTitle": "仅剩一步",
+        "emailBody": "如需确认并接收您的发票，请在您的 AiLunaPro 工作区中接受此报价。",
+        "discussTitle": "请求价格调整",
+        "discussBody": "如需提出修改，请回复您的报价邮件，我们将与您跟进。",
         "back": "返回报价工具"
       },
       "flow": {
@@ -2624,9 +2630,6 @@ export const zh: Dict = {
         "s4": "您完成付款"
       },
       "decision": {
-        "invoiceDraftTitle": "发票已创建（草稿）",
-        "invoiceStatusDraft": "草稿",
-        "invoiceWaiting": "我们将确认最终金额，然后向您发送发票。",
         "adjustHeading": "想要调整或讨论此报价吗？",
         "messagePlaceholder": "添加留言 — 您希望调整什么？",
         "messageSend": "发送请求",
@@ -2636,7 +2639,7 @@ export const zh: Dict = {
         "verdictWithin": "您的预算在估算区间内。",
         "verdictAbove": "您的预算高于估算区间。",
         "accept": "接受此估算",
-        "discuss": "讨论 / 请求调整",
+        "discuss": "请求价格调整",
         "accepted": "已接受估算——我们将尽快跟进。",
         "discussionSent": "请求已发送——我们将与您联系沟通。",
         "error": "无法保存您的选择，请重试。"

@@ -659,6 +659,9 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
         customerEmail: customerEmail ?? '',
         rangeMinUsd,
         rangeMaxUsd,
+        // The client's expected budget (USD) carried onto the invoice so the admin
+        // sees what the customer expects to pay when confirming the final amount.
+        expectedBudgetUsd: hasBudget ? Math.round(budget) : null,
         amount:        null,     // admin sets at confirm time
         currency:      'usd',
         status:        'draft',
@@ -680,6 +683,10 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
               QUOTE_TITLE:    quoteTitle,
               CUSTOMER_EMAIL: customerEmail ?? '',
               RANGE:          rangeText,
+              // Surface the client's expected budget so the admin can set a fair
+              // confirmed amount. Internal English notification — the template
+              // always renders the row, so send a clear "Not specified" fallback.
+              BUDGET:         hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : 'Not specified',
               PANEL_URL:      `${appBase}/#/invoices`,
             },
           });

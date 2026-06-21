@@ -84,6 +84,9 @@ export function InvoicesPage() {
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{projectName(inv)}</div>
           {inv.customerEmail && <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 2 }}>{inv.customerEmail}</div>}
+          {inv.expectedBudgetUsd != null && (
+            <div style={{ fontSize: 12, color: '#b45309', marginTop: 2, fontWeight: 600 }}>{I.clientBudget}: {usd(inv.expectedBudgetUsd)}</div>
+          )}
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{inv.createdAt.slice(0, 10)}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

@@ -56,6 +56,7 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
       currency:      typeof f.currency === 'string' ? f.currency : 'usd',
       rangeMinUsd:   typeof f.rangeMinUsd === 'number' ? f.rangeMinUsd : null,
       rangeMaxUsd:   typeof f.rangeMaxUsd === 'number' ? f.rangeMaxUsd : null,
+      expectedBudgetUsd: typeof f.expectedBudgetUsd === 'number' ? f.expectedBudgetUsd : null,
       status:        typeof f.status === 'string' ? f.status : 'draft',
       createdAt:     typeof f.createdAt === 'string' ? f.createdAt : '',
     };

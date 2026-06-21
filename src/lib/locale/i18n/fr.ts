@@ -54,6 +54,7 @@ export const fr: Dict = {
     statusPending: 'En attente',
     statusPaid: 'Payée',
     amountPending: 'À confirmer',
+    clientBudget: 'Budget du client',
     confirmSend: 'Confirmer et envoyer la facture',
     amountLabel: 'Montant final (USD)',
     confirmBtn: 'Confirmer et envoyer',
@@ -2608,10 +2609,15 @@ export const fr: Dict = {
       },
       "accepted": {
         "title": "Proposition acceptée",
-        "prepared": "Votre facture est en cours de préparation.",
-        "adminConfirm": "Un administrateur confirmera le montant final, puis vous enverra la facture par e-mail.",
-        "discussTitle": "Demande reçue",
-        "discussBody": "Nous avons bien reçu votre demande et vous recontacterons pour ajuster la proposition.",
+        "s1": "Votre demande a bien été envoyée",
+        "s2": "Un expert confirmera le montant final",
+        "s3": "Vous recevrez une facture",
+        "s4": "Vous effectuez ensuite le paiement",
+        "viewInvoice": "Voir votre facture",
+        "emailTitle": "Plus qu'une étape",
+        "emailBody": "Pour confirmer et recevoir votre facture, acceptez le devis dans votre espace de travail AiLunaPro.",
+        "discussTitle": "Demander un ajustement du prix",
+        "discussBody": "Pour demander une modification, répondez à l'e-mail de votre devis et nous reviendrons vers vous.",
         "back": "Retour à l'outil de devis"
       },
       "flow": {
@@ -2622,9 +2628,6 @@ export const fr: Dict = {
         "s4": "Vous effectuez le paiement"
       },
       "decision": {
-        "invoiceDraftTitle": "Facture créée (brouillon)",
-        "invoiceStatusDraft": "Brouillon",
-        "invoiceWaiting": "Nous confirmerons le montant final, puis vous enverrons votre facture.",
         "adjustHeading": "Vous souhaitez ajuster ou discuter ce devis ?",
         "messagePlaceholder": "Ajoutez un message — que souhaitez-vous ajuster ?",
         "messageSend": "Envoyer la demande",
@@ -2634,7 +2637,7 @@ export const fr: Dict = {
         "verdictWithin": "Votre budget se situe dans la fourchette estimée.",
         "verdictAbove": "Votre budget est supérieur à la fourchette estimée.",
         "accept": "Accepter cette estimation",
-        "discuss": "Discuter / demander un ajustement",
+        "discuss": "Demander un ajustement du prix",
         "accepted": "Estimation acceptée — nous revenons vers vous rapidement.",
         "discussionSent": "Demande envoyée — nous vous contacterons pour en discuter.",
         "error": "Impossible d'enregistrer votre choix. Veuillez réessayer."

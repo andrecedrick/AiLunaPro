@@ -16,6 +16,7 @@ export interface InvoiceItem {
   currency:      string;
   rangeMinUsd:   number | null;
   rangeMaxUsd:   number | null;
+  expectedBudgetUsd?: number | null;
   status:        string;
   createdAt:     string;
 }

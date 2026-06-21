@@ -68,6 +68,7 @@ export const en = {
     statusPending: 'Pending',
     statusPaid: 'Paid',
     amountPending: 'To be confirmed',
+    clientBudget: 'Client budget',
     confirmSend: 'Confirm and send invoice',
     amountLabel: 'Final amount (USD)',
     confirmBtn: 'Confirm & send',
@@ -2623,10 +2624,15 @@ export const en = {
       },
       "accepted": {
         "title": "Proposal accepted",
-        "prepared": "Your invoice is being prepared.",
-        "adminConfirm": "An admin will confirm the final amount, then email you the invoice.",
-        "discussTitle": "Request received",
-        "discussBody": "We've received your request and will reach out to adjust the proposal.",
+        "s1": "Your request has been sent",
+        "s2": "An expert will confirm the final amount",
+        "s3": "You will receive an invoice",
+        "s4": "Then you complete the payment",
+        "viewInvoice": "View your invoice",
+        "emailTitle": "One step to go",
+        "emailBody": "To confirm and receive your invoice, accept the quote in your AiLunaPro workspace.",
+        "discussTitle": "Request a price adjustment",
+        "discussBody": "To request a change, reply to your quote email and we'll follow up.",
         "back": "Back to the quote tool"
       },
       "flow": {
@@ -2637,9 +2643,6 @@ export const en = {
         "s4": "You complete the payment"
       },
       "decision": {
-        "invoiceDraftTitle": "Invoice created (draft)",
-        "invoiceStatusDraft": "Draft",
-        "invoiceWaiting": "We'll confirm the final amount, then send your invoice.",
         "adjustHeading": "Want to adjust or discuss this quote?",
         "messagePlaceholder": "Add a message — what would you like to adjust?",
         "messageSend": "Send request",
@@ -2649,7 +2652,7 @@ export const en = {
         "verdictWithin": "Your budget is within the estimated range.",
         "verdictAbove": "Your budget is above the estimated range.",
         "accept": "Accept this estimate",
-        "discuss": "Discuss / request adjustment",
+        "discuss": "Request a price adjustment",
         "accepted": "Estimate accepted — we'll follow up shortly.",
         "discussionSent": "Request sent — we'll reach out to discuss.",
         "error": "Could not save your decision. Please try again."
