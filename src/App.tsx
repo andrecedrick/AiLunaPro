@@ -43,6 +43,7 @@ const AgentDetailPage      = lazy(() => import('./pages/AgentDetailPage').then(m
 const DiagnosticPage       = lazy(() => import('./pages/DiagnosticPage').then(m => ({ default: m.DiagnosticPage })));
 const RoiCalculatorPage    = lazy(() => import('./pages/RoiCalculatorPage').then(m => ({ default: m.RoiCalculatorPage })));
 const QuoteRequestPage     = lazy(() => import('./pages/QuoteRequestPage').then(m => ({ default: m.QuoteRequestPage })));
+const QuoteResultPage      = lazy(() => import('./pages/QuoteResultPage').then(m => ({ default: m.QuoteResultPage })));
 const InvoicesPage         = lazy(() => import('./pages/InvoicesPage').then(m => ({ default: m.InvoicesPage })));
 const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
@@ -246,6 +247,8 @@ function AppShell() {
       navigate({ name: 'diagnostic' });
     } else if (h.startsWith('#/roi-calculator')) {
       navigate({ name: 'roi-calculator' });
+    } else if (h.startsWith('#/quote/result')) {
+      navigate({ name: 'quote/result' });
     } else if (h.startsWith('#/quote')) {
       navigate({ name: 'quote' });
     } else if (h.startsWith('#/help')) {
@@ -483,6 +486,15 @@ function AppShell() {
     return (
       <Suspense fallback={<PageFallback />}>
         <CampaignChrome><QuoteRequestPage /></CampaignChrome>
+      </Suspense>
+    );
+  }
+
+  /* ── Quote result: post-accept confirmation (also the email Accept landing). ── */
+  if (route.name === 'quote/result') {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <CampaignChrome><QuoteResultPage /></CampaignChrome>
       </Suspense>
     );
   }

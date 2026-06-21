@@ -102,9 +102,17 @@ describe('POST /api/invoices/:id/confirm (Step B)', () => {
     expect(seq.sends.length).toBe(0);
   });
 
-  it('is idempotent — an already-pending invoice is not re-sent', async () => {
-    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'pending', amount: 9000 });
-    const res = await confirm('quote_a', 15000);
+  it('re-confirms + re-sends a pending invoice (explicit admin resend)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', customerEmail: 'c@x.com', status: 'pending', amount: 9000 });
+    const res = await confirm('quote_a', 12000);
+    expect(res.status).toBe(200);
+    expect(state.docs.get('invoices/quote_a')!.amount).toBe(12000);                 // updated
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();          // re-sent
+  });
+
+  it('does not re-amount or re-send a PAID invoice (final)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 9000 });
+    const res = await confirm('quote_a', 12000);
     expect(res.status).toBe(200);
     expect((await res.json() as { alreadyConfirmed?: boolean }).alreadyConfirmed).toBe(true);
     expect(state.docs.get('invoices/quote_a')!.amount).toBe(9000);   // unchanged

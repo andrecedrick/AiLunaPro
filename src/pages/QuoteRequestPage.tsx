@@ -346,6 +346,8 @@ export function QuoteRequestPage() {
       });
       emit('quote_decision', { flow: 'quote', decision, src: src ?? undefined });
       setDecisionState(decision);
+      // FIX 1 — after accept, route to the confirmation result page.
+      if (decision === 'accepted') navigate({ name: 'quote/result' });
     } catch {
       setDecisionState('error');
     }

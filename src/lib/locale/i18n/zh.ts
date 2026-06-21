@@ -2608,6 +2608,14 @@ export const zh: Dict = {
           "ops": "AI 智能体与自动化项目额外增加 {min}–{max}% 的运营成本（令牌、基础设施）。"
         }
       },
+      "accepted": {
+        "title": "提案已接受",
+        "prepared": "您的发票正在准备中。",
+        "adminConfirm": "管理员将确认最终金额，然后通过电子邮件向您发送发票。",
+        "discussTitle": "已收到请求",
+        "discussBody": "我们已收到您的请求，将与您联系以调整提案。",
+        "back": "返回报价工具"
+      },
       "flow": {
         "heading": "工作流程",
         "s1": "接受方案",

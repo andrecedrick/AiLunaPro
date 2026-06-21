@@ -2606,6 +2606,14 @@ export const pt: Dict = {
           "ops": "Projetos de agentes de IA e automação acrescentam {min}–{max}% de custos operacionais (tokens, infraestrutura)."
         }
       },
+      "accepted": {
+        "title": "Proposta aceite",
+        "prepared": "A sua fatura está a ser preparada.",
+        "adminConfirm": "Um administrador irá confirmar o valor final e depois enviar-lhe a fatura por email.",
+        "discussTitle": "Pedido recebido",
+        "discussBody": "Recebemos o seu pedido e entraremos em contacto para ajustar a proposta.",
+        "back": "Voltar à ferramenta de orçamentos"
+      },
       "flow": {
         "heading": "Como funciona",
         "s1": "Aceite a proposta",

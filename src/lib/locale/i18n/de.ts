@@ -2606,6 +2606,14 @@ export const de: Dict = {
           "ops": "KI-Agenten- und Automatisierungsprojekte verursachen zusätzlich {min}–{max}% Betriebskosten (Tokens, Infrastruktur)."
         }
       },
+      "accepted": {
+        "title": "Angebot angenommen",
+        "prepared": "Ihre Rechnung wird vorbereitet.",
+        "adminConfirm": "Ein Administrator bestätigt den Endbetrag und sendet Ihnen dann die Rechnung per E-Mail.",
+        "discussTitle": "Anfrage erhalten",
+        "discussBody": "Wir haben Ihre Anfrage erhalten und melden uns, um das Angebot anzupassen.",
+        "back": "Zurück zum Angebots-Tool"
+      },
       "flow": {
         "heading": "So funktioniert es",
         "s1": "Angebot annehmen",

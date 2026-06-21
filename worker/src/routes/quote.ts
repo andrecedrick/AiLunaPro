@@ -495,8 +495,8 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
   const variables: Record<string, string> = {
     QUOTE_TITLE:  render.docTitle,
-    ACCEPT_URL:   `${appBase}/#/quote?action=accept&src=email`,
-    DISCUSS_URL:  `${appBase}/#/quote?action=discuss&src=email`,
+    ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email`,
+    DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email`,
     SOLUTION:     render.solutionLabel,
     RANGE:        render.rangeText,
     NEG_INITIAL:  render.negInitial,

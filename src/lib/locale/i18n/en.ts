@@ -2621,6 +2621,14 @@ export const en = {
           "ops": "AI agent & automation projects add {min}–{max}% in operating costs (tokens, infrastructure)."
         }
       },
+      "accepted": {
+        "title": "Proposal accepted",
+        "prepared": "Your invoice is being prepared.",
+        "adminConfirm": "An admin will confirm the final amount, then email you the invoice.",
+        "discussTitle": "Request received",
+        "discussBody": "We've received your request and will reach out to adjust the proposal.",
+        "back": "Back to the quote tool"
+      },
       "flow": {
         "heading": "How it works",
         "s1": "Accept the proposal",

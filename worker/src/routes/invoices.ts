@@ -98,9 +98,11 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   if (!inv) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
   // Cross-org guard: an admin of org A must not touch org B's invoice.
   if (inv.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
-  // Idempotent: only a draft can be confirmed; an already-sent invoice is returned as-is.
-  if (inv.status !== 'draft') {
-    return c.json({ ok: true, status: typeof inv.status === 'string' ? inv.status : 'pending', alreadyConfirmed: true });
+  // A paid invoice is final — never re-amount or re-send. Draft OR pending can be
+  // (re)confirmed: draft = first confirm; pending = an explicit admin re-send with a
+  // possibly-updated amount (admin-initiated via a button, so not an accidental dup).
+  if (inv.status === 'paid') {
+    return c.json({ ok: true, status: 'paid', alreadyConfirmed: true });
   }
 
   // Region-aware bank-transfer details from the org settings doc (optional).

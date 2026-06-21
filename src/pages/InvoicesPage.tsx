@@ -58,7 +58,8 @@ export function InvoicesPage() {
   const openConfirm = (inv: InvoiceItem) => {
     setConfirmingId(inv.id);
     setConfirmError(false);
-    setAmountInput(inv.rangeMaxUsd != null ? String(inv.rangeMaxUsd) : '');
+    // Pre-fill with the confirmed amount (re-send) or the range ceiling (first confirm).
+    setAmountInput(inv.amount != null ? String(inv.amount) : inv.rangeMaxUsd != null ? String(inv.rangeMaxUsd) : '');
   };
 
   const submitConfirm = async (inv: InvoiceItem) => {
@@ -97,7 +98,7 @@ export function InvoicesPage() {
           : <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: '#b45309' }}>⚠ {I.sentNoEmail}</div>
       )}
 
-      {isAdmin && inv.status === 'draft' && sentInfo?.id !== inv.id && (
+      {isAdmin && (inv.status === 'draft' || inv.status === 'pending') && sentInfo?.id !== inv.id && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
           {confirmingId === inv.id ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

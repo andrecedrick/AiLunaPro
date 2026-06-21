@@ -34,6 +34,12 @@ export function routeToHash(route: Route): string | null {
     case 'help':
       return currentHash().startsWith('#/help') ? currentHash() : '#/help';
 
+    // Public quote-result page — the email Accept/Discuss CTA lands here with
+    // ?action=accept|discuss. Preserve that query so QuoteResultPage can read it
+    // (the in-app accept navigates from #/quote, so it canonicalises cleanly).
+    case 'quote/result':
+      return currentHash().startsWith('#/quote/result') ? currentHash() : '#/quote/result';
+
     case 'dashboard':
       return '#/';
 
