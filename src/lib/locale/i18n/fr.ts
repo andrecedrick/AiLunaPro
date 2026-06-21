@@ -2666,15 +2666,19 @@ export const fr: Dict = {
         "s4": "Vous effectuez le paiement"
       },
       "decision": {
-        "adjustHeading": "Vous souhaitez ajuster ou discuter ce devis ?",
+        "adjustHeading": "Proposez votre budget",
         "messagePlaceholder": "Ajoutez un message — que souhaitez-vous ajuster ?",
         "messageSend": "Envoyer la demande",
-        "budgetLabel": "Votre budget (facultatif)",
+        "budgetLabel": "Votre budget proposé",
+        "budgetIntro": "Il s'agit du montant que vous proposez. Votre client le valide ou demande un ajustement.",
+        "rangeLabel": "Fourchette estimée",
         "budgetPlaceholder": "ex. 50000",
+        "budgetRequired": "Veuillez saisir votre budget avant de valider.",
         "verdictBelow": "Votre budget est inférieur à la fourchette estimée.",
         "verdictWithin": "Votre budget se situe dans la fourchette estimée.",
         "verdictAbove": "Votre budget est supérieur à la fourchette estimée.",
-        "accept": "Envoyer votre réponse",
+        "accept": "Envoyer mon budget",
+        "submitHint": "Votre client validera ce montant ou demandera un ajustement.",
         "discuss": "Demander un ajustement du prix",
         "accepted": "Estimation acceptée — nous revenons vers vous rapidement.",
         "discussionSent": "Demande envoyée — nous vous contacterons pour en discuter.",
@@ -2702,6 +2706,8 @@ export const fr: Dict = {
         "stateNegotiation": "Négociation",
         "stateWaiting": "En attente de l'administrateur",
         "stateInvoice": "Facture",
+        "budgetLabel": "Votre budget proposé",
+        "waitingValidation": "En attente de validation",
         "back": "Retour à l'outil de devis"
       }
     }

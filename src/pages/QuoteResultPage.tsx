@@ -20,6 +20,7 @@ import type { ReactNode } from 'react';
 import { useRoute } from '../context/RouteContext';
 import { useLocale } from '../context/LocaleContext';
 import { useAuth } from '../context/AuthContext';
+import { useMoney } from '../lib/currency/useMoney';
 import { primaryBtnStyle } from '../components/ui-tools';
 import { QuoteProgress } from '../components/QuoteProgress';
 import { confirmQuoteDecisionByToken } from '../lib/quote/quoteClient';
@@ -27,16 +28,18 @@ import { confirmQuoteDecisionByToken } from '../lib/quote/quoteClient';
 // Roles that may see the Invoices surface (mirrors the sidebar gate; 'client' excluded).
 const INVOICE_ROLES = ['owner', 'admin', 'billing', 'member'];
 
-function hashFlags(): { action: 'accept' | 'discuss'; fromEmail: boolean; token: string; quoteId: string } {
+function hashFlags(): { action: 'accept' | 'discuss'; fromEmail: boolean; token: string; quoteId: string; budgetUsd: number | null } {
   const h = typeof window !== 'undefined' ? window.location.hash : '';
   const m = /[?&]t=([^&]+)/.exec(h);
   const qid = /[?&]quoteId=([^&]+)/.exec(h);
+  const bud = /[?&]budgetUsd=(\d+)/.exec(h);
   const dec = (s: string): string => { try { return decodeURIComponent(s); } catch { return ''; } };
   return {
     action:    /[?&]action=discuss/i.test(h) ? 'discuss' : 'accept',
     fromEmail: /[?&]src=email/i.test(h),
     token:     m ? dec(m[1]) : '',
     quoteId:   qid ? dec(qid[1]) : '',
+    budgetUsd: bud ? Number(bud[1]) : null,
   };
 }
 
@@ -45,11 +48,15 @@ const linkBtn = { background: 'none', border: 'none', color: 'var(--text-muted)'
 export function QuoteResultPage() {
   const { navigate } = useRoute();
   const { session } = useAuth();
-  const A = useLocale().publicTools.quote.accepted;
-  const { action, fromEmail, token, quoteId } = hashFlags();
+  const Q = useLocale().publicTools.quote;
+  const A = Q.accepted;
+  const money = useMoney();
+  const { action, fromEmail, token, quoteId, budgetUsd } = hashFlags();
   const canViewInvoice = !!session && INVOICE_ROLES.includes(session.role ?? '');
   const [phase, setPhase] = useState<'idle' | 'confirming' | 'done' | 'error'>('idle');
   const goQuote = () => navigate({ name: 'quote' });
+  // Carry the proposed budget to the status page so it shows the exact amount.
+  const goStatus = () => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}), ...(budgetUsd !== null && budgetUsd > 0 ? { budgetUsd } : {}) });
 
   // Waiting/confirmation state (in-app submit, or a successful email confirm):
   // progress stepper at "Review", what-happens-next checklist, track CTA.
@@ -58,6 +65,11 @@ export function QuoteResultPage() {
       <QuoteProgress active={2} />
       <div style={{ fontSize: 40, lineHeight: 1, marginBottom: 12 }} aria-hidden>✅</div>
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 16px' }}>{A.title}</h1>
+      {budgetUsd !== null && budgetUsd > 0 && (
+        <div style={{ fontSize: 14.5, color: 'var(--text-secondary)', margin: '0 0 18px' }}>
+          {Q.status.budgetLabel}: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{money.format(budgetUsd)}</strong>
+        </div>
+      )}
       <ul style={{ listStyle: 'none', margin: '0 auto 24px', padding: 0, display: 'grid', gap: 12, maxWidth: 360, textAlign: 'left' }}>
         {[A.s1, A.s2, A.s3, A.s4].map((s, i) => (
           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -69,8 +81,8 @@ export function QuoteResultPage() {
       <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
         {canViewInvoice
           ? <button type="button" onClick={() => navigate({ name: 'invoices', ...(quoteId ? { quoteId } : {}) })} style={primaryBtnStyle()}>{A.viewInvoice}</button>
-          : <button type="button" onClick={() => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}) })} style={primaryBtnStyle()}>{A.trackCta}</button>}
-        {canViewInvoice && <button type="button" onClick={() => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}) })} style={linkBtn}>{A.trackCta}</button>}
+          : <button type="button" onClick={goStatus} style={primaryBtnStyle()}>{A.trackCta}</button>}
+        {canViewInvoice && <button type="button" onClick={goStatus} style={linkBtn}>{A.trackCta}</button>}
         <button type="button" onClick={goQuote} style={linkBtn}>{A.back}</button>
       </div>
     </div>

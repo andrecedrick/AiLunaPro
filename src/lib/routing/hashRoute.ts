@@ -34,15 +34,21 @@ export function routeToHash(route: Route): string | null {
     case 'help':
       return currentHash().startsWith('#/help') ? currentHash() : '#/help';
 
-    // Public quote flow — the in-app submit carries quoteId so the confirmation /
-    // status pages can deep-link to the exact quote; the email Accept/Discuss CTA
-    // lands here with ?action/?t, which the preserve-currentHash branch keeps.
+    // Public quote flow — the in-app submit carries quoteId (deep-link to the exact
+    // quote) and the user's proposed budget (USD) so the confirmation / status pages
+    // can show it. The email Accept/Discuss CTA lands here with ?action/?t, which the
+    // preserve-currentHash branch keeps.
     case 'quote/result':
-      return route.quoteId ? `#/quote/result?quoteId=${encodeURIComponent(route.quoteId)}`
-        : currentHash().startsWith('#/quote/result') ? currentHash() : '#/quote/result';
-    case 'quote/status':
-      return route.quoteId ? `#/quote/status?quoteId=${encodeURIComponent(route.quoteId)}`
-        : currentHash().startsWith('#/quote/status') ? currentHash() : '#/quote/status';
+    case 'quote/status': {
+      const base = `#/${route.name}`;
+      const params: string[] = [];
+      if (route.quoteId) params.push(`quoteId=${encodeURIComponent(route.quoteId)}`);
+      if (typeof route.budgetUsd === 'number' && Number.isFinite(route.budgetUsd) && route.budgetUsd >= 0) {
+        params.push(`budgetUsd=${Math.round(route.budgetUsd)}`);
+      }
+      if (params.length) return `${base}?${params.join('&')}`;
+      return currentHash().startsWith(base) ? currentHash() : base;
+    }
 
     // Invoices — email CTAs + the status page deep-link with ?quoteId / ?invoiceId.
     // Serialize an explicit quoteId; otherwise preserve the landing query so

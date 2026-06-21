@@ -2666,15 +2666,19 @@ export const de: Dict = {
         "s4": "Sie führen die Zahlung aus"
       },
       "decision": {
-        "adjustHeading": "Möchten Sie dieses Angebot anpassen oder besprechen?",
+        "adjustHeading": "Schlagen Sie Ihr Budget vor",
         "messagePlaceholder": "Fügen Sie eine Nachricht hinzu — was möchten Sie anpassen?",
         "messageSend": "Anfrage senden",
-        "budgetLabel": "Ihr Budget (optional)",
+        "budgetLabel": "Ihr vorgeschlagenes Budget",
+        "budgetIntro": "Dies ist der Betrag, den Sie vorschlagen. Ihr Kunde bestätigt ihn oder fordert eine Anpassung an.",
         "budgetPlaceholder": "z. B. 50000",
+        "rangeLabel": "Geschätzter Bereich",
+        "budgetRequired": "Bitte geben Sie Ihr Budget ein, bevor Sie absenden.",
         "verdictBelow": "Ihr Budget liegt unter dem geschätzten Bereich.",
         "verdictWithin": "Ihr Budget liegt im geschätzten Bereich.",
         "verdictAbove": "Ihr Budget liegt über dem geschätzten Bereich.",
-        "accept": "Antwort absenden",
+        "submitHint": "Ihr Kunde bestätigt diesen Betrag oder fordert eine Anpassung an.",
+        "accept": "Mein Budget absenden",
         "discuss": "Preisanpassung anfragen",
         "accepted": "Schätzung angenommen — wir melden uns in Kürze.",
         "discussionSent": "Anfrage gesendet — wir melden uns zur Besprechung.",
@@ -2702,6 +2706,8 @@ export const de: Dict = {
         "stateNegotiation": "Verhandlung",
         "stateWaiting": "Warten auf Administrator",
         "stateInvoice": "Rechnung",
+        "budgetLabel": "Ihr vorgeschlagenes Budget",
+        "waitingValidation": "Warten auf Validierung",
         "back": "Zurück zum Angebots-Tool"
       }
     }

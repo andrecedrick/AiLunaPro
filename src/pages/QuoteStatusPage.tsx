@@ -10,24 +10,31 @@
 
 import { useRoute } from '../context/RouteContext';
 import { useLocale } from '../context/LocaleContext';
+import { useMoney } from '../lib/currency/useMoney';
 import { primaryBtnStyle } from '../components/ui-tools';
 import { QuoteProgress } from '../components/QuoteProgress';
 
-function hashState(): { quoteId: string; state: 'review' | 'negotiation' | 'waiting' | 'invoice' } {
+function hashState(): { quoteId: string; state: 'review' | 'negotiation' | 'waiting' | 'invoice'; budgetUsd: number | null } {
   const h = typeof window !== 'undefined' ? window.location.hash : '';
   const dec = (s: string): string => { try { return decodeURIComponent(s); } catch { return ''; } };
   const qid = /[?&]quoteId=([^&]+)/.exec(h);
   const st = /[?&]state=(review|negotiation|waiting|invoice)/i.exec(h);
-  return { quoteId: qid ? dec(qid[1]) : '', state: (st ? st[1].toLowerCase() : 'review') as 'review' | 'negotiation' | 'waiting' | 'invoice' };
+  const bud = /[?&]budgetUsd=(\d+)/.exec(h);
+  return {
+    quoteId: qid ? dec(qid[1]) : '',
+    state: (st ? st[1].toLowerCase() : 'review') as 'review' | 'negotiation' | 'waiting' | 'invoice',
+    budgetUsd: bud ? Number(bud[1]) : null,
+  };
 }
 
 export function QuoteStatusPage() {
   const { navigate } = useRoute();
+  const money = useMoney();
   const Q = useLocale().publicTools.quote;
   const S = Q.status;
   const flow = Q.flow;
   const steps = [flow.s1, flow.s2, flow.s3, flow.s4];
-  const { quoteId, state } = hashState();
+  const { quoteId, state, budgetUsd } = hashState();
 
   const badgeLabel = state === 'negotiation' ? S.stateNegotiation
     : state === 'waiting' ? S.stateWaiting
@@ -40,6 +47,15 @@ export function QuoteStatusPage() {
     <div style={{ maxWidth: 520, margin: '0 auto', padding: '48px 20px', textAlign: 'center' }}>
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>{S.title}</h1>
       <p style={{ fontSize: 14.5, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px' }}>{S.intro}</p>
+
+      {/* FIX 6 — the user's proposed budget (primary) + waiting-for-validation. */}
+      {budgetUsd !== null && budgetUsd > 0 && (
+        <div style={{ margin: '0 auto 20px', maxWidth: 360, padding: '16px 18px', borderRadius: 12, background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--violet)' }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text)', marginBottom: 6 }}>{S.budgetLabel}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{money.format(budgetUsd)}</div>
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8 }}>⏳ {S.waitingValidation}</div>
+        </div>
+      )}
 
       {/* Current-state badge */}
       <div style={{ marginBottom: 24 }}>

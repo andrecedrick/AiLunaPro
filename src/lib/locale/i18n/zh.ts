@@ -2668,15 +2668,19 @@ export const zh: Dict = {
         "s4": "您完成付款"
       },
       "decision": {
-        "adjustHeading": "想要调整或讨论此报价吗？",
+        "adjustHeading": "提出您的预算",
         "messagePlaceholder": "添加留言 — 您希望调整什么？",
         "messageSend": "发送请求",
-        "budgetLabel": "您的预算（可选）",
+        "budgetLabel": "您提出的预算",
+        "budgetIntro": "这是您提出的金额。您的客户将确认该金额或请求调整。",
+        "rangeLabel": "估算区间",
         "budgetPlaceholder": "例如 50000",
+        "budgetRequired": "请先填写您的预算，然后再提交。",
         "verdictBelow": "您的预算低于估算区间。",
         "verdictWithin": "您的预算在估算区间内。",
         "verdictAbove": "您的预算高于估算区间。",
-        "accept": "提交您的回复",
+        "submitHint": "您的客户将确认该金额或请求调整。",
+        "accept": "提交我的预算",
         "discuss": "请求价格调整",
         "accepted": "已接受估算——我们将尽快跟进。",
         "discussionSent": "请求已发送——我们将与您联系沟通。",
@@ -2704,6 +2708,8 @@ export const zh: Dict = {
         "stateNegotiation": "协商中",
         "stateWaiting": "等待管理员",
         "stateInvoice": "发票",
+        "budgetLabel": "您提出的预算",
+        "waitingValidation": "等待确认",
         "back": "返回报价工具"
       }
     }

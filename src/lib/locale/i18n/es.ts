@@ -2666,15 +2666,19 @@ export const es: Dict = {
         "s4": "Realizas el pago"
       },
       "decision": {
-        "adjustHeading": "¿Quieres ajustar o comentar este presupuesto?",
+        "adjustHeading": "Propón tu presupuesto",
         "messagePlaceholder": "Añade un mensaje — ¿qué te gustaría ajustar?",
         "messageSend": "Enviar solicitud",
-        "budgetLabel": "Tu presupuesto (opcional)",
+        "budgetLabel": "Tu presupuesto propuesto",
+        "budgetIntro": "Este es el importe que propones. Tu cliente lo valida o solicita un ajuste.",
         "budgetPlaceholder": "ej. 50000",
+        "rangeLabel": "Rango estimado",
         "verdictBelow": "Tu presupuesto está por debajo del rango estimado.",
         "verdictWithin": "Tu presupuesto está dentro del rango estimado.",
         "verdictAbove": "Tu presupuesto está por encima del rango estimado.",
-        "accept": "Enviar tu respuesta",
+        "budgetRequired": "Introduce tu presupuesto antes de enviar.",
+        "submitHint": "Tu cliente validará este importe o solicitará un ajuste.",
+        "accept": "Enviar mi presupuesto",
         "discuss": "Solicitar un ajuste de precio",
         "accepted": "Estimación aceptada — te contactaremos en breve.",
         "discussionSent": "Solicitud enviada — nos pondremos en contacto para hablarlo.",
@@ -2702,6 +2706,8 @@ export const es: Dict = {
         "stateNegotiation": "Negociación",
         "stateWaiting": "Esperando al administrador",
         "stateInvoice": "Factura",
+        "budgetLabel": "Tu presupuesto propuesto",
+        "waitingValidation": "Esperando validación",
         "back": "Volver a la herramienta de presupuestos"
       }
     }
