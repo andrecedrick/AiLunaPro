@@ -6,9 +6,10 @@
  * Auth + org-membership + role gated (owner/admin/billing/member; client → 403).
  * Token-charged (consumeTokens 'quote.generation' = 150), deterministic estimate
  * (reuses scoreQuote from Q0), persisted under the org. This module also serves
- * the PDF, the localized email (Sequenzy), the accept/discuss decision, and the
- * draft-invoice opened on accept. No payment / Stripe / charge beyond the
- * generation token cost. No PII logging.
+ * the PDF, the localized email (Sequenzy), and the accept/discuss decision (which
+ * advances the quote state machine but creates NO invoice — the invoice is born
+ * only when the admin finalises the amount). No payment / Stripe / charge beyond
+ * the generation token cost. No PII logging.
  *
  * Idempotency / no-double-charge:
  *   - Client sends a stable `quoteId` per estimate session.
@@ -30,7 +31,7 @@ import {
   type QuoteTier,
 } from '../lib/quote-shared';
 import { consumeTokens } from '../lib/tokens';
-import { firestoreGet, firestoreSet, firestoreDelete } from '../lib/firestoreAdmin';
+import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { buildQuotePdf, formatUsdRange, type QuotePdfInput } from '../lib/quote-pdf';
 import { sendTransactional } from '../lib/sequenzy';
 import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
@@ -398,6 +399,9 @@ quote.post('/api/quote/:quoteId/override', requireAuth(), requireRole(OVERRIDE_R
  */
 
 const EMAIL_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
+const PRICING_ROLES: RoleList = ['owner', 'admin']; // pricing queue + finalise are admin-only
+// Quote stages awaiting the admin's final amount (the pricing queue).
+const PENDING_STAGES = ['client_responded', 'negotiation'];
 const PDF_LANGS = new Set(['en', 'fr', 'es', 'de', 'it', 'pt']);
 const SHARE_TTL = 14 * 24 * 3600; // 14 days
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -460,7 +464,8 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   // Persist the recipient so a later token-gated email accept addresses the draft
   // invoice + client invoice email to the right person (the unauthenticated email
   // caller's identity is never trusted — only this server-recorded value is used).
-  try { await firestoreSet(saJson, path, { customerEmail: recipient }, { merge: true }); }
+  // STEP 1 — the quote has been sent to the client. Stage advances to 'sent'.
+  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: 'sent' }, { merge: true }); }
   catch (err) { console.error('[quote] recipient persist failed:', err instanceof Error ? err.message : ''); }
 
   // Persist the render payload if supplied (so the shared link can regenerate it).
@@ -581,11 +586,65 @@ quote.get('/api/quote/shared/:token', async c => {
   });
 });
 
+/* ── GET /api/quote/pending — admin pricing queue ──────────────────────────
+ *
+ * Owner/admin only. Lists the org's quotes that a client has responded to
+ * (stage 'client_responded' or 'negotiation') and that await the admin's final
+ * amount — i.e. before any invoice exists. The admin sets the amount here, which
+ * creates the invoice (POST /api/invoices/finalize). Single-field IN filter → no
+ * composite index. Worker-only (quotes are not client-readable).
+ */
+quote.get('/api/quote/pending', requireAuth(), requireRole(PRICING_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string; // membership-verified by requireRole
+
+  let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
+  try {
+    rows = await firestoreRunQuery(saJson, {
+      from:  [{ collectionId: 'quotes' }],
+      where: { fieldFilter: { field: { fieldPath: 'stage' }, op: 'IN', value: { arrayValue: { values: PENDING_STAGES.map(s => ({ stringValue: s })) } } } },
+      limit: 200,
+    }, `organizations/${orgId}`);
+  } catch (err) {
+    console.error('[quote] pending query failed:', err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not load pending quotes.', code: 'QUERY_FAILED' }, 500);
+  }
+
+  const quotes = rows.map(r => {
+    const f = r.fields as Record<string, unknown>;
+    const rangeMinUsd = typeof f.overrideMinUsd === 'number' ? f.overrideMinUsd : typeof f.priceMinUsd === 'number' ? f.priceMinUsd : null;
+    const rangeMaxUsd = typeof f.overrideMaxUsd === 'number' ? f.overrideMaxUsd : typeof f.priceMaxUsd === 'number' ? f.priceMaxUsd : null;
+    let quoteTitle = '';
+    if (typeof f.renderJson === 'string') {
+      try { const rj = JSON.parse(f.renderJson) as Record<string, unknown>; if (typeof rj.docTitle === 'string') quoteTitle = rj.docTitle; } catch { /* ignore */ }
+    }
+    return {
+      quoteId:           r.name.split('/').pop() ?? '',
+      quoteTitle,
+      customerEmail:     typeof f.customerEmail === 'string' ? f.customerEmail : '',
+      rangeMinUsd, rangeMaxUsd,
+      expectedBudgetUsd: typeof f.expectedBudgetUsd === 'number' ? f.expectedBudgetUsd : null,
+      message:           typeof f.discussionMessage === 'string' ? f.discussionMessage : '',
+      stage:             typeof f.stage === 'string' ? f.stage : '',
+      decision:          typeof f.decision === 'string' ? f.decision : '',
+      decidedAt:         typeof f.decidedAt === 'string' ? f.decidedAt : '',
+    };
+  });
+  // Newest response first.
+  quotes.sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : a.decidedAt > b.decidedAt ? -1 : 0));
+
+  return c.json({ ok: true, quotes });
+});
+
 /* ── POST /api/quote/:quoteId/decision — client pricing decision ───────────
  *
  * Member+ roles. Records a NON-BINDING intent (accept | discuss) + an optional
- * expected budget (USD). "discuss" notifies the admin (best-effort) if
- * ADMIN_EMAIL is set. No pricing/billing change.
+ * expected budget (USD); advances the quote stage and notifies the admin. No
+ * invoice is created here (that happens at admin finalise).
  */
 
 // Action-token version for the email Accept/Discuss CTAs. Distinct from the v1
@@ -593,9 +652,10 @@ quote.get('/api/quote/shared/:token', async c => {
 const QUOTE_ACTION_SHARE_VERSION = 2;
 
 /* Shared core for both the authed in-app decision and the public token-gated email
- * confirm: write the decision, open the draft invoice on accept (idempotent — one
- * per quote, never reset), and notify the admin. Best-effort emails (non-fatal).
- * No HTTP concerns here — callers resolve orgId/quoteId/customerEmail + validate. */
+ * confirm. Advances the quote state machine (accept → 'client_responded', discuss →
+ * 'negotiation') and notifies the admin so they can set the final amount. NO invoice
+ * is created here (FIX 1) — the invoice is born only at admin finalise (STEP 4).
+ * Best-effort emails (non-fatal). Callers resolve orgId/quoteId/customerEmail + validate. */
 async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   orgId: string; quoteId: string; stored: Record<string, unknown>;
   decision: 'accepted' | 'discussion'; hasBudget: boolean; budget: number;
@@ -603,8 +663,9 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
 }): Promise<void> {
   const { orgId, quoteId, stored, decision, hasBudget, budget, message, customerEmail, appBase } = a;
 
+  const stage = decision === 'accepted' ? 'client_responded' : 'negotiation';
   const patch: Record<string, string | number> = {
-    decision, status: decision,
+    decision, status: decision, stage,
     decidedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
   if (message) patch.discussionMessage = message;
@@ -621,72 +682,47 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   }
   await firestoreSet(saJson, `${COLLECTION(orgId)}/${quoteId}`, patch, { merge: true });
 
-  // On accept, open a DRAFT invoice. No amount, no email, no Stripe, no charge: the
-  // admin confirms the final amount (Step B) before any client invoice/payment link.
-  if (decision === 'accepted') {
-    const invPath = `invoices/quote_${quoteId}`;
-    const existingInv = await firestoreGet(saJson, invPath);
-    if (!existingInv) {
-      const rangeMinUsd = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
-        : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
-      const rangeMaxUsd = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
-        : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
-      let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
-      let rangeText = rangeMinUsd != null && rangeMaxUsd != null ? formatUsdRange(rangeMinUsd, rangeMaxUsd) : '';
-      if (typeof stored.renderJson === 'string') {
-        try {
-          const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
-          if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle;
-          if (typeof r.rangeText === 'string' && r.rangeText) rangeText = r.rangeText;
-        } catch { /* keep defaults */ }
-      }
-      const invoice = {
-        id: `quote_${quoteId}`, quoteId, orgId, quoteTitle,
-        customerEmail: customerEmail ?? '',
-        rangeMinUsd, rangeMaxUsd,
-        // The client's expected budget (USD) carried onto the invoice so the admin
-        // sees what the customer expects to pay when confirming the final amount.
-        expectedBudgetUsd: hasBudget ? Math.round(budget) : null,
-        amount: null, currency: 'usd', status: 'draft', source: 'quote',
-        schemaVersion: 1, createdAt: new Date().toISOString(),
-      };
-      try {
-        await firestoreSet(saJson, invPath, invoice as unknown as Parameters<typeof firestoreSet>[2]);
-        // Notify the admin that a draft invoice awaits confirmation. Best-effort,
-        // non-fatal, but logged loudly so a missing ADMIN_EMAIL / send failure is never silent.
-        if (env.ADMIN_EMAIL) {
-          const r = await sendTransactional(env.SEQUENZY_API_KEY, {
-            to: env.ADMIN_EMAIL, slug: 'invoice-admin-pending', replyTo: customerEmail,
-            variables: {
-              QUOTE_TITLE: quoteTitle, CUSTOMER_EMAIL: customerEmail ?? '', RANGE: rangeText,
-              // Surface the client's expected budget so the admin can set a fair amount.
-              BUDGET: hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : 'Not specified',
-              PANEL_URL: `${appBase}/#/invoices`,
-            },
-          });
-          if (!r.ok) console.warn('[quote] invoice-admin-pending NOT sent (check SEQUENZY_API_KEY / template invoice-admin-pending):', r.error ?? 'unknown');
-        } else {
-          console.warn('[quote] ADMIN_EMAIL unset — no admin notification sent for accepted quote', quoteId);
-        }
-      } catch (err) { console.error('[quote] invoice draft create failed:', err instanceof Error ? err.message : ''); }
-    }
+  // Display fields for the admin notification (title · solution · range).
+  let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
+  const rangeMinUsd = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
+    : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
+  const rangeMaxUsd = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
+    : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
+  let rangeText = rangeMinUsd != null && rangeMaxUsd != null ? formatUsdRange(rangeMinUsd, rangeMaxUsd) : '';
+  let solutionLabel = '';
+  if (typeof stored.renderJson === 'string') {
+    try {
+      const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
+      if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle;
+      if (typeof r.rangeText === 'string' && r.rangeText) rangeText = r.rangeText;
+      if (typeof r.solutionLabel === 'string') solutionLabel = r.solutionLabel;
+    } catch { /* keep defaults */ }
+  }
+  const budgetText = hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '';
+
+  // FIX 2 — notify the admin that the client RESPONDED so they can review + set the
+  // final amount on the Invoices/pricing panel. No invoice exists yet (FIX 1).
+  if (decision === 'accepted' && env.ADMIN_EMAIL) {
+    const r = await sendTransactional(env.SEQUENZY_API_KEY, {
+      to: env.ADMIN_EMAIL, slug: 'invoice-admin-pending', replyTo: customerEmail,
+      variables: {
+        QUOTE_TITLE: quoteTitle, CUSTOMER_EMAIL: customerEmail ?? '', RANGE: rangeText,
+        BUDGET: budgetText || 'Not specified', PANEL_URL: `${appBase}/#/invoices`,
+      },
+    });
+    if (!r.ok) console.warn('[quote] accept admin-notify NOT sent (check SEQUENZY_API_KEY / invoice-admin-pending):', r.error ?? 'unknown');
+  } else if (decision === 'accepted') {
+    console.warn('[quote] ADMIN_EMAIL unset — no admin notification sent for accepted quote', quoteId);
   }
 
-  // Discuss → best-effort admin notification (sales signal). Non-fatal.
+  // Discuss/negotiation → admin notification carrying the client's budget + message.
   if (decision === 'discussion' && env.ADMIN_EMAIL) {
-    let context = quoteId;
-    if (typeof stored.renderJson === 'string') {
-      try {
-        const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
-        const parts = [r.docTitle, r.solutionLabel, r.rangeText].filter((v): v is string => typeof v === 'string');
-        if (parts.length) context = parts.join(' · ');
-      } catch { /* keep quoteId as context */ }
-    }
+    const context = [quoteTitle, solutionLabel, rangeText].filter(Boolean).join(' · ') || quoteId;
     const r = await sendTransactional(env.SEQUENZY_API_KEY, {
       to: env.ADMIN_EMAIL, slug: 'quote-discussion-admin', replyTo: customerEmail,
       variables: {
         TYPE: 'discussion', MESSAGE: message ?? '', EMAIL: customerEmail ?? '',
-        CONTEXT: context, BUDGET: hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '', QUOTE_ID: quoteId,
+        CONTEXT: context, BUDGET: budgetText, QUOTE_ID: quoteId,
       },
     });
     if (!r.ok) console.warn('[quote] quote-discussion-admin NOT sent:', r.error ?? 'unknown');
@@ -739,8 +775,10 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
  * distinct from the v1 PDF-link token so a forwarded PDF URL can't accept). The
  * unauthenticated recipient lands on #/quote/result and clicks Confirm, which POSTs
  * here — POST-only by design, so an email scanner prefetching the GET link can never
- * accept. The token binds {orgId, quoteId}; the action records a NON-BINDING decision
- * + opens a DRAFT invoice (no amount, no charge) + notifies the admin. Idempotent. */
+ * accept. The token binds {orgId, quoteId}; the action records a NON-BINDING decision,
+ * advances the quote stage (client_responded / negotiation), and notifies the admin so
+ * they can set the final amount later on the Invoices panel. NO invoice is created here
+ * (FIX 1 — the invoice is born only at admin finalise). Idempotent (single-effect). */
 interface TokenDecisionBody { token?: unknown; decision?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
 
 quote.post('/api/quote/decision/confirm', async c => {

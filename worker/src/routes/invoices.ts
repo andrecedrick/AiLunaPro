@@ -1,18 +1,20 @@
 /**
- * Invoices route — read-only listing for the quote → accept → invoice flow.
+ * Invoices route — listing + admin finalise/re-send for the quote → invoice flow.
  *
- *   GET /api/invoices?orgId=…
+ *   GET  /api/invoices?orgId=…            — list the org's invoices (pending/paid)
+ *   POST /api/invoices/finalize          — admin sets the amount → the invoice is born
+ *   POST /api/invoices/:id/confirm       — admin re-amounts / re-sends an invoice
  *
- * Auth + role gated (owner/admin/billing/member; client → 403). orgId is the
- * membership-verified org from requireRole, so there is no cross-org access.
- * Lists the org's invoices (draft today; pending/paid later). No payment, no
- * Stripe, no email — purely a read of the worker-only `invoices` collection.
+ * Auth + role gated. orgId is the membership-verified org from requireRole, so there
+ * is no cross-org access. Invoices are created status 'pending' at finalise (never
+ * 'draft' in the current flow — 'draft' is only a legacy/tolerated state, hidden by
+ * the panel). No Stripe / charge — bank transfer is the live payment method.
  */
 
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
-import { firestoreRunQuery, firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { firestoreRunQuery, firestoreGet, firestoreSet, firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { sendTransactional } from '../lib/sequenzy';
 import { formatBankDetails } from '../lib/bank-details';
 import { dlog } from '../lib/log';
@@ -24,6 +26,38 @@ type RoleList = Parameters<typeof requireRole>[0];
 const INVOICE_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
 const CONFIRM_ROLES: RoleList = ['owner', 'admin']; // confirming + sending is admin-only
 const AMOUNT_MAX = 10_000_000;
+
+const QUOTE_DOC = (orgId: string, quoteId: string) => `organizations/${orgId}/quotes/${quoteId}`;
+
+/** Region-aware bank-transfer details (org settings) with a graceful fallback so
+ *  the invoice email never renders a blank bank block. */
+async function resolveBankDetails(saJson: string, orgId: string): Promise<string> {
+  let bank = '';
+  try {
+    const settings = await firestoreGet(saJson, `organizations/${orgId}/settings/billing`) as Record<string, unknown> | null;
+    bank = formatBankDetails(settings);
+  } catch { /* bank details optional */ }
+  return bank || 'Bank-transfer details available on request — reply to this email.';
+}
+
+/** Send the invoice-client email (best-effort, non-fatal). Shared by confirm + finalize. */
+async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; project: string; customer: string; amount: number; appBase: string }): Promise<{ emailed: boolean; emailError?: string }> {
+  if (!a.customer) return { emailed: false };
+  const bankDetails = await resolveBankDetails(saJson, a.orgId);
+  const res = await sendTransactional(env.SEQUENZY_API_KEY, {
+    to:      a.customer,
+    slug:    'invoice-client',
+    replyTo: env.ADMIN_EMAIL,
+    variables: {
+      PROJECT:      a.project,
+      AMOUNT:       `$${a.amount.toLocaleString('en-US')}`,
+      INVOICE_URL:  `${a.appBase}/#/invoices`, // placeholder pay link until Stripe Checkout
+      BANK_DETAILS: bankDetails,
+    },
+  });
+  if (!res.ok) console.warn('[invoices] invoice-client NOT sent (check SEQUENZY_API_KEY / invoice-client):', res.error ?? 'unknown');
+  return { emailed: res.ok, emailError: res.error };
+}
 
 invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -67,12 +101,13 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
   return c.json({ ok: true, invoices: items });
 });
 
-/* ── POST /api/invoices/:id/confirm — admin confirms + sends the invoice ────
+/* ── POST /api/invoices/:id/confirm — admin re-amounts + re-sends an invoice ────
  *
- * Owner/admin only. The admin sets the final amount; the invoice goes draft →
- * pending and the invoice-client email is sent to the customer. NO Stripe
- * execution yet: the payment link is a placeholder (bank transfer is the live
- * method). Idempotent — a non-draft invoice is returned unchanged, never re-sent.
+ * Owner/admin only. Operates on an EXISTING invoice (created by finalise): updates
+ * the amount → pending and re-sends the invoice-client email (e.g. when the first
+ * send failed, or the amount needs correcting). It also still upgrades any legacy
+ * 'draft' invoice to pending. NO Stripe execution: the payment link is a placeholder
+ * (bank transfer is the live method). A paid invoice is final, never re-amounted.
  * Cross-org guard: the invoice must belong to the caller's membership-verified org.
  */
 invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_ROLES), async c => {
@@ -106,16 +141,6 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
     return c.json({ ok: true, status: 'paid', alreadyConfirmed: true });
   }
 
-  // Region-aware bank-transfer details from the org settings doc (optional).
-  let bankDetails = '';
-  try {
-    const settings = await firestoreGet(saJson, `organizations/${orgId}/settings/billing`) as Record<string, unknown> | null;
-    bankDetails = formatBankDetails(settings);
-  } catch { /* bank details optional */ }
-  // FIX 4 — never render a blank bank block in the email; show a graceful note
-  // when the org hasn't configured details (Settings → Organization → Bank details).
-  if (!bankDetails) bankDetails = 'Bank-transfer details available on request — reply to this email.';
-
   // Persist amount + pending. NO Stripe execution: the payment link is a
   // placeholder (app invoices page) until Stripe Checkout is wired.
   await firestoreSet(saJson, invPath, {
@@ -127,30 +152,87 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   const project  = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
     : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
   const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
-  let emailed = false;
-  let emailError: string | undefined;
-  if (customer) {
-    const res = await sendTransactional(env.SEQUENZY_API_KEY, {
-      to:      customer,
-      slug:    'invoice-client',
-      replyTo: env.ADMIN_EMAIL,
-      variables: {
-        PROJECT:     project,
-        AMOUNT:      `$${amount.toLocaleString('en-US')}`,
-        INVOICE_URL: `${appBase}/#/invoices`, // "View your invoice" (placeholder pay link until Stripe Checkout)
-        BANK_DETAILS: bankDetails,
-      },
-    });
-    emailed = res.ok;
-    emailError = res.error;
-    // Surface a failed send loudly in the logs (no PII — status only). The most
-    // common cause is an unset SEQUENZY_API_KEY or a missing invoice-client template.
-    if (!emailed) console.warn('[invoices] confirm email NOT sent (check SEQUENZY_API_KEY / invoice-client):', res.error ?? 'unknown');
-  }
-  // Outcome log — id + flags only, no customer data.
-  dlog(env, '[invoices] confirmed', id, 'emailed=', emailed);
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, project, customer, amount, appBase });
+  dlog(env, '[invoices] confirmed (re-send)', id, 'emailed=', emailed);
 
   return c.json({ ok: true, status: 'pending', amount, emailed, ...(emailError ? { emailError } : {}) });
+});
+
+/* ── POST /api/invoices/finalize — admin sets the final amount → the invoice is born ──
+ *
+ * Owner/admin only. STEP 4 of the workflow: the admin confirms the final amount for
+ * an accepted/negotiating quote. This is the ONLY place an invoice is created (status
+ * 'pending') — no invoice exists before this point (FIX 1). The client invoice email
+ * is sent and the quote advances to stage 'finalized' → 'invoice_sent'. Idempotent:
+ * a quote whose invoice already exists is returned unchanged, never recreated.
+ * Cross-org safe — orgId is the membership-verified org from requireRole.
+ */
+invoices.post('/api/invoices/finalize', requireAuth(), requireRole(CONFIRM_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string; // membership-verified
+  let body: { quoteId?: unknown; amount?: unknown };
+  try { body = await c.req.json() as { quoteId?: unknown; amount?: unknown }; }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const quoteId = typeof body.quoteId === 'string' ? body.quoteId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80) : '';
+  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
+  const amount = typeof body.amount === 'number' ? Math.round(body.amount) : NaN;
+  if (!Number.isFinite(amount) || amount <= 0 || amount > AMOUNT_MAX) {
+    return c.json({ error: 'A valid amount is required.', code: 'INVALID_AMOUNT' }, 400);
+  }
+
+  const quote = await firestoreGet(saJson, QUOTE_DOC(orgId, quoteId)) as Record<string, unknown> | null;
+  if (!quote) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  const invPath = `invoices/quote_${quoteId}`;
+  const existing = await firestoreGet(saJson, invPath) as Record<string, unknown> | null;
+  if (existing) {
+    // Already finalized — never recreate / re-amount / re-send (idempotent).
+    return c.json({ ok: true, status: typeof existing.status === 'string' ? existing.status : 'pending', invoiceId: `quote_${quoteId}`, alreadyFinalized: true });
+  }
+
+  // Derive the invoice fields from the persisted quote (title from the render).
+  const rangeMinUsd = typeof quote.overrideMinUsd === 'number' ? quote.overrideMinUsd : typeof quote.priceMinUsd === 'number' ? quote.priceMinUsd : null;
+  const rangeMaxUsd = typeof quote.overrideMaxUsd === 'number' ? quote.overrideMaxUsd : typeof quote.priceMaxUsd === 'number' ? quote.priceMaxUsd : null;
+  let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
+  if (typeof quote.renderJson === 'string') {
+    try { const r = JSON.parse(quote.renderJson) as Record<string, unknown>; if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle; } catch { /* keep default */ }
+  }
+  const customer = typeof quote.customerEmail === 'string' ? quote.customerEmail : '';
+  const nowIso = new Date().toISOString();
+
+  const invoice = {
+    id: `quote_${quoteId}`, quoteId, orgId, quoteTitle, customerEmail: customer,
+    rangeMinUsd, rangeMaxUsd,
+    expectedBudgetUsd: typeof quote.expectedBudgetUsd === 'number' ? quote.expectedBudgetUsd : null,
+    amount, currency: 'usd', status: 'pending', source: 'quote', schemaVersion: 1,
+    createdAt: nowIso, confirmedAt: nowIso,
+  };
+  // Atomic create-once: if two finalise requests race (double-click / retry / two
+  // admins), the loser throws ALREADY_EXISTS and returns WITHOUT re-sending the client
+  // email. The firestoreGet fast-path above is just an optimisation, not the guard.
+  try {
+    await firestoreCreateIfNotExists(saJson, invPath, invoice as unknown as Parameters<typeof firestoreCreateIfNotExists>[2]);
+  } catch (err) {
+    if (err instanceof Error && err.message === 'ALREADY_EXISTS') {
+      return c.json({ ok: true, status: 'pending', invoiceId: `quote_${quoteId}`, alreadyFinalized: true });
+    }
+    throw err;
+  }
+  // Quote → finalized now; → invoice_sent only if the client email actually goes out
+  // (so a failed send leaves it re-sendable from the invoices list).
+  await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'finalized', finalAmountUsd: amount, updatedAt: nowIso }, { merge: true });
+
+  const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, project: quoteTitle, customer, amount, appBase });
+  if (emailed) await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'invoice_sent', invoiceSentAt: nowIso }, { merge: true });
+  dlog(env, '[invoices] finalized', quoteId, 'emailed=', emailed);
+
+  return c.json({ ok: true, status: 'pending', amount, emailed, invoiceId: `quote_${quoteId}`, ...(emailError ? { emailError } : {}) });
 });
 
 export default invoices;

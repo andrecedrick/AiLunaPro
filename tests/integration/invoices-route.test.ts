@@ -27,6 +27,10 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
   firestoreSet: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>) => {
     state.docs.set(path, { ...(state.docs.get(path) ?? {}), ...data });
   }),
+  firestoreCreateIfNotExists: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>) => {
+    if (state.docs.has(path)) throw new Error('ALREADY_EXISTS');
+    state.docs.set(path, { ...data });
+  }),
 }));
 vi.mock('../../worker/src/lib/sequenzy', () => ({
   sendTransactional: vi.fn(async (_k: string, p: Record<string, unknown>) => { seq.sends.push(p); return { ok: true }; }),
@@ -122,5 +126,60 @@ describe('POST /api/invoices/:id/confirm (Step B)', () => {
   it('rejects an invalid amount', async () => {
     expect((await confirm('quote_a', 0)).status).toBe(400);
     expect((await confirm('quote_a', 'x')).status).toBe(400);
+  });
+});
+
+const finalize = (quoteId: string, amount: unknown, org = 'orgA') =>
+  invoices.request(`/api/invoices/finalize?orgId=${org}`, {
+    method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orgId: org, quoteId, amount }),
+  }, ENV);
+
+describe('POST /api/invoices/finalize (admin sets amount → the invoice is born)', () => {
+  beforeEach(() => {
+    // An accepted quote awaiting pricing (no invoice yet — the new model).
+    state.docs.set('organizations/orgA/quotes/qX', {
+      customerEmail: 'c@x.com', stage: 'client_responded',
+      priceMinUsd: 10000, priceMaxUsd: 20000, expectedBudgetUsd: 1500,
+      renderJson: JSON.stringify({ docTitle: 'Acme bot' }),
+    });
+  });
+
+  it('creates the pending invoice, advances the quote to invoice_sent, and emails the client', async () => {
+    const res = await finalize('qX', 15000);
+    expect(res.status).toBe(200);
+    const j = await res.json() as { status: string; emailed: boolean; invoiceId: string };
+    expect(j.status).toBe('pending');
+    expect(j.emailed).toBe(true);
+    expect(j.invoiceId).toBe('quote_qX');
+    const inv = state.docs.get('invoices/quote_qX')!;
+    expect(inv.status).toBe('pending');         // created already-pending (no draft)
+    expect(inv.amount).toBe(15000);
+    expect(inv.customerEmail).toBe('c@x.com');
+    expect(inv.expectedBudgetUsd).toBe(1500);
+    expect(state.docs.get('organizations/orgA/quotes/qX')!.stage).toBe('invoice_sent');   // FIX 5
+    const send = seq.sends.find(s => s.slug === 'invoice-client')!;
+    expect(send.to).toBe('c@x.com');
+    expect((send.variables as Record<string, string>).AMOUNT).toBe('$15,000');
+  });
+
+  it('is idempotent — never recreates / re-amounts / re-sends once the invoice exists', async () => {
+    state.docs.set('invoices/quote_qX', { status: 'pending', amount: 9000 });
+    const res = await finalize('qX', 15000);
+    expect(res.status).toBe(200);
+    expect((await res.json() as { alreadyFinalized?: boolean }).alreadyFinalized).toBe(true);
+    expect(state.docs.get('invoices/quote_qX')!.amount).toBe(9000);   // unchanged
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeFalsy();
+  });
+
+  it('404 when the quote does not exist', async () => {
+    expect((await finalize('nope', 15000)).status).toBe(404);
+    expect(state.docs.has('invoices/quote_nope')).toBe(false);
+  });
+
+  it('rejects an invalid amount + missing quoteId (400)', async () => {
+    expect((await finalize('qX', 0)).status).toBe(400);
+    expect((await finalize('qX', 'x')).status).toBe(400);
+    expect((await finalize('', 15000)).status).toBe(400);
   });
 });

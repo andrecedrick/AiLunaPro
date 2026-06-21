@@ -12,6 +12,7 @@ const seq = vi.hoisted(() => ({ sends: [] as Array<Record<string, unknown>> }));
 const rl  = vi.hoisted(() => ({ cooldown: vi.fn(async () => ({ ok: true })), cap: vi.fn(async () => ({ ok: true })) }));
 const store = vi.hoisted(() => ({ writes: new Map<string, Record<string, unknown>>(), invoices: new Map<string, Record<string, unknown>>(), stored: null as Record<string, unknown> | null }));
 const share = vi.hoisted(() => ({ verify: vi.fn() }));
+const runQuery = vi.hoisted(() => vi.fn(async () => [] as Array<{ name: string; fields: Record<string, unknown> }>));
 
 vi.mock('../../worker/src/middleware/auth', () => ({
   requireAuth: () => async (c: { req: { header: (k: string) => string | undefined }; set: (k: string, v: unknown) => void }, next: () => Promise<void>) => {
@@ -32,6 +33,7 @@ vi.mock('../../worker/src/lib/sequenzy', () => ({
 }));
 vi.mock('../../worker/src/lib/rateLimit', () => ({ checkCooldown: rl.cooldown, checkDailyCap: rl.cap }));
 vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
+  firestoreRunQuery: runQuery,
   firestoreGet: vi.fn(async (_sa: string, path: string) => {
     if (path.startsWith('invoices/')) return store.invoices.get(path) ?? null;
     return path.includes('/quotes/') ? store.stored : null;
@@ -110,53 +112,39 @@ describe('POST /api/quote/email (B2 — client recipient + reply-to + rate limit
   });
 });
 
-describe('accept → draft invoice (Part 2)', () => {
-  it('opens a draft invoice on accept and notifies the admin (no customer email yet)', async () => {
+describe('client response → state machine, NO invoice (FIX 1/2)', () => {
+  it('advances the quote to client_responded + notifies the admin — but creates NO invoice', async () => {
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
     expect(res.status).toBe(200);
-    const inv = store.invoices.get('invoices/quote_q1')!;
-    expect(inv.status).toBe('draft');
-    expect(inv.amount).toBeNull();                 // admin confirms the amount later (Step B)
-    expect(inv.customerEmail).toBe('owner@acme.com');
-    expect(inv.quoteId).toBe('q1');
-    expect(inv.rangeMinUsd).toBe(10000);
-    expect(inv.rangeMaxUsd).toBe(20000);
-    // No invoice-client (customer) email at draft time; the admin IS notified (Part 1).
-    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeFalsy();
-    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending');
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);   // FIX 1 — no invoice on accept
+    const patch = store.writes.get('organizations/orgA/quotes/q1')!;
+    expect(patch.stage).toBe('client_responded');                 // FIX 5 — state machine
+    expect(patch.decision).toBe('accepted');
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeFalsy();   // no client invoice email yet
+    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending');  // FIX 2 — admin notified on response
     expect(admin).toBeTruthy();
     expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('owner@acme.com');
   });
 
-  it('carries the client budget onto the invoice + admin email (Part 1)', async () => {
+  it('stores the client budget on the quote + admin email, still no invoice (FIX 3)', async () => {
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 1500 });
     expect(res.status).toBe(200);
-    const inv = store.invoices.get('invoices/quote_q1')!;
-    expect(inv.expectedBudgetUsd).toBe(1500);
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.expectedBudgetUsd).toBe(1500);
     const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending')!;
-    expect((admin!.variables as Record<string, string>).BUDGET).toBe('$1,500');   // shown so the admin sets a fair amount
+    expect((admin.variables as Record<string, string>).BUDGET).toBe('$1,500');
   });
 
-  it('marks the budget "Not specified" when the client gave none (no blank row)', async () => {
+  it('marks the budget "Not specified" on the admin email when none is given', async () => {
     await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
-    const inv = store.invoices.get('invoices/quote_q1')!;
-    expect(inv.expectedBudgetUsd).toBeNull();
     const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending')!;
-    expect((admin!.variables as Record<string, string>).BUDGET).toBe('Not specified');
+    expect((admin.variables as Record<string, string>).BUDGET).toBe('Not specified');
   });
 
-  it('is idempotent — never overwrites an already-created invoice', async () => {
-    store.invoices.set('invoices/quote_q1', { status: 'pending', amount: 5000 });
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
-    expect(res.status).toBe(200);
-    const inv = store.invoices.get('invoices/quote_q1')!;
-    expect(inv.status).toBe('pending');            // confirmed invoice preserved
-    expect(inv.amount).toBe(5000);
-  });
-
-  it('does not open an invoice on discuss', async () => {
+  it('advances to negotiation (not invoice) on discuss', async () => {
     await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'hi' });
     expect(store.invoices.has('invoices/quote_q1')).toBe(false);
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('negotiation');
   });
 });
 
@@ -186,18 +174,17 @@ describe('POST /api/quote/:id/decision (B3 — discussion message)', () => {
 });
 
 describe('POST /api/quote/decision/confirm (public token-gated email accept)', () => {
-  it('accepts with a valid v2 action token: records decision, opens the invoice, notifies admin', async () => {
+  it('accepts with a valid v2 action token: advances stage + notifies admin, but NO invoice', async () => {
     store.stored!.customerEmail = 'client@co.com';            // recipient persisted at email time
     share.verify.mockResolvedValue(okV2);
     const res = await confirmReq({ token: 'tok', decision: 'accepted' });
     expect(res.status).toBe(200);
     expect((await res.json() as { status: string }).status).toBe('accepted');
-    const inv = store.invoices.get('invoices/quote_q1')!;
-    expect(inv.status).toBe('draft');
-    expect(inv.customerEmail).toBe('client@co.com');         // addressed to the persisted recipient, not the caller
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);   // FIX 1 — no invoice on accept
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('client_responded');
     const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending');
     expect(admin).toBeTruthy();
-    expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('client@co.com');
+    expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('client@co.com');   // persisted recipient, not the caller
   });
 
   it('rejects a v1 PDF-link token (wrong share version) — no invoice', async () => {
@@ -224,16 +211,6 @@ describe('POST /api/quote/decision/confirm (public token-gated email accept)', (
     expect(store.invoices.has('invoices/quote_q1')).toBe(false);
   });
 
-  it('is idempotent — a re-confirm never overwrites an already-created invoice', async () => {
-    store.invoices.set('invoices/quote_q1', { status: 'pending', amount: 5000 });
-    share.verify.mockResolvedValue(okV2);
-    const res = await confirmReq({ token: 'tok', decision: 'accepted' });
-    expect(res.status).toBe(200);
-    const inv = store.invoices.get('invoices/quote_q1')!;
-    expect(inv.status).toBe('pending');     // confirmed invoice preserved
-    expect(inv.amount).toBe(5000);
-  });
-
   it('rejects an unknown decision value (400)', async () => {
     share.verify.mockResolvedValue(okV2);
     expect((await confirmReq({ token: 'tok', decision: 'maybe' })).status).toBe(400);
@@ -258,5 +235,29 @@ describe('POST /api/quote/decision/confirm (public token-gated email accept)', (
     expect(res.status).toBe(429);
     expect(seq.sends.length).toBe(0);
     expect(store.invoices.size).toBe(0);
+  });
+});
+
+describe('GET /api/quote/pending (admin pricing queue)', () => {
+  it('lists quotes awaiting pricing with title, budget, message + stage', async () => {
+    runQuery.mockResolvedValueOnce([
+      { name: 'organizations/orgA/quotes/q9', fields: { customerEmail: 'c@x.com', stage: 'negotiation', priceMinUsd: 10000, priceMaxUsd: 20000, expectedBudgetUsd: 1500, discussionMessage: 'can we lower it?', decision: 'discussion', decidedAt: '2026-06-21T00:00:00.000Z', renderJson: JSON.stringify({ docTitle: 'Acme bot' }) } },
+    ]);
+    const res = await quote.request('/api/quote/pending?orgId=orgA', { headers: H() }, ENV);
+    expect(res.status).toBe(200);
+    const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
+    expect(quotes).toHaveLength(1);
+    expect(quotes[0].quoteId).toBe('q9');
+    expect(quotes[0].quoteTitle).toBe('Acme bot');
+    expect(quotes[0].expectedBudgetUsd).toBe(1500);
+    expect(quotes[0].message).toBe('can we lower it?');
+    expect(quotes[0].stage).toBe('negotiation');
+    expect(quotes[0].rangeMinUsd).toBe(10000);
+  });
+
+  it('returns an empty list when nothing awaits pricing', async () => {
+    runQuery.mockResolvedValueOnce([]);
+    const res = await quote.request('/api/quote/pending?orgId=orgA', { headers: H() }, ENV);
+    expect((await res.json() as { quotes: unknown[] }).quotes).toEqual([]);
   });
 });
