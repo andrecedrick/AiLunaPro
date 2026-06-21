@@ -161,6 +161,7 @@ describe('POST /api/invoices/finalize (admin sets amount → the invoice is born
     const send = seq.sends.find(s => s.slug === 'invoice-client')!;
     expect(send.to).toBe('c@x.com');
     expect((send.variables as Record<string, string>).AMOUNT).toBe('$15,000');
+    expect((send.variables as Record<string, string>).INVOICE_URL).toContain('/#/invoices?invoiceId=quote_qX');  // deep-link to the exact invoice
   });
 
   it('is idempotent — never recreates / re-amounts / re-sends once the invoice exists', async () => {

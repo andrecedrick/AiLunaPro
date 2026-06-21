@@ -254,6 +254,10 @@ function AppShell() {
       navigate({ name: 'quote/status' });
     } else if (h.startsWith('#/quote')) {
       navigate({ name: 'quote' });
+    } else if (h.startsWith('#/invoices')) {
+      // Email CTAs deep-link here (#/invoices?invoiceId=… / ?quoteId=…); the query
+      // stays in the hash for InvoicesPage to focus + scroll to the exact card.
+      navigate({ name: 'invoices' });
     } else if (h.startsWith('#/help')) {
       navigate({ name: 'help' });
     } else if (h.startsWith('#/operator')) {

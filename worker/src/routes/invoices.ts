@@ -41,7 +41,7 @@ async function resolveBankDetails(saJson: string, orgId: string): Promise<string
 }
 
 /** Send the invoice-client email (best-effort, non-fatal). Shared by confirm + finalize. */
-async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; project: string; customer: string; amount: number; appBase: string }): Promise<{ emailed: boolean; emailError?: string }> {
+async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string }): Promise<{ emailed: boolean; emailError?: string }> {
   if (!a.customer) return { emailed: false };
   const bankDetails = await resolveBankDetails(saJson, a.orgId);
   const res = await sendTransactional(env.SEQUENZY_API_KEY, {
@@ -51,7 +51,8 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
     variables: {
       PROJECT:      a.project,
       AMOUNT:       `$${a.amount.toLocaleString('en-US')}`,
-      INVOICE_URL:  `${a.appBase}/#/invoices`, // placeholder pay link until Stripe Checkout
+      // Deep-link to the exact invoice so the panel highlights + scrolls to it.
+      INVOICE_URL:  `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`,
       BANK_DETAILS: bankDetails,
     },
   });
@@ -152,7 +153,7 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   const project  = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
     : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
   const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, project, customer, amount, appBase });
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, appBase });
   dlog(env, '[invoices] confirmed (re-send)', id, 'emailed=', emailed);
 
   return c.json({ ok: true, status: 'pending', amount, emailed, ...(emailError ? { emailError } : {}) });
@@ -228,7 +229,7 @@ invoices.post('/api/invoices/finalize', requireAuth(), requireRole(CONFIRM_ROLES
   await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'finalized', finalAmountUsd: amount, updatedAt: nowIso }, { merge: true });
 
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, project: quoteTitle, customer, amount, appBase });
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: `quote_${quoteId}`, project: quoteTitle, customer, amount, appBase });
   if (emailed) await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'invoice_sent', invoiceSentAt: nowIso }, { merge: true });
   dlog(env, '[invoices] finalized', quoteId, 'emailed=', emailed);
 

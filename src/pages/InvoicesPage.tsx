@@ -10,12 +10,24 @@
  * USD-denominated, so amounts render as plain $ (matches the worker + email).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { listInvoices, listPendingQuotes, finalizeQuote, confirmInvoice, type InvoiceItem, type PendingQuote } from '../lib/quote/invoicesClient';
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+
+// Deep-link target from the email CTAs: #/invoices?invoiceId=… or ?quoteId=…
+function hashFocus(): { invoiceId: string; quoteId: string } {
+  const h = typeof window !== 'undefined' ? window.location.hash : '';
+  // Guard the decode: a malformed escape (e.g. a lone "%") must degrade to no
+  // focus, never throw during render (hashFocus is a useState initializer).
+  const dec = (s: string): string => { try { return decodeURIComponent(s); } catch { return ''; } };
+  const inv = /[?&]invoiceId=([^&]+)/.exec(h);
+  const q = /[?&]quoteId=([^&]+)/.exec(h);
+  return { invoiceId: inv ? dec(inv[1]) : '', quoteId: q ? dec(q[1]) : '' };
+}
+const focusRing = '0 0 0 2px var(--violet)';
 
 export function InvoicesPage() {
   const { session } = useAuth();
@@ -35,6 +47,8 @@ export function InvoicesPage() {
   const [formError, setFormError] = useState(false);
   const [done, setDone]           = useState<{ id: string; emailed: boolean } | null>(null);
   const [resendId, setResendId]   = useState<string | null>(null);
+  const [focus] = useState(hashFocus);   // deep-link target from the email CTA (captured at mount)
+  const focused = useRef(false);          // one-shot: don't re-scroll on reload() after finalize
 
   const reload = () => {
     if (!orgId) return;
@@ -57,6 +71,22 @@ export function InvoicesPage() {
     // Pre-fill with the range ceiling (or the client budget as a starting point).
     setAmount(q.rangeMaxUsd != null ? String(q.rangeMaxUsd) : q.expectedBudgetUsd != null ? String(q.expectedBudgetUsd) : '');
   };
+
+  // Deep-link focus (FIX 3/5): once data loads, scroll to the targeted card; for a
+  // pending quote, auto-open its pricing form so the admin can act immediately.
+  useEffect(() => {
+    if (focused.current || (!focus.invoiceId && !focus.quoteId) || items === null) return;
+    if (focus.quoteId && pending) {
+      const q = pending.find(p => p.quoteId === focus.quoteId);
+      if (q && activeId === null) openPricing(q);
+    }
+    const sel = focus.invoiceId
+      ? `[data-focus-invoice="${focus.invoiceId.replace(/["\\]/g, '')}"]`
+      : `[data-focus-quote="${focus.quoteId.replace(/["\\]/g, '')}"]`;
+    const el = typeof document !== 'undefined' ? document.querySelector(sel) : null;
+    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); focused.current = true; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, pending]);
 
   const submitPricing = async (q: PendingQuote) => {
     const amount = Number(amountInput);
@@ -86,8 +116,9 @@ export function InvoicesPage() {
   /* ── Pricing-queue card (admin) ── */
   const queueCard = (q: PendingQuote) => {
     const negotiating = q.stage === 'negotiation';
+    const focused = focus.quoteId === q.quoteId;
     return (
-      <div key={q.quoteId} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <div key={q.quoteId} data-focus-quote={q.quoteId} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: focused ? focusRing : undefined }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{q.quoteTitle || `${I.quoteLabel} · ${q.quoteId.slice(0, 8)}`}</div>
@@ -134,7 +165,7 @@ export function InvoicesPage() {
 
   /* ── Finalised-invoice card ── */
   const invoiceCard = (inv: InvoiceItem) => (
-    <div key={inv.id} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+    <div key={inv.id} data-focus-invoice={inv.id} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: focus.invoiceId === inv.id ? focusRing : undefined }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{inv.quoteTitle && inv.quoteTitle.trim() ? inv.quoteTitle : `${I.quoteLabel} · ${inv.quoteId}`}</div>

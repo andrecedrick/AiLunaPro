@@ -124,6 +124,7 @@ describe('client response → state machine, NO invoice (FIX 1/2)', () => {
     const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending');  // FIX 2 — admin notified on response
     expect(admin).toBeTruthy();
     expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('owner@acme.com');
+    expect((admin!.variables as Record<string, string>).PANEL_URL).toContain('/#/invoices?quoteId=q1');  // deep-link to the exact quote
   });
 
   it('stores the client budget on the quote + admin email, still no invoice (FIX 3)', async () => {

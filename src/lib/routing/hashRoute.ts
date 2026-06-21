@@ -40,6 +40,11 @@ export function routeToHash(route: Route): string | null {
     case 'quote/result':
       return currentHash().startsWith('#/quote/result') ? currentHash() : '#/quote/result';
 
+    // Invoices — email CTAs deep-link with ?invoiceId / ?quoteId. Preserve that
+    // query so InvoicesPage can focus + scroll to the exact card.
+    case 'invoices':
+      return currentHash().startsWith('#/invoices') ? currentHash() : '#/invoices';
+
     case 'dashboard':
       return '#/';
 

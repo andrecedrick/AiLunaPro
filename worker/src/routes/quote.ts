@@ -707,7 +707,8 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
       to: env.ADMIN_EMAIL, slug: 'invoice-admin-pending', replyTo: customerEmail,
       variables: {
         QUOTE_TITLE: quoteTitle, CUSTOMER_EMAIL: customerEmail ?? '', RANGE: rangeText,
-        BUDGET: budgetText || 'Not specified', PANEL_URL: `${appBase}/#/invoices`,
+        // Deep-link to the exact quote in the pricing queue (highlights + scrolls to it).
+        BUDGET: budgetText || 'Not specified', PANEL_URL: `${appBase}/#/invoices?quoteId=${encodeURIComponent(quoteId)}`,
       },
     });
     if (!r.ok) console.warn('[quote] accept admin-notify NOT sent (check SEQUENZY_API_KEY / invoice-admin-pending):', r.error ?? 'unknown');
