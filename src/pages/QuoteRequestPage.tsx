@@ -27,7 +27,7 @@ import {
 } from '../data/quote-config';
 import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/quote/score';
 import { convertToUsd } from '../lib/currency/fxSnapshot';
-import { generateQuote, downloadQuotePdf, emailQuote, overrideQuotePrice, recordDecision, QuoteGenError } from '../lib/quote/quoteClient';
+import { generateQuote, downloadQuotePdf, emailQuote, recordDecision, QuoteGenError } from '../lib/quote/quoteClient';
 import { tokenCost } from '../lib/tokens/costs';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
 import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
@@ -87,17 +87,12 @@ export function QuoteRequestPage() {
   // B3 — negotiation message (reveal-on-Discuss).
   const [showDiscuss, setShowDiscuss] = useState(false);
   const [discussMessage, setDiscussMessage] = useState('');
-  // Q4 — email + admin price override. B2 adds an optional client recipient.
+  // Q4 — email. B2 adds an optional client recipient. (Admin price-override removed
+  // from this page — the admin sets the final amount later at finalise.)
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [clientEmail, setClientEmail] = useState('');
-  const [override,   setOverride]   = useState<{ minUsd: number; maxUsd: number } | null>(null);
-  const [showOverride, setShowOverride] = useState(false);
-  const [ovMin, setOvMin] = useState('');
-  const [ovMax, setOvMax] = useState('');
-  const [ovReason, setOvReason] = useState('');
-  const [ovBusy, setOvBusy] = useState(false);
-  const [ovError, setOvError] = useState<string | null>(null);
-  const isAdmin = session?.role === 'owner' || session?.role === 'admin';
+  // No in-page override: the price is the deterministic estimate; the admin confirms
+  // the final amount later in the Invoices / Admin Center pricing queue.
   // Stable per estimate session: a network retry reuses it (server idempotent,
   // no double charge); reset() mints a fresh one for the next quote.
   const quoteIdRef = useRef<string>('');
@@ -159,8 +154,7 @@ export function QuoteRequestPage() {
     setModal({ open: false, balance: 0, required: 0 });
     setDownloading(false); setPdfError(null);
     setBudgetInput(''); setDecisionState('idle');
-    setEmailState('idle'); setOverride(null); setShowOverride(false);
-    setOvMin(''); setOvMax(''); setOvReason(''); setOvBusy(false); setOvError(null);
+    setEmailState('idle');
     quoteIdRef.current = '';
     clearFlowProgress('quote');
   };
@@ -202,8 +196,8 @@ export function QuoteRequestPage() {
   };
 
   // Build the 8-section whitepaper render payload (exact display strings). PDF
-  // language: Latin → current locale; RU/ZH → English (pdfLocale rule). Reflects
-  // an override. Justification is deterministic (no LLM).
+  // language: Latin → current locale; RU/ZH → English (pdfLocale rule). Uses the
+  // deterministic estimate (no in-page override). Justification is deterministic (no LLM).
   const buildRender = () => {
     const p = preview!;
     const useEnglish = pdfLocale(language) !== language;
@@ -216,9 +210,9 @@ export function QuoteRequestPage() {
     const solDesc  = prop.solutionDesc as Record<string, string>;
     const timelineMap = prop.timeline as Record<string, string>;
 
-    const min = override ? override.minUsd : p.priceMinUsd;
-    const max = override ? override.maxUsd : p.priceMaxUsd;
-    const openEnded = override ? false : p.openEnded;
+    const min = p.priceMinUsd;
+    const max = p.priceMaxUsd;
+    const openEnded = p.openEnded;
     const rangeText = `${money.format(min)} – ${money.format(max)}${openEnded ? '+' : ''}`;
     const solutionLabel = sols[p.solutionKey] ?? p.solutionKey;
     const tCat = p.category === 'website' ? 'website' : p.category === 'audit' ? 'audit' : 'agent';
@@ -235,7 +229,7 @@ export function QuoteRequestPage() {
     // U3 — negotiation summary values (initial / budget / adjusted), localized currency.
     const neg = pq.negotiation;
     const initialText = `${money.format(p.priceMinUsd)} – ${money.format(p.priceMaxUsd)}${p.openEnded ? '+' : ''}`;
-    const adjustedText = override ? `${money.format(override.minUsd)} – ${money.format(override.maxUsd)}` : '';
+    const adjustedText = '';
     const bNum = Number(budgetInput);
     const bUsd = budgetInput.trim() !== '' && Number.isFinite(bNum) && bNum >= 0 ? convertToUsd(bNum, money.currency) : null;
     const budgetText = bUsd !== null ? money.format(bUsd) : '';
@@ -306,28 +300,6 @@ export function QuoteRequestPage() {
     }
   };
 
-  const onOverride = async () => {
-    if (ovBusy || !preview) return;
-    const orgId = session?.orgId;
-    if (!orgId || !quoteIdRef.current) return;
-    const min = Number(ovMin), max = Number(ovMax);
-    if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < min || ovReason.trim().length < 3) {
-      setOvError(Q.override.invalid);
-      return;
-    }
-    setOvBusy(true); setOvError(null);
-    try {
-      const r = await overrideQuotePrice(orgId, quoteIdRef.current, { minUsd: min, maxUsd: max, reason: ovReason.trim() });
-      setOverride({ minUsd: r.overrideMinUsd, maxUsd: r.overrideMaxUsd });
-      setShowOverride(false);
-      setEmailState('idle'); // a fresh email will carry the adjusted price
-    } catch {
-      setOvError(Q.override.error);
-    } finally {
-      setOvBusy(false);
-    }
-  };
-
   const onDecision = async (decision: 'accepted' | 'discussion') => {
     if (decisionState === 'saving' || !preview) return;
     const orgId = session?.orgId;
@@ -359,16 +331,16 @@ export function QuoteRequestPage() {
   const budgetVerdict = (preview && budgetUsdInput !== null && budgetUsdInput >= 0)
     ? compareBudget(
         budgetUsdInput,
-        override ? override.minUsd : preview.priceMinUsd,
-        override ? override.maxUsd : preview.priceMaxUsd,
-        override ? false : preview.openEnded,
+        preview.priceMinUsd,
+        preview.priceMaxUsd,
+        preview.openEnded,
       )
     : null;
 
   // U3 — negotiation summary (on screen). Same values that go into PDF + email.
   const negInitialText = preview ? `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? '+' : ''}` : '';
   const negBudgetText = (budgetUsdInput !== null && budgetUsdInput >= 0) ? money.format(budgetUsdInput) : '';
-  const negAdjustedText = override ? `${money.format(override.minUsd)} – ${money.format(override.maxUsd)}` : '';
+  const negAdjustedText = '';
   const showNegotiation = !!(negBudgetText || negAdjustedText);
 
   const tierOptions = category ? QUOTE_TIERS[category] : [];
@@ -578,30 +550,6 @@ export function QuoteRequestPage() {
                     </ol>
                   </div>
 
-                  {isAdmin && (
-                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
-                      {!showOverride ? (
-                        <div style={{ textAlign: 'center' }}>
-                          <button type="button" onClick={() => setShowOverride(true)} style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-                            {Q.override.toggle}
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'grid', gap: 8 }}>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <input type="number" inputMode="numeric" min={0} value={ovMin} onChange={e => setOvMin(e.target.value)} placeholder={Q.override.minLabel} style={inputStyle()} />
-                            <input type="number" inputMode="numeric" min={0} value={ovMax} onChange={e => setOvMax(e.target.value)} placeholder={Q.override.maxLabel} style={inputStyle()} />
-                          </div>
-                          <textarea value={ovReason} onChange={e => setOvReason(e.target.value)} placeholder={Q.override.reasonLabel} maxLength={500} rows={2} style={{ ...inputStyle(), resize: 'vertical' }} />
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                            <button type="button" onClick={() => { setShowOverride(false); setOvError(null); }} style={{ ...secondaryBtnStyle(), padding: '8px 14px' }}>✕</button>
-                            <button type="button" disabled={ovBusy} onClick={() => void onOverride()} style={{ ...primaryBtnStyle(), padding: '8px 16px', opacity: ovBusy ? 0.6 : 1 }}>{ovBusy ? '…' : Q.override.save}</button>
-                          </div>
-                          {ovError && <div style={{ color: 'var(--red-text)', fontSize: 12 }}>{ovError}</div>}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
                 <FeedbackPrompt source="quote" />
                 </>

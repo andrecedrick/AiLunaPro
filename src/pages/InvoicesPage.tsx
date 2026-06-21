@@ -49,6 +49,17 @@ export function InvoicesPage() {
   const [resendId, setResendId]   = useState<string | null>(null);
   const [focus] = useState(hashFocus);   // deep-link target from the email CTA (captured at mount)
   const focused = useRef(false);          // one-shot: don't re-scroll on reload() after finalize
+  // ISSUE 1 fallback — an invoice id is `quote_<quoteId>`. If the invoice doesn't
+  // exist yet (the quote is still pending), derive the quoteId so the focus falls
+  // back to the pricing queue instead of showing "not found".
+  const focusQuoteId = focus.quoteId || (focus.invoiceId.startsWith('quote_') ? focus.invoiceId.slice('quote_'.length) : '');
+  const hasFocus = !!(focus.invoiceId || focus.quoteId);
+  // A quoteId (explicit or derived) matches the pending queue OR its finalised
+  // invoice; an invoiceId matches the invoice card.
+  const isQueueFocused = (q: PendingQuote) => !!focusQuoteId && q.quoteId === focusQuoteId;
+  const isInvoiceFocused = (inv: InvoiceItem) =>
+    (!!focus.invoiceId && inv.id === focus.invoiceId) ||
+    (!!focusQuoteId && (inv.quoteId === focusQuoteId || inv.id === `quote_${focusQuoteId}`));
 
   const reload = () => {
     if (!orgId) return;
@@ -76,17 +87,18 @@ export function InvoicesPage() {
   // and scroll to the card. FIX 4 — scroll after paint (rAF) and only once (the
   // ref guard), so there is no flicker and no re-scroll on reload() after finalise.
   useEffect(() => {
-    if (focused.current || (!focus.invoiceId && !focus.quoteId) || items === null) return;
-    if (focus.quoteId && pending) {
-      const q = pending.find(p => p.quoteId === focus.quoteId);
+    if (focused.current || !hasFocus || items === null) return;
+    // Auto-open the pricing form for the targeted (or derived) pending quote.
+    if (focusQuoteId && pending) {
+      const q = pending.find(p => p.quoteId === focusQuoteId);
       if (q && activeId === null) openPricing(q);
     }
     const esc = (s: string) => s.replace(/["\\]/g, '');
-    const sel = focus.invoiceId
-      ? `[data-focus-invoice="${esc(focus.invoiceId)}"]`
-      : `[data-focus-quote="${esc(focus.quoteId)}"], [data-focus-quoteof="${esc(focus.quoteId)}"]`;
+    const parts: string[] = [];
+    if (focus.invoiceId) parts.push(`[data-focus-invoice="${esc(focus.invoiceId)}"]`);
+    if (focusQuoteId) parts.push(`[data-focus-quote="${esc(focusQuoteId)}"]`, `[data-focus-quoteof="${esc(focusQuoteId)}"]`);
     const raf = requestAnimationFrame(() => {
-      const el = typeof document !== 'undefined' ? document.querySelector(sel) : null;
+      const el = parts.length && typeof document !== 'undefined' ? document.querySelector(parts.join(', ')) : null;
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); focused.current = true; }
     });
     return () => cancelAnimationFrame(raf);
@@ -117,14 +129,6 @@ export function InvoicesPage() {
     catch { setDone({ id: inv.id, emailed: false }); }
     finally { setResendId(null); }
   };
-
-  // Focus matching — a quoteId matches the pending queue card OR (if already
-  // finalised) the resulting invoice card; an invoiceId matches the invoice card.
-  const hasFocus = !!(focus.invoiceId || focus.quoteId);
-  const isQueueFocused = (q: PendingQuote) => !!focus.quoteId && q.quoteId === focus.quoteId;
-  const isInvoiceFocused = (inv: InvoiceItem) =>
-    (!!focus.invoiceId && inv.id === focus.invoiceId) ||
-    (!!focus.quoteId && (inv.quoteId === focus.quoteId || inv.id === `quote_${focus.quoteId}`));
 
   /* ── Pricing-queue card (admin) ── */
   const queueCard = (q: PendingQuote) => {
