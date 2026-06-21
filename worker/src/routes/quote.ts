@@ -641,7 +641,8 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
       const rangeMaxUsd = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
         : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
       // Project title + range text from the persisted render (for the invoice + admin email).
-      let quoteTitle = quoteId;
+      // Fallback to a short reference (not the raw UUID) when no PDF render exists yet.
+      let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
       let rangeText = rangeMinUsd != null && rangeMaxUsd != null ? formatUsdRange(rangeMinUsd, rangeMaxUsd) : '';
       if (typeof stored.renderJson === 'string') {
         try {
@@ -667,10 +668,11 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
       };
       try {
         await firestoreSet(saJson, invPath, invoice as unknown as Parameters<typeof firestoreSet>[2]);
-        // Part 1 — notify the admin that a draft invoice awaits confirmation. Best-effort, non-fatal.
+        // Part 1 — notify the admin that a draft invoice awaits confirmation. Best-effort,
+        // non-fatal, but logged loudly so a missing ADMIN_EMAIL / send failure is never silent.
         if (env.ADMIN_EMAIL) {
           const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-          await sendTransactional(env.SEQUENZY_API_KEY, {
+          const r = await sendTransactional(env.SEQUENZY_API_KEY, {
             to:      env.ADMIN_EMAIL,
             slug:    'invoice-admin-pending',
             replyTo: customerEmail,
@@ -681,6 +683,9 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
               PANEL_URL:      `${appBase}/#/invoices`,
             },
           });
+          if (!r.ok) console.warn('[quote] invoice-admin-pending NOT sent (check SEQUENZY_API_KEY / template invoice-admin-pending):', r.error ?? 'unknown');
+        } else {
+          console.warn('[quote] ADMIN_EMAIL unset — no admin notification sent for accepted quote', quoteId);
         }
       } catch (err) { console.error('[quote] invoice draft create failed:', err instanceof Error ? err.message : ''); }
     }
@@ -698,7 +703,7 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
         if (parts.length) context = parts.join(' · ');
       } catch { /* keep quoteId as context */ }
     }
-    await sendTransactional(env.SEQUENZY_API_KEY, {
+    const r = await sendTransactional(env.SEQUENZY_API_KEY, {
       to:      env.ADMIN_EMAIL,
       slug:    'quote-discussion-admin',
       replyTo: customerEmail,
@@ -711,6 +716,9 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
         QUOTE_ID: quoteId,
       },
     });
+    if (!r.ok) console.warn('[quote] quote-discussion-admin NOT sent:', r.error ?? 'unknown');
+  } else if (decision === 'discussion') {
+    console.warn('[quote] ADMIN_EMAIL unset — no discussion notification sent for', quoteId);
   }
 
   return c.json({ ok: true, status: decision });

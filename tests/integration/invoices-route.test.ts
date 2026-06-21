@@ -84,6 +84,15 @@ describe('POST /api/invoices/:id/confirm (Step B)', () => {
     expect(v.PROJECT).toBe('Acme bot');
     expect(v.AMOUNT).toBe('$15,000');
     expect(v.INVOICE_URL).toContain('/#/invoices');      // "View your invoice" link
+    expect(v.BANK_DETAILS).toContain('available on request');   // FIX 4 — graceful fallback, never blank
+  });
+
+  it('includes the configured region bank details in the email (FIX 4)', async () => {
+    state.docs.set('organizations/orgA/settings/billing', { region: 'eu', accountName: 'Acme SARL', iban: 'FR7630006000011234567890189', bic: 'BNPAFRPP' });
+    await confirm('quote_a', 15000);
+    const v = seq.sends.find(s => s.slug === 'invoice-client')!.variables as Record<string, string>;
+    expect(v.BANK_DETAILS).toContain('FR7630006000011234567890189');
+    expect(v.BANK_DETAILS).toContain('IBAN:');
   });
 
   it('rejects confirming an invoice from another org (cross-org guard)', async () => {

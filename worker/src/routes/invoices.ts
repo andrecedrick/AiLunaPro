@@ -109,6 +109,9 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
     const settings = await firestoreGet(saJson, `organizations/${orgId}/settings/billing`) as Record<string, unknown> | null;
     bankDetails = formatBankDetails(settings);
   } catch { /* bank details optional */ }
+  // FIX 4 — never render a blank bank block in the email; show a graceful note
+  // when the org hasn't configured details (Settings → Organization → Bank details).
+  if (!bankDetails) bankDetails = 'Bank-transfer details available on request — reply to this email.';
 
   // Persist amount + pending. NO Stripe execution: the payment link is a
   // placeholder (app invoices page) until Stripe Checkout is wired.
@@ -119,7 +122,7 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   // Send the invoice to the customer (best-effort, non-fatal).
   const appBase  = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
   const project  = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
-    : typeof inv.quoteId === 'string' ? inv.quoteId : id;
+    : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
   const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
   let emailed = false;
   let emailError: string | undefined;
