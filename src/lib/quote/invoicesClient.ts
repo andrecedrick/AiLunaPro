@@ -35,6 +35,35 @@ export interface PendingQuote {
   decidedAt:         string;
 }
 
+/** A quote at any lifecycle stage — full-visibility tracking (sender + admin). */
+export interface QuoteListItem {
+  quoteId:           string;
+  quoteTitle:        string;
+  customerEmail:     string;
+  rangeMinUsd:       number | null;
+  rangeMaxUsd:       number | null;
+  expectedBudgetUsd: number | null;
+  message:           string;
+  stage:             string;   // 'sent' | 'client_responded' | 'negotiation' | 'finalized' | 'invoice_sent'
+  decision:          string;   // 'accepted' | 'discussion' | ''
+  createdAt:         string;
+  sentAt:            string;
+  decidedAt:         string;
+  updatedAt:         string;
+}
+
+/** List the org's quotes at every lifecycle stage. Owner/admin see all; billing/
+ *  member see only quotes they created (server-enforced). Throws on non-OK. */
+export async function listAllQuotes(orgId: string): Promise<QuoteListItem[]> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/quote/list?orgId=${encodeURIComponent(orgId)}`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!res.ok) throw new Error(`HTTP_${res.status}`);
+  const j = await res.json().catch(() => null) as { quotes?: QuoteListItem[] } | null;
+  return j?.quotes ?? [];
+}
+
 /** Admin: list quotes awaiting the final amount (the pricing queue). Throws on non-OK. */
 export async function listPendingQuotes(orgId: string): Promise<PendingQuote[]> {
   const idToken = await getIdToken();

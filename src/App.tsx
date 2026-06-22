@@ -47,6 +47,7 @@ const QuoteResultPage      = lazy(() => import('./pages/QuoteResultPage').then(m
 const QuoteStatusPage      = lazy(() => import('./pages/QuoteStatusPage').then(m => ({ default: m.QuoteStatusPage })));
 const InvoicesPage         = lazy(() => import('./pages/InvoicesPage').then(m => ({ default: m.InvoicesPage })));
 const AdminCenterPage      = lazy(() => import('./pages/AdminCenterPage').then(m => ({ default: m.AdminCenterPage })));
+const MyQuotesPage         = lazy(() => import('./pages/MyQuotesPage').then(m => ({ default: m.MyQuotesPage })));
 const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
 const AuditExpressSavedPage = lazy(() => import('./pages/AuditExpressSavedPage').then(m => ({ default: m.AuditExpressSavedPage })));
@@ -96,6 +97,8 @@ function PageOutlet() {
         return <InvoicesPage />;
       case 'admin':
         return <AdminCenterPage />;
+      case 'my-quotes':
+        return <MyQuotesPage />;
       case 'settings/profile':
         return <ProfilePage />;
       case 'settings/org':
@@ -263,6 +266,8 @@ function AppShell() {
       navigate({ name: 'invoices' });
     } else if (h.startsWith('#/admin')) {
       navigate({ name: 'admin' });
+    } else if (h.startsWith('#/my-quotes')) {
+      navigate({ name: 'my-quotes' });
     } else if (h.startsWith('#/help')) {
       navigate({ name: 'help' });
     } else if (h.startsWith('#/operator')) {

@@ -14,7 +14,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useRoute } from '../context/RouteContext';
 import { useMoney } from '../lib/currency/useMoney';
 import { fetchPlatformMe } from '../lib/platform/platformService';
-import { listInvoices, listPendingQuotes, finalizeQuote, confirmInvoice, type InvoiceItem, type PendingQuote } from '../lib/quote/invoicesClient';
+import { listInvoices, listPendingQuotes, listAllQuotes, finalizeQuote, confirmInvoice, type InvoiceItem, type PendingQuote, type QuoteListItem } from '../lib/quote/invoicesClient';
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' } as const;
@@ -35,6 +35,7 @@ export function AdminCenterPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [items, setItems]     = useState<InvoiceItem[] | null>(null);
   const [pending, setPending] = useState<PendingQuote[] | null>(null);
+  const [allQuotes, setAllQuotes] = useState<QuoteListItem[] | null>(null);
   const [error, setError]     = useState(false);
 
   const [activeId, setActiveId]   = useState<string | null>(null);
@@ -44,13 +45,25 @@ export function AdminCenterPage() {
   const [done, setDone]           = useState<{ id: string; emailed: boolean } | null>(null);
   const [resendId, setResendId]   = useState<string | null>(null);
 
-  useEffect(() => { fetchPlatformMe().then(m => setAllowed(m.isSuperAdmin)).catch(() => setAllowed(false)); }, []);
+  // ISSUE 1 — the Admin Center is ORG-SCOPED, so an org owner/admin may always see
+  // their own org's center (its data endpoints are already owner/admin role-gated
+  // server-side). Platform super-admins (ADMIN_EMAILS / PLATFORM_ADMIN_EMAILS) too.
+  // Never block a valid org admin even if /api/platform/me fails.
+  const orgAdmin = session?.role === 'owner' || session?.role === 'admin';
+  useEffect(() => {
+    let alive = true;
+    fetchPlatformMe()
+      .then(m => { if (alive) setAllowed(m.isSuperAdmin || orgAdmin); })
+      .catch(() => { if (alive) setAllowed(orgAdmin); });
+    return () => { alive = false; };
+  }, [orgAdmin]);
 
   const reload = () => {
     if (!orgId) return;
     setError(false);
     listInvoices(orgId).then(setItems).catch(() => setError(true));
     listPendingQuotes(orgId).then(setPending).catch(() => setError(true));
+    listAllQuotes(orgId).then(setAllQuotes).catch(() => setError(true));
   };
   useEffect(() => { if (allowed) reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, orgId]);
 
@@ -151,6 +164,40 @@ export function AdminCenterPage() {
     </div>
   );
 
+  // PART 2 — per-quote lifecycle timeline (created → sent → client responded →
+  // invoiced), built from the quote's own timestamps + the matching invoice.
+  const quoteSteps = (q: QuoteListItem) => {
+    const inv = (items ?? []).find(i => i.id === `quote_${q.quoteId}`);
+    const invoiced = q.stage === 'invoice_sent' || q.stage === 'finalized' || !!inv;
+    return [
+      { label: A.tlCreated, date: q.createdAt, done: true },
+      { label: A.tlSent, date: q.sentAt, done: !!q.sentAt || !!q.stage },
+      { label: q.decision === 'discussion' ? A.tlChanges : A.tlAccepted, date: q.decidedAt, done: !!q.decidedAt },
+      { label: A.tlInvoiced, date: inv?.createdAt ?? '', done: invoiced },
+    ];
+  };
+  const allQuotesCard = (q: QuoteListItem) => (
+    <div key={q.quoteId} style={card}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-primary)' }}>{qTitle(q.quoteTitle, q.quoteId)}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{q.customerEmail || '—'} · {I.quoteLabel} {q.quoteId.slice(0, 8)}</div>
+        </div>
+        {q.expectedBudgetUsd != null && <span style={{ flex: '0 0 auto', fontSize: 14, fontWeight: 800, color: 'var(--violet-text)', fontVariantNumeric: 'tabular-nums' }}>{money.format(q.expectedBudgetUsd)}</span>}
+      </div>
+      <div style={{ marginTop: 12, display: 'flex', gap: 0, flexWrap: 'wrap' }}>
+        {quoteSteps(q).map((s, i) => (
+          <div key={i} style={{ flex: 1, minWidth: 84, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+            {i > 0 && <span aria-hidden style={{ position: 'absolute', top: 9, right: '50%', width: '100%', height: 2, background: s.done ? 'var(--violet)' : 'var(--border)' }} />}
+            <span style={{ position: 'relative', zIndex: 1, width: 18, height: 18, borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, background: s.done ? 'var(--violet)' : 'var(--surface)', color: s.done ? '#fff' : 'var(--text-muted)', border: s.done ? 'none' : '1.5px solid var(--border)' }}>{s.done ? '✓' : i + 1}</span>
+            <span style={{ marginTop: 5, fontSize: 10.5, fontWeight: 600, color: s.done ? 'var(--text-primary)' : 'var(--text-muted)', textAlign: 'center', lineHeight: 1.25 }}>{s.label}</span>
+            {s.done && s.date && <span style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>{s.date.slice(0, 10)}</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 20px' }}>
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>{A.title}</h1>
@@ -158,7 +205,7 @@ export function AdminCenterPage() {
 
       {error ? (
         <div style={{ ...card, color: 'var(--red-text)' }}>{I.error}</div>
-      ) : items === null || pending === null ? (
+      ) : items === null || pending === null || allQuotes === null ? (
         <div style={{ padding: 18, color: 'var(--text-muted)', fontSize: 14 }}>{I.loading}</div>
       ) : (
         <div style={{ display: 'grid', gap: 28 }}>
@@ -175,6 +222,12 @@ export function AdminCenterPage() {
                   </div>
                 ))}
               </div>
+          )}
+
+          {/* 1.5 — All quotes (full lifecycle timeline — PART 2 super-admin visibility) */}
+          {section(A.allQuotesHeading, (allQuotes ?? []).length === 0
+            ? <div style={{ ...card, borderStyle: 'dashed', color: 'var(--text-muted)', fontSize: 13.5 }}>{A.allQuotesEmpty}</div>
+            : <div style={{ display: 'grid', gap: 10 }}>{(allQuotes ?? []).map(allQuotesCard)}</div>
           )}
 
           {/* 2 — Pricing queue + actions */}

@@ -289,3 +289,27 @@ describe('multi-admin notifications (PART 3)', () => {
     expect(to.length).toBe(3);
   });
 });
+
+describe('GET /api/quote/list (full-lifecycle tracking)', () => {
+  it('lists staged quotes newest-activity-first and hides never-sent drafts', async () => {
+    runQuery.mockResolvedValueOnce([
+      { name: 'organizations/orgA/quotes/qSent', fields: { stage: 'sent', customerEmail: 'a@x.com', expectedBudgetUsd: 5000, priceMinUsd: 10000, priceMaxUsd: 20000, createdAt: '2026-06-20T00:00:00.000Z', sentAt: '2026-06-21T00:00:00.000Z', renderJson: JSON.stringify({ docTitle: 'Sent quote' }) } },
+      { name: 'organizations/orgA/quotes/qResp', fields: { stage: 'client_responded', decision: 'accepted', customerEmail: 'b@x.com', expectedBudgetUsd: 8000, createdAt: '2026-06-19T00:00:00.000Z', decidedAt: '2026-06-22T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qDraft', fields: { status: 'generated', createdAt: '2026-06-18T00:00:00.000Z' } },  // no stage → hidden
+    ]);
+    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);
+    expect(res.status).toBe(200);
+    const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
+    expect(quotes.map(q => q.quoteId)).toEqual(['qResp', 'qSent']);   // draft hidden; newest activity (decidedAt) first
+    expect(quotes[0].stage).toBe('client_responded');
+    expect(quotes[0].decision).toBe('accepted');
+    expect(quotes[1].sentAt).toBe('2026-06-21T00:00:00.000Z');
+    expect(quotes[1].quoteTitle).toBe('Sent quote');
+  });
+
+  it('returns an empty list when the org has no staged quotes', async () => {
+    runQuery.mockResolvedValueOnce([]);
+    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);
+    expect((await res.json() as { quotes: unknown[] }).quotes).toEqual([]);
+  });
+});

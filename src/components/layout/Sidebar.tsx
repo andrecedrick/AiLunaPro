@@ -49,6 +49,8 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'settings/billing')     return 'settings';
   if (name === 'billing')              return 'billing';
   if (name === 'invoices')             return 'invoices';
+  if (name === 'my-quotes')            return 'my-quotes';
+  if (name === 'admin')                return 'admin';
   return '';
 }
 
@@ -572,6 +574,17 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
           iconsOnly={iconsOnly}
           onClick={() => { setSrc('menu-quote'); navigate({ name: 'quote' }); onNavigate?.(); }}
         />
+        {/* My quotes — sender-side lifecycle tracking (owner/admin/billing/member). */}
+        {session?.role !== 'client' && (
+          <NavItem
+            id="my-quotes"
+            icon="reports"
+            label={T.nav.myQuotes}
+            active={activeId === 'my-quotes'}
+            iconsOnly={iconsOnly}
+            onClick={() => { navigate({ name: 'my-quotes' }); onNavigate?.(); }}
+          />
+        )}
         {/* Admin Center — super admins only (ADMIN_EMAILS / PLATFORM_ADMIN_EMAILS). */}
         {isSuperAdmin && (
           <NavItem

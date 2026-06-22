@@ -472,7 +472,7 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   // invoice + client invoice email to the right person (the unauthenticated email
   // caller's identity is never trusted — only this server-recorded value is used).
   // STEP 1 — the quote has been sent to the client. Stage advances to 'sent'.
-  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: 'sent', ...(hasEmailBudget ? { expectedBudgetUsd: Math.round(emailBudget) } : {}) }, { merge: true }); }
+  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: 'sent', sentAt: new Date().toISOString(), ...(hasEmailBudget ? { expectedBudgetUsd: Math.round(emailBudget) } : {}) }, { merge: true }); }
   catch (err) { console.error('[quote] recipient persist failed:', err instanceof Error ? err.message : ''); }
 
   // Persist the render payload if supplied (so the shared link can regenerate it).
@@ -526,8 +526,8 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
     : (hasEmailBudget ? `$${Math.round(emailBudget).toLocaleString('en-US')}` : '');
   const variables: Record<string, string> = {
     QUOTE_TITLE:  render.docTitle,
-    ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email&t=${actionToken}${budgetSuffix}`,
-    DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email&t=${actionToken}${budgetSuffix}`,
+    ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email&t=${actionToken}&quoteId=${encodeURIComponent(quoteId)}${budgetSuffix}`,
+    DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email&t=${actionToken}&quoteId=${encodeURIComponent(quoteId)}${budgetSuffix}`,
     SOLUTION:     render.solutionLabel,
     BUDGET:       budgetDisplay,
     RANGE:        render.rangeText,
@@ -651,6 +651,71 @@ quote.get('/api/quote/pending', requireAuth(), requireRole(PRICING_ROLES), async
   });
   // Newest response first.
   quotes.sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : a.decidedAt > b.decidedAt ? -1 : 0));
+
+  return c.json({ ok: true, quotes });
+});
+
+/* ── GET /api/quote/list — full-lifecycle quote tracking (sender + admin) ───
+ *
+ * Member+ roles. Lists the org's quotes at EVERY lifecycle stage (sent →
+ * client_responded → negotiation → finalized → invoice_sent), org-scoped (parent-
+ * path query, no stage filter → no composite index). Owner/admin see ALL the org's
+ * quotes (full visibility); billing/member see only quotes they created
+ * (createdBy == uid). Never-sent 'generated' drafts are hidden (no stage yet).
+ * Powers /my-quotes (sender tracking) + the Admin Center "all quotes" timeline.
+ */
+quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string; // membership-verified by requireRole
+  const uid   = c.get('uid') as string;
+  const role  = c.get('role') as string | undefined;
+  const seesAll = role === 'owner' || role === 'admin';
+
+  let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
+  try {
+    rows = await firestoreRunQuery(saJson, { from: [{ collectionId: 'quotes' }], limit: 200 }, `organizations/${orgId}`);
+  } catch (err) {
+    console.error('[quote] list query failed:', err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not load quotes.', code: 'QUERY_FAILED' }, 500);
+  }
+
+  const quotes = rows
+    .filter(r => {
+      const f = r.fields as Record<string, unknown>;
+      if (typeof f.stage !== 'string' || !f.stage) return false;        // hide never-sent drafts
+      if (!seesAll && f.createdBy !== uid) return false;                // members: own quotes only
+      return true;
+    })
+    .map(r => {
+      const f = r.fields as Record<string, unknown>;
+      const rangeMinUsd = typeof f.overrideMinUsd === 'number' ? f.overrideMinUsd : typeof f.priceMinUsd === 'number' ? f.priceMinUsd : null;
+      const rangeMaxUsd = typeof f.overrideMaxUsd === 'number' ? f.overrideMaxUsd : typeof f.priceMaxUsd === 'number' ? f.priceMaxUsd : null;
+      let quoteTitle = '';
+      if (typeof f.renderJson === 'string') {
+        try { const rj = JSON.parse(f.renderJson) as Record<string, unknown>; if (typeof rj.docTitle === 'string') quoteTitle = rj.docTitle; } catch { /* ignore */ }
+      }
+      return {
+        quoteId:           r.name.split('/').pop() ?? '',
+        quoteTitle,
+        customerEmail:     typeof f.customerEmail === 'string' ? f.customerEmail : '',
+        rangeMinUsd, rangeMaxUsd,
+        expectedBudgetUsd: typeof f.expectedBudgetUsd === 'number' ? f.expectedBudgetUsd : null,
+        message:           typeof f.discussionMessage === 'string' ? f.discussionMessage : '',
+        stage:             typeof f.stage === 'string' ? f.stage : '',
+        decision:          typeof f.decision === 'string' ? f.decision : '',
+        createdAt:         typeof f.createdAt === 'string' ? f.createdAt : '',
+        sentAt:            typeof f.sentAt === 'string' ? f.sentAt : '',
+        decidedAt:         typeof f.decidedAt === 'string' ? f.decidedAt : '',
+        updatedAt:         typeof f.updatedAt === 'string' ? f.updatedAt : '',
+      };
+    });
+  // Newest activity first (decidedAt → sentAt → createdAt).
+  const ts = (q: { decidedAt: string; sentAt: string; createdAt: string }) => q.decidedAt || q.sentAt || q.createdAt || '';
+  quotes.sort((a, b) => (ts(a) < ts(b) ? 1 : ts(a) > ts(b) ? -1 : 0));
 
   return c.json({ ok: true, quotes });
 });
