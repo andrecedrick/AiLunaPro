@@ -14,12 +14,14 @@ import { useLocale } from '../context/LocaleContext';
 import { useRoute } from '../context/RouteContext';
 import { useMoney } from '../lib/currency/useMoney';
 import { fetchPlatformMe } from '../lib/platform/platformService';
-import { listInvoices, listPendingQuotes, listAllQuotes, finalizeQuote, confirmInvoice, type InvoiceItem, type PendingQuote, type QuoteListItem } from '../lib/quote/invoicesClient';
+import { listInvoices, listPendingQuotes, listAllQuotes, finalizeQuote, confirmInvoice, patchQuote, prefillFinalizeAmount, type InvoiceItem, type PendingQuote, type QuoteListItem } from '../lib/quote/invoicesClient';
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' } as const;
 const heading = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' } as const;
 const pill = (color: string) => ({ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color, background: 'rgba(124,58,237,0.08)', borderRadius: 999, padding: '4px 11px' } as const);
+const govBtn = (bg: string, fg: string) => ({ padding: '7px 14px', borderRadius: 8, border: 'none', background: bg, color: fg, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' } as const);
+const govBtnOutline = { padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' } as const;
 
 interface Evt { icon: string; label: string; title: string; date: string; sub?: string }
 
@@ -44,6 +46,10 @@ export function AdminCenterPage() {
   const [formError, setFormError] = useState(false);
   const [done, setDone]           = useState<{ id: string; emailed: boolean } | null>(null);
   const [resendId, setResendId]   = useState<string | null>(null);
+  // ISSUE 3 — admin governance (edit budget / block / suspend).
+  const [govBusy, setGovBusy]     = useState<string | null>(null);
+  const [editId, setEditId]       = useState<string | null>(null);
+  const [editBudget, setEditBudget] = useState('');
 
   // ISSUE 1 — the Admin Center is ORG-SCOPED, so an org owner/admin may always see
   // their own org's center (its data endpoints are already owner/admin role-gated
@@ -69,7 +75,9 @@ export function AdminCenterPage() {
 
   const openPricing = (q: PendingQuote) => {
     setActiveId(q.quoteId); setFormError(false);
-    setAmount(q.rangeMaxUsd != null ? String(q.rangeMaxUsd) : q.expectedBudgetUsd != null ? String(q.expectedBudgetUsd) : '');
+    // ISSUE 1 — default the invoice amount to the client's PROPOSED BUDGET (so the
+    // invoice matches the budget), not the estimate ceiling.
+    setAmount(prefillFinalizeAmount(q));
   };
   const submitPricing = async (q: PendingQuote) => {
     const amount = Number(amountInput);
@@ -77,6 +85,20 @@ export function AdminCenterPage() {
     setBusy(true); setFormError(false);
     try { const r = await finalizeQuote(orgId, q.quoteId, Math.round(amount)); setDone({ id: q.quoteId, emailed: r.emailed }); setActiveId(null); reload(); }
     catch { setFormError(true); } finally { setBusy(false); }
+  };
+  // ISSUE 3 — governance: block / suspend / re-activate, and edit the proposed budget.
+  const setGovState = async (quoteId: string, adminState: 'blocked' | 'suspended' | 'active') => {
+    setGovBusy(quoteId);
+    try { await patchQuote(orgId, quoteId, { adminState }); reload(); }
+    catch { setError(true); } finally { setGovBusy(null); }
+  };
+  const openEditBudget = (q: QuoteListItem) => { setEditId(q.quoteId); setEditBudget(q.expectedBudgetUsd != null ? String(q.expectedBudgetUsd) : ''); };
+  const saveBudget = async (quoteId: string) => {
+    const n = Number(editBudget);
+    if (!Number.isFinite(n) || n < 0) return;
+    setGovBusy(quoteId);
+    try { await patchQuote(orgId, quoteId, { expectedBudgetUsd: Math.round(n) }); setEditId(null); reload(); }
+    catch { setError(true); } finally { setGovBusy(null); }
   };
   const resend = async (inv: InvoiceItem) => {
     if (inv.amount == null) return;
@@ -106,7 +128,11 @@ export function AdminCenterPage() {
   }
   events.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
-  const discussions = (pending ?? []).filter(q => q.message);
+  // ISSUE 3 — a blocked/suspended quote drops out of the actionable pricing queue +
+  // discussions (it can't be invoiced); it stays visible in "All quotes" for control.
+  const govBlocked = new Set((allQuotes ?? []).filter(q => q.adminState === 'blocked' || q.adminState === 'suspended').map(q => q.quoteId));
+  const pricingQueue = (pending ?? []).filter(q => !govBlocked.has(q.quoteId));
+  const discussions = pricingQueue.filter(q => q.message);
   const invoiceList = (items ?? []).filter(i => i.status !== 'draft');
 
   if (allowed === null) return <div style={{ maxWidth: 880, margin: '0 auto', padding: '40px 20px', color: 'var(--text-muted)' }}>{I.loading}</div>;
@@ -183,7 +209,11 @@ export function AdminCenterPage() {
           <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-primary)' }}>{qTitle(q.quoteTitle, q.quoteId)}</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{q.customerEmail || '—'} · {I.quoteLabel} {q.quoteId.slice(0, 8)}</div>
         </div>
-        {q.expectedBudgetUsd != null && <span style={{ flex: '0 0 auto', fontSize: 14, fontWeight: 800, color: 'var(--violet-text)', fontVariantNumeric: 'tabular-nums' }}>{money.format(q.expectedBudgetUsd)}</span>}
+        <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {q.adminState === 'blocked' && <span style={pill('var(--red-text)')}>{A.blocked}</span>}
+          {q.adminState === 'suspended' && <span style={pill('#b45309')}>{A.suspended}</span>}
+          {q.expectedBudgetUsd != null && <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--violet-text)', fontVariantNumeric: 'tabular-nums' }}>{money.format(q.expectedBudgetUsd)}</span>}
+        </div>
       </div>
       <div style={{ marginTop: 12, display: 'flex', gap: 0, flexWrap: 'wrap' }}>
         {quoteSteps(q).map((s, i) => (
@@ -194,6 +224,29 @@ export function AdminCenterPage() {
             {s.done && s.date && <span style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>{s.date.slice(0, 10)}</span>}
           </div>
         ))}
+      </div>
+      {/* ISSUE 3 — admin governance: edit the proposed budget, block / suspend / re-activate. */}
+      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {editId === q.quoteId ? (
+          <>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{A.budgetUsdLabel}</label>
+            <input type="number" inputMode="numeric" min={0} value={editBudget} onChange={e => setEditBudget(e.target.value)} style={{ width: 130, padding: '8px 10px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-2, var(--surface))', color: 'var(--text-primary)' }} />
+            <button type="button" disabled={govBusy === q.quoteId} onClick={() => void saveBudget(q.quoteId)} style={govBtn('var(--violet)', '#fff')}>{govBusy === q.quoteId ? '…' : A.save}</button>
+            <button type="button" onClick={() => setEditId(null)} style={govBtnOutline}>{I.cancel}</button>
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => openEditBudget(q)} style={govBtnOutline}>{A.editBudget}</button>
+            {q.adminState === 'blocked' || q.adminState === 'suspended' ? (
+              <button type="button" disabled={govBusy === q.quoteId} onClick={() => void setGovState(q.quoteId, 'active')} style={govBtn('var(--green-text, #059669)', '#fff')}>{govBusy === q.quoteId ? '…' : A.reactivate}</button>
+            ) : (
+              <>
+                <button type="button" disabled={govBusy === q.quoteId} onClick={() => void setGovState(q.quoteId, 'suspended')} style={govBtnOutline}>{A.suspend}</button>
+                <button type="button" disabled={govBusy === q.quoteId} onClick={() => void setGovState(q.quoteId, 'blocked')} style={govBtn('var(--red-text)', '#fff')}>{A.block}</button>
+              </>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -231,9 +284,9 @@ export function AdminCenterPage() {
           )}
 
           {/* 2 — Pricing queue + actions */}
-          {section(I.queueHeading, (pending ?? []).length === 0
+          {section(I.queueHeading, pricingQueue.length === 0
             ? <div style={{ ...card, borderStyle: 'dashed', color: 'var(--text-muted)', fontSize: 13.5 }}>{I.queueEmpty}</div>
-            : <div style={{ display: 'grid', gap: 10 }}>{(pending ?? []).map(queueCard)}</div>
+            : <div style={{ display: 'grid', gap: 10 }}>{pricingQueue.map(queueCard)}</div>
           )}
 
           {/* 3 — Client discussions */}

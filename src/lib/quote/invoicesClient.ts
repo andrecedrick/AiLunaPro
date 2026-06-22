@@ -45,6 +45,8 @@ export interface QuoteListItem {
   expectedBudgetUsd: number | null;
   message:           string;
   stage:             string;   // 'sent' | 'client_responded' | 'negotiation' | 'finalized' | 'invoice_sent'
+  status:            string;   // raw quote.status (generated/overridden/accepted/discussion)
+  adminState:        string;   // 'blocked' | 'suspended' | '' (admin governance)
   decision:          string;   // 'accepted' | 'discussion' | ''
   createdAt:         string;
   sentAt:            string;
@@ -52,16 +54,42 @@ export interface QuoteListItem {
   updatedAt:         string;
 }
 
-/** List the org's quotes at every lifecycle stage. Owner/admin see all; billing/
- *  member see only quotes they created (server-enforced). Throws on non-OK. */
-export async function listAllQuotes(orgId: string): Promise<QuoteListItem[]> {
+/** List the org's quotes. `mine` → only the caller's own (for /my-quotes); otherwise
+ *  owner/admin get full org visibility (incl. drafts), server-enforced. Throws on non-OK. */
+export async function listAllQuotes(orgId: string, opts?: { mine?: boolean }): Promise<QuoteListItem[]> {
   const idToken = await getIdToken();
-  const res = await fetch(`${WORKER_BASE}/api/quote/list?orgId=${encodeURIComponent(orgId)}`, {
+  const q = `orgId=${encodeURIComponent(orgId)}${opts?.mine ? '&mine=1' : ''}`;
+  const res = await fetch(`${WORKER_BASE}/api/quote/list?${q}`, {
     headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) throw new Error(`HTTP_${res.status}`);
   const j = await res.json().catch(() => null) as { quotes?: QuoteListItem[] } | null;
   return j?.quotes ?? [];
+}
+
+/** Admin: edit a quote (budget / message) or govern it (block / suspend / re-activate).
+ *  Owner/admin + org-scoped, server-enforced. Throws on non-OK. */
+export async function patchQuote(
+  orgId: string, quoteId: string,
+  input: { adminState?: 'blocked' | 'suspended' | 'active'; expectedBudgetUsd?: number; message?: string },
+): Promise<void> {
+  const idToken = await getIdToken();
+  // orgId goes in the QUERY string: requireRole only clones the body for POST, so a
+  // PATCH must carry orgId as ?orgId= (same as the GET clients) or it 400s.
+  const res = await fetch(`${WORKER_BASE}/api/quote/${encodeURIComponent(quoteId)}?orgId=${encodeURIComponent(orgId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, ...input }),
+  });
+  if (!res.ok) throw new Error(`HTTP_${res.status}`);
+}
+
+/** The finalize-amount prefill: default to the client's PROPOSED BUDGET (so the invoice
+ *  matches the budget), then the estimate range ceiling, else blank. USD integer. */
+export function prefillFinalizeAmount(q: { expectedBudgetUsd: number | null; rangeMaxUsd: number | null }): string {
+  if (q.expectedBudgetUsd != null && q.expectedBudgetUsd > 0) return String(q.expectedBudgetUsd);
+  if (q.rangeMaxUsd != null) return String(q.rangeMaxUsd);
+  return '';
 }
 
 /** Admin: list quotes awaiting the final amount (the pricing queue). Throws on non-OK. */

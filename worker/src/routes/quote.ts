@@ -657,12 +657,14 @@ quote.get('/api/quote/pending', requireAuth(), requireRole(PRICING_ROLES), async
 
 /* ── GET /api/quote/list — full-lifecycle quote tracking (sender + admin) ───
  *
- * Member+ roles. Lists the org's quotes at EVERY lifecycle stage (sent →
- * client_responded → negotiation → finalized → invoice_sent), org-scoped (parent-
- * path query, no stage filter → no composite index). Owner/admin see ALL the org's
- * quotes (full visibility); billing/member see only quotes they created
- * (createdBy == uid). Never-sent 'generated' drafts are hidden (no stage yet).
- * Powers /my-quotes (sender tracking) + the Admin Center "all quotes" timeline.
+ * Member+ roles, org-scoped (parent-path query, no stage filter → no composite index).
+ * Two scopes:
+ *   - ?mine=1 → ONLY the caller's own quotes (createdBy == uid), drafts hidden. Powers
+ *     /my-quotes (each sender tracks what THEY sent, regardless of role).
+ *   - default → admin full visibility: owner/admin see EVERY quote in the org at every
+ *     stage INCLUDING never-sent 'generated' drafts (ISSUE 2 — no hidden states); a
+ *     non-admin caller still sees only their own staged quotes (fail-safe).
+ * Returns stage + status + adminState (blocked/suspended) so the UI derives the label.
  */
 quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -673,7 +675,8 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
   const orgId = c.get('orgId') as string; // membership-verified by requireRole
   const uid   = c.get('uid') as string;
   const role  = c.get('role') as string | undefined;
-  const seesAll = role === 'owner' || role === 'admin';
+  const mine  = c.req.query('mine') === '1';
+  const adminAll = !mine && (role === 'owner' || role === 'admin');
 
   let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
   try {
@@ -686,8 +689,9 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
   const quotes = rows
     .filter(r => {
       const f = r.fields as Record<string, unknown>;
-      if (typeof f.stage !== 'string' || !f.stage) return false;        // hide never-sent drafts
-      if (!seesAll && f.createdBy !== uid) return false;                // members: own quotes only
+      if (adminAll) return true;                                        // admin full visibility (incl. drafts)
+      if (f.createdBy !== uid) return false;                            // otherwise: own quotes only
+      if (typeof f.stage !== 'string' || !f.stage) return false;        // hide own never-sent drafts
       return true;
     })
     .map(r => {
@@ -706,6 +710,8 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
         expectedBudgetUsd: typeof f.expectedBudgetUsd === 'number' ? f.expectedBudgetUsd : null,
         message:           typeof f.discussionMessage === 'string' ? f.discussionMessage : '',
         stage:             typeof f.stage === 'string' ? f.stage : '',
+        status:            typeof f.status === 'string' ? f.status : '',
+        adminState:        typeof f.adminState === 'string' ? f.adminState : '',
         decision:          typeof f.decision === 'string' ? f.decision : '',
         createdAt:         typeof f.createdAt === 'string' ? f.createdAt : '',
         sentAt:            typeof f.sentAt === 'string' ? f.sentAt : '',
@@ -718,6 +724,70 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
   quotes.sort((a, b) => (ts(a) < ts(b) ? 1 : ts(a) > ts(b) ? -1 : 0));
 
   return c.json({ ok: true, quotes });
+});
+
+/* ── PATCH /api/quote/:quoteId — admin edit + governance (ISSUE 3) ──────────
+ *
+ * Owner/admin only, org-scoped (membership-verified orgId — no cross-tenant). Lets an
+ * admin correct a quote (proposed budget, client message) and govern it (block /
+ * suspend / re-activate). `adminState` is a SEPARATE governance flag layered over the
+ * lifecycle stage (no state-machine bypass). A blocked/suspended quote is excluded
+ * from the pricing queue and cannot be finalised (enforced at /api/invoices/finalize).
+ */
+interface PatchBody { orgId?: unknown; adminState?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
+const ADMIN_STATES = new Set(['blocked', 'suspended', 'active']);
+
+quote.patch('/api/quote/:quoteId', requireAuth(), requireRole(OVERRIDE_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string; // membership-verified by requireRole
+  const uid = c.get('uid') as string;
+  const quoteId = safeId(c.req.param('quoteId'));
+  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
+
+  let body: PatchBody;
+  try { body = (await c.req.json()) as PatchBody; }
+  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const path = `${COLLECTION(orgId)}/${quoteId}`;
+  const stored = await firestoreGet(saJson, path);
+  if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  const patch: Record<string, string | number | null> = { updatedAt: new Date().toISOString(), updatedBy: uid };
+  let touched = false;
+
+  // Governance: block / suspend / re-activate ('active' clears the flag).
+  if (typeof body.adminState === 'string') {
+    const s = body.adminState.toLowerCase();
+    if (!ADMIN_STATES.has(s)) return c.json({ error: 'Invalid state.', code: 'INVALID_STATE' }, 400);
+    patch.adminState = s === 'active' ? null : s;
+    touched = true;
+  }
+  // Edit the proposed budget (integer USD, bounded). Keep the persisted render in sync.
+  if (body.expectedBudgetUsd !== undefined) {
+    const b = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
+    if (!Number.isFinite(b) || b < 0 || b > PRICE_MAX) return c.json({ error: 'Invalid budget.', code: 'INVALID_BUDGET' }, 400);
+    patch.expectedBudgetUsd = Math.round(b);
+    if (typeof stored.renderJson === 'string') {
+      try { const r = JSON.parse(stored.renderJson) as Record<string, unknown>; r.negBudget = `$${Math.round(b).toLocaleString('en-US')}`; patch.renderJson = JSON.stringify(r); }
+      catch { /* leave render as-is */ }
+    }
+    touched = true;
+  }
+  // Edit the client message (sanitized).
+  if (body.message !== undefined) {
+    patch.discussionMessage = typeof body.message === 'string' ? sanitizeText(body.message, 2000) : '';
+    touched = true;
+  }
+
+  if (!touched) return c.json({ error: 'Nothing to update.', code: 'NO_FIELDS' }, 400);
+
+  await firestoreSet(saJson, path, patch, { merge: true });
+  const effState = patch.adminState === null ? '' : typeof patch.adminState === 'string' ? patch.adminState : (typeof stored.adminState === 'string' ? stored.adminState : '');
+  return c.json({ ok: true, quoteId, adminState: effState });
 });
 
 /* ── POST /api/quote/:quoteId/decision — client pricing decision ───────────

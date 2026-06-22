@@ -183,4 +183,11 @@ describe('POST /api/invoices/finalize (admin sets amount → the invoice is born
     expect((await finalize('qX', 'x')).status).toBe(400);
     expect((await finalize('', 15000)).status).toBe(400);
   });
+
+  it('rejects finalizing a blocked/suspended quote (409 — ISSUE 3 governance)', async () => {
+    state.docs.set('organizations/orgA/quotes/qX', { customerEmail: 'c@x.com', stage: 'client_responded', adminState: 'blocked', priceMinUsd: 10000, priceMaxUsd: 20000 });
+    const res = await finalize('qX', 15000);
+    expect(res.status).toBe(409);
+    expect(state.docs.has('invoices/quote_qX')).toBe(false);   // no invoice minted
+  });
 });

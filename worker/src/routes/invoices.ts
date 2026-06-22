@@ -188,6 +188,10 @@ invoices.post('/api/invoices/finalize', requireAuth(), requireRole(CONFIRM_ROLES
 
   const quote = await firestoreGet(saJson, QUOTE_DOC(orgId, quoteId)) as Record<string, unknown> | null;
   if (!quote) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+  // Governance guard (ISSUE 3): a blocked/suspended quote cannot be invoiced.
+  if (quote.adminState === 'blocked' || quote.adminState === 'suspended') {
+    return c.json({ error: 'This quote is blocked or suspended.', code: 'QUOTE_BLOCKED' }, 409);
+  }
 
   const invPath = `invoices/quote_${quoteId}`;
   const existing = await firestoreGet(saJson, invPath) as Record<string, unknown> | null;

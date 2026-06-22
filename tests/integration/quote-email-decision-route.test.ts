@@ -291,25 +291,61 @@ describe('multi-admin notifications (PART 3)', () => {
 });
 
 describe('GET /api/quote/list (full-lifecycle tracking)', () => {
-  it('lists staged quotes newest-activity-first and hides never-sent drafts', async () => {
+  it('admin sees ALL quotes incl. drafts, newest-activity-first (ISSUE 2)', async () => {
     runQuery.mockResolvedValueOnce([
       { name: 'organizations/orgA/quotes/qSent', fields: { stage: 'sent', customerEmail: 'a@x.com', expectedBudgetUsd: 5000, priceMinUsd: 10000, priceMaxUsd: 20000, createdAt: '2026-06-20T00:00:00.000Z', sentAt: '2026-06-21T00:00:00.000Z', renderJson: JSON.stringify({ docTitle: 'Sent quote' }) } },
       { name: 'organizations/orgA/quotes/qResp', fields: { stage: 'client_responded', decision: 'accepted', customerEmail: 'b@x.com', expectedBudgetUsd: 8000, createdAt: '2026-06-19T00:00:00.000Z', decidedAt: '2026-06-22T00:00:00.000Z' } },
-      { name: 'organizations/orgA/quotes/qDraft', fields: { status: 'generated', createdAt: '2026-06-18T00:00:00.000Z' } },  // no stage → hidden
+      { name: 'organizations/orgA/quotes/qDraft', fields: { status: 'generated', createdAt: '2026-06-18T00:00:00.000Z' } },  // no stage (draft) — admin still sees it
     ]);
-    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);
+    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);  // owner → full visibility
     expect(res.status).toBe(200);
     const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
-    expect(quotes.map(q => q.quoteId)).toEqual(['qResp', 'qSent']);   // draft hidden; newest activity (decidedAt) first
+    expect(quotes.map(q => q.quoteId)).toEqual(['qResp', 'qSent', 'qDraft']);   // draft included; newest activity first
     expect(quotes[0].stage).toBe('client_responded');
-    expect(quotes[0].decision).toBe('accepted');
-    expect(quotes[1].sentAt).toBe('2026-06-21T00:00:00.000Z');
     expect(quotes[1].quoteTitle).toBe('Sent quote');
   });
 
-  it('returns an empty list when the org has no staged quotes', async () => {
+  it('?mine=1 returns only the caller\'s own staged quotes (drafts + others hidden)', async () => {
+    runQuery.mockResolvedValueOnce([
+      { name: 'organizations/orgA/quotes/qMine', fields: { stage: 'sent', createdBy: 'uid-1', createdAt: '2026-06-20T00:00:00.000Z', sentAt: '2026-06-21T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qMineDraft', fields: { createdBy: 'uid-1', createdAt: '2026-06-19T00:00:00.000Z' } },  // own but no stage → hidden
+      { name: 'organizations/orgA/quotes/qOther', fields: { stage: 'sent', createdBy: 'uid-2', createdAt: '2026-06-18T00:00:00.000Z' } },  // not mine → hidden
+    ]);
+    const res = await quote.request('/api/quote/list?orgId=orgA&mine=1', { headers: H() }, ENV);
+    const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
+    expect(quotes.map(q => q.quoteId)).toEqual(['qMine']);
+  });
+
+  it('returns an empty list when the org has no quotes', async () => {
     runQuery.mockResolvedValueOnce([]);
     const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);
     expect((await res.json() as { quotes: unknown[] }).quotes).toEqual([]);
+  });
+});
+
+describe('PATCH /api/quote/:id (admin governance — ISSUE 3)', () => {
+  const patch = (id: string, body: unknown) =>
+    quote.request(`/api/quote/${id}`, { method: 'PATCH', headers: H(), body: JSON.stringify(body) }, ENV);
+
+  it('blocks then re-activates a quote (adminState flag)', async () => {
+    expect((await patch('q1', { orgId: 'orgA', adminState: 'blocked' })).status).toBe(200);
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.adminState).toBe('blocked');
+    expect((await patch('q1', { orgId: 'orgA', adminState: 'active' })).status).toBe(200);
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.adminState).toBeNull();   // 'active' clears it
+  });
+
+  it('edits the proposed budget and syncs the render', async () => {
+    const res = await patch('q1', { orgId: 'orgA', expectedBudgetUsd: 7000 });
+    expect(res.status).toBe(200);
+    const w = store.writes.get('organizations/orgA/quotes/q1')!;
+    expect(w.expectedBudgetUsd).toBe(7000);
+    expect(JSON.parse(String(w.renderJson)).negBudget).toBe('$7,000');
+  });
+
+  it('rejects an invalid state (400) and 404 for an unknown quote', async () => {
+    expect((await patch('q1', { orgId: 'orgA', adminState: 'nope' })).status).toBe(400);
+    const saved = store.stored; store.stored = null;
+    expect((await patch('qX', { orgId: 'orgA', adminState: 'blocked' })).status).toBe(404);
+    store.stored = saved;
   });
 });

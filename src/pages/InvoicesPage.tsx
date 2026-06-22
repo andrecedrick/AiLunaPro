@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
-import { listInvoices, listPendingQuotes, finalizeQuote, confirmInvoice, type InvoiceItem, type PendingQuote } from '../lib/quote/invoicesClient';
+import { listInvoices, listPendingQuotes, finalizeQuote, confirmInvoice, prefillFinalizeAmount, type InvoiceItem, type PendingQuote } from '../lib/quote/invoicesClient';
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 
@@ -79,8 +79,9 @@ export function InvoicesPage() {
   const openPricing = (q: PendingQuote) => {
     setActiveId(q.quoteId);
     setFormError(false);
-    // Pre-fill with the range ceiling (or the client budget as a starting point).
-    setAmount(q.rangeMaxUsd != null ? String(q.rangeMaxUsd) : q.expectedBudgetUsd != null ? String(q.expectedBudgetUsd) : '');
+    // ISSUE 1 — default to the client's PROPOSED BUDGET so the invoice matches it
+    // (fall back to the estimate ceiling only when no budget was proposed).
+    setAmount(prefillFinalizeAmount(q));
   };
 
   // Deep-link focus: once data loads, auto-open the targeted quote's pricing form

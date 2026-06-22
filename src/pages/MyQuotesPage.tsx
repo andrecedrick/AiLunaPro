@@ -16,14 +16,16 @@ import { useRoute } from '../context/RouteContext';
 import { useMoney } from '../lib/currency/useMoney';
 import { listAllQuotes, type QuoteListItem } from '../lib/quote/invoicesClient';
 
-type Lifecycle = 'sent' | 'reviewing' | 'negotiation' | 'validated' | 'invoiced';
+type Lifecycle = 'sent' | 'reviewing' | 'negotiation' | 'validated' | 'invoiced' | 'blocked' | 'suspended';
 
-/** Map the persisted quote stage → the sender-facing lifecycle status. */
-function lifecycle(stage: string): Lifecycle {
-  if (stage === 'invoice_sent') return 'invoiced';
-  if (stage === 'finalized') return 'validated';
-  if (stage === 'negotiation') return 'negotiation';
-  if (stage === 'client_responded') return 'reviewing';
+/** Map the quote → the sender-facing lifecycle status (admin governance wins). */
+function lifecycle(q: QuoteListItem): Lifecycle {
+  if (q.adminState === 'blocked') return 'blocked';
+  if (q.adminState === 'suspended') return 'suspended';
+  if (q.stage === 'invoice_sent') return 'invoiced';
+  if (q.stage === 'finalized') return 'validated';
+  if (q.stage === 'negotiation') return 'negotiation';
+  if (q.stage === 'client_responded') return 'reviewing';
   return 'sent';
 }
 
@@ -31,6 +33,7 @@ const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surfac
 const pillColor: Record<Lifecycle, string> = {
   sent: 'var(--text-muted)', reviewing: 'var(--violet-text)', negotiation: '#b45309',
   validated: 'var(--violet-text)', invoiced: 'var(--green-text, #059669)',
+  blocked: 'var(--red-text)', suspended: '#b45309',
 };
 
 export function MyQuotesPage() {
@@ -48,13 +51,14 @@ export function MyQuotesPage() {
     if (!orgId) return;
     let alive = true;
     setError(false);
-    listAllQuotes(orgId).then(q => { if (alive) setItems(q); }).catch(() => { if (alive) setError(true); });
+    listAllQuotes(orgId, { mine: true }).then(q => { if (alive) setItems(q); }).catch(() => { if (alive) setError(true); });
     return () => { alive = false; };
   }, [orgId]);
 
   const statusLabel: Record<Lifecycle, string> = {
     sent: M.statusSent, reviewing: M.statusReviewing, negotiation: M.statusNegotiation,
     validated: M.statusValidated, invoiced: M.statusInvoiced,
+    blocked: M.statusBlocked, suspended: M.statusSuspended,
   };
 
   // Latest activity line (timestamp + what happened).
@@ -84,7 +88,7 @@ export function MyQuotesPage() {
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
           {items.map(q => {
-            const lc = lifecycle(q.stage);
+            const lc = lifecycle(q);
             const act = lastActivity(q);
             return (
               <div key={q.quoteId} style={card}>

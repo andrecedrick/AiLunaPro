@@ -29,7 +29,7 @@ export function requireRole(allowed: readonly Role[]) {
     }
 
     let orgId: string | undefined = c.req.query('orgId') ?? undefined;
-    if (!orgId && c.req.method === 'POST') {
+    if (!orgId && (c.req.method === 'POST' || c.req.method === 'PATCH' || c.req.method === 'PUT')) {
       try {
         const cloned = c.req.raw.clone();
         const body   = await cloned.json() as { orgId?: string };
