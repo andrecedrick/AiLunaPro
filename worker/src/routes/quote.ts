@@ -842,8 +842,9 @@ quote.post('/api/quote/decision/confirm', async c => {
   const decision = body.decision === 'accepted' ? 'accepted'
     : body.decision === 'discussion' ? 'discussion' : null;
   if (!decision) return c.json({ error: 'Invalid decision.', code: 'INVALID_DECISION' }, 400);
-  const budget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
-  const hasBudget = Number.isFinite(budget) && budget >= 0 && budget <= PRICE_MAX;
+  // Budget carried in the (unsigned) confirm body — only a FALLBACK; the server-
+  // recorded budget on the quote (set by the authed sender at email time) wins.
+  const urlBudget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
   const message = typeof body.message === 'string' ? sanitizeText(body.message, 2000) : null;
 
   const { orgId, auditId: quoteId } = v.payload;
@@ -868,7 +869,12 @@ quote.post('/api/quote/decision/confirm', async c => {
   // was emailed (the unauthenticated caller's identity is never trusted).
   const customerEmail = typeof stored.customerEmail === 'string' && stored.customerEmail ? stored.customerEmail : undefined;
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  await applyQuoteDecision(env, saJson, { orgId, quoteId, stored, decision, hasBudget, budget, message, customerEmail, appBase });
+  // FIX 1 — guarantee a budget on the admin notification. Prefer the server-recorded
+  // value (applyQuoteDecision falls back to it when hasBudget is false); use the
+  // confirm-body value only when the quote has none persisted (legacy quotes).
+  const storedHasBudget = typeof stored.expectedBudgetUsd === 'number' && Number.isFinite(stored.expectedBudgetUsd);
+  const useUrlBudget = !storedHasBudget && Number.isFinite(urlBudget) && urlBudget >= 0 && urlBudget <= PRICE_MAX;
+  await applyQuoteDecision(env, saJson, { orgId, quoteId, stored, decision, hasBudget: useUrlBudget, budget: useUrlBudget ? urlBudget : NaN, message, customerEmail, appBase });
   return c.json({ ok: true, status: decision });
 });
 

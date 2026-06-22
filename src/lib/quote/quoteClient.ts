@@ -162,12 +162,16 @@ export async function recordDecision(
  *  action token (carried in the email link) is the gate; the worker binds it to the
  *  quote, opens the draft invoice, and notifies the admin. */
 export async function confirmQuoteDecisionByToken(
-  token: string, decision: 'accepted' | 'discussion', opts?: { message?: string },
+  token: string, decision: 'accepted' | 'discussion', opts?: { message?: string; expectedBudgetUsd?: number },
 ): Promise<{ status: string }> {
   const res = await fetch(`${WORKER_BASE}/api/quote/decision/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, decision, ...(opts?.message ? { message: opts.message } : {}) }),
+    body: JSON.stringify({
+      token, decision,
+      ...(opts?.message ? { message: opts.message } : {}),
+      ...(opts?.expectedBudgetUsd !== undefined ? { expectedBudgetUsd: opts.expectedBudgetUsd } : {}),
+    }),
   });
   const j = await res.json().catch(() => null) as ({ status?: string; code?: string }) | null;
   if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);

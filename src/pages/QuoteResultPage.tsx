@@ -101,8 +101,12 @@ export function QuoteResultPage() {
     const isAccept = action === 'accept';
     const onConfirm = async () => {
       setPhase('confirming');
-      try { await confirmQuoteDecisionByToken(token, isAccept ? 'accepted' : 'discussion'); setPhase('done'); }
-      catch { setPhase('error'); }
+      try {
+        // FIX 1 — carry the proposed budget so the admin notify always has it, even
+        // if it wasn't persisted at email time (server-stored value still wins).
+        await confirmQuoteDecisionByToken(token, isAccept ? 'accepted' : 'discussion', budgetUsd !== null && budgetUsd > 0 ? { expectedBudgetUsd: budgetUsd } : undefined);
+        setPhase('done');
+      } catch { setPhase('error'); }
     };
     return (
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '56px 20px', textAlign: 'center' }}>

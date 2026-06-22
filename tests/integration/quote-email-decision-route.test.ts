@@ -237,6 +237,23 @@ describe('POST /api/quote/decision/confirm (public token-gated email accept)', (
     expect(seq.sends.length).toBe(0);
     expect(store.invoices.size).toBe(0);
   });
+
+  it('the SERVER-stored budget wins — a token-body budget cannot overwrite it', async () => {
+    store.stored!.expectedBudgetUsd = 1500;                 // recorded by the authed sender at email time
+    share.verify.mockResolvedValue(okV2);
+    const res = await confirmReq({ token: 'tok', decision: 'accepted', expectedBudgetUsd: 999999 });  // hostile/forged URL value
+    expect(res.status).toBe(200);
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.expectedBudgetUsd).toBe(1500);   // stored wins
+    expect((seq.sends.find(s => s.slug === 'invoice-admin-pending')!.variables as Record<string, string>).BUDGET).toBe('$1,500');
+  });
+
+  it('uses the token-body budget only as a fallback when nothing was persisted', async () => {
+    share.verify.mockResolvedValue(okV2);                   // store.stored has no expectedBudgetUsd
+    const res = await confirmReq({ token: 'tok', decision: 'accepted', expectedBudgetUsd: 5000 });
+    expect(res.status).toBe(200);
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.expectedBudgetUsd).toBe(5000);   // URL fallback applied
+    expect((seq.sends.find(s => s.slug === 'invoice-admin-pending')!.variables as Record<string, string>).BUDGET).toBe('$5,000');
+  });
 });
 
 describe('GET /api/quote/pending (admin pricing queue)', () => {

@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { useRoute } from '../context/RouteContext';
+import { useMoney } from '../lib/currency/useMoney';
 import { fetchPlatformMe } from '../lib/platform/platformService';
 import { listInvoices, listPendingQuotes, finalizeQuote, confirmInvoice, type InvoiceItem, type PendingQuote } from '../lib/quote/invoicesClient';
 
@@ -26,6 +27,7 @@ export function AdminCenterPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
   const T = useLocale();
+  const money = useMoney();
   const I = T.invoices;
   const A = T.adminCenter;
   const orgId = session?.orgId ?? '';
@@ -77,8 +79,10 @@ export function AdminCenterPage() {
   const events: Evt[] = [];
   for (const q of pending ?? []) {
     const title = qTitle(q.quoteTitle, q.quoteId);
-    if (q.decision === 'discussion') events.push({ icon: '💬', label: A.evtAdjustment, title, date: q.decidedAt, sub: q.expectedBudgetUsd != null ? `${I.clientBudget}: ${usd(q.expectedBudgetUsd)}` : undefined });
-    else events.push({ icon: '✅', label: A.evtAccepted, title, date: q.decidedAt });
+    // FIX 5 — the proposed budget rides on BOTH the accept + adjustment events.
+    const budgetSub = q.expectedBudgetUsd != null ? `${I.proposedBudget}: ${money.format(q.expectedBudgetUsd)}` : undefined;
+    if (q.decision === 'discussion') events.push({ icon: '💬', label: A.evtAdjustment, title, date: q.decidedAt, sub: budgetSub });
+    else events.push({ icon: '✅', label: A.evtAccepted, title, date: q.decidedAt, sub: budgetSub });
   }
   for (const inv of items ?? []) {
     if (inv.status === 'draft') continue;
@@ -107,7 +111,10 @@ export function AdminCenterPage() {
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{qTitle(q.quoteTitle, q.quoteId)}</div>
           {q.customerEmail && <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 2 }}>{q.customerEmail}</div>}
-          {q.expectedBudgetUsd != null && <div style={{ fontSize: 12, color: '#b45309', marginTop: 2, fontWeight: 600 }}>{I.clientBudget}: {usd(q.expectedBudgetUsd)}</div>}
+          {/* FIX 3/6 — the proposed budget is the headline figure (display currency). */}
+          {q.expectedBudgetUsd != null
+            ? <div style={{ marginTop: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-muted)' }}>{I.proposedBudget}<span style={{ display: 'block', fontSize: 18, fontWeight: 800, textTransform: 'none', letterSpacing: 0, color: 'var(--violet-text)', marginTop: 1 }}>{money.format(q.expectedBudgetUsd)}</span></div>
+            : <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>{I.proposedBudget}: —</div>}
         </div>
         <span style={pill(q.stage === 'negotiation' ? '#b45309' : 'var(--violet-text)')}>{q.stage === 'negotiation' ? I.stageNegotiationLabel : I.stageAcceptedLabel}</span>
       </div>
@@ -177,7 +184,7 @@ export function AdminCenterPage() {
                 <div key={q.quoteId} style={card}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{qTitle(q.quoteTitle, q.quoteId)}</div>
-                    {q.expectedBudgetUsd != null && <span style={{ fontSize: 12, color: '#b45309', fontWeight: 600 }}>{I.clientBudget}: {usd(q.expectedBudgetUsd)}</span>}
+                    {q.expectedBudgetUsd != null && <span style={{ fontSize: 12.5, color: 'var(--violet-text)', fontWeight: 700 }}>{I.proposedBudget}: {money.format(q.expectedBudgetUsd)}</span>}
                   </div>
                   <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-secondary)' }}>“{q.message}”</div>
                   {q.customerEmail && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>{A.contextLabel}: {q.customerEmail}</div>}
