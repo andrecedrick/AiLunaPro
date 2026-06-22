@@ -86,12 +86,14 @@ export const fr: Dict = {
     activityHeading: 'Activité récente',
     activityEmpty: 'Aucune activité pour le moment.',
     evtAccepted: 'Budget validé par le client',
-    evtAdjustment: 'Ajustement demandé',
+    evtAdjustment: 'Modification du budget demandée par le client',
     evtInvoiceSent: 'Facture envoyée',
     evtPaid: 'Paiement reçu',
     discussionsHeading: 'Échanges avec les clients',
     discussionsEmpty: 'Aucun message client pour le moment.',
     contextLabel: 'Contexte',
+    statusWaitingResponse: 'En attente de votre réponse',
+    replyHint: 'répondez à l’e-mail de notification pour répondre',
   },
   shell: {
     complianceSuite:  'Suite de conformité',
@@ -2597,6 +2599,17 @@ export const fr: Dict = {
         "button": "M'envoyer ce devis par e-mail",
         "sent": "Devis envoyé dans votre boîte mail.",
         "error": "Impossible d'envoyer l'e-mail. Veuillez réessayer."
+      },
+      "send": {
+        "heading": "Envoyez la proposition à votre client",
+        "intro": "Saisissez l'e-mail de votre client et le budget que vous proposez — nous lui enverrons la proposition pour qu'il l'accepte ou demande des modifications.",
+        "emailLabel": "E-mail du client",
+        "emailRequired": "L'e-mail du client est requis pour envoyer la proposition.",
+        "submit": "Envoyer la proposition au client",
+        "hint": "Votre client reçoit la proposition et accepte le budget ou demande des modifications.",
+        "sentTo": "Proposition envoyée à {email}",
+        "sentNext": "Nous vous préviendrons dès que votre client aura répondu. Suivez son statut dans le Centre d'administration.",
+        "track": "Ouvrir le Centre d'administration"
       },
       "override": {
         "toggle": "Ajuster le prix (admin)",

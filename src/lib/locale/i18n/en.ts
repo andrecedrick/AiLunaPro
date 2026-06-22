@@ -101,12 +101,14 @@ export const en = {
     activityHeading: 'Recent activity',
     activityEmpty: 'No activity yet.',
     evtAccepted: 'Budget validated by client',
-    evtAdjustment: 'Adjustment requested',
+    evtAdjustment: 'Client requested budget change',
     evtInvoiceSent: 'Invoice sent',
     evtPaid: 'Payment received',
     discussionsHeading: 'Client discussions',
     discussionsEmpty: 'No client messages yet.',
     contextLabel: 'Context',
+    statusWaitingResponse: 'Waiting for your response',
+    replyHint: 'reply to the notification email to respond',
   },
   shell: {
     complianceSuite:  'Compliance Suite',
@@ -2613,6 +2615,17 @@ export const en = {
         "button": "Email me this quote",
         "sent": "Quote sent to your inbox.",
         "error": "Could not send the email. Please try again."
+      },
+      "send": {
+        "heading": "Send the proposal to your client",
+        "intro": "Enter your client's email and your proposed budget — we'll email them the proposal to accept or request changes.",
+        "emailLabel": "Client email",
+        "emailRequired": "Client email is required to send the proposal.",
+        "submit": "Send proposal to client",
+        "hint": "Your client receives the proposal and accepts the budget or requests changes.",
+        "sentTo": "Proposal sent to {email}",
+        "sentNext": "We'll notify you when your client responds. Track it in the Admin Center.",
+        "track": "Open the Admin Center"
       },
       "override": {
         "toggle": "Adjust price (admin)",

@@ -88,12 +88,14 @@ export const zh: Dict = {
     activityHeading: '近期活动',
     activityEmpty: '暂无活动。',
     evtAccepted: '客户已确认预算',
-    evtAdjustment: '已请求调整',
+    evtAdjustment: '客户请求修改预算',
     evtInvoiceSent: '发票已发送',
     evtPaid: '已收到付款',
     discussionsHeading: '客户沟通',
     discussionsEmpty: '暂无客户留言。',
     contextLabel: '上下文',
+    statusWaitingResponse: '等待您的回复',
+    replyHint: '回复通知邮件即可回应',
   },
   shell: {
     complianceSuite:  '合规套件',
@@ -2599,6 +2601,17 @@ export const zh: Dict = {
         "button": "将此报价发送到我的邮箱",
         "sent": "报价已发送到您的邮箱。",
         "error": "无法发送邮件，请重试。"
+      },
+      "send": {
+        "heading": "将提案发送给您的客户",
+        "intro": "输入您客户的电子邮箱和您提议的预算——我们将通过邮件把提案发送给他们，供其接受或请求修改。",
+        "emailLabel": "客户邮箱",
+        "emailRequired": "发送提案需要填写客户邮箱。",
+        "submit": "将提案发送给客户",
+        "hint": "您的客户会收到提案，并可接受预算或请求修改。",
+        "sentTo": "提案已发送至 {email}",
+        "sentNext": "当您的客户回复时，我们会通知您。可在 Admin Center 中跟踪进度。",
+        "track": "打开 Admin Center"
       },
       "override": {
         "toggle": "调整价格（管理员）",

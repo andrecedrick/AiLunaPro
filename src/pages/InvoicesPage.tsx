@@ -217,9 +217,12 @@ export function InvoicesPage() {
 
   // Finalised invoices only — drafts (legacy) never shown (FIX 7).
   const invoiceList = (items ?? []).filter(i => i.status !== 'draft');
-  // Deep-link present but no matching card after load → safe not-found message (FIX 5).
-  const focusNotFound = hasFocus && items !== null &&
-    !((pending ?? []).some(isQueueFocused) || invoiceList.some(isInvoiceFocused));
+  // FIX 3 — a deep-link that doesn't match is NOT an error when there's a list to
+  // show: fall back to the full list. Only surface "not found" when there is
+  // genuinely nothing to display (no queue items + no invoices).
+  const hasAnyContent = (pending ?? []).length > 0 || invoiceList.length > 0;
+  const focusMatched = (pending ?? []).some(isQueueFocused) || invoiceList.some(isInvoiceFocused);
+  const focusNotFound = hasFocus && items !== null && !focusMatched && !hasAnyContent;
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 20px' }}>

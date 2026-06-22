@@ -27,7 +27,7 @@ import {
 } from '../data/quote-config';
 import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/quote/score';
 import { convertToUsd } from '../lib/currency/fxSnapshot';
-import { generateQuote, downloadQuotePdf, emailQuote, recordDecision, QuoteGenError } from '../lib/quote/quoteClient';
+import { generateQuote, downloadQuotePdf, emailQuote, QuoteGenError } from '../lib/quote/quoteClient';
 import { tokenCost } from '../lib/tokens/costs';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
 import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
@@ -81,18 +81,16 @@ export function QuoteRequestPage() {
   const [modal,      setModal]      = useState<{ open: boolean; balance: number; required: number }>({ open: false, balance: 0, required: 0 });
   const [downloading, setDownloading] = useState(false);
   const [pdfError,    setPdfError]    = useState<string | null>(null);
-  // U2 — budget + client decision. The proposed budget is now MANDATORY (the
-  // primary decision element) — a submit with no/invalid budget is blocked.
+  // U2 — proposed budget (MANDATORY). FIX 1/2/7 (2026-06-22): the page is a single
+  // "send the proposal to your client" form — client email + budget required, one
+  // submit that emails the proposal; the client accepts / requests changes from the
+  // email (no in-app self-accept here anymore).
   const [budgetInput, setBudgetInput] = useState('');
   const [budgetError, setBudgetError] = useState<string | null>(null);
-  const [decisionState, setDecisionState] = useState<'idle' | 'saving' | 'accepted' | 'discussion' | 'error'>('idle');
-  // B3 — negotiation message (reveal-on-Discuss).
-  const [showDiscuss, setShowDiscuss] = useState(false);
-  const [discussMessage, setDiscussMessage] = useState('');
-  // Q4 — email. B2 adds an optional client recipient. (Admin price-override removed
-  // from this page — the admin sets the final amount later at finalise.)
+  // Q4 — the client recipient is now REQUIRED (the submit sends the proposal email).
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [clientEmail, setClientEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   // No in-page override: the price is the deterministic estimate; the admin confirms
   // the final amount later in the Invoices / Admin Center pricing queue.
   // Stable per estimate session: a network retry reuses it (server idempotent,
@@ -155,8 +153,8 @@ export function QuoteRequestPage() {
     setGenerating(false); setGenError(null); setGenerated(false);
     setModal({ open: false, balance: 0, required: 0 });
     setDownloading(false); setPdfError(null);
-    setBudgetInput(''); setBudgetError(null); setDecisionState('idle');
-    setEmailState('idle');
+    setBudgetInput(''); setBudgetError(null);
+    setEmailState('idle'); setEmailError(null); setClientEmail('');
     quoteIdRef.current = '';
     clearFlowProgress('quote');
   };
@@ -288,52 +286,29 @@ export function QuoteRequestPage() {
     }
   };
 
-  const onEmail = async () => {
+  // FIX 1/2/7 — the single primary action: send the proposal to the client. Client
+  // email + proposed budget are both REQUIRED; the client then accepts / requests
+  // changes from the email itself (no in-app self-accept). Budget rides along so the
+  // email + admin notify + the email Accept/Discuss CTAs all carry the amount.
+  const onSendProposal = async () => {
     if (emailState === 'sending' || !preview) return;
     const orgId = session?.orgId;
     if (!orgId || !quoteIdRef.current) return;
-    // Budget-first: the client email must lead with the proposed budget — require it
-    // (and pass it so the email + the Accept/Discuss CTAs carry the amount).
+    const email = clientEmail.trim();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     const budgetNum = Number(budgetInput);
     const validBudget = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum > 0;
-    if (!validBudget) { setBudgetError(Q.decision.budgetRequired); return; }
-    setBudgetError(null);
+    setEmailError(emailOk ? null : Q.send.emailRequired);
+    setBudgetError(validBudget ? null : Q.decision.budgetRequired);
+    if (!emailOk || !validBudget) return;
     const expectedBudgetUsd = Math.round(convertToUsd(budgetNum, money.currency));
     setEmailState('sending');
     try {
-      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, clientEmail.trim() || undefined, expectedBudgetUsd);
+      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, email, expectedBudgetUsd);
       emit('quote_emailed', { flow: 'quote', emailed: r.emailed, src: src ?? undefined });
       setEmailState('sent');
     } catch {
       setEmailState('error');
-    }
-  };
-
-  const onDecision = async (decision: 'accepted' | 'discussion') => {
-    if (decisionState === 'saving' || !preview) return;
-    const orgId = session?.orgId;
-    if (!orgId || !quoteIdRef.current) return;
-    // Budget is MANDATORY — block the submit (no silent decision without an amount).
-    const budgetNum = Number(budgetInput);
-    const validBudget = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum > 0;
-    if (!validBudget) { setBudgetError(Q.decision.budgetRequired); return; }
-    setBudgetError(null);
-    const expectedBudgetUsd = Math.round(convertToUsd(budgetNum, money.currency));
-    setDecisionState('saving');
-    try {
-      const msg = decision === 'discussion' ? discussMessage.trim() : '';
-      await recordDecision(orgId, quoteIdRef.current, {
-        decision,
-        expectedBudgetUsd,
-        ...(msg ? { message: msg } : {}),
-      });
-      emit('quote_decision', { flow: 'quote', decision, src: src ?? undefined });
-      setDecisionState(decision);
-      // FIX 1 — after accept, route to the confirmation result page (carry the budget
-      // so the confirmation + status pages show the proposed amount).
-      if (decision === 'accepted') navigate({ name: 'quote/result', quoteId: quoteIdRef.current, budgetUsd: expectedBudgetUsd });
-    } catch {
-      setDecisionState('error');
     }
   };
 
@@ -483,81 +458,66 @@ export function QuoteRequestPage() {
                 <div id="quote-generated" style={{ marginTop: 22, padding: 20, borderRadius: 14, background: 'var(--green-soft-bg, #ecfdf5)', border: '1px solid var(--green-text, #059669)' }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center', marginBottom: 12 }}>{Q.generate.success}</div>
 
-                  {/* PRIMARY — your proposed budget + submit (FIX 2: the budget is the
-                      primary decision element; the estimated range is shown as secondary
-                      context above it). */}
-                  <div style={{ marginBottom: 16, textAlign: 'center' }}>
-                    {/* Accept navigates to #/quote/result (the confirmation surface), so only the
-                        discussion-sent state paints here; the decision form shows otherwise. */}
-                    {decisionState === 'discussion' ? (
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>{Q.decision.discussionSent}</div>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>{Q.decision.adjustHeading}</div>
-                        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 12, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>{Q.decision.budgetIntro}</div>
-
-                        {/* Secondary: the estimated range (de-emphasised reference). */}
-                        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 14 }}>
-                          {Q.decision.rangeLabel}: <strong style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{rangeText}</strong>
-                        </div>
-
-                        {/* Primary: the proposed budget input (required). */}
-                        <label htmlFor="quote-budget" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                          {Q.decision.budgetLabel} <span style={{ color: 'var(--red-text)' }}>{Q.requiredMark}</span>
-                        </label>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                          <input id="quote-budget" type="number" inputMode="numeric" min={1} value={budgetInput}
-                            onChange={e => { setBudgetInput(e.target.value); if (budgetError) setBudgetError(null); }}
-                            onBlur={() => { if (budgetVerdict) emit('quote_budget_entered', { flow: 'quote', verdict: budgetVerdict, src: src ?? undefined }); }}
-                            placeholder={Q.decision.budgetPlaceholder} aria-invalid={!!budgetError}
-                            style={{ ...inputStyle(), maxWidth: 200, fontSize: 18, fontWeight: 700, textAlign: 'center', ...(budgetError ? { borderColor: 'var(--red-text)' } : {}) }} />
-                        </div>
-                        {budgetError && <div style={{ fontSize: 12.5, color: 'var(--red-text)', marginBottom: 8 }}>{budgetError}</div>}
-                        {budgetVerdict && (
-                          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                            {budgetVerdict === 'below' ? Q.decision.verdictBelow : budgetVerdict === 'above' ? Q.decision.verdictAbove : Q.decision.verdictWithin}
-                          </div>
-                        )}
-                        {!showDiscuss ? (
-                          /* "Submit my budget" is the single primary CTA; "request a price
-                             adjustment" is a de-emphasised text link below it (not co-equal). */
-                          <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
-                            <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('accepted')} style={{ ...primaryBtnStyle(), padding: '13px 36px', fontSize: 15 }}>{Q.decision.accept}</button>
-                            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', maxWidth: 340, lineHeight: 1.5 }}>{Q.decision.submitHint}</div>
-                            <button type="button" disabled={decisionState === 'saving'} onClick={() => setShowDiscuss(true)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textDecoration: 'underline', padding: 0, marginTop: 4 }}>{Q.decision.discuss}</button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'grid', gap: 8, maxWidth: 360, margin: '0 auto' }}>
-                            <textarea value={discussMessage} onChange={e => setDiscussMessage(e.target.value)} rows={3} maxLength={2000} placeholder={Q.decision.messagePlaceholder} aria-label={Q.decision.messagePlaceholder} style={{ ...inputStyle(), resize: 'vertical' }} />
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                              <button type="button" onClick={() => { setShowDiscuss(false); setDiscussMessage(''); }} style={{ ...secondaryBtnStyle(), padding: '8px 14px' }}>✕</button>
-                              <button type="button" disabled={decisionState === 'saving'} onClick={() => void onDecision('discussion')} style={{ ...primaryBtnStyle(), padding: '10px 20px' }}>{Q.decision.messageSend}</button>
-                            </div>
-                          </div>
-                        )}
-                        {decisionState === 'error' && <div style={{ marginTop: 8, color: 'var(--red-text)', fontSize: 12 }}>{Q.decision.error}</div>}
-                      </>
-                    )}
-                  </div>
-
-                  {/* SECONDARY — document tools (download / send the quote PDF). */}
-                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-                      <button type="button" disabled={downloading} onClick={() => void onDownloadPdf()} style={{ ...secondaryBtnStyle(), opacity: downloading ? 0.6 : 1 }}>
-                        {downloading ? '…' : Q.pdf.download}
-                      </button>
-                      <button type="button" disabled={emailState === 'sending'} onClick={() => void onEmail()} style={{ ...secondaryBtnStyle(), opacity: emailState === 'sending' ? 0.6 : 1 }}>
-                        {emailState === 'sending' ? '…' : emailState === 'sent' ? Q.email.sent : Q.email.button}
-                      </button>
+                  {emailState === 'sent' ? (
+                    /* FIX 7 — sent confirmation: one clear status + next step. */
+                    <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--green-text, #059669)', marginBottom: 6 }}>✅ {format(Q.send.sentTo, { email: clientEmail.trim() })}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.55 }}>{Q.send.sentNext}</div>
+                      <button type="button" onClick={() => navigate({ name: 'admin' })} style={secondaryBtnStyle()}>{Q.send.track}</button>
                     </div>
-                    {/* B2 — optional client recipient (empty → sent to the signed-in user). */}
-                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder={Q.email.clientPlaceholder} aria-label={Q.email.clientLabel} style={{ ...inputStyle(), maxWidth: 260 }} />
-                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{Q.email.clientLabel}</div>
+                  ) : (
+                    /* PRIMARY (FIX 1/2/7) — the single "send the proposal to your client"
+                       form: 1) client email (required, top) · 2) proposed budget (required)
+                       · 3) estimated range (secondary) · 4) one submit. */
+                    <div style={{ marginBottom: 8, maxWidth: 420, marginLeft: 'auto', marginRight: 'auto' }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: 4 }}>{Q.send.heading}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 16, lineHeight: 1.5 }}>{Q.send.intro}</div>
+
+                      {/* 1 — client email (REQUIRED, primary) */}
+                      <label htmlFor="quote-client-email" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+                        {Q.send.emailLabel} <span style={{ color: 'var(--red-text)' }}>{Q.requiredMark}</span>
+                      </label>
+                      <input id="quote-client-email" type="email" inputMode="email" value={clientEmail}
+                        onChange={e => { setClientEmail(e.target.value); if (emailError) setEmailError(null); }}
+                        placeholder={Q.email.clientPlaceholder} aria-invalid={!!emailError}
+                        style={{ ...inputStyle(), marginBottom: emailError ? 4 : 14, ...(emailError ? { borderColor: 'var(--red-text)' } : {}) }} />
+                      {emailError && <div style={{ fontSize: 12.5, color: 'var(--red-text)', marginBottom: 12 }}>{emailError}</div>}
+
+                      {/* 2 — proposed budget (REQUIRED) */}
+                      <label htmlFor="quote-budget" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+                        {Q.decision.budgetLabel} <span style={{ color: 'var(--red-text)' }}>{Q.requiredMark}</span>
+                      </label>
+                      <input id="quote-budget" type="number" inputMode="numeric" min={1} value={budgetInput}
+                        onChange={e => { setBudgetInput(e.target.value); if (budgetError) setBudgetError(null); }}
+                        onBlur={() => { if (budgetVerdict) emit('quote_budget_entered', { flow: 'quote', verdict: budgetVerdict, src: src ?? undefined }); }}
+                        placeholder={Q.decision.budgetPlaceholder} aria-invalid={!!budgetError}
+                        style={{ ...inputStyle(), fontWeight: 700, marginBottom: budgetError ? 4 : 8, ...(budgetError ? { borderColor: 'var(--red-text)' } : {}) }} />
+                      {budgetError && <div style={{ fontSize: 12.5, color: 'var(--red-text)', marginBottom: 8 }}>{budgetError}</div>}
+                      {budgetVerdict && (
+                        <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                          {budgetVerdict === 'below' ? Q.decision.verdictBelow : budgetVerdict === 'above' ? Q.decision.verdictAbove : Q.decision.verdictWithin}
+                        </div>
+                      )}
+
+                      {/* 3 — estimated range (secondary reference) */}
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 16 }}>
+                        {Q.decision.rangeLabel}: <strong style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{rangeText}</strong>
+                      </div>
+
+                      {/* 4 — single submit (PDF download is a de-emphasised secondary link) */}
+                      <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+                        <button type="button" disabled={emailState === 'sending'} onClick={() => void onSendProposal()} style={{ ...primaryBtnStyle(), padding: '13px 36px', fontSize: 15, width: '100%', maxWidth: 320, opacity: emailState === 'sending' ? 0.6 : 1 }}>
+                          {emailState === 'sending' ? '…' : Q.send.submit}
+                        </button>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', maxWidth: 360, textAlign: 'center', lineHeight: 1.5 }}>{Q.send.hint}</div>
+                        <button type="button" disabled={downloading} onClick={() => void onDownloadPdf()} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, textDecoration: 'underline', padding: 0, marginTop: 2 }}>
+                          {downloading ? '…' : Q.pdf.download}
+                        </button>
+                      </div>
+                      {emailState === 'error' && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{Q.email.error}</div>}
+                      {pdfError && <div style={{ marginTop: 8, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{pdfError}</div>}
                     </div>
-                    {pdfError && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{pdfError}</div>}
-                    {emailState === 'error' && <div style={{ marginTop: 10, textAlign: 'center', color: 'var(--red-text)', fontSize: 13 }}>{Q.email.error}</div>}
-                  </div>
+                  )}
 
                   {/* FIX 5 — explain the quote → invoice → payment flow */}
                   <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>

@@ -86,9 +86,11 @@ export const de: Dict = {
     activityHeading: 'Letzte Aktivität',
     activityEmpty: 'Noch keine Aktivität.',
     evtAccepted: 'Budget vom Kunden bestätigt',
-    evtAdjustment: 'Anpassung angefragt',
+    evtAdjustment: 'Budgetänderung vom Kunden angefragt',
     evtInvoiceSent: 'Rechnung gesendet',
     evtPaid: 'Zahlung erhalten',
+    statusWaitingResponse: 'Wartet auf Ihre Antwort',
+    replyHint: 'Antworten Sie auf die Benachrichtigungs-E-Mail, um zu reagieren',
     discussionsHeading: 'Kundengespräche',
     discussionsEmpty: 'Noch keine Kundennachrichten.',
     contextLabel: 'Kontext',
@@ -2597,6 +2599,17 @@ export const de: Dict = {
         "button": "Angebot per E-Mail senden",
         "sent": "Angebot an Ihren Posteingang gesendet.",
         "error": "E-Mail konnte nicht gesendet werden. Bitte erneut versuchen."
+      },
+      "send": {
+        "heading": "Senden Sie das Angebot an Ihren Kunden",
+        "intro": "Geben Sie die E-Mail-Adresse Ihres Kunden und Ihr vorgeschlagenes Budget ein — wir senden ihm das Angebot per E-Mail, damit er es annehmen oder Änderungen anfragen kann.",
+        "emailLabel": "E-Mail des Kunden",
+        "emailRequired": "Die E-Mail-Adresse des Kunden ist erforderlich, um das Angebot zu senden.",
+        "submit": "Angebot an Kunden senden",
+        "hint": "Ihr Kunde erhält das Angebot und nimmt das Budget an oder fragt Änderungen an.",
+        "sentTo": "Angebot an {email} gesendet",
+        "sentNext": "Wir benachrichtigen Sie, sobald Ihr Kunde antwortet. Verfolgen Sie es im Admin Center.",
+        "track": "Admin Center öffnen"
       },
       "override": {
         "toggle": "Preis anpassen (Admin)",

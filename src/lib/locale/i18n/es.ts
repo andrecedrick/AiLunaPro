@@ -86,9 +86,11 @@ export const es: Dict = {
     activityHeading: 'Actividad reciente',
     activityEmpty: 'Todavía no hay actividad.',
     evtAccepted: 'Presupuesto validado por el cliente',
-    evtAdjustment: 'Ajuste solicitado',
+    evtAdjustment: 'El cliente solicitó un cambio de presupuesto',
     evtInvoiceSent: 'Factura enviada',
     evtPaid: 'Pago recibido',
+    statusWaitingResponse: 'Esperando tu respuesta',
+    replyHint: 'responde al correo de notificación para contestar',
     discussionsHeading: 'Conversaciones con clientes',
     discussionsEmpty: 'Todavía no hay mensajes de clientes.',
     contextLabel: 'Contexto',
@@ -2597,6 +2599,17 @@ export const es: Dict = {
         "button": "Enviarme este presupuesto por correo",
         "sent": "Presupuesto enviado a tu correo.",
         "error": "No se pudo enviar el correo. Inténtalo de nuevo."
+      },
+      "send": {
+        "heading": "Envía la propuesta a tu cliente",
+        "intro": "Introduce el correo de tu cliente y tu presupuesto propuesto — le enviaremos la propuesta por correo para que la acepte o solicite cambios.",
+        "emailLabel": "Correo del cliente",
+        "emailRequired": "El correo del cliente es obligatorio para enviar la propuesta.",
+        "submit": "Enviar propuesta al cliente",
+        "hint": "Tu cliente recibe la propuesta y acepta el presupuesto o solicita cambios.",
+        "sentTo": "Propuesta enviada a {email}",
+        "sentNext": "Te avisaremos cuando tu cliente responda. Haz el seguimiento en el Admin Center.",
+        "track": "Abrir el Admin Center"
       },
       "override": {
         "toggle": "Ajustar precio (admin)",
