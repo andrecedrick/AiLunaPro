@@ -12,11 +12,13 @@
  */
 
 import { Hono } from 'hono';
+import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { firestoreRunQuery, firestoreGet, firestoreSet, firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { sendTransactional } from '../lib/sequenzy';
 import { formatBankDetails } from '../lib/bank-details';
+import { getStripe } from '../lib/stripe';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
@@ -28,6 +30,44 @@ const CONFIRM_ROLES: RoleList = ['owner', 'admin']; // confirming + sending is a
 const AMOUNT_MAX = 10_000_000;
 
 const QUOTE_DOC = (orgId: string, quoteId: string) => `organizations/${orgId}/quotes/${quoteId}`;
+
+/** ISSUE 6 — GRACEFUL Stripe payment link. Create a one-time Checkout Session for the
+ *  invoice amount (USD) when Stripe is configured; persist the url on the invoice; the
+ *  webhook (type='invoice_payment') marks it paid. Returns null when Stripe is unset or
+ *  the call fails (the email/UI then fall back to bank transfer). Amount is an integer
+ *  USD value → unit_amount in cents. Idempotent enough: reuses a stored url if present. */
+async function ensureInvoicePaymentLink(
+  env: AppEnv['Bindings'], saJson: string,
+  a: { orgId: string; invoiceId: string; amount: number; project: string; appBase: string; existingUrl?: string; prevSessionId?: string },
+): Promise<string | null> {
+  if (a.existingUrl) return a.existingUrl;
+  const key = (env as { STRIPE_SECRET_KEY?: string }).STRIPE_SECRET_KEY;
+  if (!key) return null;                                  // graceful: bank transfer only
+  try {
+    const stripe = getStripe(key);
+    // Re-amount: void the previous (different-amount) Checkout link so a client can
+    // never settle a stale total. Best-effort — already-completed/expired sessions throw.
+    if (a.prevSessionId) {
+      try { await stripe.checkout.sessions.expire(a.prevSessionId); }
+      catch (e) { console.warn('[invoices] could not expire stale session', a.prevSessionId, ':', e instanceof Error ? e.message : ''); }
+    }
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{ price_data: { currency: 'usd', product_data: { name: a.project || 'Invoice' }, unit_amount: Math.round(a.amount) * 100 }, quantity: 1 }],
+      success_url: `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}&paid=1`,
+      cancel_url:  `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`,
+      client_reference_id: a.orgId,
+      metadata: { type: 'invoice_payment', invoiceId: a.invoiceId, orgId: a.orgId },
+    });
+    if (!session.url) return null;
+    await firestoreSet(saJson, `invoices/${a.invoiceId}`, { paymentUrl: session.url, paymentSessionId: session.id, updatedAt: new Date().toISOString() }, { merge: true });
+    return session.url;
+  } catch (err) {
+    if (err instanceof Stripe.errors.StripeError) console.warn('[invoices] payment link create failed:', err.code ?? err.type, err.message);
+    else console.warn('[invoices] payment link create failed:', err instanceof Error ? err.message : '');
+    return null;                                          // never block finalise on a Stripe hiccup
+  }
+}
 
 /** Region-aware bank-transfer details (org settings) with a graceful fallback so
  *  the invoice email never renders a blank bank block. */
@@ -41,9 +81,10 @@ async function resolveBankDetails(saJson: string, orgId: string): Promise<string
 }
 
 /** Send the invoice-client email (best-effort, non-fatal). Shared by confirm + finalize. */
-async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string }): Promise<{ emailed: boolean; emailError?: string }> {
+async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; paymentUrl?: string | null }): Promise<{ emailed: boolean; emailError?: string }> {
   if (!a.customer) return { emailed: false };
   const bankDetails = await resolveBankDetails(saJson, a.orgId);
+  const appInvoiceUrl = `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`;
   const res = await sendTransactional(env.SEQUENZY_API_KEY, {
     to:      a.customer,
     slug:    'invoice-client',
@@ -52,7 +93,10 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
       PROJECT:      a.project,
       AMOUNT:       `$${a.amount.toLocaleString('en-US')}`,
       // Deep-link to the exact invoice so the panel highlights + scrolls to it.
-      INVOICE_URL:  `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`,
+      INVOICE_URL:  appInvoiceUrl,
+      // ISSUE 6 — "Pay online": the Stripe Checkout link when configured, else the
+      // in-app invoice page (so the button always works). Bank transfer stays below.
+      PAYMENT_URL:  a.paymentUrl || appInvoiceUrl,
       BANK_DETAILS: bankDetails,
     },
   });
@@ -93,6 +137,7 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
       rangeMaxUsd:   typeof f.rangeMaxUsd === 'number' ? f.rangeMaxUsd : null,
       expectedBudgetUsd: typeof f.expectedBudgetUsd === 'number' ? f.expectedBudgetUsd : null,
       status:        typeof f.status === 'string' ? f.status : 'draft',
+      paymentUrl:    typeof f.paymentUrl === 'string' ? f.paymentUrl : null,
       createdAt:     typeof f.createdAt === 'string' ? f.createdAt : '',
     };
   });
@@ -153,10 +198,13 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   const project  = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
     : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
   const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, appBase });
-  dlog(env, '[invoices] confirmed (re-send)', id, 'emailed=', emailed);
+  // Re-amount may change the total → mint a fresh payment link for the new amount and
+  // void the old one (so the client can't pay a stale total).
+  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, prevSessionId: typeof inv.paymentSessionId === 'string' ? inv.paymentSessionId : undefined });
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, appBase, paymentUrl });
+  dlog(env, '[invoices] confirmed (re-send)', id, 'emailed=', emailed, 'payLink=', !!paymentUrl);
 
-  return c.json({ ok: true, status: 'pending', amount, emailed, ...(emailError ? { emailError } : {}) });
+  return c.json({ ok: true, status: 'pending', amount, emailed, paymentUrl: paymentUrl ?? null, ...(emailError ? { emailError } : {}) });
 });
 
 /* ── POST /api/invoices/finalize — admin sets the final amount → the invoice is born ──
@@ -236,11 +284,44 @@ invoices.post('/api/invoices/finalize', requireAuth(), requireRole(CONFIRM_ROLES
   await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'finalized', finalAmountUsd: amount, updatedAt: nowIso }, { merge: true });
 
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: `quote_${quoteId}`, project: quoteTitle, customer, amount, appBase });
+  // ISSUE 6 — create the Stripe payment link (graceful: null when Stripe unset) so the
+  // invoice email carries a "Pay online" button matching the EXACT invoice amount.
+  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: `quote_${quoteId}`, amount, project: quoteTitle, appBase });
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: `quote_${quoteId}`, project: quoteTitle, customer, amount, appBase, paymentUrl });
   if (emailed) await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'invoice_sent', invoiceSentAt: nowIso }, { merge: true });
-  dlog(env, '[invoices] finalized', quoteId, 'emailed=', emailed);
+  dlog(env, '[invoices] finalized', quoteId, 'emailed=', emailed, 'payLink=', !!paymentUrl);
 
-  return c.json({ ok: true, status: 'pending', amount, emailed, invoiceId: `quote_${quoteId}`, ...(emailError ? { emailError } : {}) });
+  return c.json({ ok: true, status: 'pending', amount, emailed, invoiceId: `quote_${quoteId}`, paymentUrl: paymentUrl ?? null, ...(emailError ? { emailError } : {}) });
+});
+
+/* ── POST /api/invoices/:id/payment-link — get/create the Stripe payment link ──
+ *
+ * Owner/admin, org-scoped. Returns the invoice's payment link (creating it if Stripe is
+ * configured + none exists yet). 503 when Stripe is not configured (the UI then shows
+ * bank transfer only). A paid invoice returns its stored link without re-creating.
+ */
+invoices.post('/api/invoices/:id/payment-link', requireAuth(), requireRole(CONFIRM_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string; // membership-verified
+  const id = (c.req.param('id') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+  if (!id) return c.json({ error: 'Invalid invoice id.', code: 'INVALID_ID' }, 400);
+
+  const inv = await firestoreGet(saJson, `invoices/${id}`) as Record<string, unknown> | null;
+  if (!inv || inv.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
+  if (inv.status === 'paid') return c.json({ ok: true, status: 'paid', paymentUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : null });
+
+  const amount = typeof inv.amount === 'number' ? inv.amount : NaN;
+  if (!Number.isFinite(amount) || amount <= 0) return c.json({ error: 'Invoice has no amount yet.', code: 'NO_AMOUNT' }, 409);
+
+  const project = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle : id;
+  const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined });
+  if (!paymentUrl) return c.json({ error: 'Online payment is not configured.', code: 'PAYMENT_UNAVAILABLE' }, 503);
+  return c.json({ ok: true, paymentUrl });
 });
 
 export default invoices;

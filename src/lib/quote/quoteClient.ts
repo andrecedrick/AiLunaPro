@@ -178,6 +178,23 @@ export async function confirmQuoteDecisionByToken(
   return { status: j.status ?? decision };
 }
 
+/** Admin "Send Quote" (ISSUE 5): (re)send the proposal email to the client using the
+ *  quote's STORED render (no client-side render needed). Advances the stage to 'sent'.
+ *  Throws QuoteGenError(code) on failure (e.g. PDF_NOT_READY when nothing to send). */
+export async function sendQuoteToClient(
+  orgId: string, quoteId: string, clientEmail: string, locale: string,
+): Promise<{ emailed: boolean }> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/quote/email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, quoteId, locale, clientEmail }),
+  });
+  const j = await res.json().catch(() => null) as ({ emailed?: boolean; code?: string }) | null;
+  if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
+  return { emailed: j.emailed === true };
+}
+
 /** Email the quote to the signed-in user as a tokenized PDF link (no attachment).
  *  `render` is persisted server-side so the link regenerates the same PDF. */
 export async function emailQuote(

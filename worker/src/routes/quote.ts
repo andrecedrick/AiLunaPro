@@ -471,8 +471,13 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   // Persist the recipient so a later token-gated email accept addresses the draft
   // invoice + client invoice email to the right person (the unauthenticated email
   // caller's identity is never trusted — only this server-recorded value is used).
-  // STEP 1 — the quote has been sent to the client. Stage advances to 'sent'.
-  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: 'sent', sentAt: new Date().toISOString(), ...(hasEmailBudget ? { expectedBudgetUsd: Math.round(emailBudget) } : {}) }, { merge: true }); }
+  // STEP 1 — the quote has been sent. A RE-SEND must NEVER regress the lifecycle: a
+  // quote the client already responded to (or that's finalised) keeps its stage, so a
+  // resend can't pull it out of the admin pricing queue. sentAt is set once.
+  const REACHED = ['client_responded', 'negotiation', 'finalized', 'invoice_sent'];
+  const curStage = typeof stored.stage === 'string' ? stored.stage : '';
+  const nextStage = REACHED.includes(curStage) ? curStage : 'sent';
+  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: nextStage, ...(typeof stored.sentAt === 'string' && stored.sentAt ? {} : { sentAt: new Date().toISOString() }), ...(hasEmailBudget ? { expectedBudgetUsd: Math.round(emailBudget) } : {}) }, { merge: true }); }
   catch (err) { console.error('[quote] recipient persist failed:', err instanceof Error ? err.message : ''); }
 
   // Persist the render payload if supplied (so the shared link can regenerate it).

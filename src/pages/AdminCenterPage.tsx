@@ -13,8 +13,10 @@ import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { useRoute } from '../context/RouteContext';
 import { useMoney } from '../lib/currency/useMoney';
+import { usePreferences } from '../context/PreferencesContext';
 import { fetchPlatformMe } from '../lib/platform/platformService';
-import { listInvoices, listPendingQuotes, listAllQuotes, finalizeQuote, confirmInvoice, patchQuote, prefillFinalizeAmount, type InvoiceItem, type PendingQuote, type QuoteListItem } from '../lib/quote/invoicesClient';
+import { listInvoices, listPendingQuotes, listAllQuotes, finalizeQuote, confirmInvoice, patchQuote, prefillFinalizeAmount, createInvoicePaymentLink, type InvoiceItem, type PendingQuote, type QuoteListItem } from '../lib/quote/invoicesClient';
+import { sendQuoteToClient } from '../lib/quote/quoteClient';
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' } as const;
@@ -30,6 +32,7 @@ export function AdminCenterPage() {
   const { navigate } = useRoute();
   const T = useLocale();
   const money = useMoney();
+  const { language } = usePreferences();
   const I = T.invoices;
   const A = T.adminCenter;
   const orgId = session?.orgId ?? '';
@@ -99,6 +102,30 @@ export function AdminCenterPage() {
     setGovBusy(quoteId);
     try { await patchQuote(orgId, quoteId, { expectedBudgetUsd: Math.round(n) }); setEditId(null); reload(); }
     catch { setError(true); } finally { setGovBusy(null); }
+  };
+  // ISSUE 5 — (re)send the proposal email to the client (stage → sent).
+  const sendQuote = async (q: QuoteListItem) => {
+    if (!q.customerEmail) return;
+    setGovBusy(q.quoteId);
+    try { await sendQuoteToClient(orgId, q.quoteId, q.customerEmail, language); reload(); }
+    catch { setError(true); } finally { setGovBusy(null); }
+  };
+  // ISSUE 7 — fast-track: finalise straight to an invoice at the proposed budget
+  // (skips discussion). finalize creates the invoice + payment link + sends it.
+  const sendAndPay = async (q: QuoteListItem) => {
+    if (q.expectedBudgetUsd == null || q.expectedBudgetUsd <= 0) return;
+    setGovBusy(q.quoteId);
+    try { await finalizeQuote(orgId, q.quoteId, q.expectedBudgetUsd); reload(); }
+    catch { setError(true); } finally { setGovBusy(null); }
+  };
+  // ISSUE 6 — open/create the Stripe payment link for an invoice.
+  const genPaymentLink = async (inv: InvoiceItem) => {
+    setGovBusy(inv.id);
+    try {
+      const r = await createInvoicePaymentLink(orgId, inv.id);
+      if (r.paymentUrl) window.open(r.paymentUrl, '_blank', 'noopener');
+      reload();
+    } catch { setError(true); } finally { setGovBusy(null); }
   };
   const resend = async (inv: InvoiceItem) => {
     if (inv.amount == null) return;
@@ -212,7 +239,12 @@ export function AdminCenterPage() {
         <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {q.adminState === 'blocked' && <span style={pill('var(--red-text)')}>{A.blocked}</span>}
           {q.adminState === 'suspended' && <span style={pill('#b45309')}>{A.suspended}</span>}
-          {q.expectedBudgetUsd != null && <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--violet-text)', fontVariantNumeric: 'tabular-nums' }}>{money.format(q.expectedBudgetUsd)}</span>}
+          {/* ISSUE 1 — the proposed budget is ALWAYS shown (top-right, prominent), with
+              a placeholder when none was proposed. Stored value is the raw USD integer. */}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-muted)' }}>{I.proposedBudget}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--violet-text)', fontVariantNumeric: 'tabular-nums' }}>{q.expectedBudgetUsd != null ? money.format(q.expectedBudgetUsd) : '—'}</div>
+          </div>
         </div>
       </div>
       <div style={{ marginTop: 12, display: 'flex', gap: 0, flexWrap: 'wrap' }}>
@@ -225,6 +257,21 @@ export function AdminCenterPage() {
           </div>
         ))}
       </div>
+      {/* ISSUE 5/7 — send the proposal to the client, or fast-track straight to an
+          invoice + payment at the proposed budget. Hidden once invoiced or governed. */}
+      {q.adminState !== 'blocked' && q.adminState !== 'suspended' && q.stage !== 'invoice_sent' && q.stage !== 'finalized' && q.customerEmail && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Send Quote re-sends the PROPOSAL — hidden once the client has responded so a
+              re-send can't pull the quote back out of the pricing queue. */}
+          {q.stage !== 'client_responded' && q.stage !== 'negotiation' && (
+            <button type="button" disabled={govBusy === q.quoteId} onClick={() => void sendQuote(q)} style={govBtn('var(--violet)', '#fff')}>{govBusy === q.quoteId ? '…' : A.sendQuote}</button>
+          )}
+          {/* Send & Pay finalises at the proposed budget (capped at the invoiceable max). */}
+          {q.expectedBudgetUsd != null && q.expectedBudgetUsd > 0 && q.expectedBudgetUsd <= 10_000_000 && (
+            <button type="button" disabled={govBusy === q.quoteId} onClick={() => void sendAndPay(q)} style={govBtn('var(--green-text, #059669)', '#fff')}>{govBusy === q.quoteId ? '…' : A.sendAndPay}</button>
+          )}
+        </div>
+      )}
       {/* ISSUE 3 — admin governance: edit the proposed budget, block / suspend / re-activate. */}
       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         {editId === q.quoteId ? (
@@ -332,8 +379,12 @@ export function AdminCenterPage() {
                     ? <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>✅ {I.sent}</div>
                     : <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: '#b45309' }}>⚠ {I.sentNoEmail}</div>)}
                   {inv.status === 'pending' && done?.id !== inv.id && (
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : I.resendBtn}</button>
+                      {/* ISSUE 6 — Stripe payment link (when configured); else bank transfer in the email. */}
+                      {inv.paymentUrl
+                        ? <button type="button" onClick={() => window.open(inv.paymentUrl as string, '_blank', 'noopener')} style={govBtn('var(--violet)', '#fff')}>{A.openPaymentLink}</button>
+                        : <button type="button" disabled={govBusy === inv.id} onClick={() => void genPaymentLink(inv)} style={govBtnOutline}>{govBusy === inv.id ? '…' : A.genPaymentLink}</button>}
                     </div>
                   )}
                 </div>

@@ -112,6 +112,10 @@ export const zh: Dict = {
     block: '封禁',
     suspend: '暂停',
     reactivate: '重新启用',
+    sendQuote: '发送报价',
+    sendAndPay: '发送并付款',
+    openPaymentLink: '打开付款链接',
+    genPaymentLink: '生成付款链接',
   },
   myQuotes: {
     title: '我的报价',

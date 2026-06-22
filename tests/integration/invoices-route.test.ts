@@ -191,3 +191,25 @@ describe('POST /api/invoices/finalize (admin sets amount → the invoice is born
     expect(state.docs.has('invoices/quote_qX')).toBe(false);   // no invoice minted
   });
 });
+
+describe('POST /api/invoices/:id/payment-link (ISSUE 6 — graceful Stripe)', () => {
+  const payLink = (id: string, org = 'orgA') =>
+    invoices.request(`/api/invoices/${id}/payment-link?orgId=${org}`, {
+      method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: org }),
+    }, ENV);
+
+  it('503 when Stripe is not configured (UI falls back to bank transfer)', async () => {
+    state.docs.set('invoices/quote_a', { id: 'quote_a', orgId: 'orgA', status: 'pending', amount: 9000, quoteTitle: 'Acme' });
+    expect((await payLink('quote_a')).status).toBe(503);   // ENV has no STRIPE_SECRET_KEY
+  });
+
+  it('404 for another org\'s invoice (no cross-tenant)', async () => {
+    state.docs.set('invoices/quote_a', { id: 'quote_a', orgId: 'orgA', status: 'pending', amount: 9000 });
+    expect((await payLink('quote_a', 'orgB')).status).toBe(404);
+  });
+
+  it('409 when the invoice has no amount yet', async () => {
+    state.docs.set('invoices/quote_a', { id: 'quote_a', orgId: 'orgA', status: 'draft', amount: null });
+    expect((await payLink('quote_a')).status).toBe(409);
+  });
+});

@@ -125,6 +125,10 @@ export const en = {
     block: 'Block',
     suspend: 'Suspend',
     reactivate: 'Re-activate',
+    sendQuote: 'Send Quote',
+    sendAndPay: 'Send & Pay',
+    openPaymentLink: 'Open payment link',
+    genPaymentLink: 'Generate payment link',
   },
   myQuotes: {
     title: 'My quotes',

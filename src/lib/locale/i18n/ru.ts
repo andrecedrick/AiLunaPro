@@ -111,6 +111,10 @@ export const ru: Dict = {
     block: 'Заблокировать',
     suspend: 'Приостановить',
     reactivate: 'Возобновить',
+    sendQuote: 'Отправить смету',
+    sendAndPay: 'Отправить и оплатить',
+    openPaymentLink: 'Открыть ссылку для оплаты',
+    genPaymentLink: 'Создать ссылку для оплаты',
   },
   myQuotes: {
     title: 'Мои сметы',

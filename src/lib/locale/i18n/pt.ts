@@ -110,6 +110,10 @@ export const pt: Dict = {
     block: 'Bloquear',
     suspend: 'Suspender',
     reactivate: 'Reativar',
+    sendQuote: 'Enviar orçamento',
+    sendAndPay: 'Enviar e pagar',
+    openPaymentLink: 'Abrir link de pagamento',
+    genPaymentLink: 'Gerar link de pagamento',
   },
   myQuotes: {
     title: 'Os meus orçamentos',

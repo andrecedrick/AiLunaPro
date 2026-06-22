@@ -19,7 +19,7 @@
 
 import { Hono } from 'hono';
 import { getStripe } from '../lib/stripe';
-import { firestoreSet, firestoreGetWithMeta, firestoreSetIfMatch } from '../lib/firestoreAdmin';
+import { firestoreSet, firestoreGet, firestoreGetWithMeta, firestoreSetIfMatch } from '../lib/firestoreAdmin';
 import { firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { incrementBalance, syncBalanceAllocation } from '../lib/tokens';
 import { TOKEN_PACKS, isValidPack } from '../lib/token-costs';
@@ -177,6 +177,35 @@ async function handleEvent(
           // Status is already 'credited' so no retry will re-credit. Tokens not
           // added → manual reconciliation. Loud log (no silent double-credit).
           console.error('[webhook] tokens_topup CREDIT FAILED after claim — manual reconciliation needed. session:', session.id, 'tokens:', tokensAdded, err);
+        }
+        break;
+      }
+
+      // ISSUE 6 — one-time invoice payment → mark the invoice paid (idempotent,
+      // org-verified). The link is created at finalise with type='invoice_payment'.
+      if (session.metadata?.type === 'invoice_payment') {
+        const payOrg = session.metadata.orgId;
+        const invoiceId = session.metadata.invoiceId;
+        if (!payOrg || !invoiceId) { console.warn('[webhook] invoice_payment missing metadata orgId/invoiceId'); break; }
+        const inv = await firestoreGet(saJson, `invoices/${invoiceId}`) as Record<string, unknown> | null;
+        if (!inv) { console.warn('[webhook] invoice_payment unknown invoice:', invoiceId); break; }
+        if (inv.orgId !== payOrg) { console.warn('[webhook] invoice_payment org mismatch:', invoiceId); break; }
+        if (inv.status === 'paid') { console.log('[webhook] invoice already paid — skipping:', invoiceId); break; }
+        // Reconcile: the settled total MUST equal the invoice amount (USD → cents).
+        // Only an exact match marks paid; a mismatch is flagged for manual review and
+        // left pending (never silently mark a wrong-amount payment as fully settled).
+        const expectedCents = Math.round(Number(inv.amount) || 0) * 100;
+        const paidCents = typeof session.amount_total === 'number' ? session.amount_total : -1;
+        if (expectedCents > 0 && paidCents === expectedCents) {
+          await firestoreSet(saJson, `invoices/${invoiceId}`, {
+            status: 'paid', paidAt: new Date().toISOString(), paidAmount: paidCents, stripeSessionId: session.id, updatedAt: new Date().toISOString(),
+          }, { merge: true });
+          console.log('[webhook] invoice marked paid:', invoiceId, 'org:', payOrg);
+        } else {
+          await firestoreSet(saJson, `invoices/${invoiceId}`, {
+            amountMismatch: true, paidAmount: paidCents, stripeSessionId: session.id, updatedAt: new Date().toISOString(),
+          }, { merge: true });
+          console.warn('[webhook] invoice_payment AMOUNT MISMATCH — invoice:', invoiceId, 'expectedCents:', expectedCents, 'paidCents:', paidCents, '(left pending for review)');
         }
         break;
       }

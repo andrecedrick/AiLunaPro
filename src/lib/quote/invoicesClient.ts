@@ -18,6 +18,7 @@ export interface InvoiceItem {
   rangeMaxUsd:   number | null;
   expectedBudgetUsd?: number | null;
   status:        string;
+  paymentUrl?:   string | null;
   createdAt:     string;
 }
 
@@ -82,6 +83,20 @@ export async function patchQuote(
     body: JSON.stringify({ orgId, ...input }),
   });
   if (!res.ok) throw new Error(`HTTP_${res.status}`);
+}
+
+/** Admin: get/create the Stripe payment link for an invoice (ISSUE 6). Throws
+ *  QuoteGenError('PAYMENT_UNAVAILABLE') when Stripe is not configured (→ bank transfer). */
+export async function createInvoicePaymentLink(orgId: string, invoiceId: string): Promise<{ paymentUrl: string | null; status?: string }> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/invoices/${encodeURIComponent(invoiceId)}/payment-link?orgId=${encodeURIComponent(orgId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId }),
+  });
+  const j = await res.json().catch(() => null) as { paymentUrl?: string | null; status?: string; code?: string } | null;
+  if (!res.ok) throw new Error(j?.code ?? `HTTP_${res.status}`);
+  return { paymentUrl: j?.paymentUrl ?? null, status: j?.status };
 }
 
 /** The finalize-amount prefill: default to the client's PROPOSED BUDGET (so the invoice
