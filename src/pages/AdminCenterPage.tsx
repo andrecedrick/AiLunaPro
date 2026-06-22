@@ -70,9 +70,12 @@ export function AdminCenterPage() {
   const reload = () => {
     if (!orgId) return;
     setError(false);
-    listInvoices(orgId).then(setItems).catch(() => setError(true));
-    listPendingQuotes(orgId).then(setPending).catch(() => setError(true));
-    listAllQuotes(orgId).then(setAllQuotes).catch(() => setError(true));
+    // Decoupled loads — a failure in one (e.g. invoices) sets that list to [] + a soft
+    // banner, but must NEVER blank the others. The "All quotes" list always renders if
+    // it loaded, even when invoices/pending error out (no silent admin-visibility loss).
+    listInvoices(orgId).then(setItems).catch(() => { setItems([]); setError(true); });
+    listPendingQuotes(orgId).then(setPending).catch(() => { setPending([]); setError(true); });
+    listAllQuotes(orgId).then(setAllQuotes).catch(() => { setAllQuotes([]); setError(true); });
   };
   useEffect(() => { if (allowed) reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, orgId]);
 
@@ -303,12 +306,12 @@ export function AdminCenterPage() {
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>{A.title}</h1>
       <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 22px' }}>{A.subtitle}</p>
 
-      {error ? (
-        <div style={{ ...card, color: 'var(--red-text)' }}>{I.error}</div>
-      ) : items === null || pending === null || allQuotes === null ? (
+      {items === null || pending === null || allQuotes === null ? (
         <div style={{ padding: 18, color: 'var(--text-muted)', fontSize: 14 }}>{I.loading}</div>
       ) : (
         <div style={{ display: 'grid', gap: 28 }}>
+          {/* Soft, NON-blocking error — a partial load failure never hides the lists. */}
+          {error && <div style={{ ...card, color: 'var(--red-text)', fontSize: 13.5 }}>{I.error}</div>}
           {/* 1 — Activity feed */}
           {section(A.activityHeading, events.length === 0
             ? <div style={{ ...card, borderStyle: 'dashed', color: 'var(--text-muted)', fontSize: 13.5 }}>{A.activityEmpty}</div>

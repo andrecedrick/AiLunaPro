@@ -37,7 +37,7 @@ import { sendTransactional } from '../lib/sequenzy';
 import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
 import { sanitizeText } from '../lib/support-shared';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
-import { adminRecipients } from '../lib/platformAdmin';
+import { adminRecipients, isSuperAdmin } from '../lib/platformAdmin';
 import type { AppEnv } from '../index';
 
 const quote = new Hono<AppEnv>();
@@ -681,11 +681,22 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
   const uid   = c.get('uid') as string;
   const role  = c.get('role') as string | undefined;
   const mine  = c.req.query('mine') === '1';
-  const adminAll = !mine && (role === 'owner' || role === 'admin');
+  // FULL VISIBILITY: an org owner/admin OR a platform super-admin sees EVERY quote.
+  // (The Admin Center page is gated to exactly this set, so the data scope must match —
+  // a super-admin whose org role is 'member' must still get the full list, not just own.)
+  const superAdmin = isSuperAdmin(env, c.get('email') as string | undefined, c.get('emailVerified') as boolean | undefined);
+  const adminAll = !mine && (role === 'owner' || role === 'admin' || superAdmin);
 
   let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
   try {
-    rows = await firestoreRunQuery(saJson, { from: [{ collectionId: 'quotes' }], limit: 200 }, `organizations/${orgId}`);
+    // Order by createdAt DESC (every quote doc has createdAt) so the result is the
+    // NEWEST quotes, never an arbitrary key-ordered page — recent quotes are never
+    // silently dropped past the limit. 500 covers any realistic org.
+    rows = await firestoreRunQuery(saJson, {
+      from: [{ collectionId: 'quotes' }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit: 500,
+    }, `organizations/${orgId}`);
   } catch (err) {
     console.error('[quote] list query failed:', err instanceof Error ? err.message : '');
     return c.json({ error: 'Could not load quotes.', code: 'QUERY_FAILED' }, 500);

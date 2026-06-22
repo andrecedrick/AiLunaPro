@@ -18,13 +18,14 @@ vi.mock('../../worker/src/middleware/auth', () => ({
   requireAuth: () => async (c: { req: { header: (k: string) => string | undefined }; set: (k: string, v: unknown) => void }, next: () => Promise<void>) => {
     c.set('uid', c.req.header('x-test-uid') ?? 'uid-1');
     const em = c.req.header('x-test-email'); if (em) c.set('email', em);
+    c.set('emailVerified', true);                                  // verified email (isSuperAdmin gate)
     await next();
   },
 }));
 vi.mock('../../worker/src/middleware/requireRole', () => ({
   requireRole: () => async (c: { req: { header: (k: string) => string | undefined }; set: (k: string, v: unknown) => void }, next: () => Promise<void>) => {
     c.set('orgId', c.req.header('x-test-org') ?? 'orgA');
-    c.set('role', 'owner');
+    c.set('role', c.req.header('x-test-role') ?? 'owner');         // override the membership-verified role per test
     await next();
   },
 }));
@@ -317,6 +318,43 @@ describe('GET /api/quote/list (full-lifecycle tracking)', () => {
       { name: 'organizations/orgA/quotes/qOther', fields: { stage: 'sent', createdBy: 'uid-2', createdAt: '2026-06-18T00:00:00.000Z' } },  // not mine → hidden
     ]);
     const res = await quote.request('/api/quote/list?orgId=orgA&mine=1', { headers: H() }, ENV);
+    const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
+    expect(quotes.map(q => q.quoteId)).toEqual(['qMine']);
+  });
+
+  it('admin-all returns quotes in EVERY governance state — blocked + suspended never hidden', async () => {
+    runQuery.mockResolvedValueOnce([
+      { name: 'organizations/orgA/quotes/qActive', fields: { stage: 'sent', createdBy: 'uid-2', createdAt: '2026-06-22T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qBlocked', fields: { stage: 'negotiation', adminState: 'blocked', createdBy: 'uid-3', createdAt: '2026-06-21T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qSuspended', fields: { stage: 'finalized', adminState: 'suspended', createdBy: 'uid-4', createdAt: '2026-06-20T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qDraft', fields: { createdBy: 'uid-5', createdAt: '2026-06-19T00:00:00.000Z' } },  // draft, no stage
+    ]);
+    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);  // role=owner (default)
+    const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
+    expect(quotes.map(q => q.quoteId).sort()).toEqual(['qActive', 'qBlocked', 'qDraft', 'qSuspended']);
+    expect(quotes.find(q => q.quoteId === 'qBlocked')!.adminState).toBe('blocked');
+    expect(quotes.find(q => q.quoteId === 'qSuspended')!.adminState).toBe('suspended');
+  });
+
+  it('a SUPER-ADMIN whose org role is "member" still sees ALL org quotes (not just own)', async () => {
+    const ENV2 = { ...ENV, ADMIN_EMAILS: 'super@x.com' };
+    runQuery.mockResolvedValueOnce([
+      { name: 'organizations/orgA/quotes/qOthers', fields: { stage: 'sent', createdBy: 'someone-else', createdAt: '2026-06-22T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qMoreOthers', fields: { stage: 'negotiation', createdBy: 'uid-9', createdAt: '2026-06-21T00:00:00.000Z' } },
+    ]);
+    const res = await quote.request('/api/quote/list?orgId=orgA',
+      { headers: { ...H('uid-1', 'super@x.com'), 'x-test-role': 'member' } }, ENV2);
+    const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
+    expect(quotes.map(q => q.quoteId).sort()).toEqual(['qMoreOthers', 'qOthers']);  // full visibility despite member role
+  });
+
+  it('a plain MEMBER (not a super-admin) sees only their OWN staged quotes', async () => {
+    runQuery.mockResolvedValueOnce([
+      { name: 'organizations/orgA/quotes/qMine', fields: { stage: 'sent', createdBy: 'uid-1', createdAt: '2026-06-22T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qOther', fields: { stage: 'sent', createdBy: 'uid-9', createdAt: '2026-06-21T00:00:00.000Z' } },
+    ]);
+    const res = await quote.request('/api/quote/list?orgId=orgA',
+      { headers: { ...H('uid-1', 'plain@x.com'), 'x-test-role': 'member' } }, ENV);  // not in ADMIN_EMAILS
     const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
     expect(quotes.map(q => q.quoteId)).toEqual(['qMine']);
   });
