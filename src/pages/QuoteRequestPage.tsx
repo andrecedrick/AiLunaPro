@@ -292,9 +292,16 @@ export function QuoteRequestPage() {
     if (emailState === 'sending' || !preview) return;
     const orgId = session?.orgId;
     if (!orgId || !quoteIdRef.current) return;
+    // Budget-first: the client email must lead with the proposed budget — require it
+    // (and pass it so the email + the Accept/Discuss CTAs carry the amount).
+    const budgetNum = Number(budgetInput);
+    const validBudget = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum > 0;
+    if (!validBudget) { setBudgetError(Q.decision.budgetRequired); return; }
+    setBudgetError(null);
+    const expectedBudgetUsd = Math.round(convertToUsd(budgetNum, money.currency));
     setEmailState('sending');
     try {
-      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, clientEmail.trim() || undefined);
+      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, clientEmail.trim() || undefined, expectedBudgetUsd);
       emit('quote_emailed', { flow: 'quote', emailed: r.emailed, src: src ?? undefined });
       setEmailState('sent');
     } catch {

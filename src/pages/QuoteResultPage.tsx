@@ -108,6 +108,12 @@ export function QuoteResultPage() {
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '56px 20px', textAlign: 'center' }}>
         <div style={{ fontSize: 44, lineHeight: 1, marginBottom: 14 }} aria-hidden>{isAccept ? '📩' : '💬'}</div>
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 12px' }}>{isAccept ? A.confirmTitle : A.discussTitle}</h1>
+        {budgetUsd !== null && budgetUsd > 0 && (
+          <div style={{ margin: '0 auto 18px', maxWidth: 340, padding: '14px 18px', borderRadius: 12, background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--violet)' }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text)', marginBottom: 4 }}>{Q.status.budgetLabel}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{money.format(budgetUsd)}</div>
+          </div>
+        )}
         <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 26px' }}>{isAccept ? A.confirmBody : A.discussConfirmBody}</p>
         <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
           <button type="button" disabled={phase === 'confirming'} onClick={() => void onConfirm()} style={{ ...primaryBtnStyle(), opacity: phase === 'confirming' ? 0.6 : 1, cursor: phase === 'confirming' ? 'wait' : 'pointer' }}>

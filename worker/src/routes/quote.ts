@@ -427,7 +427,7 @@ function countryToLang(cc: string | undefined): string {
   return cc ? (COUNTRY_LANG[cc.toUpperCase()] ?? 'en') : 'en';
 }
 
-interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown; clientEmail?: unknown }
+interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown; clientEmail?: unknown; expectedBudgetUsd?: unknown }
 
 quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -458,6 +458,12 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const quoteId = safeId(body.quoteId);
   if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
 
+  // Budget-first: the user's proposed budget (USD). Persisted now so the later
+  // token-gated email accept can notify the admin with this amount even though the
+  // public confirm carries no budget, and so the Accept/Discuss CTAs can deep-link it.
+  const emailBudget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
+  const hasEmailBudget = Number.isFinite(emailBudget) && emailBudget >= 0 && emailBudget <= PRICE_MAX;
+
   const path = `${COLLECTION(orgId)}/${quoteId}`;
   const stored = await firestoreGet(saJson, path);
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
@@ -466,7 +472,7 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   // invoice + client invoice email to the right person (the unauthenticated email
   // caller's identity is never trusted — only this server-recorded value is used).
   // STEP 1 — the quote has been sent to the client. Stage advances to 'sent'.
-  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: 'sent' }, { merge: true }); }
+  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: 'sent', ...(hasEmailBudget ? { expectedBudgetUsd: Math.round(emailBudget) } : {}) }, { merge: true }); }
   catch (err) { console.error('[quote] recipient persist failed:', err instanceof Error ? err.message : ''); }
 
   // Persist the render payload if supplied (so the shared link can regenerate it).
@@ -511,11 +517,19 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   // action in-UI). Deliberately NOT a mutate-on-GET link, so an email scanner
   // that prefetches the URL can never accidentally accept a proposal.
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+  // Budget-first email: BUDGET is the PRIMARY field (the user's proposed amount,
+  // already localized in render.negBudget; USD fallback if missing). The Accept/
+  // Discuss CTAs carry the budget so the in-app confirm page shows it too.
+  const budgetSuffix = hasEmailBudget ? `&budgetUsd=${Math.round(emailBudget)}` : '';
+  const budgetDisplay = (render.negBudget && render.negBudget.trim())
+    ? render.negBudget
+    : (hasEmailBudget ? `$${Math.round(emailBudget).toLocaleString('en-US')}` : '');
   const variables: Record<string, string> = {
     QUOTE_TITLE:  render.docTitle,
-    ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email&t=${actionToken}`,
-    DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email&t=${actionToken}`,
+    ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email&t=${actionToken}${budgetSuffix}`,
+    DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email&t=${actionToken}${budgetSuffix}`,
     SOLUTION:     render.solutionLabel,
+    BUDGET:       budgetDisplay,
     RANGE:        render.rangeText,
     NEG_INITIAL:  render.negInitial,
     NEG_BUDGET:   render.negBudget,
@@ -664,19 +678,28 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
 }): Promise<void> {
   const { orgId, quoteId, stored, decision, hasBudget, budget, message, customerEmail, appBase } = a;
 
+  // Budget-first: when the caller supplies no budget (the public email-accept path
+  // carries none), fall back to the budget the user proposed when the quote was
+  // emailed (persisted on the quote). Guarantees the admin always sees the amount.
+  let effHasBudget = hasBudget;
+  let effBudget = budget;
+  if (!effHasBudget && typeof stored.expectedBudgetUsd === 'number' && Number.isFinite(stored.expectedBudgetUsd)) {
+    effHasBudget = true; effBudget = stored.expectedBudgetUsd;
+  }
+
   const stage = decision === 'accepted' ? 'client_responded' : 'negotiation';
   const patch: Record<string, string | number> = {
     decision, status: decision, stage,
     decidedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
   if (message) patch.discussionMessage = message;
-  if (hasBudget) {
-    patch.expectedBudgetUsd = Math.round(budget);
+  if (effHasBudget) {
+    patch.expectedBudgetUsd = Math.round(effBudget);
     // Keep the persisted render in sync so the email/shared PDF shows the budget row.
     if (typeof stored.renderJson === 'string') {
       try {
         const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
-        r.negBudget = `$${Math.round(budget).toLocaleString('en-US')}`;
+        r.negBudget = `$${Math.round(effBudget).toLocaleString('en-US')}`;
         patch.renderJson = JSON.stringify(r);
       } catch { /* leave renderJson as-is */ }
     }
@@ -699,7 +722,7 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
       if (typeof r.solutionLabel === 'string') solutionLabel = r.solutionLabel;
     } catch { /* keep defaults */ }
   }
-  const budgetText = hasBudget ? `$${Math.round(budget).toLocaleString('en-US')}` : '';
+  const budgetText = effHasBudget ? `$${Math.round(effBudget).toLocaleString('en-US')}` : '';
 
   // Notify EVERY admin (ADMIN_EMAILS + ADMIN_EMAIL, de-duped). Each send is
   // best-effort and independent — one failure never blocks the others (graceful).
