@@ -303,6 +303,11 @@ describe('GET /api/quote/list (full-lifecycle tracking)', () => {
     expect(quotes.map(q => q.quoteId)).toEqual(['qResp', 'qSent', 'qDraft']);   // draft included; newest activity first
     expect(quotes[0].stage).toBe('client_responded');
     expect(quotes[1].quoteTitle).toBe('Sent quote');
+    // Regression guard — the proposed budget field must always be mapped through (a
+    // budget-bearing quote returns its integer USD; an empty one returns null, never dropped).
+    expect(quotes[0].expectedBudgetUsd).toBe(8000);
+    expect(quotes[1].expectedBudgetUsd).toBe(5000);
+    expect(quotes[2].expectedBudgetUsd).toBeNull();   // legacy/no-budget quote → null (UI shows —)
   });
 
   it('?mine=1 returns only the caller\'s own staged quotes (drafts + others hidden)', async () => {
