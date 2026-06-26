@@ -319,6 +319,14 @@ export function RoiCalculatorPage() {
               <div style={{ marginTop: 14, fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 {T.publicTools.roi.result.disclaimer}{' '}{format(T.publicTools.roi.result.pricingNote, { cost: money.format(AGENT_DEFAULT_MONTHLY_USD) })}
               </div>
+              {/* Bridge to the detailed per-task audit (Audit Temps → Argent). */}
+              <button
+                type="button"
+                onClick={() => { track('cta_clicked', { flow: 'roi', target: 'worksheet', src: getSrc() ?? undefined }); navigate({ name: 'worksheet' }); }}
+                style={{ marginTop: 14, fontSize: 12.5, fontWeight: 700, color: 'var(--violet-text)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Estimation globale — calcule avec tes vraies données, tâche par tâche →
+              </button>
             </div>
 
             {/* Lead capture */}
@@ -417,6 +425,7 @@ export function RoiCalculatorPage() {
 function ResultView({ result, onReset }: { result: RoiResult; onReset: () => void }) {
   const T = useLocale();
   const money = useMoney();
+  const { navigate } = useRoute();
   const monthly = result.estimatedMonthlyCostSaved;
   const yearly  = result.estimatedYearlyCostSaved;
   const time    = result.estimatedTimeSavedHoursPerMonth;
@@ -536,6 +545,32 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
             .map((seg, i) => (i % 2 === 1 ? <strong key={i}>{seg}</strong> : seg))}
         </div>
       </div>
+
+      {/* Bridge: this is a quick aggregate estimate — go deeper with the real
+          per-task audit (Audit Temps → Argent). Authed tool; for anonymous
+          visitors this routes through sign-in, reinforcing the funnel. */}
+      <button
+        type="button"
+        onClick={() => { track('cta_clicked', { flow: 'roi', target: 'worksheet', src: getSrc() ?? undefined }); navigate({ name: 'worksheet' }); }}
+        style={{
+          marginTop: 16, width: '100%', textAlign: 'left',
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 16px', borderRadius: 12,
+          background: 'var(--surface)', border: '1px solid var(--violet)',
+          cursor: 'pointer',
+        }}
+      >
+        <span aria-hidden style={{ flex: '0 0 auto', width: 36, height: 36, borderRadius: 9, background: 'rgba(124,58,237,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--violet-text)', fontSize: 18 }}>📊</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Aller plus loin : Audit Temps → Argent
+          </span>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            Cette estimation est globale. Calcule avec tes vraies données, tâche par tâche, et obtiens un verdict (garder / automatiser / déléguer).
+          </span>
+        </span>
+        <span aria-hidden style={{ flex: '0 0 auto', color: 'var(--violet-text)', fontSize: 18, fontWeight: 700 }}>→</span>
+      </button>
 
       <div style={{ marginTop: 18, textAlign: 'center' }}>
         <button
