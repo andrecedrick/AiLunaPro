@@ -94,6 +94,7 @@ export type Route =
   | { name: 'help' }
   | { name: 'system-builder' }
   | { name: 'worksheet' }
+  | { name: 'visibility' }
   | { name: 'audit-express/saved' }
   | { name: 'audit-express/run' }
   | { name: 'audit-express/detail'; auditId: string }

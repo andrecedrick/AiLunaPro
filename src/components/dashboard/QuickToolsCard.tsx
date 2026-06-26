@@ -17,7 +17,7 @@ import type { Route } from '../../types/audit';
  * funnel is preserved. A consent-gated, no-PII event measures per-surface CTR.
  */
 
-type ToolId = 'diagnostic' | 'roi' | 'worksheet';
+type ToolId = 'diagnostic' | 'roi' | 'worksheet' | 'visibility';
 
 function ToolIcon({ id, color }: { id: ToolId; color: string }) {
   const s: CSSProperties = { width: 20, height: 20, color };
@@ -40,6 +40,15 @@ function ToolIcon({ id, color }: { id: ToolId; color: string }) {
       </svg>
     );
   }
+  if (id === 'visibility') {
+    // eye — AI visibility / social presence
+    return (
+      <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    );
+  }
   // trending-up — ROI growth
   return (
     <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -57,6 +66,7 @@ export function QuickToolsCard() {
     { id: 'diagnostic', route: { name: 'diagnostic' },     color: '#7C3AED', label: Q.diagnostic.label, hint: Q.diagnostic.hint },
     { id: 'roi',        route: { name: 'roi-calculator' }, color: '#10B981', label: Q.roi.label,        hint: Q.roi.hint },
     { id: 'worksheet',  route: { name: 'worksheet' },      color: '#F59E0B', label: 'Audit Temps → Argent', hint: 'Calcule avec tes vraies données, tâche par tâche' },
+    { id: 'visibility', route: { name: 'visibility' },     color: '#0EA5E9', label: 'Visibilité IA & Réseaux', hint: 'Présence dans ChatGPT/Perplexity + audit social' },
   ];
 
   const open = (id: ToolId, route: Route) => {
