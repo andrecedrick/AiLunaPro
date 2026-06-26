@@ -13,7 +13,7 @@
  * worker route (POST /api/worksheet) exists for a future "save audit" step.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useMoney } from '../lib/currency/useMoney';
 import { SUPPORTED_CURRENCIES, type Currency } from '../lib/billing/currencyConstants';
@@ -25,6 +25,10 @@ import {
   saveWorksheet, listWorksheets, getWorksheet, deleteWorksheet,
   type SavedWorksheetItem,
 } from '../lib/worksheet/worksheetClient';
+import { TASK_CATALOG, suggestForLabel, type CatalogTask } from '../lib/worksheet/taskCatalog';
+import {
+  localSaveWorksheet, localListSaves, localGetSave, localDeleteSave, type LocalSave,
+} from '../lib/worksheet/localSaves';
 
 const STORAGE_KEY = 'ailunapro-worksheet-v1';
 
@@ -143,14 +147,21 @@ export function WorksheetPage() {
   const removeRow = (rowId: string) => setTasks(prev => prev.filter(t => t.rowId !== rowId));
   const resetAll = () => { setMonthlyIncome('7000'); setWeeklyHours('60'); setTasks(seedTasks()); };
 
-  // ── Server save / load (authed, org-scoped) ──────────────
-  const [saved, setSaved] = useState<SavedWorksheetItem[]>([]);
+  // ── Save / load — server when available, ALWAYS local fallback ──
+  interface SavedRow { id: string; title: string; createdAt: string; value: number; source: 'server' | 'local'; }
+  const [saved, setSaved] = useState<SavedRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  const toRows = (server: SavedWorksheetItem[], local: LocalSave[]): SavedRow[] => [
+    ...server.map(s => ({ id: s.worksheetId, title: s.title, createdAt: s.createdAt, value: s.annualValueRecovered, source: 'server' as const })),
+    ...local.map(l => ({ id: l.id, title: l.title, createdAt: l.createdAt, value: computeWorksheet(l.input).totals.annualValueRecovered, source: 'local' as const })),
+  ].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
   const refreshSaved = useCallback(async () => {
-    if (!orgId) return;
-    try { setSaved(await listWorksheets(orgId)); } catch { /* non-blocking */ }
+    let server: SavedWorksheetItem[] = [];
+    if (orgId) { try { server = await listWorksheets(orgId); } catch { /* offline → local only */ } }
+    setSaved(toRows(server, localListSaves()));
   }, [orgId]);
   useEffect(() => { void refreshSaved(); }, [refreshSaved]);
 
@@ -161,42 +172,69 @@ export function WorksheetPage() {
       .map(t => ({ id: t.rowId, label: t.label.trim(), weeklyHours: Number(t.hoursInput) || 0, who: t.who, rules: t.rules, energy: t.energy })),
   });
 
-  const onSave = async () => {
-    if (!orgId) { setMsg('Espace de travail requis pour enregistrer.'); return; }
-    if (!result.valid || !result.hasTasks) { setMsg('Renseigne le profil et au moins une tâche.'); return; }
-    setBusy(true); setMsg(null);
-    try {
-      await saveWorksheet(orgId, buildInput());
-      setMsg('Audit enregistré ✓');
-      await refreshSaved();
-    } catch (e) {
-      setMsg(`Échec de l’enregistrement (${e instanceof Error ? e.message : 'erreur'})`);
-    } finally { setBusy(false); }
+  const applyInput = (input: ReturnType<typeof buildInput>) => {
+    setMonthlyIncome(String(input.profile.monthlyNetIncome));
+    setWeeklyHours(String(input.profile.weeklyWorkHours));
+    if (input.profile.incomePeriod) setIncomePeriod(input.profile.incomePeriod);
+    setTasks(input.tasks.map(t => ({
+      rowId: newRowId(), label: t.label, hoursInput: String(t.weeklyHours),
+      weeklyHours: t.weeklyHours, who: t.who, rules: t.rules, energy: t.energy,
+    })));
   };
 
-  const onLoad = async (id: string) => {
-    if (!orgId) return;
+  const onSave = async () => {
+    if (!result.valid || !result.hasTasks) { setMsg('Renseigne le profil et au moins une tâche.'); return; }
+    setBusy(true); setMsg(null);
+    const input = buildInput();
+    // Always keep a local copy (works offline / without workspace).
+    localSaveWorksheet(input, new Date().toISOString());
+    let serverOk = false;
+    if (orgId) { try { await saveWorksheet(orgId, input); serverOk = true; } catch { /* fall back to local */ } }
+    setMsg(serverOk ? 'Audit enregistré ✓ (cloud + local)' : 'Audit enregistré ✓ (local sur cet appareil)');
+    await refreshSaved();
+    setBusy(false);
+  };
+
+  const onLoad = async (row: SavedRow) => {
     setBusy(true); setMsg(null);
     try {
-      const d = await getWorksheet(orgId, id);
-      if (d.input) {
-        setMonthlyIncome(String(d.input.profile.monthlyNetIncome));
-        setWeeklyHours(String(d.input.profile.weeklyWorkHours));
-        if (d.input.profile.incomePeriod) setIncomePeriod(d.input.profile.incomePeriod);
-        setTasks(d.input.tasks.map(t => ({
-          rowId: newRowId(), label: t.label, hoursInput: String(t.weeklyHours),
-          weeklyHours: t.weeklyHours, who: t.who, rules: t.rules, energy: t.energy,
-        })));
-        setMsg('Audit chargé ✓');
+      if (row.source === 'local') {
+        const l = localGetSave(row.id);
+        if (l) { applyInput(l.input as ReturnType<typeof buildInput>); setMsg('Audit chargé ✓'); }
+      } else if (orgId) {
+        const d = await getWorksheet(orgId, row.id);
+        if (d.input) { applyInput(d.input as ReturnType<typeof buildInput>); setMsg('Audit chargé ✓'); }
       }
     } catch { setMsg('Chargement impossible.'); }
     finally { setBusy(false); }
   };
 
-  const onDelete = async (id: string) => {
-    if (!orgId) return;
-    try { await deleteWorksheet(orgId, id); setSaved(prev => prev.filter(s => s.worksheetId !== id)); }
-    catch { setMsg('Suppression impossible.'); }
+  const onDelete = async (row: SavedRow) => {
+    try {
+      if (row.source === 'local') localDeleteSave(row.id);
+      else if (orgId) await deleteWorksheet(orgId, row.id);
+      setSaved(prev => prev.filter(s => !(s.id === row.id && s.source === row.source)));
+    } catch { setMsg('Suppression impossible.'); }
+  };
+
+  // ── Common-task picker + hours helper ──
+  const addCatalogTask = (t: CatalogTask) =>
+    setTasks(prev => [...prev, { rowId: newRowId(), label: t.label, weeklyHours: 0, hoursInput: '', who: t.who, rules: t.rules, energy: t.energy }]);
+
+  const replaceWithSplits = (rowId: string, splits: CatalogTask[]) =>
+    setTasks(prev => {
+      const idx = prev.findIndex(t => t.rowId === rowId);
+      if (idx < 0) return prev;
+      const src = prev[idx];
+      const newRows: TaskRow[] = splits.map(s => ({ rowId: newRowId(), label: s.label, weeklyHours: src.weeklyHours, hoursInput: src.hoursInput, who: s.who, rules: s.rules, energy: s.energy }));
+      return [...prev.slice(0, idx), ...newRows, ...prev.slice(idx + 1)];
+    });
+
+  const [hoursPerDay, setHoursPerDay] = useState('');
+  const [daysPerWeek, setDaysPerWeek] = useState('');
+  const applyHoursHelper = () => {
+    const h = Number(hoursPerDay), d = Number(daysPerWeek);
+    if (h > 0 && d > 0) setWeeklyHours(String(Math.round(h * d * 10) / 10));
   };
 
   // Map computed rows back by id for the table (engine output is the source of truth).
@@ -248,6 +286,19 @@ export function WorksheetPage() {
             Renseigne un revenu et des heures &gt; 0 pour calculer le taux horaire.
           </div>
         )}
+        {/* Helper: estimate weekly hours for anyone who doesn't know the number. */}
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12.5, color: 'var(--text-muted)', alignSelf: 'center' }}>Tu ne connais pas tes heures/semaine ?</span>
+          <LabeledInput label="Heures / jour">
+            <input type="number" inputMode="decimal" min={0} max={24} value={hoursPerDay}
+              onChange={e => setHoursPerDay(e.target.value)} style={{ ...fieldStyle, width: 90 }} placeholder="8" />
+          </LabeledInput>
+          <LabeledInput label="Jours / semaine">
+            <input type="number" inputMode="decimal" min={0} max={7} value={daysPerWeek}
+              onChange={e => setDaysPerWeek(e.target.value)} style={{ ...fieldStyle, width: 90 }} placeholder="5" />
+          </LabeledInput>
+          <button onClick={applyHoursHelper} style={{ ...miniBtn, padding: '8px 14px' }}>Calculer mes heures</button>
+        </div>
       </section>
 
       {/* Tasks */}
@@ -276,8 +327,10 @@ export function WorksheetPage() {
                 const row = verdictById.get(t.rowId);
                 const v = row?.verdict;
                 const meta = v ? VERDICT_META[v] : null;
+                const sug = suggestForLabel(t.label);
                 return (
-                  <tr key={t.rowId} style={{ borderTop: '1px solid var(--border)' }}>
+                  <Fragment key={t.rowId}>
+                  <tr style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={td}>
                       <input value={t.label} onChange={e => setTask(t.rowId, { label: e.target.value })}
                         placeholder="Nom de la tâche" style={{ ...fieldStyle, width: '100%', minWidth: 160 }} />
@@ -320,6 +373,21 @@ export function WorksheetPage() {
                         style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
                     </td>
                   </tr>
+                  {sug && (
+                    <tr>
+                      <td colSpan={9} style={{ padding: '0 8px 8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
+                          <span style={{ fontSize: 12.5, color: '#92400E' }}>💡 {sug.hint}</span>
+                          {sug.splits.length > 0 && (
+                            <button onClick={() => replaceWithSplits(t.rowId, sug.splits)} style={{ ...miniBtn, borderColor: '#F59E0B', color: '#92400E' }}>
+                              Séparer en {sug.splits.length} tâches
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -336,8 +404,26 @@ export function WorksheetPage() {
             </tfoot>
           </table>
         </div>
-        <div style={{ padding: '12px 18px 18px' }}>
+        <div style={{ padding: '12px 18px 18px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={addRow} style={addBtn}>+ Ajouter une tâche</button>
+          <select
+            value=""
+            onChange={e => {
+              const [gi, ti] = e.target.value.split(':').map(Number);
+              const t = TASK_CATALOG[gi]?.tasks[ti];
+              if (t) addCatalogTask(t);
+              e.currentTarget.selectedIndex = 0;
+            }}
+            style={{ ...fieldStyle, maxWidth: 280 }}
+          >
+            <option value="">+ Ajouter une tâche courante…</option>
+            {TASK_CATALOG.map((g, gi) => (
+              <optgroup key={g.group} label={g.group}>
+                {g.tasks.map((t, ti) => <option key={t.label} value={`${gi}:${ti}`}>{t.label}</option>)}
+              </optgroup>
+            ))}
+          </select>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Tu ne sais pas quoi mettre ? Choisis une tâche courante.</span>
         </div>
       </section>
 
@@ -385,13 +471,14 @@ export function WorksheetPage() {
           <div style={sectionTitle}>Mes audits enregistrés</div>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
             {saved.map(s => (
-              <li key={s.worksheetId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
+              <li key={`${s.source}:${s.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
                   {s.title} <span style={{ color: 'var(--text-muted)' }}>· {new Date(s.createdAt).toLocaleDateString()}</span>
+                  <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 5, background: s.source === 'server' ? 'rgba(16,185,129,0.15)' : 'var(--surface-2)', color: s.source === 'server' ? 'var(--green-text)' : 'var(--text-muted)' }}>{s.source === 'server' ? 'cloud' : 'local'}</span>
                 </span>
-                <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--green-text)', fontWeight: 600 }}>{nf.format(s.annualValueRecovered)}/an récup.</span>
-                <button onClick={() => onLoad(s.worksheetId)} disabled={busy} style={miniBtn}>Charger</button>
-                <button onClick={() => onDelete(s.worksheetId)} style={{ ...miniBtn, color: 'var(--red-text)' }}>Suppr.</button>
+                <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--green-text)', fontWeight: 600 }}>{nf.format(s.value)}/an récup.</span>
+                <button onClick={() => onLoad(s)} disabled={busy} style={miniBtn}>Charger</button>
+                <button onClick={() => onDelete(s)} style={{ ...miniBtn, color: 'var(--red-text)' }}>Suppr.</button>
               </li>
             ))}
           </ul>
