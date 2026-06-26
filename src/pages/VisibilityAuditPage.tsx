@@ -8,9 +8,9 @@
  * French-first labels. Pure client tool + localStorage.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
-import { track } from '../lib/analytics/track';
+import { emit } from '../lib/analytics/events';
 import {
   computeVisibility, VISIBILITY_QUESTIONS,
   type Answers, type Dimension, type Grade,
@@ -52,6 +52,15 @@ export function VisibilityAuditPage() {
   // were a measured verdict. Gate the headline until at least one answer is given.
   const answered = result.dimensions.reduce((s, d) => s + d.answered, 0);
   const hasAnswers = answered > 0;
+
+  // Funnel: signal a viewed score the first time the user answers anything.
+  const scoreViewedRef = useRef(false);
+  useEffect(() => {
+    if (hasAnswers && !scoreViewedRef.current) {
+      scoreViewedRef.current = true;
+      emit('score_viewed', { flow: 'visibility' });
+    }
+  }, [hasAnswers]);
 
   const dims: Dimension[] = ['geo', 'social'];
 
@@ -152,7 +161,7 @@ export function VisibilityAuditPage() {
             </div>
           </div>
           <button
-            onClick={() => { track('cta_clicked', { flow: 'visibility', target: 'quote' }); navigate({ name: 'quote' }); }}
+            onClick={() => { emit('cta_clicked', { flow: 'visibility', target: 'quote' }); navigate({ name: 'quote' }); }}
             style={{ padding: '12px 22px', borderRadius: 10, border: '1px solid var(--violet)', background: 'var(--violet)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
           >
             Obtenir un plan d’action / devis →

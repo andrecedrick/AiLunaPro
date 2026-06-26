@@ -35,6 +35,7 @@ import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnSt
 import { usePreferences } from '../context/PreferencesContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
+import { takeWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
 import { emit } from '../lib/analytics/events';
 import { captureSrc } from '../lib/analytics/srcParam';
 
@@ -96,6 +97,20 @@ export function QuoteRequestPage() {
   // Stable per estimate session: a network retry reuses it (server idempotent,
   // no double charge); reset() mints a fresh one for the next quote.
   const quoteIdRef = useRef<string>('');
+
+  // Worksheet → Quote handoff: one-shot prefill (pre-select the service category +
+  // seed the description from the user's recoverable tasks). Read once on mount.
+  useEffect(() => {
+    const pf = takeWorksheetQuotePrefill();
+    if (!pf) return;
+    if ((QUOTE_CATEGORIES as readonly string[]).includes(pf.category)) {
+      setCategory(pf.category as QuoteCategory);
+      setTier('');
+      setPicks([]);
+    }
+    if (pf.descriptionSeed) setDetails(pf.descriptionSeed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const Q = T.publicTools.quote;
   const suggestions = Q.guided.suggestions as Record<string, string>;

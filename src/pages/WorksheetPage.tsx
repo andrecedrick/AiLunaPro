@@ -13,10 +13,11 @@
  * worker route (POST /api/worksheet) exists for a future "save audit" step.
  */
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
-import { track } from '../lib/analytics/track';
+import { emit } from '../lib/analytics/events';
+import { saveWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
 import { useMoney } from '../lib/currency/useMoney';
 import { SUPPORTED_CURRENCIES, type Currency } from '../lib/billing/currencyConstants';
 import {
@@ -206,6 +207,7 @@ export function WorksheetPage() {
     let serverOk = false;
     if (orgId) { try { await saveWorksheet(orgId, input); serverOk = true; } catch { /* fall back to local */ } }
     setMsg(serverOk ? 'Audit enregistré ✓ (cloud + local)' : 'Audit enregistré ✓ (local sur cet appareil)');
+    emit('lead_flow_completed', { flow: 'worksheet' });
     await refreshSaved();
     setBusy(false);
   };
@@ -250,6 +252,30 @@ export function WorksheetPage() {
   const applyHoursHelper = () => {
     const h = Number(hoursPerDay), d = Number(daysPerWeek);
     if (h > 0 && d > 0) setWeeklyHours(String(Math.round(h * d * 10) / 10));
+  };
+
+  // Funnel: signal a viewed result once it first becomes valid with at least one task.
+  const scoreViewedRef = useRef(false);
+  useEffect(() => {
+    if (result.valid && result.hasTasks && !scoreViewedRef.current) {
+      scoreViewedRef.current = true;
+      emit('score_viewed', { flow: 'worksheet' });
+    }
+  }, [result.valid, result.hasTasks]);
+
+  // Conversion handoff → Quote: carry a localized, no-PII-to-analytics seed (the
+  // user's own task labels stay in sessionStorage, never an event) + preselect the
+  // automation service so the quote arrives pre-contextualised.
+  const goToQuote = () => {
+    const recoverable = result.r.rows.filter(r => r.verdict === 'automate' || r.verdict === 'delegate');
+    const top = recoverable.slice(0, 5).map(r => r.label).filter(Boolean);
+    const seed =
+      `Automatiser / déléguer ${recoverable.length} tâche(s) identifiée(s) via l’Audit Temps → Argent ` +
+      `(≈ ${nf.format(totals.annualValueRecovered)}/an récupérables)` +
+      (top.length ? `. Tâches : ${top.join(', ')}.` : '.');
+    saveWorksheetQuotePrefill({ category: 'automation', descriptionSeed: seed });
+    emit('cta_clicked', { flow: 'worksheet', target: 'quote' });
+    navigate({ name: 'quote' });
   };
 
   // Map computed rows back by id for the table (engine output is the source of truth).
@@ -485,7 +511,7 @@ export function WorksheetPage() {
               </div>
             </div>
             <button
-              onClick={() => { track('cta_clicked', { flow: 'worksheet', target: 'quote' }); navigate({ name: 'quote' }); }}
+              onClick={goToQuote}
               style={{ ...addBtn, padding: '12px 22px', fontSize: 14 }}
             >
               Demander un devis pour automatiser →

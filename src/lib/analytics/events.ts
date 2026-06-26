@@ -14,8 +14,8 @@
 
 import { track } from './track';
 
-/** Which public tool a funnel event belongs to. */
-export type Flow = 'quote' | 'roi' | 'diagnostic';
+/** Which tool a funnel event belongs to (public lead tools + the authed audit tools). */
+export type Flow = 'quote' | 'roi' | 'diagnostic' | 'worksheet' | 'visibility';
 /** U2 budget-vs-range comparison — the verdict only, never the amount. */
 export type BudgetVerdict = 'below' | 'within' | 'above';
 /** U2 client pricing decision. */
