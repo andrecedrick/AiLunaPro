@@ -100,4 +100,16 @@ describe('Worksheet formula correctness', () => {
     expect(r.totals.annualValueRecovered).toBe(Math.round(14 * 52 * r.hourlyRate));
     expect(r.totals.counts).toEqual({ keep: 1, rethink: 0, automate: 1, delegate: 1 });
   });
+
+  it('quick-wins rank only recoverable tasks, effort-weighted, do-first order', () => {
+    const r = workerCompute(input);
+    // Only automate + delegate tasks are recoverable (keep is excluded).
+    expect(r.quickWins.map(q => q.label)).toEqual(['Emails', 'Comptabilité']);
+    expect(r.quickWins.find(q => q.label === 'Emails')?.effort).toBe('low');       // automate
+    expect(r.quickWins.find(q => q.label === 'Comptabilité')?.effort).toBe('medium'); // delegate
+    // Sorted by priorityScore descending.
+    for (let i = 1; i < r.quickWins.length; i++) {
+      expect(r.quickWins[i - 1].priorityScore).toBeGreaterThanOrEqual(r.quickWins[i].priorityScore);
+    }
+  });
 });

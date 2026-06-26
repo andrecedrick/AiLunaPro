@@ -13,12 +13,17 @@
  * worker route (POST /api/worksheet) exists for a future "save audit" step.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useMoney } from '../lib/currency/useMoney';
 import {
   computeWorksheet,
   type WorksheetTask, type Who, type Rules, type Energy, type Verdict,
 } from '../lib/worksheet/auditWorksheet';
+import {
+  saveWorksheet, listWorksheets, getWorksheet, deleteWorksheet,
+  type SavedWorksheetItem,
+} from '../lib/worksheet/worksheetClient';
 
 const STORAGE_KEY = 'ailunapro-worksheet-v1';
 
@@ -69,6 +74,8 @@ function loadPersisted(): Persisted | null {
 }
 
 export function WorksheetPage() {
+  const { session } = useAuth();
+  const orgId = session?.orgId ?? '';
   const money = useMoney();
   const nf = useMemo(
     () => new Intl.NumberFormat(undefined, { style: 'currency', currency: money.currency, maximumFractionDigits: 0 }),
@@ -124,6 +131,61 @@ export function WorksheetPage() {
     setTasks(prev => [...prev, { rowId: newRowId(), label: '', weeklyHours: 0, hoursInput: '', who: 'anyone', rules: 'yes', energy: 'draining' }]);
   const removeRow = (rowId: string) => setTasks(prev => prev.filter(t => t.rowId !== rowId));
   const resetAll = () => { setMonthlyIncome('7000'); setWeeklyHours('60'); setTasks(seedTasks()); };
+
+  // ── Server save / load (authed, org-scoped) ──────────────
+  const [saved, setSaved] = useState<SavedWorksheetItem[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const refreshSaved = useCallback(async () => {
+    if (!orgId) return;
+    try { setSaved(await listWorksheets(orgId)); } catch { /* non-blocking */ }
+  }, [orgId]);
+  useEffect(() => { void refreshSaved(); }, [refreshSaved]);
+
+  const buildInput = () => ({
+    profile: { monthlyNetIncome: Number(monthlyIncome) || 0, weeklyWorkHours: Number(weeklyHours) || 0 },
+    tasks: tasks
+      .filter(t => t.label.trim() !== '')
+      .map(t => ({ id: t.rowId, label: t.label.trim(), weeklyHours: Number(t.hoursInput) || 0, who: t.who, rules: t.rules, energy: t.energy })),
+  });
+
+  const onSave = async () => {
+    if (!orgId) { setMsg('Espace de travail requis pour enregistrer.'); return; }
+    if (!result.valid || !result.hasTasks) { setMsg('Renseigne le profil et au moins une tâche.'); return; }
+    setBusy(true); setMsg(null);
+    try {
+      await saveWorksheet(orgId, buildInput());
+      setMsg('Audit enregistré ✓');
+      await refreshSaved();
+    } catch (e) {
+      setMsg(`Échec de l’enregistrement (${e instanceof Error ? e.message : 'erreur'})`);
+    } finally { setBusy(false); }
+  };
+
+  const onLoad = async (id: string) => {
+    if (!orgId) return;
+    setBusy(true); setMsg(null);
+    try {
+      const d = await getWorksheet(orgId, id);
+      if (d.input) {
+        setMonthlyIncome(String(d.input.profile.monthlyNetIncome));
+        setWeeklyHours(String(d.input.profile.weeklyWorkHours));
+        setTasks(d.input.tasks.map(t => ({
+          rowId: newRowId(), label: t.label, hoursInput: String(t.weeklyHours),
+          weeklyHours: t.weeklyHours, who: t.who, rules: t.rules, energy: t.energy,
+        })));
+        setMsg('Audit chargé ✓');
+      }
+    } catch { setMsg('Chargement impossible.'); }
+    finally { setBusy(false); }
+  };
+
+  const onDelete = async (id: string) => {
+    if (!orgId) return;
+    try { await deleteWorksheet(orgId, id); setSaved(prev => prev.filter(s => s.worksheetId !== id)); }
+    catch { setMsg('Suppression impossible.'); }
+  };
 
   // Map computed rows back by id for the table (engine output is the source of truth).
   const verdictById = new Map(result.r.rows.map(row => [row.id, row]));
@@ -265,13 +327,57 @@ export function WorksheetPage() {
         <SummaryCard label="À déléguer" value={`${totals.counts.delegate}`} accent="#2563EB" />
       </section>
 
-      <div style={{ marginTop: 18, display: 'flex', gap: 14, alignItems: 'center' }}>
+      {/* Quick-Wins — do first (Impact × Effort, méthode §3.4) */}
+      {result.valid && result.r.quickWins.length > 0 && (
+        <section style={{ ...cardStyle, marginTop: 16 }}>
+          <div style={sectionTitle}>③ À faire en premier (Quick-Wins)</div>
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 12 }}>
+            Tâches récupérables classées par impact (coût/an) ÷ effort. Commence par le haut.
+          </div>
+          <ol style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
+            {result.r.quickWins.slice(0, 3).map((q, i) => (
+              <li key={q.id ?? q.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                <span style={{ flex: '0 0 auto', width: 24, height: 24, borderRadius: 6, background: 'var(--violet)', color: '#fff', fontWeight: 800, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                <span style={{ flex: 1, minWidth: 0, fontWeight: 600, color: 'var(--text-primary)' }}>{q.label || '—'}</span>
+                <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 6, background: VERDICT_META[q.verdict].bg, color: VERDICT_META[q.verdict].fg, fontWeight: 700, whiteSpace: 'nowrap' }}>{VERDICT_META[q.verdict].label}</span>
+                <span style={{ fontSize: 11.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>effort {q.effort === 'low' ? 'faible' : 'moyen'}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--green-text)', whiteSpace: 'nowrap' }}>{nf.format(q.annualCost)}/an</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button onClick={onSave} disabled={busy} style={{ ...addBtn, opacity: busy ? 0.6 : 1, cursor: busy ? 'wait' : 'pointer' }}>
+          💾 Enregistrer
+        </button>
         <button onClick={resetAll} style={{ ...addBtn, background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
           Réinitialiser
         </button>
-        <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-          Verdict : <strong>Moi seul</strong> + énergisant → Garder · sinon Repenser. Sinon <strong>N’importe qui + règles claires</strong> → Automatiser · sinon Déléguer.
-        </span>
+        {msg && <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{msg}</span>}
+      </div>
+
+      {saved.length > 0 && (
+        <section style={{ ...cardStyle, marginTop: 16 }}>
+          <div style={sectionTitle}>Mes audits enregistrés</div>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+            {saved.map(s => (
+              <li key={s.worksheetId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
+                  {s.title} <span style={{ color: 'var(--text-muted)' }}>· {new Date(s.createdAt).toLocaleDateString()}</span>
+                </span>
+                <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--green-text)', fontWeight: 600 }}>{nf.format(s.annualValueRecovered)}/an récup.</span>
+                <button onClick={() => onLoad(s.worksheetId)} disabled={busy} style={miniBtn}>Charger</button>
+                <button onClick={() => onDelete(s.worksheetId)} style={{ ...miniBtn, color: 'var(--red-text)' }}>Suppr.</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <div style={{ marginTop: 14, fontSize: 11.5, color: 'var(--text-muted)' }}>
+        Verdict : <strong>Moi seul</strong> + énergisant → Garder · sinon Repenser. Sinon <strong>N’importe qui + règles claires</strong> → Automatiser · sinon Déléguer.
       </div>
     </div>
   );
@@ -295,6 +401,10 @@ const td: React.CSSProperties = { padding: '8px 8px', verticalAlign: 'middle' };
 const addBtn: React.CSSProperties = {
   padding: '9px 16px', borderRadius: 10, border: '1px solid var(--border)',
   background: 'var(--violet)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+};
+const miniBtn: React.CSSProperties = {
+  padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)',
+  background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
 };
 
 function LabeledInput({ label, suffix, children }: { label: string; suffix?: string; children: React.ReactNode }) {

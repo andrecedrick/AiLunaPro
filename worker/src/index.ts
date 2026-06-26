@@ -56,6 +56,7 @@ import auditExpressDocumentRoutes from './routes/audit-express-document';
 import feedbackPublicRoutes  from './routes/feedback-public';
 import supportRoutes         from './routes/support';
 import lunaRoutes            from './routes/luna';
+import worksheetRoutes       from './routes/worksheet';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -193,6 +194,7 @@ app.route('/', auditExpressDocumentRoutes);
 app.route('/', feedbackPublicRoutes);
 app.route('/', supportRoutes);
 app.route('/', lunaRoutes);
+app.route('/', worksheetRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

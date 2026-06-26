@@ -87,10 +87,25 @@ export interface WorksheetTotals {
   counts:                     Record<Verdict, number>;
 }
 
+/** A prioritized recoverable task (Quick-Win cockpit — méthode §3.4). */
+export interface QuickWin {
+  id:                    string | null;
+  label:                 string;
+  verdict:               Verdict;
+  annualCost:            number;
+  recoveredHoursPerWeek: number;
+  /** Implementation effort proxy: automate = low, delegate = medium. */
+  effort:                'low' | 'medium';
+  /** annualCost weighted by effort — higher = do first. */
+  priorityScore:         number;
+}
+
 export interface WorksheetResult {
   hourlyRate: number;
   rows:       WorksheetRow[];
   totals:     WorksheetTotals;
+  /** Recoverable tasks ranked by impact ÷ effort (top of the list = do first). */
+  quickWins:  QuickWin[];
 }
 
 export interface WorksheetScored extends DeterminismStamp {
@@ -134,6 +149,30 @@ export function isRecoverable(verdict: Verdict): boolean {
   return verdict === 'automate' || verdict === 'delegate';
 }
 
+/**
+ * Quick-Win cockpit (méthode §3.4 — Impact × Effort). Ranks the recoverable
+ * tasks by annual cost weighted by implementation effort (automate = low effort,
+ * delegate = medium). Deterministic order: score desc, then cost desc, then label.
+ */
+export function buildQuickWins(rows: WorksheetRow[]): QuickWin[] {
+  const recoverable = rows.filter(r => isRecoverable(r.verdict));
+  const wins: QuickWin[] = recoverable.map(r => {
+    const effort: 'low' | 'medium' = r.verdict === 'automate' ? 'low' : 'medium';
+    const priorityScore = round0(r.annualCost / (effort === 'low' ? 1 : 2));
+    return {
+      id: r.id, label: r.label, verdict: r.verdict,
+      annualCost: r.annualCost, recoveredHoursPerWeek: r.recoveredHoursPerWeek,
+      effort, priorityScore,
+    };
+  });
+  wins.sort((a, b) =>
+    b.priorityScore - a.priorityScore ||
+    b.annualCost - a.annualCost ||
+    a.label.localeCompare(b.label),
+  );
+  return wins;
+}
+
 export function computeWorksheet(input: WorksheetInput): WorksheetResult {
   const hourlyRate = computeHourlyRate(input.profile);
 
@@ -168,9 +207,12 @@ export function computeWorksheet(input: WorksheetInput): WorksheetResult {
   const totalRecoveredHoursPerYear = round0(totalRecoveredHoursPerWeek * WEEKS_PER_YEAR);
   const annualValueRecovered = round0(totalRecoveredHoursPerYear * hourlyRate);
 
+  const quickWins = buildQuickWins(rows);
+
   return {
     hourlyRate,
     rows,
+    quickWins,
     totals: {
       hourlyRate,
       totalWeeklyHours: round1(totalWeeklyHours),

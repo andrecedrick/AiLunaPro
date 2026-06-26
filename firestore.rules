@@ -263,6 +263,15 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // /organizations/{orgId}/worksheets/{worksheetId}  (AUDIT TEMPS → ARGENT, G1)
+      // Saved time→money worksheets (income inputs). Read + written ONLY by the
+      // worker (service account bypasses rules); clients go through the worker
+      // route. Direct client access denied — financial inputs stay worker-only.
+      match /worksheets/{worksheetId} {
+        allow read:  if false;
+        allow write: if false;
+      }
+
 
       // ───────────────────────────────────────────────────────────────────
       // /organizations/{orgId}/members/{memberId}
