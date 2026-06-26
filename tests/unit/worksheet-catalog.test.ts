@@ -42,6 +42,17 @@ describe('Task disambiguation', () => {
     expect(suggestForLabel('facturation clients')).not.toBeNull();
   });
 
+  it('recognizes recruiting, data entry, writing, translation, logistics', () => {
+    expect(suggestForLabel('tri de cv')).not.toBeNull();
+    expect(suggestForLabel('saisie de données')).not.toBeNull();
+    expect(suggestForLabel('rédaction article blog')).not.toBeNull();
+    expect(suggestForLabel('traduction de contenu')).not.toBeNull();
+    expect(suggestForLabel('planification de tournée')).not.toBeNull();
+    // Recruiting splits into screening (automatable) vs interview (keep) — different verdicts.
+    const d = suggestForLabel('recrutement')!;
+    expect(d.splits).toHaveLength(2);
+  });
+
   it('returns null for unknown / too-short labels', () => {
     expect(suggestForLabel('xy')).toBeNull();
     expect(suggestForLabel('peindre la clôture')).toBeNull();

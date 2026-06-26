@@ -67,7 +67,17 @@ export const TASK_CATALOG: CatalogGroup[] = [
     tasks: [
       { label: 'Comptabilité / facturation',    who: 'specialist', rules: 'no',  energy: 'neutral' },
       { label: 'Reporting hebdomadaire',        who: 'anyone',     rules: 'yes', energy: 'draining' },
-      { label: 'Tri de CV / recrutement',       who: 'anyone',     rules: 'yes', energy: 'draining' },
+      { label: 'Tri de CV / présélection',      who: 'anyone',     rules: 'yes', energy: 'draining' },
+      { label: 'Note de frais / dépenses',      who: 'anyone',     rules: 'yes', energy: 'draining' },
+    ],
+  },
+  {
+    group: 'Opérations',
+    tasks: [
+      { label: 'Saisie de données / encodage',  who: 'anyone',     rules: 'yes', energy: 'draining' },
+      { label: 'Suivi de stock / inventaire',   who: 'anyone',     rules: 'yes', energy: 'neutral' },
+      { label: 'Traduction de contenu',         who: 'anyone',     rules: 'no',  energy: 'neutral' },
+      { label: 'Rédaction d’articles / blog',   who: 'self',       rules: 'no',  energy: 'energizing' },
     ],
   },
   {
@@ -143,6 +153,39 @@ const RULES: Rule[] = [
     id: 'report',
     keywords: ['rapport', 'reporting', 'report', 'tableau de bord', 'dashboard', 'kpi'],
     hint: 'Si les données sont déjà structurées, le reporting est souvent automatisable.',
+    splits: [],
+  },
+  {
+    id: 'recruit',
+    keywords: ['cv', 'recrut', 'candidat', 'entretien', 'hiring'],
+    hint: 'Tri de CV (critères clairs → automatisable) vs entretien final (jugement humain → garder).',
+    splits: [
+      { label: 'Tri de CV / présélection', who: 'anyone', rules: 'yes', energy: 'draining' },
+      { label: 'Entretiens candidats',     who: 'self',   rules: 'no',  energy: 'neutral' },
+    ],
+  },
+  {
+    id: 'data',
+    keywords: ['saisie', 'encodage', 'donnée', 'donnees', 'data', 'tableur', 'excel', 'copier-coller'],
+    hint: 'Entrée structurée ? La saisie/recopie de données est presque toujours automatisable.',
+    splits: [],
+  },
+  {
+    id: 'writing',
+    keywords: ['rédaction', 'redaction', 'rédiger', 'rediger', 'écrire', 'ecrire', 'article', 'blog', 'copywriting'],
+    hint: 'Première version (copilote IA, rapide) vs validation/édition finale (jugement humain).',
+    splits: [],
+  },
+  {
+    id: 'translate',
+    keywords: ['traduction', 'traduire', 'translate', 'localisation'],
+    hint: 'Volume répétitif → automatisable ; nuance marketing/juridique → relecture humaine.',
+    splits: [],
+  },
+  {
+    id: 'logistics',
+    keywords: ['livraison', 'logistique', 'tournée', 'tournee', 'stock', 'inventaire', 'expédition', 'expedition'],
+    hint: 'Optimisation de tournées / suivi de stock → automatisable ; relation transporteur → humain.',
     splits: [],
   },
 ];
