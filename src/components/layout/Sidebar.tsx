@@ -583,7 +583,7 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
         <NavItem
           id="worksheet"
           icon="worksheet-tool"
-          label="Audit Temps → Argent"
+          label={T.auditTools.nav.worksheetLabel}
           active={activeId === 'worksheet'}
           iconsOnly={iconsOnly}
           onClick={() => { navigate({ name: 'worksheet' }); onNavigate?.(); }}
@@ -591,7 +591,7 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
         <NavItem
           id="visibility"
           icon="visibility-tool"
-          label="Visibilité IA & Réseaux"
+          label={T.auditTools.nav.visibilityLabel}
           active={activeId === 'visibility'}
           iconsOnly={iconsOnly}
           onClick={() => { navigate({ name: 'visibility' }); onNavigate?.(); }}

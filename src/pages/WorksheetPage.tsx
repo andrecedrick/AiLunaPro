@@ -16,6 +16,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
 import { emit } from '../lib/analytics/events';
 import { saveWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
 import { useMoney } from '../lib/currency/useMoney';
@@ -37,15 +39,12 @@ const STORAGE_KEY = 'ailunapro-worksheet-v1';
 
 interface TaskRow extends WorksheetTask { rowId: string; hoursInput: string; }
 
-const WHO_LABELS:    Record<Who, string>     = { self: 'Moi seul', specialist: 'Un spécialiste formé', anyone: 'N’importe qui formé' };
-const RULES_LABELS:  Record<Rules, string>   = { yes: 'Oui', no: 'Non' };
-const ENERGY_LABELS: Record<Energy, string>  = { energizing: 'Énergisant', neutral: 'Neutre', draining: 'Épuisant' };
-
-const VERDICT_META: Record<Verdict, { label: string; bg: string; fg: string }> = {
-  keep:     { label: '✅ GARDER',      bg: 'rgba(16,185,129,0.12)',  fg: 'var(--green-text)' },
-  automate: { label: '🤖 AUTOMATISER', bg: 'rgba(124,58,237,0.12)',  fg: 'var(--violet-text)' },
-  delegate: { label: '→ DÉLÉGUER',     bg: 'rgba(59,130,246,0.12)',  fg: '#2563EB' },
-  rethink:  { label: '⚠️ REPENSER',    bg: 'rgba(245,158,11,0.14)',  fg: '#B45309' },
+/** Verdict colors (the localized label comes from T.auditTools.worksheet.verdict). */
+const VERDICT_COLOR: Record<Verdict, { bg: string; fg: string }> = {
+  keep:     { bg: 'rgba(16,185,129,0.12)',  fg: 'var(--green-text)' },
+  automate: { bg: 'rgba(124,58,237,0.12)',  fg: 'var(--violet-text)' },
+  delegate: { bg: 'rgba(59,130,246,0.12)',  fg: '#2563EB' },
+  rethink:  { bg: 'rgba(245,158,11,0.14)',  fg: '#B45309' },
 };
 
 let seq = 0;
@@ -85,9 +84,6 @@ interface Persisted {
   tasks: Array<{ label: string; hoursInput: string; who: Who; rules: Rules; energy: Energy }>;
 }
 
-const PERIOD_LABELS: Record<IncomePeriod, string> = { month: 'par mois', year: 'par an', week: 'par semaine' };
-const PERIOD_INCOME_LABEL: Record<IncomePeriod, string> = { month: 'Revenu mensuel net', year: 'Revenu annuel net', week: 'Revenu hebdo net' };
-
 function loadPersisted(): Persisted | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -99,6 +95,13 @@ function loadPersisted(): Persisted | null {
 export function WorksheetPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
+  const W = useLocale().auditTools.worksheet;
+  const WHO_LABELS:    Record<Who, string>    = { self: W.who.self, specialist: W.who.specialist, anyone: W.who.anyone };
+  const RULES_LABELS:  Record<Rules, string>  = { yes: W.rules.yes, no: W.rules.no };
+  const ENERGY_LABELS: Record<Energy, string> = { energizing: W.energy.energizing, neutral: W.energy.neutral, draining: W.energy.draining };
+  const VERDICT_LABEL: Record<Verdict, string> = { keep: W.verdict.keep, automate: W.verdict.automate, delegate: W.verdict.delegate, rethink: W.verdict.rethink };
+  const PERIOD_LABELS: Record<IncomePeriod, string> = { month: W.profile.periodMonth, year: W.profile.periodYear, week: W.profile.periodWeek };
+  const PERIOD_INCOME_LABEL: Record<IncomePeriod, string> = { month: W.profile.incomeMonth, year: W.profile.incomeYear, week: W.profile.incomeWeek };
   const orgId = session?.orgId ?? '';
   const money = useMoney();
   const hf = useMemo(() => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }), []);
@@ -199,14 +202,14 @@ export function WorksheetPage() {
   };
 
   const onSave = async () => {
-    if (!result.valid || !result.hasTasks) { setMsg('Renseigne le profil et au moins une tâche.'); return; }
+    if (!result.valid || !result.hasTasks) { setMsg(W.actions.needProfile); return; }
     setBusy(true); setMsg(null);
     const input = buildInput();
     // Always keep a local copy (works offline / without workspace).
     localSaveWorksheet(input, new Date().toISOString());
     let serverOk = false;
     if (orgId) { try { await saveWorksheet(orgId, input); serverOk = true; } catch { /* fall back to local */ } }
-    setMsg(serverOk ? 'Audit enregistré ✓ (cloud + local)' : 'Audit enregistré ✓ (local sur cet appareil)');
+    setMsg(serverOk ? W.actions.savedCloud : W.actions.savedLocal);
     emit('lead_flow_completed', { flow: 'worksheet' });
     await refreshSaved();
     setBusy(false);
@@ -217,12 +220,12 @@ export function WorksheetPage() {
     try {
       if (row.source === 'local') {
         const l = localGetSave(row.id);
-        if (l) { applyInput(l.input as ReturnType<typeof buildInput>); setMsg('Audit chargé ✓'); }
+        if (l) { applyInput(l.input as ReturnType<typeof buildInput>); setMsg(W.actions.loadOk); }
       } else if (orgId) {
         const d = await getWorksheet(orgId, row.id);
-        if (d.input) { applyInput(d.input as ReturnType<typeof buildInput>); setMsg('Audit chargé ✓'); }
+        if (d.input) { applyInput(d.input as ReturnType<typeof buildInput>); setMsg(W.actions.loadOk); }
       }
-    } catch { setMsg('Chargement impossible.'); }
+    } catch { setMsg(W.actions.loadFail); }
     finally { setBusy(false); }
   };
 
@@ -231,7 +234,7 @@ export function WorksheetPage() {
       if (row.source === 'local') localDeleteSave(row.id);
       else if (orgId) await deleteWorksheet(orgId, row.id);
       setSaved(prev => prev.filter(s => !(s.id === row.id && s.source === row.source)));
-    } catch { setMsg('Suppression impossible.'); }
+    } catch { setMsg(W.actions.deleteFail); }
   };
 
   // ── Common-task picker + hours helper ──
@@ -270,9 +273,8 @@ export function WorksheetPage() {
     const recoverable = result.r.rows.filter(r => r.verdict === 'automate' || r.verdict === 'delegate');
     const top = recoverable.slice(0, 5).map(r => r.label).filter(Boolean);
     const seed =
-      `Automatiser / déléguer ${recoverable.length} tâche(s) identifiée(s) via l’Audit Temps → Argent ` +
-      `(≈ ${nf.format(totals.annualValueRecovered)}/an récupérables)` +
-      (top.length ? `. Tâches : ${top.join(', ')}.` : '.');
+      format(W.quoteSeedMain, { count: String(recoverable.length), value: nf.format(totals.annualValueRecovered) }) +
+      (top.length ? format(W.quoteSeedTasks, { tasks: top.join(', ') }) : W.quoteSeedEnd);
     saveWorksheetQuotePrefill({ category: 'automation', descriptionSeed: seed });
     emit('cta_clicked', { flow: 'worksheet', target: 'quote' });
     navigate({ name: 'quote' });
@@ -285,81 +287,80 @@ export function WorksheetPage() {
     <div style={{ padding: '28px 24px', maxWidth: 1080, margin: '0 auto' }}>
       <header style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-          Audit Temps → Argent
+          {W.title}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55, maxWidth: 760 }}>
-          Saisis tes <strong>vraies données</strong> (pas d’estimation). Pour chaque tâche, l’outil calcule
-          son verdict, son coût réel par an et les heures récupérables. Choisis ta devise et la période de ton revenu (mois/an/semaine) — l’outil s’adapte à ton pays.
+          {W.subtitle}
         </p>
       </header>
 
       {/* Profile */}
       <section style={cardStyle}>
-        <div style={sectionTitle}>① Ton profil</div>
+        <div style={sectionTitle}>{W.profile.sectionTitle}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-end' }}>
           <LabeledInput label={`${PERIOD_INCOME_LABEL[incomePeriod]} (${currency.toUpperCase()})`}>
             <input type="number" inputMode="decimal" min={0} value={monthlyIncome}
               onChange={e => setMonthlyIncome(e.target.value)} style={fieldStyle} />
           </LabeledInput>
-          <LabeledInput label="Période du revenu">
+          <LabeledInput label={W.profile.periodLabel}>
             <select value={incomePeriod} onChange={e => setIncomePeriod(e.target.value as IncomePeriod)} style={fieldStyle}>
               {(Object.keys(PERIOD_LABELS) as IncomePeriod[]).map(p => <option key={p} value={p}>{PERIOD_LABELS[p]}</option>)}
             </select>
           </LabeledInput>
-          <LabeledInput label="Devise">
+          <LabeledInput label={W.profile.currencyLabel}>
             <select value={currency} onChange={e => setCurrency(e.target.value as Currency)} style={fieldStyle}>
               {SUPPORTED_CURRENCIES.map(cur => <option key={cur} value={cur}>{cur.toUpperCase()}</option>)}
             </select>
           </LabeledInput>
-          <LabeledInput label="Heures / semaine">
+          <LabeledInput label={W.profile.hoursLabel}>
             <input type="number" inputMode="decimal" min={1} max={168} value={weeklyHours}
               onChange={e => setWeeklyHours(e.target.value)} style={fieldStyle} />
           </LabeledInput>
           <div style={{ flex: '1 1 160px', minWidth: 150 }}>
-            <div style={statLabel}>→ Taux horaire</div>
+            <div style={statLabel}>{W.profile.hourlyRate}</div>
             <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--violet-text)', fontVariantNumeric: 'tabular-nums' }}>
-              {result.valid ? nf.format(rate) : '—'}<span style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 600 }}> / h</span>
+              {result.valid ? nf.format(rate) : '—'}<span style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 600 }}> {W.profile.perHour}</span>
             </div>
           </div>
         </div>
         {!result.valid && (
           <div style={{ marginTop: 10, fontSize: 12.5, color: '#B45309' }}>
-            Renseigne un revenu et des heures &gt; 0 pour calculer le taux horaire.
+            {W.profile.invalidHint}
           </div>
         )}
         {/* Helper: estimate weekly hours for anyone who doesn't know the number. */}
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12.5, color: 'var(--text-muted)', alignSelf: 'center' }}>Tu ne connais pas tes heures/semaine ?</span>
-          <LabeledInput label="Heures / jour">
+          <span style={{ fontSize: 12.5, color: 'var(--text-muted)', alignSelf: 'center' }}>{W.profile.helperPrompt}</span>
+          <LabeledInput label={W.profile.helperHoursPerDay}>
             <input type="number" inputMode="decimal" min={0} max={24} value={hoursPerDay}
               onChange={e => setHoursPerDay(e.target.value)} style={{ ...fieldStyle, width: 90 }} placeholder="8" />
           </LabeledInput>
-          <LabeledInput label="Jours / semaine">
+          <LabeledInput label={W.profile.helperDaysPerWeek}>
             <input type="number" inputMode="decimal" min={0} max={7} value={daysPerWeek}
               onChange={e => setDaysPerWeek(e.target.value)} style={{ ...fieldStyle, width: 90 }} placeholder="5" />
           </LabeledInput>
-          <button onClick={applyHoursHelper} style={{ ...miniBtn, padding: '8px 14px' }}>Calculer mes heures</button>
+          <button onClick={applyHoursHelper} style={{ ...miniBtn, padding: '8px 14px' }}>{W.profile.helperCalc}</button>
         </div>
       </section>
 
       {/* Tasks */}
       <section style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-        <div style={{ ...sectionTitle, padding: '16px 18px 0' }}>② Tes tâches</div>
+        <div style={{ ...sectionTitle, padding: '16px 18px 0' }}>{W.tasks.sectionTitle}</div>
         <div style={{ padding: '4px 18px 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
-          Astuce : note le titre exact (verbe + objet), ex. « relire les propales », pas « admin ».
+          {W.tasks.tip}
         </div>
         <div style={{ overflowX: 'auto', padding: '12px 12px 0' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 880 }}>
             <thead>
               <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                <th style={th}>Tâche</th>
-                <th style={{ ...th, width: 78 }}>H / sem</th>
-                <th style={{ ...th, width: 150 }}>Qui peut le faire ?</th>
-                <th style={{ ...th, width: 100 }}>Règles claires ?</th>
-                <th style={{ ...th, width: 120 }}>Énergie</th>
-                <th style={{ ...th, width: 130 }}>Verdict</th>
-                <th style={{ ...th, width: 100, textAlign: 'right' }}>Coût / an</th>
-                <th style={{ ...th, width: 78, textAlign: 'right' }}>H. récup.</th>
+                <th style={th}>{W.tasks.colTask}</th>
+                <th style={{ ...th, width: 78 }}>{W.tasks.colHours}</th>
+                <th style={{ ...th, width: 150 }}>{W.tasks.colWho}</th>
+                <th style={{ ...th, width: 100 }}>{W.tasks.colRules}</th>
+                <th style={{ ...th, width: 120 }}>{W.tasks.colEnergy}</th>
+                <th style={{ ...th, width: 130 }}>{W.tasks.colVerdict}</th>
+                <th style={{ ...th, width: 100, textAlign: 'right' }}>{W.tasks.colCost}</th>
+                <th style={{ ...th, width: 78, textAlign: 'right' }}>{W.tasks.colRecovered}</th>
                 <th style={{ ...th, width: 34 }} />
               </tr>
             </thead>
@@ -367,14 +368,13 @@ export function WorksheetPage() {
               {tasks.map(t => {
                 const row = verdictById.get(t.rowId);
                 const v = row?.verdict;
-                const meta = v ? VERDICT_META[v] : null;
                 const sug = suggestForLabel(t.label);
                 return (
                   <Fragment key={t.rowId}>
                   <tr style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={td}>
                       <input value={t.label} onChange={e => setTask(t.rowId, { label: e.target.value })}
-                        placeholder="Nom de la tâche" style={{ ...fieldStyle, width: '100%', minWidth: 160 }} />
+                        placeholder={W.tasks.taskPlaceholder} style={{ ...fieldStyle, width: '100%', minWidth: 160 }} />
                     </td>
                     <td style={td}>
                       <input type="number" inputMode="decimal" min={0} max={168} value={t.hoursInput}
@@ -397,9 +397,9 @@ export function WorksheetPage() {
                       </select>
                     </td>
                     <td style={td}>
-                      {meta && (
-                        <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: meta.bg, color: meta.fg, whiteSpace: 'nowrap' }}>
-                          {meta.label}
+                      {v && (
+                        <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: VERDICT_COLOR[v].bg, color: VERDICT_COLOR[v].fg, whiteSpace: 'nowrap' }}>
+                          {VERDICT_LABEL[v]}
                         </span>
                       )}
                     </td>
@@ -410,7 +410,7 @@ export function WorksheetPage() {
                       {row ? `${hf.format(row.recoveredHoursPerWeek)} h` : '—'}
                     </td>
                     <td style={td}>
-                      <button onClick={() => removeRow(t.rowId)} title="Supprimer"
+                      <button onClick={() => removeRow(t.rowId)} title={W.savedList.delete}
                         style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
                     </td>
                   </tr>
@@ -421,7 +421,7 @@ export function WorksheetPage() {
                           <span style={{ fontSize: 12.5, color: '#92400E' }}>💡 {sug.hint}</span>
                           {sug.splits.length > 0 && (
                             <button onClick={() => replaceWithSplits(t.rowId, sug.splits)} style={{ ...miniBtn, borderColor: '#F59E0B', color: '#92400E' }}>
-                              Séparer en {sug.splits.length} tâches
+                              {format(W.tasks.splitInto, { n: String(sug.splits.length) })}
                             </button>
                           )}
                         </div>
@@ -446,7 +446,7 @@ export function WorksheetPage() {
           </table>
         </div>
         <div style={{ padding: '12px 18px 18px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={addRow} style={addBtn}>+ Ajouter une tâche</button>
+          <button onClick={addRow} style={addBtn}>{W.tasks.addRow}</button>
           <select
             value=""
             onChange={e => {
@@ -457,40 +457,40 @@ export function WorksheetPage() {
             }}
             style={{ ...fieldStyle, maxWidth: 280 }}
           >
-            <option value="">+ Ajouter une tâche courante…</option>
+            <option value="">{W.tasks.addCommon}</option>
             {TASK_CATALOG.map((g, gi) => (
               <optgroup key={g.group} label={g.group}>
                 {g.tasks.map((t, ti) => <option key={t.label} value={`${gi}:${ti}`}>{t.label}</option>)}
               </optgroup>
             ))}
           </select>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Tu ne sais pas quoi mettre ? Choisis une tâche courante.</span>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{W.tasks.addCommonHint}</span>
         </div>
       </section>
 
       {/* Summary */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 4 }}>
-        <SummaryCard label="Heures récupérables / an" value={result.valid ? `${hf.format(totals.totalRecoveredHoursPerYear)} h` : '—'} accent="var(--violet-text)" />
-        <SummaryCard label="Valeur récupérable / an" value={result.valid ? nf.format(totals.annualValueRecovered) : '—'} accent="var(--green-text)" />
-        <SummaryCard label="À automatiser" value={`${totals.counts.automate}`} accent="var(--violet-text)" />
-        <SummaryCard label="À déléguer" value={`${totals.counts.delegate}`} accent="#2563EB" />
+        <SummaryCard label={W.summary.recoveredHoursYear} value={result.valid ? `${hf.format(totals.totalRecoveredHoursPerYear)} h` : '—'} accent="var(--violet-text)" />
+        <SummaryCard label={W.summary.recoveredValueYear} value={result.valid ? nf.format(totals.annualValueRecovered) : '—'} accent="var(--green-text)" />
+        <SummaryCard label={W.summary.toAutomate} value={`${totals.counts.automate}`} accent="var(--violet-text)" />
+        <SummaryCard label={W.summary.toDelegate} value={`${totals.counts.delegate}`} accent="#2563EB" />
       </section>
 
       {/* Quick-Wins — do first (Impact × Effort, méthode §3.4) */}
       {result.valid && result.r.quickWins.length > 0 && (
         <section style={{ ...cardStyle, marginTop: 16 }}>
-          <div style={sectionTitle}>③ À faire en premier (Quick-Wins)</div>
+          <div style={sectionTitle}>{W.quickWins.title}</div>
           <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 12 }}>
-            Tâches récupérables classées par impact (coût/an) ÷ effort. Commence par le haut.
+            {W.quickWins.sub}
           </div>
           <ol style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
             {result.r.quickWins.slice(0, 3).map((q, i) => (
               <li key={q.id ?? q.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
                 <span style={{ flex: '0 0 auto', width: 24, height: 24, borderRadius: 6, background: 'var(--violet)', color: '#fff', fontWeight: 800, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                 <span style={{ flex: 1, minWidth: 0, fontWeight: 600, color: 'var(--text-primary)' }}>{q.label || '—'}</span>
-                <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 6, background: VERDICT_META[q.verdict].bg, color: VERDICT_META[q.verdict].fg, fontWeight: 700, whiteSpace: 'nowrap' }}>{VERDICT_META[q.verdict].label}</span>
-                <span style={{ fontSize: 11.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>effort {q.effort === 'low' ? 'faible' : 'moyen'}</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--green-text)', whiteSpace: 'nowrap' }}>{nf.format(q.annualCost)}/an</span>
+                <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 6, background: VERDICT_COLOR[q.verdict].bg, color: VERDICT_COLOR[q.verdict].fg, fontWeight: 700, whiteSpace: 'nowrap' }}>{VERDICT_LABEL[q.verdict]}</span>
+                <span style={{ fontSize: 11.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{W.quickWins.effortLabel} {q.effort === 'low' ? W.quickWins.effortLow : W.quickWins.effortMed}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--green-text)', whiteSpace: 'nowrap' }}>{nf.format(q.annualCost)}{W.quickWins.perYearSuffix}</span>
               </li>
             ))}
           </ol>
@@ -503,18 +503,17 @@ export function WorksheetPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 280px', minWidth: 240 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-                Tu peux récupérer {nf.format(totals.annualValueRecovered)} par an.
+                {format(W.cta.headline, { value: nf.format(totals.annualValueRecovered) })}
               </div>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                {totals.counts.automate + totals.counts.delegate} tâche(s) à automatiser ou déléguer.
-                On chiffre la mise en place dans un devis sur-mesure.
+                {format(W.cta.body, { count: String(totals.counts.automate + totals.counts.delegate) })}
               </div>
             </div>
             <button
               onClick={goToQuote}
               style={{ ...addBtn, padding: '12px 22px', fontSize: 14 }}
             >
-              Demander un devis pour automatiser →
+              {W.cta.button}
             </button>
           </div>
         </section>
@@ -522,30 +521,30 @@ export function WorksheetPage() {
 
       <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={onSave} disabled={busy} style={{ ...addBtn, opacity: busy ? 0.6 : 1, cursor: busy ? 'wait' : 'pointer' }}>
-          💾 Enregistrer
+          {W.actions.save}
         </button>
         <button onClick={loadExample} style={{ ...addBtn, background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
-          Charger un exemple
+          {W.actions.loadExample}
         </button>
         <button onClick={resetAll} style={{ ...addBtn, background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
-          Réinitialiser
+          {W.actions.reset}
         </button>
         {msg && <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{msg}</span>}
       </div>
 
       {saved.length > 0 && (
         <section style={{ ...cardStyle, marginTop: 16 }}>
-          <div style={sectionTitle}>Mes audits enregistrés</div>
+          <div style={sectionTitle}>{W.savedList.title}</div>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
             {saved.map(s => (
               <li key={`${s.source}:${s.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
                   {s.title} <span style={{ color: 'var(--text-muted)' }}>· {new Date(s.createdAt).toLocaleDateString()}</span>
-                  <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 5, background: s.source === 'server' ? 'rgba(16,185,129,0.15)' : 'var(--surface-2)', color: s.source === 'server' ? 'var(--green-text)' : 'var(--text-muted)' }}>{s.source === 'server' ? 'cloud' : 'local'}</span>
+                  <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 5, background: s.source === 'server' ? 'rgba(16,185,129,0.15)' : 'var(--surface-2)', color: s.source === 'server' ? 'var(--green-text)' : 'var(--text-muted)' }}>{s.source === 'server' ? W.savedList.cloud : W.savedList.local}</span>
                 </span>
-                <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--green-text)', fontWeight: 600 }}>{nf.format(s.value)}/an récup.</span>
-                <button onClick={() => onLoad(s)} disabled={busy} style={miniBtn}>Charger</button>
-                <button onClick={() => onDelete(s)} style={{ ...miniBtn, color: 'var(--red-text)' }}>Suppr.</button>
+                <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--green-text)', fontWeight: 600 }}>{nf.format(s.value)}{W.savedList.perYear}</span>
+                <button onClick={() => onLoad(s)} disabled={busy} style={miniBtn}>{W.savedList.load}</button>
+                <button onClick={() => onDelete(s)} style={{ ...miniBtn, color: 'var(--red-text)' }}>{W.savedList.delete}</button>
               </li>
             ))}
           </ul>
@@ -553,7 +552,7 @@ export function WorksheetPage() {
       )}
 
       <div style={{ marginTop: 14, fontSize: 11.5, color: 'var(--text-muted)' }}>
-        Verdict : <strong>Moi seul</strong> + énergisant → Garder · sinon Repenser. Sinon <strong>N’importe qui + règles claires</strong> → Automatiser · sinon Déléguer.
+        {W.verdictRule}
       </div>
     </div>
   );

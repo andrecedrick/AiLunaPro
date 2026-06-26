@@ -60,13 +60,15 @@ function ToolIcon({ id, color }: { id: ToolId; color: string }) {
 
 export function QuickToolsCard() {
   const { navigate } = useRoute();
-  const Q = useLocale().dashboard.quickTools;
+  const L = useLocale();
+  const Q = L.dashboard.quickTools;
+  const N = L.auditTools.nav;
 
   const tools: { id: ToolId; route: Route; color: string; label: string; hint: string }[] = [
     { id: 'diagnostic', route: { name: 'diagnostic' },     color: '#7C3AED', label: Q.diagnostic.label, hint: Q.diagnostic.hint },
     { id: 'roi',        route: { name: 'roi-calculator' }, color: '#10B981', label: Q.roi.label,        hint: Q.roi.hint },
-    { id: 'worksheet',  route: { name: 'worksheet' },      color: '#F59E0B', label: 'Audit Temps → Argent', hint: 'Calcule avec tes vraies données, tâche par tâche' },
-    { id: 'visibility', route: { name: 'visibility' },     color: '#0EA5E9', label: 'Visibilité IA & Réseaux', hint: 'Présence dans ChatGPT/Perplexity + audit social' },
+    { id: 'worksheet',  route: { name: 'worksheet' },      color: '#F59E0B', label: N.worksheetLabel,   hint: N.worksheetHint },
+    { id: 'visibility', route: { name: 'visibility' },     color: '#0EA5E9', label: N.visibilityLabel,  hint: N.visibilityHint },
   ];
 
   const open = (id: ToolId, route: Route) => {

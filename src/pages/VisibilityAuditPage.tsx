@@ -3,13 +3,15 @@
  * Authenticated in-app tool: #/visibility
  *
  * Deterministic scored questionnaire (méthode §7.1 / §7.2): the user answers
- * Non / Partiel / Oui for each GEO and social check; the page shows live scores
+ * No / Partial / Yes for each GEO and social check; the page shows live scores
  * per dimension, an overall grade, and prioritized recommendations. No LLM.
- * French-first labels. Pure client tool + localStorage.
+ * Fully localized via T.auditTools.visibility (labels/recos keyed by question id).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRoute } from '../context/RouteContext';
+import { useLocale } from '../context/LocaleContext';
+import { format } from '../lib/locale/i18n';
 import { emit } from '../lib/analytics/events';
 import {
   computeVisibility, VISIBILITY_QUESTIONS,
@@ -17,17 +19,6 @@ import {
 } from '../lib/visibility/visibilityAudit';
 
 const STORAGE_KEY = 'ailunapro-visibility-v1';
-
-const CHOICES: Array<{ v: number; label: string }> = [
-  { v: 0,   label: 'Non' },
-  { v: 0.5, label: 'Partiel' },
-  { v: 1,   label: 'Oui' },
-];
-
-const DIM_META: Record<Dimension, { title: string; sub: string }> = {
-  geo:    { title: 'Visibilité IA (GEO / AI Search)', sub: 'Présence et exactitude dans ChatGPT, Perplexity, Gemini, Google AI.' },
-  social: { title: 'Réseaux sociaux & contenu',       sub: 'Autorité, métriques utiles, régularité, supervision du contenu IA.' },
-};
 
 const GRADE_COLOR: Record<Grade, string> = { A: 'var(--green-text)', B: '#2563EB', C: '#B45309', D: 'var(--red-text)' };
 
@@ -38,6 +29,8 @@ function loadAnswers(): Answers {
 
 export function VisibilityAuditPage() {
   const { navigate } = useRoute();
+  const V = useLocale().auditTools.visibility;
+  const byId = V.questions.byId as Record<string, { label: string; reco: string }>;
   const [answers, setAnswers] = useState<Answers>(loadAnswers);
 
   useEffect(() => {
@@ -48,7 +41,17 @@ export function VisibilityAuditPage() {
   const set = (id: string, v: number) => setAnswers(prev => ({ ...prev, [id]: v }));
   const reset = () => setAnswers({});
 
-  // Self-assessment: an untouched form must NOT show a red 0/100 "Note D" as if it
+  const CHOICES = [
+    { v: 0,   label: V.choices.non },
+    { v: 0.5, label: V.choices.partiel },
+    { v: 1,   label: V.choices.oui },
+  ];
+  const DIM_META: Record<Dimension, { title: string; sub: string }> = {
+    geo:    { title: V.dims.geoTitle,    sub: V.dims.geoSub },
+    social: { title: V.dims.socialTitle, sub: V.dims.socialSub },
+  };
+
+  // Self-assessment: an untouched form must NOT show a red 0/100 grade as if it
   // were a measured verdict. Gate the headline until at least one answer is given.
   const answered = result.dimensions.reduce((s, d) => s + d.answered, 0);
   const hasAnswers = answered > 0;
@@ -68,15 +71,13 @@ export function VisibilityAuditPage() {
     <div style={{ padding: '28px 24px', maxWidth: 920, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-          Auto-évaluation Visibilité IA & Réseaux sociaux
+          {V.title}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55, maxWidth: 720 }}>
-          Évalue ta présence dans les réponses des IA (GEO) et sur les réseaux sociaux.
-          Réponds <strong>Non / Partiel / Oui</strong> ; score et recommandations en direct.
+          {V.subtitle}
         </p>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.5, maxWidth: 720, fontStyle: 'italic' }}>
-          Indicateur de maturité déclaratif : le score reflète tes propres réponses, ce n’est pas une mesure
-          des moteurs IA. Pour un audit mesuré, demande un plan d’action.
+          {V.disclaimer}
         </p>
       </header>
 
@@ -84,23 +85,23 @@ export function VisibilityAuditPage() {
       {hasAnswers ? (
         <section style={{ ...card, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={statLabel}>Score global (déclaratif)</div>
+            <div style={statLabel}>{V.scoreGlobal}</div>
             <div style={{ fontSize: 48, fontWeight: 800, color: GRADE_COLOR[result.grade], lineHeight: 1 }}>
               {result.overallScore}<span style={{ fontSize: 18, color: 'var(--text-muted)' }}>/100</span>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: GRADE_COLOR[result.grade] }}>Note {result.grade}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: GRADE_COLOR[result.grade] }}>{V.note} {result.grade}</div>
           </div>
           {result.dimensions.map(d => (
             <div key={d.dimension} style={{ flex: '1 1 200px', minWidth: 180 }}>
               <div style={statLabel}>{DIM_META[d.dimension].title}</div>
               <Bar value={d.score} />
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{d.score}/100 · {d.answered}/{d.total} répondu</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{d.score}/100 · {format(V.answeredOf, { a: String(d.answered), t: String(d.total) })}</div>
             </div>
           ))}
         </section>
       ) : (
         <section style={{ ...card, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13.5 }}>
-          Réponds aux questions ci-dessous — ton score de maturité et tes recommandations s’afficheront ici.
+          {V.empty}
         </section>
       )}
 
@@ -112,7 +113,7 @@ export function VisibilityAuditPage() {
           <div style={{ display: 'grid', gap: 10 }}>
             {VISIBILITY_QUESTIONS.filter(q => q.dimension === dim).map(q => (
               <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{ flex: 1, minWidth: 220, fontSize: 13.5, color: 'var(--text-primary)' }}>{q.label}</span>
+                <span style={{ flex: 1, minWidth: 220, fontSize: 13.5, color: 'var(--text-primary)' }}>{byId[q.id]?.label ?? q.id}</span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {CHOICES.map(ch => {
                     const active = answers[q.id] === ch.v;
@@ -135,13 +136,13 @@ export function VisibilityAuditPage() {
       {/* Recommendations */}
       {result.recommendations.length > 0 && (
         <section style={card}>
-          <div style={sectionTitle}>Recommandations prioritaires</div>
+          <div style={sectionTitle}>{V.recosTitle}</div>
           <ol style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
             {result.recommendations.slice(0, 6).map((r, i) => (
               <li key={r.id} style={{ display: 'flex', gap: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
                 <span style={{ flex: '0 0 auto', width: 22, height: 22, borderRadius: 6, background: 'var(--violet)', color: '#fff', fontWeight: 800, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
                 <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>
-                  {r.text} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {r.dimension === 'geo' ? 'GEO' : 'Social'}</span>
+                  {byId[r.id]?.reco ?? r.id} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {r.dimension === 'geo' ? V.geoTag : V.socialTag}</span>
                 </span>
               </li>
             ))}
@@ -154,24 +155,24 @@ export function VisibilityAuditPage() {
         <section style={{ ...card, border: '1px solid var(--violet)', background: 'rgba(124,58,237,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 280px', minWidth: 240 }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-              Passe de la note {result.grade} à un plan d’action.
+              {format(V.cta.headline, { grade: result.grade })}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              On chiffre la mise en œuvre de tes {result.recommendations.length} priorités dans un devis.
+              {format(V.cta.body, { count: String(result.recommendations.length) })}
             </div>
           </div>
           <button
             onClick={() => { emit('cta_clicked', { flow: 'visibility', target: 'quote' }); navigate({ name: 'quote' }); }}
             style={{ padding: '12px 22px', borderRadius: 10, border: '1px solid var(--violet)', background: 'var(--violet)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
           >
-            Obtenir un plan d’action / devis →
+            {V.cta.button}
           </button>
         </section>
       )}
 
       <div style={{ marginTop: 14 }}>
         <button onClick={reset} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-          Réinitialiser
+          {V.reset}
         </button>
       </div>
     </div>
