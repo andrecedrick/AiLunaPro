@@ -76,9 +76,9 @@
 | W1 — Quick Win matrix | Impact×Effort matrix inside the Express PDF | standalone scored W1 cockpit + top-3 |
 | Smart Locale + Currency | currency **display** (deterministic FX snapshot) · **UI/content translation ✅ 8 languages** (B6.0/B6.5/B6.2, EN/FR/ES/IT/DE/PT/RU/ZH) · **FX-snapshot + currency unification ✅ (B6.7, 2026-06-17)** | Arabic + basic RTL (B6.6) · Latin-5 PDF i18n (B6.3) · regulatory/`narrative.ts` copy (deferred) |
 | SEO/GEO surfaces (§7ter) | public pages (audit-express, eu-ai-act, faq, methodologie, pricing, shadow-ai, use-cases) | sitemap.xml, schema.org, llms.txt |
-| **§21 Audit Temps→Argent (Worksheet, §9.26)** | moteur par tâche déterministe + parité C↔S + CRUD org-scoped sécurisé + catalogue 25 tâches (branche `feat/audit-worksheet`, ~700 tests) — **réalise W1 + une partie de X1** | CTA→Quote, i18n 8 langues, RBAC role-gate, handoff données, seed fabriqué — **gate must-fix §21.4** ; non mergé/déployé |
-| **§21 AI Visibility GEO/Social (§9.27)** | auto-évaluation scorée déterministe (12 q pondérées, grade A–D, recos) | CTA, i18n, relabel « auto-évaluation » + disclaimer, état neutre `answered>0` — **gate §21.4** ; non mergé |
-| **§21 ROI Advanced (§9.28)** | moteur Tᶜ chargé/COI/FTE/payback construit + testé | **code mort UI + route publique non-auth live** → retirer ou replier (décision §21.7) ; non mergé |
+| **§21 Audit Temps→Argent (Worksheet, §9.26)** ✅ DÉPLOYÉ 06-26 | moteur déterministe + parité C↔S + CRUD org-scoped **RBAC role-gate** + catalogue 25 tâches + **CTA→Quote** + inputs clampés + seed retiré (`204c8db`, prod-vérifié) — **réalise W1 + partie de X1** | **i18n 8 langues** + **handoff données** Worksheet→Quote (Sprint 2) |
+| **§21 AI Visibility GEO/Social (§9.27)** ✅ DÉPLOYÉ 06-26 | auto-évaluation scorée (12 q) **reframe** (disclaimer + `answered>0`) + **CTA→Quote** (prod-vérifié) | **i18n 8 langues** (Sprint 2) |
+| ~~§21 ROI Advanced (§9.28)~~ ❌ **SUPPRIMÉ 06-26** | — | moteur + route publique `roi-advanced-calculation` (prod 404) + constantes + test retirés (décision §21.7 #1) ; funnel ROI = K2A + Worksheet |
 | System Builder | static read-only skeleton (J9) | promotion to core nav (B3); persistence |
 
 **🔴 NOT DONE — requested/specced but never implemented** *(see §20 for specs)*
@@ -2364,7 +2364,7 @@ Chaque clôture DOIT produire :
 
 ### 18.1 Phases
 
-**🟡 §21 — Audit AI System (Temps→Argent + Visibility + ROI funnel)** — branche `feat/audit-worksheet`, **Sprint-1 must-fix EXÉCUTÉ** (2026-06-23, gate vert build + worker tsc + vitest 686 + i18n). Convergence : **ROI Advanced supprimé** (3 → 2 systèmes ROI, code mort + endpoint non-auth éliminés), **CTA→Quote** câblés sur Worksheet+Visibility, **RBAC role-gate** (billing/client 403), **endpoints ROI durcis** (CF-IP strict + daily-cap), **inputs clampés**, **tie-break code-point**, **seed fabriqué retiré** (départ vide + exemple), **Visibility reframe** (auto-évaluation + disclaimer + `answered>0`). **Reste avant GO :** §17 closure + merge + déploiement ; Sprint 2 = i18n 8 langues + handoff données Worksheet→Quote. Décisions tranchées §21.7. Détail complet → **§21**.
+**✅ §21 — Audit AI System (Temps→Argent + Visibility + ROI funnel)** — **MERGÉ `main` + DÉPLOYÉ PROD + vérifié 2026-06-26** (`204c8db` ff ; worker `ea994197` ; Pages `index-BryIZbfQ.js`). Sprint-1 must-fix exécuté + §17 gate vert (build + worker tsc + vitest 686 + i18n). Convergence : **ROI Advanced supprimé** (3 → 2 systèmes ROI, code mort + endpoint non-auth éliminés — prod 404 vérifié), **CTA→Quote** câblés (Worksheet+Visibility), **RBAC role-gate** (billing/client 403), **endpoints ROI durcis** (CF-IP strict + daily-cap), **inputs clampés**, **tie-break code-point**, **seed fabriqué retiré**, **Visibility reframe**. **Reste : Sprint 2** = i18n 8 langues + handoff données Worksheet→Quote. Décisions §21.7. Détail → **§21**.
 
 **✅ B6.7 — Currency unification + deterministic FX snapshot** — FAIT + clôturé (P0→P4, 2026-06-17, `73ae0cb` ; merged to `main`, frontend Pages + worker déployés, prod-vérifié). Couche unique `src/lib/currency` (FX_SNAPSHOT versionné, `useMoney`/`formatMoney`) ; détection devise via langue navigateur au boot ; ROI / résultats audit / agents / hints billing migrés (USD byte-identique, `≈` pour converti) ; live-FX (`/api/public/fx`) + geo-IP (`/api/public/geo`) supprimés (404 prod) ; `fxSnapshotVersion` stampé ; **Stripe billing intact**. FX = snapshot manuel versionné (pas d'API runtime). Voir §19.B6.
 
@@ -3449,11 +3449,14 @@ B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent 
 
 ## 21. Audit AI System — Temps→Argent + Visibility + ROI funnel *(🟡 CONSTRUIT, NON MERGÉ — branche `feat/audit-worksheet`, gated)*
 
-> **Statut (2026-06-23) :** branche `feat/audit-worksheet`, **non mergée / non déployée**. Revue experte
-> 3-rôles + **Sprint-1 must-fix EXÉCUTÉ** (gate vert : build + worker tsc + vitest 686 + i18n) :
-> ROI Advanced supprimé (3 → 2 systèmes), CTA→Quote câblés, RBAC role-gate, endpoints ROI durcis,
-> inputs clampés, seed fabriqué retiré, Visibility reframe. Détail §21.4. Source de méthode :
-> `docs/audit-ia-methode-complete.md`. **Reste avant GO :** §17 closure + merge + déploiement, puis Sprint 2 (i18n 8 langues, handoff données).
+> **Statut (2026-06-26) : ✅ MERGÉ `main` + DÉPLOYÉ PROD + vérifié.** `feat/audit-worksheet` (11 commits)
+> fast-forward → `main` (`204c8db`). §17 gate vert (build + worker tsc + vitest 686 + i18n + sécu + isolation +
+> scope + debug-strip). **Déployé :** worker `ailunapro-worker` version `ea994197` ; frontend Pages
+> `index-BryIZbfQ.js`. **Vérif prod :** healthz ok ; `POST /api/public/roi-advanced-calculation` → **404 (supprimé)** ;
+> `/api/public/roi-calculation` → 400 (live) ; `/api/worksheet/list` → 401 (gated) ; chunks Worksheet+Visibility
+> match local↔prod (sha256). Revue experte 3-rôles + Sprint-1 must-fix exécuté (ROI Advanced supprimé 3 → 2
+> systèmes, CTA→Quote, RBAC role-gate, endpoints ROI durcis, inputs clampés, seed retiré, Visibility reframe — §21.4).
+> **Reste : Sprint 2** (i18n 8 langues, handoff données Worksheet→Quote). Source méthode : `docs/audit-ia-methode-complete.md`.
 
 ### 21.0 Verdict
 **Concept aligné, exécution incomplète — ne PAS shipper en l'état, mais l'écart est du *câblage*, pas de la
