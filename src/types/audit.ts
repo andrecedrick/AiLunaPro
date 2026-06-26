@@ -93,6 +93,7 @@ export type Route =
   | { name: 'admin' }
   | { name: 'help' }
   | { name: 'system-builder' }
+  | { name: 'worksheet' }
   | { name: 'audit-express/saved' }
   | { name: 'audit-express/run' }
   | { name: 'audit-express/detail'; auditId: string }

@@ -17,7 +17,7 @@ import type { Route } from '../../types/audit';
  * funnel is preserved. A consent-gated, no-PII event measures per-surface CTR.
  */
 
-type ToolId = 'diagnostic' | 'roi';
+type ToolId = 'diagnostic' | 'roi' | 'worksheet';
 
 function ToolIcon({ id, color }: { id: ToolId; color: string }) {
   const s: CSSProperties = { width: 20, height: 20, color };
@@ -26,6 +26,17 @@ function ToolIcon({ id, color }: { id: ToolId; color: string }) {
     return (
       <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </svg>
+    );
+  }
+  if (id === 'worksheet') {
+    // grid — the time→money worksheet
+    return (
+      <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <line x1="3" y1="15" x2="21" y2="15" />
+        <line x1="9" y1="3" x2="9" y2="21" />
       </svg>
     );
   }
@@ -45,6 +56,7 @@ export function QuickToolsCard() {
   const tools: { id: ToolId; route: Route; color: string; label: string; hint: string }[] = [
     { id: 'diagnostic', route: { name: 'diagnostic' },     color: '#7C3AED', label: Q.diagnostic.label, hint: Q.diagnostic.hint },
     { id: 'roi',        route: { name: 'roi-calculator' }, color: '#10B981', label: Q.roi.label,        hint: Q.roi.hint },
+    { id: 'worksheet',  route: { name: 'worksheet' },      color: '#F59E0B', label: 'Audit Temps → Argent', hint: 'Calcule avec tes vraies données, tâche par tâche' },
   ];
 
   const open = (id: ToolId, route: Route) => {
