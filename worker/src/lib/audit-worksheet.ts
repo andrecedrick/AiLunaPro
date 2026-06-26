@@ -187,7 +187,9 @@ export function buildQuickWins(rows: WorksheetRow[]): QuickWin[] {
   wins.sort((a, b) =>
     b.priorityScore - a.priorityScore ||
     b.annualCost - a.annualCost ||
-    a.label.localeCompare(b.label),
+    // Locale-INDEPENDENT tie-break (code points) — must be byte-identical on the
+    // client (browser ICU) and the worker (V8 default), so NEVER use localeCompare.
+    (a.label < b.label ? -1 : a.label > b.label ? 1 : 0),
   );
   return wins;
 }

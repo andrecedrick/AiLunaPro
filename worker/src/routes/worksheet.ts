@@ -25,13 +25,20 @@ type Bindings = AppEnv['Bindings'];
 const COLLECTION = (orgId: string) => `organizations/${orgId}/worksheets`;
 const safeId = (v: unknown): string => (typeof v === 'string' ? v.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) : '');
 
+/**
+ * Roles allowed to read/write worksheets. A worksheet holds the org's net-income
+ * financial inputs, so the content roles only — `billing` and `client` are members
+ * of the org but must NOT reach this data (mirror of the content-member model).
+ */
+const WORKSHEET_ROLES: readonly string[] = ['owner', 'admin', 'member'];
+
 /** Non-PII title from the input (task count); never stores raw labels here. */
 function deriveTitle(input: WorksheetInput): string {
   const n = input.tasks.length;
   return `Audit Temps → Argent (${n} tâche${n > 1 ? 's' : ''})`;
 }
 
-async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string } | Response> {
+async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string; role: string } | Response> {
   const env = c.env as Bindings;
   c.header('Cache-Control', 'no-store');
   const authHeader = c.req.header('Authorization') ?? '';
@@ -41,8 +48,11 @@ async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string } 
   if (!orgId) return c.json({ error: 'orgId required.', code: 'ORG_REQUIRED' }, 400);
   if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 500);
   const member = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/members/${uid}`);
-  if (!member) return c.json({ error: 'Not a member of this workspace.', code: 'FORBIDDEN' }, 403);
-  return { uid };
+  const role = typeof member?.role === 'string' ? member.role : '';
+  if (!member || !role) return c.json({ error: 'Not a member of this workspace.', code: 'FORBIDDEN' }, 403);
+  // RBAC: financial worksheet is content-role only — billing/client are denied.
+  if (!WORKSHEET_ROLES.includes(role)) return c.json({ error: 'Your role cannot access worksheets.', code: 'FORBIDDEN_ROLE' }, 403);
+  return { uid, role };
 }
 
 worksheet.post('/api/worksheet/save', async c => {
@@ -60,16 +70,34 @@ worksheet.post('/api/worksheet/save', async c => {
   const input = body.input as WorksheetInput;
 
   const scored = scoreWorksheet(input);
+
+  // Provenance integrity: never trust a client-supplied id/createdAt/owner.
+  //  - create  → server generates the id, stamps createdAt now, owner = caller.
+  //  - update  → only the original creator (or owner/admin) may overwrite an
+  //    existing doc; its createdAt + createdByUid are preserved (anti-clobber/forge).
   const providedId = safeId(body.worksheetId);
-  const worksheetId = providedId || generateWorksheetId();
-  const createdAt = (typeof body.createdAt === 'string' && !Number.isNaN(Date.parse(body.createdAt)))
-    ? new Date(body.createdAt).toISOString() : new Date().toISOString();
+  let worksheetId = generateWorksheetId();
+  let createdAt   = new Date().toISOString();
+  let createdByUid = g.uid;
+  if (providedId) {
+    const existing = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${providedId}`);
+    if (existing) {
+      const ownerUid = typeof existing.createdByUid === 'string' ? existing.createdByUid : '';
+      if (ownerUid && ownerUid !== g.uid && g.role !== 'owner' && g.role !== 'admin') {
+        return c.json({ error: 'Not your worksheet.', code: 'FORBIDDEN' }, 403);
+      }
+      worksheetId  = providedId;
+      createdAt    = typeof existing.createdAt === 'string' ? existing.createdAt : createdAt;
+      createdByUid = ownerUid || g.uid;
+    }
+    // providedId for a non-existent doc → fall through to a server-generated create.
+  }
   const title = deriveTitle(input);
 
   const doc: Record<string, string | number> = {
     worksheetId,
     title,
-    createdByUid: g.uid,
+    createdByUid,
     createdAt,
     updatedAt: new Date().toISOString(),
     rulesetVersion: scored.rulesetVersion,

@@ -58,30 +58,9 @@ export const WORKFLOW_TO_AGENTS: Record<Workflow, [string, string]> = {
  */
 export const AGENT_DEFAULT_MONTHLY_USD = 99;
 
-/* ────────────────────────────────────────────────────────────
- * Advanced ROI engine (G5) — time→money constants.
- * Authoritative copy. Mirrored byte-for-byte in src/data/roi-config.ts;
- * drift is locked by tests/unit/roi-advanced-parity.test.ts.
- * Derived from the "AUDIT TEMPS → ARGENT" method (docs/audit-ia-methode-complete.md §1).
- * ──────────────────────────────────────────────────────────── */
-
-/** Average number of weeks per month (52 / 12). Converts weekly ↔ monthly hours. */
-export const WEEKS_PER_MONTH = 4.33;
-
-/** Working days per year — basis for the per-day Cost-of-Inaction figure. */
-export const WORKING_DAYS_PER_YEAR = 260;
-
-/** Productive hours per full-time-equivalent per year (net of leave/overhead). */
-export const PRODUCTIVE_HOURS_PER_FTE = 1800;
-
 /**
- * Default "loaded cost" coefficient applied to a raw hourly rate to obtain the
- * fully-charged employer cost (salary + charges + leave + tools + overhead).
- * Method range: 1.5–2.3. Default 1.8.
+ * Average number of weeks per month (52 / 12). Converts weekly ↔ monthly hours.
+ * Authoritative copy used by the Audit Temps→Argent worksheet engine
+ * (worker/src/lib/audit-worksheet.ts); mirrored in src/data/roi-config.ts.
  */
-export const LOAD_COEFFICIENT_DEFAULT = 1.8;
-export const LOAD_COEFFICIENT_MIN     = 1.0;
-export const LOAD_COEFFICIENT_MAX     = 3.0;
-
-/** Hard cap on the share of a task removable by automation (no task is 100%). */
-export const AUTOMATION_RATE_MAX = 0.95;
+export const WEEKS_PER_MONTH = 4.33;

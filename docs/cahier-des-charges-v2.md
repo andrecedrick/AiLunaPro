@@ -76,6 +76,9 @@
 | W1 — Quick Win matrix | Impact×Effort matrix inside the Express PDF | standalone scored W1 cockpit + top-3 |
 | Smart Locale + Currency | currency **display** (deterministic FX snapshot) · **UI/content translation ✅ 8 languages** (B6.0/B6.5/B6.2, EN/FR/ES/IT/DE/PT/RU/ZH) · **FX-snapshot + currency unification ✅ (B6.7, 2026-06-17)** | Arabic + basic RTL (B6.6) · Latin-5 PDF i18n (B6.3) · regulatory/`narrative.ts` copy (deferred) |
 | SEO/GEO surfaces (§7ter) | public pages (audit-express, eu-ai-act, faq, methodologie, pricing, shadow-ai, use-cases) | sitemap.xml, schema.org, llms.txt |
+| **§21 Audit Temps→Argent (Worksheet, §9.26)** | moteur par tâche déterministe + parité C↔S + CRUD org-scoped sécurisé + catalogue 25 tâches (branche `feat/audit-worksheet`, ~700 tests) — **réalise W1 + une partie de X1** | CTA→Quote, i18n 8 langues, RBAC role-gate, handoff données, seed fabriqué — **gate must-fix §21.4** ; non mergé/déployé |
+| **§21 AI Visibility GEO/Social (§9.27)** | auto-évaluation scorée déterministe (12 q pondérées, grade A–D, recos) | CTA, i18n, relabel « auto-évaluation » + disclaimer, état neutre `answered>0` — **gate §21.4** ; non mergé |
+| **§21 ROI Advanced (§9.28)** | moteur Tᶜ chargé/COI/FTE/payback construit + testé | **code mort UI + route publique non-auth live** → retirer ou replier (décision §21.7) ; non mergé |
 | System Builder | static read-only skeleton (J9) | promotion to core nav (B3); persistence |
 
 **🔴 NOT DONE — requested/specced but never implemented** *(see §20 for specs)*
@@ -2361,6 +2364,8 @@ Chaque clôture DOIT produire :
 
 ### 18.1 Phases
 
+**🟡 §21 — Audit AI System (Temps→Argent + Visibility + ROI funnel)** — branche `feat/audit-worksheet`, **Sprint-1 must-fix EXÉCUTÉ** (2026-06-23, gate vert build + worker tsc + vitest 686 + i18n). Convergence : **ROI Advanced supprimé** (3 → 2 systèmes ROI, code mort + endpoint non-auth éliminés), **CTA→Quote** câblés sur Worksheet+Visibility, **RBAC role-gate** (billing/client 403), **endpoints ROI durcis** (CF-IP strict + daily-cap), **inputs clampés**, **tie-break code-point**, **seed fabriqué retiré** (départ vide + exemple), **Visibility reframe** (auto-évaluation + disclaimer + `answered>0`). **Reste avant GO :** §17 closure + merge + déploiement ; Sprint 2 = i18n 8 langues + handoff données Worksheet→Quote. Décisions tranchées §21.7. Détail complet → **§21**.
+
 **✅ B6.7 — Currency unification + deterministic FX snapshot** — FAIT + clôturé (P0→P4, 2026-06-17, `73ae0cb` ; merged to `main`, frontend Pages + worker déployés, prod-vérifié). Couche unique `src/lib/currency` (FX_SNAPSHOT versionné, `useMoney`/`formatMoney`) ; détection devise via langue navigateur au boot ; ROI / résultats audit / agents / hints billing migrés (USD byte-identique, `≈` pour converti) ; live-FX (`/api/public/fx`) + geo-IP (`/api/public/geo`) supprimés (404 prod) ; `fxSnapshotVersion` stampé ; **Stripe billing intact**. FX = snapshot manuel versionné (pas d'API runtime). Voir §19.B6.
 
 **✅ J1 — Stripe intégration réelle (test mode)** — FAIT
@@ -3425,8 +3430,8 @@ B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent 
 - **🔴 U1 — Mode assisté zéro-expertise** *(transversal)*: 1-action-per-screen wizard, "Luna does it for you". **AC:** a non-technical user completes the 9 steps alone.
 - **🟡 V1 — Analyse de site** *(high)*: lightweight crawl → company profile + detected stack/AI. **Shipped lite** via Audit Express `runExtraction`. **Missing:** editable fiche + standalone surface. **AC:** URL → editable profile + tools.
 - **🔴 K5 — Document Intelligence**: upload PDF/DOCX/XLSX/CSV → R2 + **Vectorize (namespace orgId)** → company fiche + audit quality score; at-rest encryption, PII detection, org isolation, erasure. **AC:** 3 docs → fiche + ≥5 tasks + ≥1 risk, source-traced. **Conflict with §19.B5 RESOLVED 2026-06-11** (§0bis.3): the deterministic/no-LLM document flow shipped as **B5/B5.1** (`c4fe055`+`7bb273a`); this **K5 RAG/Vectorize/LLM variant stays 🔴** and remains gated by the no-LLM guardrail.
-- **🟡 W1 — Quick Win matrix** *(high)*: Impact×Effort scoring on detected tasks → 2×2 matrix + top-3. **Partial** (matrix inside Express PDF). **Missing:** standalone scored cockpit. **AC:** detected tasks → matrix + explained top-3.
-- **🔴 X1 — Audit of AI-in-place & OPEX reduction** *(high)*: inventory current AI tools + monthly cost → detect redundancy/oversizing/Shadow-AI → propose consolidation/model-change/renegotiation → quantify €/mo + payback; feeds ROI (K2A) + reco (K3+). **AC:** 3+ tools → before/after table + €/mo savings + 3 actions.
+- **🟡 W1 — Quick Win matrix** *(high)*: Impact×Effort scoring on detected tasks → 2×2 matrix + top-3. **Partial** (matrix inside Express PDF). **Missing:** standalone scored cockpit. **AC:** detected tasks → matrix + explained top-3. **→ Avancé par §21/§9.26 :** le Worksheet ajoute un cockpit Quick-Wins scoré (`priorityScore`, effort low/medium, top-N expliqué) — reste à câbler CTA + merge (§21.4).
+- **🔴 X1 — Audit of AI-in-place & OPEX reduction** *(high)*: inventory current AI tools + monthly cost → detect redundancy/oversizing/Shadow-AI → propose consolidation/model-change/renegotiation → quantify €/mo + payback; feeds ROI (K2A) + reco (K3+). **AC:** 3+ tools → before/after table + €/mo savings + 3 actions. **→ Partiellement avancé par §21/§9.26 :** le Worksheet quantifie le €/an récupérable par tâche + verdict automate/delegate ; **manque** l'inventaire d'outils IA en place + table avant/après (X1 reste 🔴 sur ce périmètre).
 - **🔴 K3+ — Recommendation Fork**: AiLunaPro-coverage score; ≥ threshold → AiLunaPro (badge) else managed agents (L3); mandatory transparency ("when external is better"). *(K3A base is ✅; the fork extension is 🔴.)*
 - **🔴 K6 — Luna Copilot** *(detailed tech spec)*: conversational agent orchestrating the 9-step journey. **Stack:** Cloudflare Worker **SSE streaming**, state in Firestore `audit_sessions/{id}`, **Anthropic API (Claude) tool-use** orchestrator, RAG via Vectorize+R2 (K5). Tools: `analyze_site`, `query_documents`, `run_diagnostic`, `audit_existing_ai`, `quick_win_matrix`, `classify_eu_ai_act`, `calculate_roi`, `recommend_agents`, `build_quote`, `draft_contract`, `generate_sop`, `save_audit_state`. APIs: `POST /api/copilot/session`, `POST /api/copilot/message` (SSE), `GET /api/copilot/session/{id}`. **AC:** one session produces profile→diagnostic→OPEX audit→Quick-Win→ROI→forked reco→decision→offer→SOP, with save/resume, no dead form, no PII leak. **Conflict with §19.B4 RESOLVED 2026-06-11** (§0bis.3): the deterministic/rule-based Luna surface shipped as **B4** (`bdaef89`); this **K6 LLM/Anthropic-SSE-agent variant stays 🔴** and remains gated by the no-LLM guardrail.
 - **🔴 L3 — Managed quote** *(€ calibration, SLA)*: setup + monthly calibrated price + SLA. **AC:** full quote with specs/SLA/billing.
@@ -3439,6 +3444,105 @@ B7 product hygiene / final inspection · **B8 Guided User Journey & Intelligent 
 - **✅ Already delivered from v2.4** (recorded for completeness; closed): §3bis Audit Express, §3ter P1 PDF Renderer, §0.4/§3quater Determinism, §7bis NFR (cache/chunk/Firestore/PostHog). **🟡** §7ter SEO/GEO surfaces (partial).
 
 > **Sequencing note (from v2.4 roadmap, not committed):** J1.5 = K5+V1+X1+U1 · J1.6 = K6+W1 · J1.7 = L3+L4+Y1 · J1.8 = R1 · J1.9 = S1+T1 · J1.10 = Q1. Listed for traceability only — **all gated**, no GO given.
+
+---
+
+## 21. Audit AI System — Temps→Argent + Visibility + ROI funnel *(🟡 CONSTRUIT, NON MERGÉ — branche `feat/audit-worksheet`, gated)*
+
+> **Statut (2026-06-23) :** branche `feat/audit-worksheet`, **non mergée / non déployée**. Revue experte
+> 3-rôles + **Sprint-1 must-fix EXÉCUTÉ** (gate vert : build + worker tsc + vitest 686 + i18n) :
+> ROI Advanced supprimé (3 → 2 systèmes), CTA→Quote câblés, RBAC role-gate, endpoints ROI durcis,
+> inputs clampés, seed fabriqué retiré, Visibility reframe. Détail §21.4. Source de méthode :
+> `docs/audit-ia-methode-complete.md`. **Reste avant GO :** §17 closure + merge + déploiement, puis Sprint 2 (i18n 8 langues, handoff données).
+
+### 21.0 Verdict
+**Concept aligné, exécution incomplète — ne PAS shipper en l'état, mais l'écart est du *câblage*, pas de la
+refonte.** Les cœurs de calcul sont excellents : déterministes, parité client↔serveur byte-for-byte (tests
+verts), isolation multi-tenant du worksheet *saine* (membership-gate, `safeId`, paths org-scoped, recompute
+serveur autoritaire). Trois défauts confirmés cassent la productisation : (1) **Worksheet et Visibility sont
+des culs-de-sac de conversion** (zéro CTA `navigate()`/devis au pic d'intention) → les modules *diluent* au
+lieu de convertir ; (2) **les 2 pages sont 100 % en dur en français (0 i18n)** dans un produit 8 langues ;
+(3) **silo parallèle** — aucun handoff de données vers audit / quote / reco. La **séparation ROI public ↔
+Worksheet authed est correcte et conservée** ; la vraie redondance est le **moteur ROI Advanced** (mort en UI
++ route publique non authentifiée live) → à retirer ou replier sous le Worksheet.
+
+### 21.1 Modules (numérotés sous §9 « Modules fonctionnels »)
+
+**#### 9.26 — Audit Temps→Argent (Worksheet)** — `#/worksheet`, **authed**.
+Moteur par tâche : `monthlyNetIncome` + `weeklyWorkHours` + `incomePeriod` (week/month/year) → `hourlyRate`
+chargé ; par tâche `(label, weeklyHours, who, rules, energy)` → **verdict** (table de vérité 18 combos :
+self+energizing=`keep` / self+autre=`rethink` / anyone+rules=yes=`automate` / sinon=`delegate`),
+`annualCost = weeklyHours×52×rate`, `recoveredHours` (si automate/delegate), **Quick-Wins** triés par
+`priorityScore = annualCost/(effort)`. Catalogue **25 tâches** + désambiguïsation (11 règles, calls in/out…).
+Serveur autoritaire `scoreWorksheet` (`worker/src/lib/audit-worksheet.ts`) + miroir client
+(`src/lib/worksheet/auditWorksheet.ts`, parité verrouillée par test). Persistance `organizations/{orgId}/worksheets/{id}`,
+recompute serveur (résultat client ignoré), `firestore.rules` deny lecture client (inputs financiers worker-only).
+Fallback `localStorage` hors-ligne. **Réalise concrètement W1 (cockpit Quick-Win) + une partie de X1 (€/an récupérable).**
+
+**#### 9.27 — AI Visibility (GEO) + Social audit** — `#/visibility`, authed.
+**Auto-évaluation déterministe sans LLM** : 12 questions (6 GEO + 6 social), réponses 0 / 0,5 / 1, moyenne
+pondérée → score 0–100 + grade A–D, recommandations émises sous seuil 0,75 triées par `poids×(1−réponse)`.
+**Ce n'est PAS une mesure** : aucune requête réelle ChatGPT/Perplexity n'est faite — c'est le déclaratif de
+l'utilisateur. → doit être **étiqueté « auto-évaluation / indicateur de maturité »** avec disclaimer + lien méthode.
+Extension scorée du §7ter (SEO/GEO) — à **ne pas confondre** : §7ter = pages publiques SEO ; §9.27 = audit scoré déclaratif.
+
+**#### 9.28 — ROI funnel (bridge + double moteur)** — `#/roi-calculator` (public) → `#/worksheet` (authed).
+Deux on-ramps convergeant vers **une** sortie payante (Quote/Audit) : ROI Calculator public K2A simple
+(`SAVINGS_RATE` plat + placeholder mensuel) = lead-magnet trafic froid ; Worksheet = approfondissement real-data.
+**Décision : « no merge, keep both »** — séparation correcte (profondeur/audience/auth différentes).
+**Moteur ROI Advanced (`roi-advanced.ts`, modèle Tᶜ chargé/COI/FTE/payback/ROI%) : ❌ SUPPRIMÉ (2026-06-23).**
+Était construit + testé + route publique `POST /api/public/roi-advanced-calculation` live, mais
+`computeRoiAdvancedPreview` sans aucun appelant UI → code mort + endpoint non authentifié + 3ᵉ définition ROI
+concurrente. Décision §21.7 #1 : moteurs client+serveur, route, constantes dédiées et test de parité retirés.
+Funnel ROI = 2 surfaces (K2A public + Worksheet authed), modèle Tᶜ centralisé dans le seul Worksheet.
+
+### 21.2 Positionnement & placement funnel (l'échelle d'acquisition→conversion)
+| Module | Classification | Étape funnel | Règle |
+|---|---|---|---|
+| ROI Calculator (K2A public) | **lead-magnet** | Acquérir (trafic froid) | Garder gratuit, value-first ; gate email au moment de valeur. Ne PAS paywaller. |
+| Worksheet Temps→Argent | **upsell** | Approfondir (post-signup → fabrique le devis) | Gratuit d'usage ; monétiser en aval via Quote/Audit, jamais l'outil. |
+| Visibility GEO/Social | **lead-magnet (secondaire, dépriorisé)** | Acquérir (hook léger) | Reframe auto-évaluation ; 1ᵉʳ candidat à couper si focus requis. Pas de SKU GEO récurrent → ne pas sur-investir. |
+| ROI Advanced (standalone) | **— (retirer / replier)** | aucune | Code mort + endpoint non-auth. Retirer la route ou replier sous Worksheet. |
+
+### 21.3 Dépendances
+Existant réutilisé : `roi-config` (SAVINGS_RATE, WORKFLOW_TO_AGENTS, constantes), `determinism` (stamp/trace),
+`firestoreAdmin`, `verifyIdToken`, `useMoney`/`formatMoney` (B6.7), funnel analytics `track()` (§quote), page
+Quote/Invoice (§L/§quote). Nouvelles : collection `organizations/{orgId}/worksheets` (+ règle), routes worker
+`worksheet.ts` (CRUD) & `roi.ts` (public). **Manque (must-fix) : le câblage CTA→Quote et le handoff de données.**
+
+### 21.4 Gate must-fix avant merge (classé) — ✅ EXÉCUTÉ Sprint 1 (2026-06-23)
+**✅ FAIT (gate vert : build + worker tsc + vitest 686 + i18n) :**
+1. ✅ **CTA Quote sur Worksheet ET Visibility** (`navigate({name:'quote'})` + `track('cta_clicked',{flow,target:'quote'})`) — culs-de-sac → conversion.
+2. ✅ **RBAC role-gate** : `gate()` lit `member.role`, refuse `billing`/`client` (403 `FORBIDDEN_ROLE`) sur save/list/detail/delete.
+3. ✅ **Endpoints ROI publics durcis** : `CF-Connecting-IP` strict (X-Forwarded-For supprimé), `checkDailyCap` per-IP (50/j). (Route advanced supprimée → 1 seule route à durcir.)
+4. ✅ **ROI Advanced SUPPRIMÉ** : moteurs client+serveur + route publique + constantes + test de parité retirés ; code mort + endpoint non-auth éliminés.
+5. 🟡 **i18n** : **décidé FR-first gaté** (report enregistré §21.7 #2) ; localisation 8 langues = Sprint 2.
+6. ✅ **Clamp/parse inputs Worksheet** : `parseNum()` (`,`→`.`, rejet négatif/non-fini) sur revenu + heures + heures-tâche → la preview live ne peut plus diverger du worker.
+7. ✅ **Tie-break Quick-Wins** : comparateur code-point (locale-indépendant) dans les 2 fichiers moteur.
+8. ✅ **Seed fabriqué retiré** : départ vide honnête + bouton « Charger un exemple » ; Reset → vide.
+9. ✅ **`worksheetId` serveur** : id généré serveur à la création ; update vérifie `existing.createdByUid` (créateur ou owner/admin) + préserve `createdAt` ; `createdAt` client n'est plus de confiance.
+10. ✅ **Visibility headline** gaté `answered>0` (état neutre) + relabel « auto-évaluation / maturité » + disclaimer.
+
+**⚠️ DIFFÉRÉ (Sprint 2–3) :** test d'intégration RBAC 403 (billing/client) ; test parité tie-break sur égalité exacte ; handoff DONNÉES Worksheet→Quote (prefill `annualValueRecovered` + tâches — exige modif page Quote) ; capture lead au save anon + event `worksheet_completed` ; persistance currency dans l'input sauvé ; mode guidé non-expert ; source unique `roi-config` (re-export + deepEqual) ; cap nombre worksheets/org.
+
+**✅ SÛR (vérifié, aucun changement requis) :** isolation cross-tenant worksheet ; parité client↔serveur des cœurs ; déterminisme (no Date/random/locale dans le compute) ; gardes div-by-zero (rate, payback, ROI%, FTE).
+
+### 21.5 Réconciliation (nettoyage spec — concepts dupliqués / contradictions)
+- **§3 « Tâches automatisables (catalogue) »** : liste plate **supersédée** par le catalogue 25-tâches + désambiguïsation de §9.26 (cross-link).
+- **§11 K2A ROI Calculator** ↔ §9.26 ↔ méthode Tᶜ : **trois modèles ROI divergent silencieusement** (K2A plat `SAVINGS_RATE`+placeholder ; Worksheet Tᶜ chargé ; ROI Advanced Tᶜ). **Conflit central** — nommer le modèle canonique par surface (K2A=public simple, Tᶜ=authed/consulting).
+- **§5 modèle éco / §6 Stripe** : liste devises (USD/EUR/GBP/CAD/AUD) à réconcilier avec le sélecteur Worksheet + snapshot FX B6.7 ; **absence de SKU audit-payant** notée par la méthode (funnel).
+- **§7ter SEO/GEO** ↔ §9.27 : ajouter la phrase de désambiguïsation (pages-SEO ≠ audit GEO scoré).
+- **W1 / X1 (§20)** : marqués partiellement avancés par §9.26 (cockpit Quick-Win + €/an récupérable) — voir lignes §20.
+
+### 21.6 Roadmap (3 sprints)
+- **Sprint 1 — Débloquer le ship :** must-fix §21.4 (1–10) + handoff minimal Worksheet→Quote prefill ; puis **§17 closure** (build/tsc, sécu, routing, re-vérif cross-tenant) → documenter §9.26/9.27/9.28 + ligne ledger §0bis.2 + entrée §18.1 → **merge `feat/audit-worksheet` → main** + déploiement (vérif bundle-hash/healthz). FR-first acceptable si **décidé explicitement**.
+- **Sprint 2 — Qualité & confiance :** i18n complet (8 langues) Worksheet+Visibility+data files+Sidebar/QuickTools ; retirer seed fabriqué (état vide + exemple) ; Visibility honnête (état neutre, relabel, disclaimer, lien méthode) ; capture compte au save anon + event `worksheet_completed` ; persister currency créée ; règle de verdict près de l'entête + tooltips colonnes ; réconcilier conflit modèle ROI (§11).
+- **Sprint 3 — Polish & consolidation (paid-traffic-ready) :** source unique `roi-config` (re-export + deepEqual incl. MIN/MAX/DEFAULT) ; ROI Advanced (si conservé) cap plausibilité + flag `FTE>teamSize` ; mode guidé Worksheet + rationale par ligne ; cap worksheets/org ou cooldown save ; fix grouping mixte-locale RoiCalculatorPage ; passe réconciliation cross-doc (§15 KPIs ↔ méthode §11 ; features méthode §12 promises → backlog référencé-ou-différé).
+
+### 21.7 Décisions — TRANCHÉES (2026-06-23)
+1. **ROI Advanced → SUPPRIMÉ.** Moteur client+serveur, route publique `/api/public/roi-advanced-calculation`, constantes dédiées et test de parité supprimés. Collapse 3 → 2 systèmes ROI. Élimine code mort + endpoint non-auth + 3ᵉ définition ROI concurrente.
+2. **i18n → FR-first gaté, décidé.** Worksheet + Visibility restent FR pour le ship Sprint 1 (décision enregistrée, pas régression silencieuse) ; localisation 8 langues = Sprint 2.
+3. **Visibility → CONSERVÉ + reframe.** Relabel « auto-évaluation / indicateur de maturité » + disclaimer + score gaté `answered>0`. Dépriorisé (pas de SKU GEO récurrent).
 
 ---
 

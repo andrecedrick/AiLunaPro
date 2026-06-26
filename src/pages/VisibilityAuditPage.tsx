@@ -9,6 +9,8 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRoute } from '../context/RouteContext';
+import { track } from '../lib/analytics/track';
 import {
   computeVisibility, VISIBILITY_QUESTIONS,
   type Answers, type Dimension, type Grade,
@@ -35,6 +37,7 @@ function loadAnswers(): Answers {
 }
 
 export function VisibilityAuditPage() {
+  const { navigate } = useRoute();
   const [answers, setAnswers] = useState<Answers>(loadAnswers);
 
   useEffect(() => {
@@ -45,37 +48,52 @@ export function VisibilityAuditPage() {
   const set = (id: string, v: number) => setAnswers(prev => ({ ...prev, [id]: v }));
   const reset = () => setAnswers({});
 
+  // Self-assessment: an untouched form must NOT show a red 0/100 "Note D" as if it
+  // were a measured verdict. Gate the headline until at least one answer is given.
+  const answered = result.dimensions.reduce((s, d) => s + d.answered, 0);
+  const hasAnswers = answered > 0;
+
   const dims: Dimension[] = ['geo', 'social'];
 
   return (
     <div style={{ padding: '28px 24px', maxWidth: 920, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-          Audit Visibilité IA & Réseaux sociaux
+          Auto-évaluation Visibilité IA & Réseaux sociaux
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55, maxWidth: 720 }}>
           Évalue ta présence dans les réponses des IA (GEO) et sur les réseaux sociaux.
           Réponds <strong>Non / Partiel / Oui</strong> ; score et recommandations en direct.
         </p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.5, maxWidth: 720, fontStyle: 'italic' }}>
+          Indicateur de maturité déclaratif : le score reflète tes propres réponses, ce n’est pas une mesure
+          des moteurs IA. Pour un audit mesuré, demande un plan d’action.
+        </p>
       </header>
 
-      {/* Score banner */}
-      <section style={{ ...card, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={statLabel}>Score global</div>
-          <div style={{ fontSize: 48, fontWeight: 800, color: GRADE_COLOR[result.grade], lineHeight: 1 }}>
-            {result.overallScore}<span style={{ fontSize: 18, color: 'var(--text-muted)' }}>/100</span>
+      {/* Score banner — neutral until the user has answered at least one question. */}
+      {hasAnswers ? (
+        <section style={{ ...card, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={statLabel}>Score global (déclaratif)</div>
+            <div style={{ fontSize: 48, fontWeight: 800, color: GRADE_COLOR[result.grade], lineHeight: 1 }}>
+              {result.overallScore}<span style={{ fontSize: 18, color: 'var(--text-muted)' }}>/100</span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: GRADE_COLOR[result.grade] }}>Note {result.grade}</div>
           </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: GRADE_COLOR[result.grade] }}>Note {result.grade}</div>
-        </div>
-        {result.dimensions.map(d => (
-          <div key={d.dimension} style={{ flex: '1 1 200px', minWidth: 180 }}>
-            <div style={statLabel}>{DIM_META[d.dimension].title}</div>
-            <Bar value={d.score} />
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{d.score}/100</div>
-          </div>
-        ))}
-      </section>
+          {result.dimensions.map(d => (
+            <div key={d.dimension} style={{ flex: '1 1 200px', minWidth: 180 }}>
+              <div style={statLabel}>{DIM_META[d.dimension].title}</div>
+              <Bar value={d.score} />
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{d.score}/100 · {d.answered}/{d.total} répondu</div>
+            </div>
+          ))}
+        </section>
+      ) : (
+        <section style={{ ...card, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13.5 }}>
+          Réponds aux questions ci-dessous — ton score de maturité et tes recommandations s’afficheront ici.
+        </section>
+      )}
 
       {/* Questions by dimension */}
       {dims.map(dim => (
@@ -119,6 +137,26 @@ export function VisibilityAuditPage() {
               </li>
             ))}
           </ol>
+        </section>
+      )}
+
+      {/* Conversion — turn a weak score into a paid action plan. */}
+      {hasAnswers && result.recommendations.length > 0 && (
+        <section style={{ ...card, border: '1px solid var(--violet)', background: 'rgba(124,58,237,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 280px', minWidth: 240 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+              Passe de la note {result.grade} à un plan d’action.
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              On chiffre la mise en œuvre de tes {result.recommendations.length} priorités dans un devis.
+            </div>
+          </div>
+          <button
+            onClick={() => { track('cta_clicked', { flow: 'visibility', target: 'quote' }); navigate({ name: 'quote' }); }}
+            style={{ padding: '12px 22px', borderRadius: 10, border: '1px solid var(--violet)', background: 'var(--violet)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Obtenir un plan d’action / devis →
+          </button>
         </section>
       )}
 

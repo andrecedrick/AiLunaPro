@@ -15,6 +15,8 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useRoute } from '../context/RouteContext';
+import { track } from '../lib/analytics/track';
 import { useMoney } from '../lib/currency/useMoney';
 import { SUPPORTED_CURRENCIES, type Currency } from '../lib/billing/currencyConstants';
 import {
@@ -47,6 +49,16 @@ const VERDICT_META: Record<Verdict, { label: string; bg: string; fg: string }> =
 
 let seq = 0;
 const newRowId = () => `r${Date.now().toString(36)}${(seq++).toString(36)}`;
+
+/**
+ * Parse a user-typed number safely: accept comma decimals (fr-FR audience),
+ * reject negative / non-finite / NaN. The live preview can never enter a value
+ * the worker would 400-reject, and a stray '-5' or '1,5' can't corrupt totals.
+ */
+const parseNum = (s: string): number => {
+  const n = Number(String(s).replace(',', '.').trim());
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+};
 
 function seedTasks(): TaskRow[] {
   const seed: Array<[string, number, Who, Rules, Energy]> = [
@@ -85,13 +97,15 @@ function loadPersisted(): Persisted | null {
 
 export function WorksheetPage() {
   const { session } = useAuth();
+  const { navigate } = useRoute();
   const orgId = session?.orgId ?? '';
   const money = useMoney();
   const hf = useMemo(() => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }), []);
 
   const persisted = useMemo(loadPersisted, []);
-  const [monthlyIncome, setMonthlyIncome] = useState(persisted?.monthlyNetIncome ?? '7000');
-  const [weeklyHours, setWeeklyHours]     = useState(persisted?.weeklyWorkHours ?? '60');
+  // Honest empty start — NO fabricated numbers. The user loads an example on demand.
+  const [monthlyIncome, setMonthlyIncome] = useState(persisted?.monthlyNetIncome ?? '');
+  const [weeklyHours, setWeeklyHours]     = useState(persisted?.weeklyWorkHours ?? '');
   const [incomePeriod, setIncomePeriod]   = useState<IncomePeriod>(persisted?.incomePeriod ?? 'month');
   const [currency, setCurrency]           = useState<Currency>(persisted?.currency ?? money.currency);
   const nf = useMemo(
@@ -102,10 +116,10 @@ export function WorksheetPage() {
     if (persisted?.tasks?.length) {
       return persisted.tasks.map(t => ({
         rowId: newRowId(), label: t.label, hoursInput: t.hoursInput,
-        weeklyHours: Number(t.hoursInput) || 0, who: t.who, rules: t.rules, energy: t.energy,
+        weeklyHours: parseNum(t.hoursInput), who: t.who, rules: t.rules, energy: t.energy,
       }));
     }
-    return seedTasks();
+    return []; // honest empty start — no seeded data
   });
 
   // Persist (non-sensitive; client-only).
@@ -123,8 +137,8 @@ export function WorksheetPage() {
   // Live computation (mirror of the worker engine).
   const result = useMemo(() => {
     const profile = {
-      monthlyNetIncome: Number(monthlyIncome) > 0 ? Number(monthlyIncome) : 0,
-      weeklyWorkHours:  Number(weeklyHours) > 0 ? Number(weeklyHours) : 0,
+      monthlyNetIncome: parseNum(monthlyIncome),
+      weeklyWorkHours:  parseNum(weeklyHours),
       incomePeriod,
     };
     const safeProfile = profile.monthlyNetIncome > 0 && profile.weeklyWorkHours > 0
@@ -132,7 +146,7 @@ export function WorksheetPage() {
     const valid = profile.monthlyNetIncome > 0 && profile.weeklyWorkHours > 0;
     const engineTasks: WorksheetTask[] = tasks
       .filter(t => t.label.trim() !== '')
-      .map(t => ({ id: t.rowId, label: t.label.trim(), weeklyHours: Number(t.hoursInput) || 0, who: t.who, rules: t.rules, energy: t.energy }));
+      .map(t => ({ id: t.rowId, label: t.label.trim(), weeklyHours: parseNum(t.hoursInput), who: t.who, rules: t.rules, energy: t.energy }));
     const r = computeWorksheet({ profile: valid ? profile : safeProfile, tasks: engineTasks.length ? engineTasks : [{ label: '—', weeklyHours: 0, who: 'self', rules: 'yes', energy: 'neutral' }] });
     return { r, valid, hasTasks: engineTasks.length > 0 };
   }, [monthlyIncome, weeklyHours, incomePeriod, tasks]);
@@ -145,7 +159,8 @@ export function WorksheetPage() {
   const addRow = () =>
     setTasks(prev => [...prev, { rowId: newRowId(), label: '', weeklyHours: 0, hoursInput: '', who: 'anyone', rules: 'yes', energy: 'draining' }]);
   const removeRow = (rowId: string) => setTasks(prev => prev.filter(t => t.rowId !== rowId));
-  const resetAll = () => { setMonthlyIncome('7000'); setWeeklyHours('60'); setTasks(seedTasks()); };
+  const resetAll = () => { setMonthlyIncome(''); setWeeklyHours(''); setTasks([]); };
+  const loadExample = () => { setMonthlyIncome('7000'); setWeeklyHours('60'); setIncomePeriod('month'); setTasks(seedTasks()); };
 
   // ── Save / load — server when available, ALWAYS local fallback ──
   interface SavedRow { id: string; title: string; createdAt: string; value: number; source: 'server' | 'local'; }
@@ -166,10 +181,10 @@ export function WorksheetPage() {
   useEffect(() => { void refreshSaved(); }, [refreshSaved]);
 
   const buildInput = () => ({
-    profile: { monthlyNetIncome: Number(monthlyIncome) || 0, weeklyWorkHours: Number(weeklyHours) || 0, incomePeriod },
+    profile: { monthlyNetIncome: parseNum(monthlyIncome), weeklyWorkHours: parseNum(weeklyHours), incomePeriod },
     tasks: tasks
       .filter(t => t.label.trim() !== '')
-      .map(t => ({ id: t.rowId, label: t.label.trim(), weeklyHours: Number(t.hoursInput) || 0, who: t.who, rules: t.rules, energy: t.energy })),
+      .map(t => ({ id: t.rowId, label: t.label.trim(), weeklyHours: parseNum(t.hoursInput), who: t.who, rules: t.rules, energy: t.energy })),
   });
 
   const applyInput = (input: ReturnType<typeof buildInput>) => {
@@ -456,9 +471,35 @@ export function WorksheetPage() {
         </section>
       )}
 
+      {/* Conversion — the result is the highest-intent moment: route into the paid funnel. */}
+      {result.valid && result.hasTasks && totals.annualValueRecovered > 0 && (
+        <section style={{ ...cardStyle, marginTop: 16, border: '1px solid var(--violet)', background: 'rgba(124,58,237,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 280px', minWidth: 240 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                Tu peux récupérer {nf.format(totals.annualValueRecovered)} par an.
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {totals.counts.automate + totals.counts.delegate} tâche(s) à automatiser ou déléguer.
+                On chiffre la mise en place dans un devis sur-mesure.
+              </div>
+            </div>
+            <button
+              onClick={() => { track('cta_clicked', { flow: 'worksheet', target: 'quote' }); navigate({ name: 'quote' }); }}
+              style={{ ...addBtn, padding: '12px 22px', fontSize: 14 }}
+            >
+              Demander un devis pour automatiser →
+            </button>
+          </div>
+        </section>
+      )}
+
       <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={onSave} disabled={busy} style={{ ...addBtn, opacity: busy ? 0.6 : 1, cursor: busy ? 'wait' : 'pointer' }}>
           💾 Enregistrer
+        </button>
+        <button onClick={loadExample} style={{ ...addBtn, background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
+          Charger un exemple
         </button>
         <button onClick={resetAll} style={{ ...addBtn, background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
           Réinitialiser
