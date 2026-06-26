@@ -3526,7 +3526,12 @@ Quote/Invoice (§L/§quote). Nouvelles : collection `organizations/{orgId}/works
 9. ✅ **`worksheetId` serveur** : id généré serveur à la création ; update vérifie `existing.createdByUid` (créateur ou owner/admin) + préserve `createdAt` ; `createdAt` client n'est plus de confiance.
 10. ✅ **Visibility headline** gaté `answered>0` (état neutre) + relabel « auto-évaluation / maturité » + disclaimer.
 
-**⚠️ DIFFÉRÉ (Sprint 2–3) :** test d'intégration RBAC 403 (billing/client) ; test parité tie-break sur égalité exacte ; handoff DONNÉES Worksheet→Quote (prefill `annualValueRecovered` + tâches — exige modif page Quote) ; capture lead au save anon + event `worksheet_completed` ; persistance currency dans l'input sauvé ; mode guidé non-expert ; source unique `roi-config` (re-export + deepEqual) ; cap nombre worksheets/org.
+**🟢 SPRINT 2 FAIT (branche `feat/audit-worksheet-s2`, gate vert : i18n 8 + build + vitest 686) :**
+- ✅ **i18n 8 langues** Worksheet + Visibility + nav (namespace `auditTools`, ~120 clés ; questions Visibility par id ; traduit fr/es/de/it/pt/ru/zh).
+- ✅ **Handoff données Worksheet→Quote** : seed one-shot `sessionStorage` (`quotePrefill.ts`) → la page Quote présélectionne `automation` + pré-remplit la description (localisée, no-PII analytics).
+- ✅ **Conversion tracking** typé : `Flow` étendu (`worksheet`/`visibility`) ; `emit` score_viewed / lead_flow_completed / cta_clicked sur les 2 pages.
+
+**⚠️ DIFFÉRÉ (Sprint 2b–3) :** test d'intégration RBAC 403 (billing/client) ; test parité tie-break sur égalité exacte ; **i18n du catalogue 25-tâches + désambiguïsation + seed exemple** (data helper FR — churn le test catalogue déterministe) ; capture lead au save anon + event `worksheet_completed` ; persistance currency dans l'input sauvé ; mode guidé non-expert ; source unique `roi-config` (re-export + deepEqual) ; cap nombre worksheets/org.
 
 **✅ SÛR (vérifié, aucun changement requis) :** isolation cross-tenant worksheet ; parité client↔serveur des cœurs ; déterminisme (no Date/random/locale dans le compute) ; gardes div-by-zero (rate, payback, ROI%, FTE).
 
