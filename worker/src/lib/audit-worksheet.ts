@@ -39,11 +39,25 @@ export const isEnergy = (v: unknown): v is Energy => typeof v === 'string' && (E
 
 /* ── Inputs ────────────────────────────────────────────────── */
 
+export const INCOME_PERIOD_VALUES = ['month', 'year', 'week'] as const;
+export type IncomePeriod = typeof INCOME_PERIOD_VALUES[number];
+export const isIncomePeriod = (v: unknown): v is IncomePeriod =>
+  typeof v === 'string' && (INCOME_PERIOD_VALUES as readonly string[]).includes(v);
+
 export interface WorksheetProfile {
-  /** Net monthly income/take-home for the person whose time is being valued. > 0. */
+  /** Net income/take-home for the person whose time is being valued. > 0. */
   monthlyNetIncome: number;
   /** Hours worked per week by that person (profile, not per-task). > 0. */
   weeklyWorkHours:  number;
+  /**
+   * Period the income figure refers to. Default 'month' (backward-compatible).
+   * Makes the tool usable across countries/jobs where pay is quoted per
+   * month, per year, or per week. The hourly-rate formula adapts:
+   *   month → income / (weeklyHours × 4.33)
+   *   year  → income / (weeklyHours × 52)
+   *   week  → income / weeklyHours
+   */
+  incomePeriod?:    IncomePeriod;
 }
 
 export interface WorksheetTask {
@@ -129,7 +143,12 @@ const MAX_TASKS = 100;
  */
 export function computeHourlyRate(profile: WorksheetProfile): number {
   if (profile.weeklyWorkHours <= 0) return 0;
-  return round2(profile.monthlyNetIncome / (profile.weeklyWorkHours * WEEKS_PER_MONTH));
+  const period = profile.incomePeriod ?? 'month';
+  const hoursInPeriod =
+    period === 'year' ? profile.weeklyWorkHours * WEEKS_PER_YEAR :
+    period === 'week' ? profile.weeklyWorkHours :
+                        profile.weeklyWorkHours * WEEKS_PER_MONTH;
+  return round2(profile.monthlyNetIncome / hoursInPeriod);
 }
 
 /**
@@ -238,6 +257,9 @@ export function validateWorksheet(input: unknown): string | null {
   }
   if (typeof p.weeklyWorkHours !== 'number' || !Number.isFinite(p.weeklyWorkHours) || p.weeklyWorkHours <= 0 || p.weeklyWorkHours > 168) {
     return 'profile.weeklyWorkHours must be between 0 and 168';
+  }
+  if (p.incomePeriod != null && !isIncomePeriod(p.incomePeriod)) {
+    return `profile.incomePeriod must be one of: ${INCOME_PERIOD_VALUES.join(', ')}`;
   }
 
   if (!Array.isArray(i.tasks)) return 'tasks must be an array';

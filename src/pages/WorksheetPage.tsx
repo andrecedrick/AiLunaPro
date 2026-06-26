@@ -16,9 +16,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useMoney } from '../lib/currency/useMoney';
+import { SUPPORTED_CURRENCIES, type Currency } from '../lib/billing/currencyConstants';
 import {
   computeWorksheet,
-  type WorksheetTask, type Who, type Rules, type Energy, type Verdict,
+  type WorksheetTask, type Who, type Rules, type Energy, type Verdict, type IncomePeriod,
 } from '../lib/worksheet/auditWorksheet';
 import {
   saveWorksheet, listWorksheets, getWorksheet, deleteWorksheet,
@@ -62,8 +63,13 @@ function seedTasks(): TaskRow[] {
 interface Persisted {
   monthlyNetIncome: string;
   weeklyWorkHours:  string;
+  incomePeriod?:    IncomePeriod;
+  currency?:        Currency;
   tasks: Array<{ label: string; hoursInput: string; who: Who; rules: Rules; energy: Energy }>;
 }
+
+const PERIOD_LABELS: Record<IncomePeriod, string> = { month: 'par mois', year: 'par an', week: 'par semaine' };
+const PERIOD_INCOME_LABEL: Record<IncomePeriod, string> = { month: 'Revenu mensuel net', year: 'Revenu annuel net', week: 'Revenu hebdo net' };
 
 function loadPersisted(): Persisted | null {
   try {
@@ -77,15 +83,17 @@ export function WorksheetPage() {
   const { session } = useAuth();
   const orgId = session?.orgId ?? '';
   const money = useMoney();
-  const nf = useMemo(
-    () => new Intl.NumberFormat(undefined, { style: 'currency', currency: money.currency, maximumFractionDigits: 0 }),
-    [money.currency],
-  );
   const hf = useMemo(() => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }), []);
 
   const persisted = useMemo(loadPersisted, []);
   const [monthlyIncome, setMonthlyIncome] = useState(persisted?.monthlyNetIncome ?? '7000');
   const [weeklyHours, setWeeklyHours]     = useState(persisted?.weeklyWorkHours ?? '60');
+  const [incomePeriod, setIncomePeriod]   = useState<IncomePeriod>(persisted?.incomePeriod ?? 'month');
+  const [currency, setCurrency]           = useState<Currency>(persisted?.currency ?? money.currency);
+  const nf = useMemo(
+    () => new Intl.NumberFormat(undefined, { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 0 }),
+    [currency],
+  );
   const [tasks, setTasks] = useState<TaskRow[]>(() => {
     if (persisted?.tasks?.length) {
       return persisted.tasks.map(t => ({
@@ -101,26 +109,29 @@ export function WorksheetPage() {
     const data: Persisted = {
       monthlyNetIncome: monthlyIncome,
       weeklyWorkHours: weeklyHours,
+      incomePeriod,
+      currency,
       tasks: tasks.map(t => ({ label: t.label, hoursInput: t.hoursInput, who: t.who, rules: t.rules, energy: t.energy })),
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* quota — ignore */ }
-  }, [monthlyIncome, weeklyHours, tasks]);
+  }, [monthlyIncome, weeklyHours, incomePeriod, currency, tasks]);
 
   // Live computation (mirror of the worker engine).
   const result = useMemo(() => {
     const profile = {
       monthlyNetIncome: Number(monthlyIncome) > 0 ? Number(monthlyIncome) : 0,
       weeklyWorkHours:  Number(weeklyHours) > 0 ? Number(weeklyHours) : 0,
+      incomePeriod,
     };
     const safeProfile = profile.monthlyNetIncome > 0 && profile.weeklyWorkHours > 0
-      ? profile : { monthlyNetIncome: 1, weeklyWorkHours: 1 }; // avoid div0 display; rate still shown 0 below
+      ? profile : { monthlyNetIncome: 1, weeklyWorkHours: 1, incomePeriod }; // avoid div0 display; rate still shown 0 below
     const valid = profile.monthlyNetIncome > 0 && profile.weeklyWorkHours > 0;
     const engineTasks: WorksheetTask[] = tasks
       .filter(t => t.label.trim() !== '')
       .map(t => ({ id: t.rowId, label: t.label.trim(), weeklyHours: Number(t.hoursInput) || 0, who: t.who, rules: t.rules, energy: t.energy }));
     const r = computeWorksheet({ profile: valid ? profile : safeProfile, tasks: engineTasks.length ? engineTasks : [{ label: '—', weeklyHours: 0, who: 'self', rules: 'yes', energy: 'neutral' }] });
     return { r, valid, hasTasks: engineTasks.length > 0 };
-  }, [monthlyIncome, weeklyHours, tasks]);
+  }, [monthlyIncome, weeklyHours, incomePeriod, tasks]);
 
   const rate = result.valid ? result.r.hourlyRate : 0;
   const totals = result.r.totals;
@@ -144,7 +155,7 @@ export function WorksheetPage() {
   useEffect(() => { void refreshSaved(); }, [refreshSaved]);
 
   const buildInput = () => ({
-    profile: { monthlyNetIncome: Number(monthlyIncome) || 0, weeklyWorkHours: Number(weeklyHours) || 0 },
+    profile: { monthlyNetIncome: Number(monthlyIncome) || 0, weeklyWorkHours: Number(weeklyHours) || 0, incomePeriod },
     tasks: tasks
       .filter(t => t.label.trim() !== '')
       .map(t => ({ id: t.rowId, label: t.label.trim(), weeklyHours: Number(t.hoursInput) || 0, who: t.who, rules: t.rules, energy: t.energy })),
@@ -171,6 +182,7 @@ export function WorksheetPage() {
       if (d.input) {
         setMonthlyIncome(String(d.input.profile.monthlyNetIncome));
         setWeeklyHours(String(d.input.profile.weeklyWorkHours));
+        if (d.input.profile.incomePeriod) setIncomePeriod(d.input.profile.incomePeriod);
         setTasks(d.input.tasks.map(t => ({
           rowId: newRowId(), label: t.label, hoursInput: String(t.weeklyHours),
           weeklyHours: t.weeklyHours, who: t.who, rules: t.rules, energy: t.energy,
@@ -198,7 +210,7 @@ export function WorksheetPage() {
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55, maxWidth: 760 }}>
           Saisis tes <strong>vraies données</strong> (pas d’estimation). Pour chaque tâche, l’outil calcule
-          son verdict, son coût réel par an et les heures récupérables. Montants dans ta devise ({money.currency}).
+          son verdict, son coût réel par an et les heures récupérables. Choisis ta devise et la période de ton revenu (mois/an/semaine) — l’outil s’adapte à ton pays.
         </p>
       </header>
 
@@ -206,15 +218,25 @@ export function WorksheetPage() {
       <section style={cardStyle}>
         <div style={sectionTitle}>① Ton profil</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-end' }}>
-          <LabeledInput label="Revenu mensuel net" suffix={money.currency}>
+          <LabeledInput label={`${PERIOD_INCOME_LABEL[incomePeriod]} (${currency.toUpperCase()})`}>
             <input type="number" inputMode="decimal" min={0} value={monthlyIncome}
               onChange={e => setMonthlyIncome(e.target.value)} style={fieldStyle} />
+          </LabeledInput>
+          <LabeledInput label="Période du revenu">
+            <select value={incomePeriod} onChange={e => setIncomePeriod(e.target.value as IncomePeriod)} style={fieldStyle}>
+              {(Object.keys(PERIOD_LABELS) as IncomePeriod[]).map(p => <option key={p} value={p}>{PERIOD_LABELS[p]}</option>)}
+            </select>
+          </LabeledInput>
+          <LabeledInput label="Devise">
+            <select value={currency} onChange={e => setCurrency(e.target.value as Currency)} style={fieldStyle}>
+              {SUPPORTED_CURRENCIES.map(cur => <option key={cur} value={cur}>{cur.toUpperCase()}</option>)}
+            </select>
           </LabeledInput>
           <LabeledInput label="Heures / semaine">
             <input type="number" inputMode="decimal" min={1} max={168} value={weeklyHours}
               onChange={e => setWeeklyHours(e.target.value)} style={fieldStyle} />
           </LabeledInput>
-          <div style={{ flex: '1 1 200px', minWidth: 180 }}>
+          <div style={{ flex: '1 1 160px', minWidth: 150 }}>
             <div style={statLabel}>→ Taux horaire</div>
             <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--violet-text)', fontVariantNumeric: 'tabular-nums' }}>
               {result.valid ? nf.format(rate) : '—'}<span style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 600 }}> / h</span>

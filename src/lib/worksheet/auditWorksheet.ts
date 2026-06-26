@@ -20,9 +20,14 @@ export type Rules   = typeof RULES_VALUES[number];
 export type Energy  = typeof ENERGY_VALUES[number];
 export type Verdict = typeof VERDICT_VALUES[number];
 
+export const INCOME_PERIOD_VALUES = ['month', 'year', 'week'] as const;
+export type IncomePeriod = typeof INCOME_PERIOD_VALUES[number];
+
 export interface WorksheetProfile {
   monthlyNetIncome: number;
   weeklyWorkHours:  number;
+  /** Period the income refers to. Default 'month'. See worker engine for the formula. */
+  incomePeriod?:    IncomePeriod;
 }
 
 export interface WorksheetTask {
@@ -87,7 +92,12 @@ const WEEKS_PER_YEAR = 52;
 
 export function computeHourlyRate(profile: WorksheetProfile): number {
   if (profile.weeklyWorkHours <= 0) return 0;
-  return round2(profile.monthlyNetIncome / (profile.weeklyWorkHours * WEEKS_PER_MONTH));
+  const period = profile.incomePeriod ?? 'month';
+  const hoursInPeriod =
+    period === 'year' ? profile.weeklyWorkHours * WEEKS_PER_YEAR :
+    period === 'week' ? profile.weeklyWorkHours :
+                        profile.weeklyWorkHours * WEEKS_PER_MONTH;
+  return round2(profile.monthlyNetIncome / hoursInPeriod);
 }
 
 /**

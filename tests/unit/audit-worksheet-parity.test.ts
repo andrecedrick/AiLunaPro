@@ -80,6 +80,15 @@ describe('Worksheet formula correctness', () => {
     expect(rate).toBe(Math.round((7000 / (60 * 4.33)) * 100) / 100); // 26.94
   });
 
+  it('adapts the rate to the income period (month default / year / week)', () => {
+    expect(computeHourlyRate({ monthlyNetIncome: 7000, weeklyWorkHours: 60 }))
+      .toBe(Math.round((7000 / (60 * 4.33)) * 100) / 100);                       // month (default)
+    expect(computeHourlyRate({ monthlyNetIncome: 84000, weeklyWorkHours: 60, incomePeriod: 'year' }))
+      .toBe(Math.round((84000 / (60 * 52)) * 100) / 100);                        // year
+    expect(computeHourlyRate({ monthlyNetIncome: 1600, weeklyWorkHours: 40, incomePeriod: 'week' }))
+      .toBe(Math.round((1600 / 40) * 100) / 100);                                // week = 40/h
+  });
+
   it('computes annual cost = weeklyHours × 52 × rate', () => {
     const r = workerCompute(input);
     const rate = r.hourlyRate;
