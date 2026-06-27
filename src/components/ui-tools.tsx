@@ -22,7 +22,8 @@ export function inputStyle(): CSSProperties {
   return { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-primary)', boxSizing: 'border-box', fontFamily: 'inherit' };
 }
 export function primaryBtnStyle(): CSSProperties {
-  return { padding: '13px 32px', borderRadius: 12, border: 'none', background: 'var(--violet)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 8px 22px rgba(124,58,237,0.25)' };
+  // Unified primary CTA — brand gradient (violet → cyan), matching <Button variant="primary">.
+  return { padding: '13px 32px', borderRadius: 12, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 8px 22px rgba(124,58,237,0.28)' };
 }
 export function secondaryBtnStyle(): CSSProperties {
   return { padding: '13px 24px', borderRadius: 12, border: '1px solid var(--violet)', background: 'transparent', color: 'var(--violet-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' };

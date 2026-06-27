@@ -233,5 +233,5 @@ function btnGhost(): React.CSSProperties {
   return { padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 13, cursor: 'pointer' };
 }
 function btnPrimary(disabled = false): React.CSSProperties {
-  return { padding: '9px 18px', borderRadius: 8, border: 'none', background: disabled ? 'var(--text-muted)' : 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 };
+  return { padding: '9px 18px', borderRadius: 8, border: 'none', background: disabled ? 'var(--text-muted)' : 'var(--brand-gradient)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 };
 }

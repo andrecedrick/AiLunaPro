@@ -163,7 +163,7 @@ export function VisibilityAuditPage() {
           </div>
           <button
             onClick={() => { emit('cta_clicked', { flow: 'visibility', target: 'quote' }); navigate({ name: 'quote' }); }}
-            style={{ padding: '12px 22px', borderRadius: 10, border: '1px solid var(--violet)', background: 'var(--violet)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+            style={{ padding: '12px 22px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
           >
             {V.cta.button}
           </button>

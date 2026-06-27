@@ -263,7 +263,7 @@ export function DiagnosticPage() {
                   disabled={!allAnswered}
                   style={{
                     padding: '13px 32px', borderRadius: 12, border: 'none',
-                    background: allAnswered ? 'var(--violet)' : 'var(--surface-2)',
+                    background: allAnswered ? 'var(--brand-gradient)' : 'var(--surface-2)',
                     color: allAnswered ? '#fff' : 'var(--text-muted)',
                     fontSize: 15, fontWeight: 700,
                     cursor: allAnswered ? 'pointer' : 'not-allowed',
@@ -362,7 +362,7 @@ export function DiagnosticPage() {
                 disabled={submitting}
                 style={{
                   padding: '13px 32px', borderRadius: 12, border: 'none',
-                  background: submitting ? 'var(--surface-2)' : 'var(--violet)',
+                  background: submitting ? 'var(--surface-2)' : 'var(--brand-gradient)',
                   color: submitting ? 'var(--text-muted)' : '#fff',
                   fontSize: 15, fontWeight: 700,
                   cursor: submitting ? 'wait' : 'pointer',
@@ -504,7 +504,7 @@ function ResultView({ result, onReset }: { result: DiagnosticResult; onReset: ()
           style={{
             display: 'inline-block',
             padding: '11px 28px', borderRadius: 10,
-            background: 'var(--violet)', color: '#fff',
+            background: 'var(--brand-gradient)', color: '#fff',
             fontWeight: 700, fontSize: 14, textDecoration: 'none',
           }}
         >

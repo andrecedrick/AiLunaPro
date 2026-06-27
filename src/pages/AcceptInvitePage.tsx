@@ -148,7 +148,7 @@ export function AcceptInvitePage() {
             <button
               type="button"
               onClick={() => navigate({ name: 'signup' })}
-              style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+              style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
             >
               {I.createAccountButton}
             </button>
@@ -166,7 +166,7 @@ export function AcceptInvitePage() {
           <button
             type="button"
             onClick={() => navigate({ name: 'dashboard' })}
-            style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+            style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
           >
             {I.backToDashboard}
           </button>

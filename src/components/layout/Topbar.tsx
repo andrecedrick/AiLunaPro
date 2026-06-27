@@ -216,7 +216,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
                   onClick={applyCustomRange}
                   style={{
                     marginTop: 4, padding: '7px 12px', borderRadius: 8, border: 'none',
-                    background: 'var(--violet)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    background: 'var(--brand-gradient)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
                   {T.topbar.dateRange.apply}

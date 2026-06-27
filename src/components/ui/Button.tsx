@@ -12,10 +12,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT_STYLES: Record<ButtonVariant, React.CSSProperties> = {
   primary: {
+    // The single primary CTA look: brand gradient (violet → cyan) + soft lift.
     background: 'var(--brand-gradient)',
     color: '#FFFFFF',
     border: 'none',
-    fontWeight: 600,
+    fontWeight: 700,
+    boxShadow: '0 8px 22px rgba(124, 58, 237, 0.28)',
   },
   secondary: {
     background: 'var(--brand-tint-bg)',
@@ -68,8 +70,10 @@ export function Button({
         ...SIZE_STYLES[size],
         ...style,
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.88'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.9'; }}
+      onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.opacity = '1'; b.style.transform = 'none'; }}
+      onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(1px)'; }}
+      onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'none'; }}
     >
       {children}
     </button>

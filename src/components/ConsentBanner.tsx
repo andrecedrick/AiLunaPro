@@ -83,7 +83,7 @@ export function ConsentBanner() {
         <button
           type="button"
           onClick={accept}
-          style={{ ...btnBase, border: '1.5px solid var(--violet)', background: 'var(--violet)', color: '#fff', fontWeight: 700 }}
+          style={{ ...btnBase, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 700 }}
         >
           Allow
         </button>

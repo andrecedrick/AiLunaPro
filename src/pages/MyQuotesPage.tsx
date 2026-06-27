@@ -83,7 +83,7 @@ export function MyQuotesPage() {
       ) : items.length === 0 ? (
         <div style={{ ...card, borderStyle: 'dashed', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
           <div style={{ marginBottom: 12 }}>{M.empty}</div>
-          <button type="button" onClick={() => navigate({ name: 'quote' })} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{M.createCta}</button>
+          <button type="button" onClick={() => navigate({ name: 'quote' })} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{M.createCta}</button>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>

@@ -583,8 +583,8 @@ const fieldStyle: React.CSSProperties = {
 const th: React.CSSProperties = { padding: '6px 8px', fontWeight: 700 };
 const td: React.CSSProperties = { padding: '8px 8px', verticalAlign: 'middle' };
 const addBtn: React.CSSProperties = {
-  padding: '9px 16px', borderRadius: 10, border: '1px solid var(--border)',
-  background: 'var(--violet)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+  padding: '9px 16px', borderRadius: 10, border: 'none',
+  background: 'var(--brand-gradient)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
 };
 const miniBtn: React.CSSProperties = {
   padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)',

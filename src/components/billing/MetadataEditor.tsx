@@ -228,7 +228,7 @@ export function MetadataEditor({ orgId, uid }: Props) {
           disabled={saving}
           style={{
             padding: '9px 18px', borderRadius: 8, border: 'none',
-            background: 'var(--violet)', color: '#fff',
+            background: 'var(--brand-gradient)', color: '#fff',
             fontWeight: 600, fontSize: 13, cursor: saving ? 'wait' : 'pointer',
             opacity: saving ? 0.6 : 1,
           }}

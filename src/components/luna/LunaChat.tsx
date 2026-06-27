@@ -169,7 +169,7 @@ export function LunaChat({ routeName, onNavigate, onNeedTokens }: {
           type="button" onClick={() => void send()} disabled={input.trim().length === 0 || pending} aria-label="Send"
           style={{
             padding: '10px 16px', borderRadius: 10, border: 'none', cursor: input.trim() && !pending ? 'pointer' : 'not-allowed',
-            background: input.trim() && !pending ? 'var(--violet)' : 'var(--surface-2)', color: input.trim() && !pending ? '#fff' : 'var(--text-muted)',
+            background: input.trim() && !pending ? 'var(--brand-gradient)' : 'var(--surface-2)', color: input.trim() && !pending ? '#fff' : 'var(--text-muted)',
             fontWeight: 700, fontSize: 13,
           }}
         >→</button>

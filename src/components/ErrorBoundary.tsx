@@ -75,7 +75,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       };
       const btnPrimary: React.CSSProperties = {
         width: '100%', padding: '10px 16px', borderRadius: 10, border: 'none',
-        background: '#7C3AED', color: '#fff', fontWeight: 700, fontSize: 14,
+        background: 'linear-gradient(135deg, #7C3AED, #22D3EE)', color: '#fff', fontWeight: 700, fontSize: 14,
         cursor: 'pointer', marginTop: 8,
       };
       const btnSecondary: React.CSSProperties = {

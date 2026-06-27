@@ -182,13 +182,13 @@ export function AdminCenterPage() {
         <>
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{I.amountLabel}</label>
           <input type="number" inputMode="numeric" min={1} value={amountInput} onChange={e => setAmount(e.target.value)} style={{ width: 130, padding: '8px 10px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-2, var(--surface))', color: 'var(--text-primary)' }} />
-          <button type="button" disabled={busy} onClick={() => void submitPricing(q)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? '…' : I.finalizeBtn}</button>
+          <button type="button" disabled={busy} onClick={() => void submitPricing(q)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? '…' : I.finalizeBtn}</button>
           <button type="button" disabled={busy} onClick={() => setActiveId(null)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{I.cancel}</button>
           {formError && <span style={{ fontSize: 12, color: 'var(--red-text)' }}>{I.confirmError}</span>}
         </>
       ) : (
         <>
-          <button type="button" onClick={() => openPricing(q)} style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{I.finalizeBtn}</button>
+          <button type="button" onClick={() => openPricing(q)} style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{I.finalizeBtn}</button>
           <button type="button" onClick={() => navigate({ name: 'invoices', quoteId: q.quoteId })} style={{ background: 'none', border: 'none', color: 'var(--violet-text)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, textDecoration: 'underline' }}>{I.invoicesHeading}</button>
         </>
       )}

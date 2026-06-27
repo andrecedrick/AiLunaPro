@@ -126,7 +126,7 @@ function LockedView({ message }: { message: string }) {
         onClick={() => navigate({ name: 'dashboard' })}
         style={{
           padding: '10px 18px', borderRadius: 10, border: 'none',
-          background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+          background: 'var(--brand-gradient)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
         }}
       >
         {T.tokensPage.locked.backToDashboard}

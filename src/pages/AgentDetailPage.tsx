@@ -164,7 +164,7 @@ export function AgentDetailPage() {
             style={{
               display: 'inline-block',
               padding: '11px 22px', borderRadius: 10,
-              background: 'var(--violet)', color: '#fff',
+              background: 'var(--brand-gradient)', color: '#fff',
               fontWeight: 700, fontSize: 14,
               textDecoration: 'none', marginBottom: 28,
             }}
@@ -277,7 +277,7 @@ export function AgentDetailPage() {
             style={{
               display: 'inline-block',
               padding: '11px 22px', borderRadius: 10,
-              background: 'var(--violet)', color: '#fff',
+              background: 'var(--brand-gradient)', color: '#fff',
               fontWeight: 700, fontSize: 14,
               textDecoration: 'none',
             }}

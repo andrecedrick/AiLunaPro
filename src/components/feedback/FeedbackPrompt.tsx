@@ -152,7 +152,7 @@ export function FeedbackPrompt({ source }: { source: FeedbackSource }) {
               type="button" onClick={onSubmit} disabled={submitting}
               style={{
                 padding: '10px 22px', borderRadius: 10, border: 'none',
-                background: 'var(--violet)', color: '#fff', fontSize: 14, fontWeight: 700,
+                background: 'var(--brand-gradient)', color: '#fff', fontSize: 14, fontWeight: 700,
                 cursor: submitting ? 'wait' : 'pointer',
               }}
             >{T.submit}</button>

@@ -567,7 +567,7 @@ export function QuoteRequestPage() {
               <div style={{ marginTop: 22, padding: 24, borderRadius: 14, background: 'var(--text-primary)', color: '#fff', textAlign: 'center' }}>
                 <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{Q.result.ctaHeading}</div>
                 <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>{Q.result.ctaBody}</div>
-                <button type="button" onClick={() => { emit('cta_clicked', { flow: 'quote', target: 'signup', src: src ?? undefined }); navigate({ name: 'signup' }); }} style={{ display: 'inline-block', padding: '11px 28px', borderRadius: 10, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                <button type="button" onClick={() => { emit('cta_clicked', { flow: 'quote', target: 'signup', src: src ?? undefined }); navigate({ name: 'signup' }); }} style={{ display: 'inline-block', padding: '11px 28px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                   {Q.result.ctaButton}
                 </button>
               </div>

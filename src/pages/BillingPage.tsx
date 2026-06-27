@@ -473,7 +473,7 @@ function LockedView() {
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button type="button" onClick={goDashboard} style={{
           padding: '10px 18px', borderRadius: 10, border: 'none',
-          background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+          background: 'var(--brand-gradient)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
         }}>
           {T.billingPage.locked.backToDashboard}
         </button>
@@ -542,7 +542,7 @@ function MockPlanCard({
           onClick={onSelect}
           style={{
             width: '100%', padding: '8px 0', borderRadius: 8, border: 'none',
-            background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+            background: 'var(--brand-gradient)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
           }}
         >
           {T.billingPage.mockPlans.switch}
@@ -1087,7 +1087,7 @@ export function BillingPage() {
               <button
                 type="button"
                 onClick={handleMockConfirmUpgrade}
-                style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--violet)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
               >
                 {T.billingPage.mockConfirm.confirm}
               </button>

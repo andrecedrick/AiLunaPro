@@ -230,7 +230,7 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
                 padding:      '10px 18px',
                 borderRadius: 10,
                 border:       'none',
-                background:   (!hasAnyField || submitting) ? 'var(--surface-2)' : 'var(--violet)',
+                background:   (!hasAnyField || submitting) ? 'var(--surface-2)' : 'var(--brand-gradient)',
                 color:        (!hasAnyField || submitting) ? 'var(--text-muted)' : '#fff',
                 fontSize:     13,
                 fontWeight:   700,
