@@ -175,7 +175,7 @@ function useMediaQuery(query: string): boolean {
 
 function AppShell() {
   const { route, navigate } = useRoute();
-  const { isAuthenticated, isLoading, session, retryAuth } = useAuth();
+  const { isAuthenticated, isLoading, session, retryAuth, connectionPhase } = useAuth();
 
   /* Sidebar collapse/expand state.
      - Desktop (>=768px): collapsible rail (240px ↔ 72px), persisted.
@@ -437,15 +437,24 @@ function AppShell() {
       GOOGLEAPIS_BLOCKED:      'Google / Firebase endpoints appear to be blocked.',
       TIMEOUT:                 'The connection is taking longer than expected.',
     };
+    // STEP 3 — distinct, honest connection states.
+    const phaseTitle = connectionPhase === 'retrying' ? 'Reconnecting…'
+      : connectionPhase === 'failed' ? 'Connection failed'
+      : 'Still connecting…';
+    const phaseLead = connectionPhase === 'retrying'
+      ? 'The connection dropped — retrying automatically…'
+      : connectionPhase === 'failed'
+      ? "We couldn't reach the server after several attempts. Check your connection, then retry."
+      : `${reasonText[bootReason]} The app will continue automatically once it connects.`;
     const secondaryBtn: React.CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong, #CBD5E1)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', marginTop: 8 };
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--page-bg)' }}>
         <div style={{ maxWidth: 460, width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 24, textAlign: 'center' }}>
           <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: 'var(--font-heading)' }}>
-            Still connecting…
+            {phaseTitle}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55, margin: '0 0 10px' }}>
-            {reasonText[bootReason]} The app will continue automatically once it connects.
+            {phaseLead}
           </p>
           <div style={{ fontSize: 11, fontFamily: 'ui-monospace, Consolas, monospace', color: 'var(--text-muted)', background: 'var(--surface-2)', borderRadius: 8, padding: '6px 10px', margin: '0 0 14px' }}>
             Reason: {bootReason}

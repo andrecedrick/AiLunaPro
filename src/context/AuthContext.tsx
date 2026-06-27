@@ -24,6 +24,7 @@ import { resolveLayer } from '../lib/featureFlags';
 import { apiChangeRole, apiRemoveMember, getIdToken } from '../lib/team/teamApiClient';
 import {
   subscribeAuthState,
+  type ConnectionPhase,
   firebaseLogin,
   firebaseSignup,
   firebaseLogout,
@@ -50,6 +51,8 @@ interface AuthContextValue {
    * AppShell renders nothing while this is true to avoid a flash of the login page.
    */
   isLoading: boolean;
+  /** Boot/connection phase for UI states (connecting · retrying · failed · offline · ok). */
+  connectionPhase: ConnectionPhase;
   /** The OrgMember row for the currently logged-in user in the current org. */
   currentMember: OrgMember | undefined;
   /* ── Auth ──────────────────────────────────────────────── */
@@ -96,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     LAYER === 'mock' ? () => getInitialOrgs() : [],
   );
   const [isLoading, setIsLoading] = useState<boolean>(LAYER === 'firebase');
+  const [connectionPhase, setConnectionPhase] = useState<ConnectionPhase>(LAYER === 'firebase' ? 'connecting' : 'ok');
 
   // ── Firebase: subscribe to auth state on mount ───────────────────────────
   // Ref guards against calling setState after unmount during async resolution.
@@ -134,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setOrgs([]);
         setIsLoading(false);
       },
+      phase => { if (mountedRef.current) setConnectionPhase(phase); },
     );
     return unsub;
   }, []); // runs once on mount
@@ -510,6 +515,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fbUser = getCurrentFirebaseUser();
     if (!fbUser) return; // no signed-in user → onAuthStateChanged owns the state
     setIsLoading(true);
+    setConnectionPhase('retrying');
     firebaseRebuildSession(fbUser)
       .then(result => {
         if (!mountedRef.current) return;
@@ -517,14 +523,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(result.session);
           setMembers(result.members);
           setOrgs(result.orgs);
-          setIsLoading(false);
-        } else {
-          // No docs yet (e.g. needs org-create) — let normal routing handle it.
-          setIsLoading(false);
         }
+        // result null → no docs yet (e.g. needs org-create); let routing handle it.
+        setIsLoading(false);
+        setConnectionPhase('ok');
       })
       .catch(err => {
-        if (import.meta.env.DEV) console.warn('[auth] retry failed code:', (err as Error)?.message ?? 'UNKNOWN');
+        if (!mountedRef.current) return;
+        console.warn('[auth] retry failed code:', (err as Error)?.message ?? 'UNKNOWN');
+        setConnectionPhase('failed');
         // Keep isLoading true → the actionable card stays; no sign-out.
       });
   }, []);
@@ -536,6 +543,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       orgs,
       isAuthenticated: session !== null,
       isLoading,
+      connectionPhase,
       currentMember,
       login,
       signup,
@@ -551,7 +559,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateOrgName,
     }),
     [
-      session, members, orgs, isLoading, currentMember,
+      session, members, orgs, isLoading, connectionPhase, currentMember,
       login, signup, logout, resetPassword, retryAuth,
       inviteMember, updateMemberRole, removeMember,
       updateProfile, createOrg, switchOrg, updateOrgName,

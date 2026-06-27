@@ -64,6 +64,42 @@ function withTimeout<T>(p: Promise<T>, ms: number, code: string): Promise<T> {
   ]);
 }
 
+/** Boot connection phase surfaced to the UI (drives the "connecting/retrying/failed" card). */
+export type ConnectionPhase = 'connecting' | 'retrying' | 'failed' | 'offline' | 'ok';
+
+/* ── Last-good session cache (stale-while-revalidate) ───────────────────────
+ * A returning user renders INSTANTLY from this cache the moment Firebase reports
+ * a matching signed-in uid, while the authoritative session is rebuilt in the
+ * background. Non-secret: holds only profile/role/org display data (no token);
+ * the role is re-verified server-side on every API call, so a stale cache can
+ * never escalate. Also serves as the read-only OFFLINE fallback when a refresh
+ * fails but a valid Firebase user is present. */
+const SESSION_CACHE_KEY = 'ailunapro-fb-session-v1';
+const SESSION_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — bound how stale an instant-render can be
+interface CachedAuth { uid: string; session: AuthSession; members: OrgMember[]; orgs: Organization[]; cachedAt: number; }
+
+function readSessionCache(): CachedAuth | null {
+  try {
+    const raw = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw) as CachedAuth;
+    if (!(c && typeof c.uid === 'string' && c.session && c.session.userId === c.uid)) return null;
+    if (typeof c.cachedAt === 'number' && Date.now() - c.cachedAt > SESSION_CACHE_MAX_AGE_MS) return null; // too old → rebuild from scratch
+    return c;
+  } catch { return null; }
+}
+function writeSessionCache(session: AuthSession, members: OrgMember[], orgs: Organization[]): void {
+  try {
+    localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ uid: session.userId, session, members, orgs, cachedAt: Date.now() } as CachedAuth));
+  } catch { /* quota / unavailable */ }
+}
+function clearSessionCache(): void {
+  try { localStorage.removeItem(SESSION_CACHE_KEY); } catch { /* ignore */ }
+}
+
+// Abnormal-pattern detector: count consecutive boot-build failures this tab.
+let consecutiveBuildFailures = 0;
+
 async function fs(): Promise<{ api: typeof import('firebase/firestore'); db: Firestore }> {
   if (_fs) return _fs;
   const load = Promise.all([import('firebase/firestore'), import('../firestore')]);
@@ -249,6 +285,7 @@ async function buildSession(
     org,
   };
 
+  writeSessionCache(session, members, orgs);
   return { session, members, orgs };
 }
 
@@ -267,46 +304,68 @@ export function subscribeAuthState(
     orgs: Organization[],
   ) => void,
   onSignedOut: () => void,
+  onPhase: (phase: ConnectionPhase) => void = () => {},
 ): Unsubscribe {
   return onAuthStateChanged(auth, async firebaseUser => {
     if (!firebaseUser) {
+      clearSessionCache();
       onSignedOut();
+      onPhase('ok');
       return;
     }
-    // Bounded + auto-retried session build. Each attempt fails fast on a stall
-    // (SESSION_BUILD_TIMEOUT_MS) instead of hanging; transient failures retry with
-    // backoff. Only after exhausting retries do we surface the actionable card.
+
+    // STALE-WHILE-REVALIDATE: render INSTANTLY from the last-good cache the moment
+    // Firebase confirms a matching uid (skips the Firestore-build wait), then refresh
+    // in the background. No freeze, no blank boot for returning users.
+    const cached = readSessionCache();
+    const shownFromCache = !!(cached && cached.uid === firebaseUser.uid);
+    if (shownFromCache && cached) onResolved(cached.session, cached.members, cached.orgs);
+    onPhase('connecting');
+
+    // Bounded + auto-retried authoritative build. Each attempt fails fast on a stall
+    // (SESSION_BUILD_TIMEOUT_MS) instead of hanging; transient failures retry with backoff.
     let lastCode = 'UNKNOWN';
     for (let attempt = 0; attempt <= SESSION_BUILD_RETRIES; attempt++) {
       try {
         const result = await withTimeout(buildSession(firebaseUser), SESSION_BUILD_TIMEOUT_MS, 'SESSION_BUILD_TIMEOUT');
+        consecutiveBuildFailures = 0;
         if (result) {
-          onResolved(result.session, result.members, result.orgs);
-        } else {
-          // User exists in Auth but Firestore docs not yet available (e.g. race
-          // window right after signup). Do NOT sign out — the signup flow forces
-          // a fresh onAuthStateChanged once writes land. Report signed-out state.
+          onResolved(result.session, result.members, result.orgs); // also written to cache by buildSession
+        } else if (!shownFromCache) {
+          // No Firestore docs yet (e.g. race right after signup) AND no cache to
+          // show. Do NOT sign out — the signup flow forces a fresh callback once
+          // writes land. Report signed-out state.
           onSignedOut();
         }
-        return; // settled (resolved or clean signed-out) — done.
+        onPhase('ok');
+        return; // settled — done.
       } catch (err) {
-        // Connectivity / lazy-load / timeout failure. Firebase auth is still
-        // valid, so NEVER sign out (that would bounce a logged-in user to login
-        // on a transient blip). Retry a couple of times, then leave the app in its
-        // loading state so the watchdog shows the "Still connecting" card. Log the
-        // code only — never PII.
+        // Connectivity / lazy-load / timeout failure. Firebase auth is still valid →
+        // NEVER sign out (that would bounce a logged-in user to login on a blip).
         lastCode = (err as Error)?.message ?? 'UNKNOWN';
         console.warn(`[auth] session resolve attempt ${attempt + 1}/${SESSION_BUILD_RETRIES + 1} failed code:`, lastCode);
+        onPhase(attempt < SESSION_BUILD_RETRIES ? 'retrying' : 'failed');
         if (attempt < SESSION_BUILD_RETRIES) await delay(800 * (attempt + 1));
       }
     }
-    // Exhausted retries → record a non-PII boot reason so the card shows the
-    // right cause, then stop (the card's Retry/Reload re-runs this once recovered).
-    try {
-      const w = window as Window & { __BOOT_REASON__?: string };
-      if (!w.__BOOT_REASON__) w.__BOOT_REASON__ = 'TIMEOUT'; // keep an earlier, more-specific reason (e.g. FIRESTORE_CHUNK_BLOCKED) if set
-    } catch { /* ignore */ }
-    console.warn('[auth] session resolve gave up after retries code:', lastCode);
+
+    // Exhausted retries.
+    consecutiveBuildFailures += 1;
+    if (consecutiveBuildFailures >= 3) console.warn('[auth] ABNORMAL: repeated session-build failures this tab:', consecutiveBuildFailures);
+    if (shownFromCache) {
+      // We already rendered cached data → the app is usable in a read-only / stale
+      // OFFLINE state instead of being stuck on a loading card.
+      onPhase('offline');
+      console.warn('[auth] running on cached session (refresh failed) code:', lastCode);
+    } else {
+      // Cold boot with no cache → surface the actionable card with a reason.
+      try {
+        const w = window as Window & { __BOOT_REASON__?: string };
+        if (!w.__BOOT_REASON__) w.__BOOT_REASON__ = 'TIMEOUT'; // keep an earlier, more-specific reason if set
+      } catch { /* ignore */ }
+      onPhase('failed');
+      console.warn('[auth] session resolve gave up after retries code:', lastCode);
+    }
   });
 }
 
@@ -438,6 +497,7 @@ export async function firebaseSignup(
 
 /** Sign out the current Firebase user. */
 export async function firebaseLogout(): Promise<void> {
+  clearSessionCache(); // never render a stale cached session after sign-out
   await signOut(auth);
 }
 
