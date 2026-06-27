@@ -60,19 +60,22 @@ const parseNum = (s: string): number => {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 };
 
-function seedTasks(): TaskRow[] {
-  const seed: Array<[string, number, Who, Rules, Energy]> = [
-    ['Répondre aux emails / Slack', 10, 'anyone', 'yes', 'draining'],
-    ['Comptabilité, facturation',    4, 'specialist', 'no', 'neutral'],
-    ['Prospection / rdv clients',   20, 'self', 'yes', 'energizing'],
-    ['Saisie de données CRM',        2, 'anyone', 'no', 'draining'],
-    ['Gestion réseaux sociaux',      5, 'anyone', 'no', 'neutral'],
-    ['Reporting manuel hebdo',       2, 'anyone', 'yes', 'draining'],
-    ['Gestion planning / agenda',    3, 'anyone', 'yes', 'draining'],
-    ['Devis client',                10, 'self', 'yes', 'draining'],
-  ];
-  return seed.map(([label, h, who, rules, energy]) => ({
-    rowId: newRowId(), label, weeklyHours: h, hoursInput: String(h), who, rules, energy,
+/** Example worksheet (loaded on demand). Labels resolve from T.auditTools.taskCatalog.seed by id. */
+const SEED: Array<{ id: string; h: number; who: Who; rules: Rules; energy: Energy }> = [
+  { id: 'emails_slack',        h: 10, who: 'anyone',     rules: 'yes', energy: 'draining' },
+  { id: 'accounting_billing',  h: 4,  who: 'specialist', rules: 'no',  energy: 'neutral' },
+  { id: 'prospecting_clients', h: 20, who: 'self',       rules: 'yes', energy: 'energizing' },
+  { id: 'crm_data',            h: 2,  who: 'anyone',     rules: 'no',  energy: 'draining' },
+  { id: 'social_mgmt',         h: 5,  who: 'anyone',     rules: 'no',  energy: 'neutral' },
+  { id: 'manual_reporting',    h: 2,  who: 'anyone',     rules: 'yes', energy: 'draining' },
+  { id: 'planning_agenda',     h: 3,  who: 'anyone',     rules: 'yes', energy: 'draining' },
+  { id: 'client_quote',        h: 10, who: 'self',       rules: 'yes', energy: 'draining' },
+];
+
+function buildSeedTasks(seedLabels: Record<string, string>): TaskRow[] {
+  return SEED.map(s => ({
+    rowId: newRowId(), label: seedLabels[s.id] ?? s.id,
+    weeklyHours: s.h, hoursInput: String(s.h), who: s.who, rules: s.rules, energy: s.energy,
   }));
 }
 
@@ -95,7 +98,13 @@ function loadPersisted(): Persisted | null {
 export function WorksheetPage() {
   const { session } = useAuth();
   const { navigate } = useRoute();
-  const W = useLocale().auditTools.worksheet;
+  const A = useLocale().auditTools;
+  const W = A.worksheet;
+  const TC = A.taskCatalog;
+  const catTasks  = TC.tasks  as Record<string, string>;
+  const catGroups = TC.groups as Record<string, string>;
+  const catHints  = TC.hints  as Record<string, string>;
+  const catSeed   = TC.seed   as Record<string, string>;
   const WHO_LABELS:    Record<Who, string>    = { self: W.who.self, specialist: W.who.specialist, anyone: W.who.anyone };
   const RULES_LABELS:  Record<Rules, string>  = { yes: W.rules.yes, no: W.rules.no };
   const ENERGY_LABELS: Record<Energy, string> = { energizing: W.energy.energizing, neutral: W.energy.neutral, draining: W.energy.draining };
@@ -164,7 +173,7 @@ export function WorksheetPage() {
     setTasks(prev => [...prev, { rowId: newRowId(), label: '', weeklyHours: 0, hoursInput: '', who: 'anyone', rules: 'yes', energy: 'draining' }]);
   const removeRow = (rowId: string) => setTasks(prev => prev.filter(t => t.rowId !== rowId));
   const resetAll = () => { setMonthlyIncome(''); setWeeklyHours(''); setTasks([]); };
-  const loadExample = () => { setMonthlyIncome('7000'); setWeeklyHours('60'); setIncomePeriod('month'); setTasks(seedTasks()); };
+  const loadExample = () => { setMonthlyIncome('7000'); setWeeklyHours('60'); setIncomePeriod('month'); setTasks(buildSeedTasks(catSeed)); };
 
   // ── Save / load — server when available, ALWAYS local fallback ──
   interface SavedRow { id: string; title: string; createdAt: string; value: number; source: 'server' | 'local'; }
@@ -237,16 +246,16 @@ export function WorksheetPage() {
     } catch { setMsg(W.actions.deleteFail); }
   };
 
-  // ── Common-task picker + hours helper ──
+  // ── Common-task picker + hours helper (labels resolve from T by id) ──
   const addCatalogTask = (t: CatalogTask) =>
-    setTasks(prev => [...prev, { rowId: newRowId(), label: t.label, weeklyHours: 0, hoursInput: '', who: t.who, rules: t.rules, energy: t.energy }]);
+    setTasks(prev => [...prev, { rowId: newRowId(), label: catTasks[t.id] ?? t.label, weeklyHours: 0, hoursInput: '', who: t.who, rules: t.rules, energy: t.energy }]);
 
   const replaceWithSplits = (rowId: string, splits: CatalogTask[]) =>
     setTasks(prev => {
       const idx = prev.findIndex(t => t.rowId === rowId);
       if (idx < 0) return prev;
       const src = prev[idx];
-      const newRows: TaskRow[] = splits.map(s => ({ rowId: newRowId(), label: s.label, weeklyHours: src.weeklyHours, hoursInput: src.hoursInput, who: s.who, rules: s.rules, energy: s.energy }));
+      const newRows: TaskRow[] = splits.map(s => ({ rowId: newRowId(), label: catTasks[s.id] ?? s.label, weeklyHours: src.weeklyHours, hoursInput: src.hoursInput, who: s.who, rules: s.rules, energy: s.energy }));
       return [...prev.slice(0, idx), ...newRows, ...prev.slice(idx + 1)];
     });
 
@@ -418,7 +427,7 @@ export function WorksheetPage() {
                     <tr>
                       <td colSpan={9} style={{ padding: '0 8px 8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
-                          <span style={{ fontSize: 12.5, color: '#92400E' }}>💡 {sug.hint}</span>
+                          <span style={{ fontSize: 12.5, color: '#92400E' }}>💡 {catHints[sug.id] ?? sug.hint}</span>
                           {sug.splits.length > 0 && (
                             <button onClick={() => replaceWithSplits(t.rowId, sug.splits)} style={{ ...miniBtn, borderColor: '#F59E0B', color: '#92400E' }}>
                               {format(W.tasks.splitInto, { n: String(sug.splits.length) })}
@@ -459,8 +468,8 @@ export function WorksheetPage() {
           >
             <option value="">{W.tasks.addCommon}</option>
             {TASK_CATALOG.map((g, gi) => (
-              <optgroup key={g.group} label={g.group}>
-                {g.tasks.map((t, ti) => <option key={t.label} value={`${gi}:${ti}`}>{t.label}</option>)}
+              <optgroup key={g.id} label={catGroups[g.id] ?? g.group}>
+                {g.tasks.map((t, ti) => <option key={t.id} value={`${gi}:${ti}`}>{catTasks[t.id] ?? t.label}</option>)}
               </optgroup>
             ))}
           </select>
