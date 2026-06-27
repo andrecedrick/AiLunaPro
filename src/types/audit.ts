@@ -91,6 +91,7 @@ export type Route =
   | { name: 'my-quotes' }
   | { name: 'invoices'; quoteId?: string }
   | { name: 'admin' }
+  | { name: 'contacts' }
   | { name: 'help' }
   | { name: 'system-builder' }
   | { name: 'worksheet' }

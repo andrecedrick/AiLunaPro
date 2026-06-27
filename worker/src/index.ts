@@ -57,6 +57,7 @@ import feedbackPublicRoutes  from './routes/feedback-public';
 import supportRoutes         from './routes/support';
 import lunaRoutes            from './routes/luna';
 import worksheetRoutes       from './routes/worksheet';
+import contactsRoutes, { contactsPlatform } from './routes/contacts';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -195,6 +196,8 @@ app.route('/', feedbackPublicRoutes);
 app.route('/', supportRoutes);
 app.route('/', lunaRoutes);
 app.route('/', worksheetRoutes);
+app.route('/', contactsRoutes);
+app.route('/', contactsPlatform);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

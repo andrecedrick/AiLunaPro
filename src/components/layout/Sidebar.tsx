@@ -53,6 +53,7 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'invoices')             return 'invoices';
   if (name === 'my-quotes')            return 'my-quotes';
   if (name === 'admin')                return 'admin';
+  if (name === 'contacts')             return 'contacts';
   return '';
 }
 
@@ -626,6 +627,19 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
             active={activeId === 'admin'}
             iconsOnly={iconsOnly}
             onClick={() => { navigate({ name: 'admin' }); onNavigate?.(); }}
+          />
+        )}
+
+        {/* Contacts — content roles (owner/admin/member) OR platform super-admin
+            (cross-org read-only). billing/client hidden; API 403s them regardless. */}
+        {(isSuperAdmin || session?.role === 'owner' || session?.role === 'admin' || session?.role === 'member') && (
+          <NavItem
+            id="contacts"
+            icon="team"
+            label={T.contacts.nav}
+            active={activeId === 'contacts'}
+            iconsOnly={iconsOnly}
+            onClick={() => { navigate({ name: 'contacts' }); onNavigate?.(); }}
           />
         )}
       </nav>

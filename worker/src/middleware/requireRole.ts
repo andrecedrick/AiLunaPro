@@ -16,7 +16,7 @@
 import type { Context, Next } from 'hono';
 import { firestoreGet } from '../lib/firestoreAdmin';
 
-type Role = 'owner' | 'admin' | 'member' | 'billing' | 'client';
+export type Role = 'owner' | 'admin' | 'member' | 'billing' | 'client';
 
 export function requireRole(allowed: readonly Role[]) {
   return async (c: Context, next: Next): Promise<Response | void> => {

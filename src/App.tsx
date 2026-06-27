@@ -51,6 +51,7 @@ const MyQuotesPage         = lazy(() => import('./pages/MyQuotesPage').then(m =>
 const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
 const WorksheetPage        = lazy(() => import('./pages/WorksheetPage').then(m => ({ default: m.WorksheetPage })));
+const ContactsPage         = lazy(() => import('./pages/ContactsPage').then(m => ({ default: m.ContactsPage })));
 const VisibilityAuditPage  = lazy(() => import('./pages/VisibilityAuditPage').then(m => ({ default: m.VisibilityAuditPage })));
 const AuditExpressSavedPage = lazy(() => import('./pages/AuditExpressSavedPage').then(m => ({ default: m.AuditExpressSavedPage })));
 const AuditExpressRunPage   = lazy(() => import('./pages/AuditExpressRunPage').then(m => ({ default: m.AuditExpressRunPage })));
@@ -99,6 +100,8 @@ function PageOutlet() {
         return <InvoicesPage />;
       case 'admin':
         return <AdminCenterPage />;
+      case 'contacts':
+        return <ContactsPage />;
       case 'my-quotes':
         return <MyQuotesPage />;
       case 'settings/profile':
@@ -272,6 +275,8 @@ function AppShell() {
       navigate({ name: 'invoices' });
     } else if (h.startsWith('#/admin')) {
       navigate({ name: 'admin' });
+    } else if (h.startsWith('#/contacts')) {
+      navigate({ name: 'contacts' });
     } else if (h.startsWith('#/my-quotes')) {
       navigate({ name: 'my-quotes' });
     } else if (h.startsWith('#/help')) {
