@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Shared in-memory state (hoisted so the vi.mock factories can close over it).
 const state = vi.hoisted(() => ({
-  members: new Set<string>(),                 // `${orgId}/${uid}`
+  members: new Set<string>(),                 // `${orgId}/${uid}` → defaults to role 'owner'
+  roles: new Map<string, { role: string; status?: string }>(), // per-member role/status override
   docs: new Map<string, Record<string, unknown>>(),
   r2: new Map<string, Uint8Array>(),
   tokenResult: { ok: true, balanceAfter: 100, tokensConsumed: 10 } as Record<string, unknown>,
@@ -21,7 +22,12 @@ vi.mock('../../worker/src/middleware/auth', async (orig) => {
 vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
   firestoreGet: vi.fn(async (_sa: string, path: string) => {
     const m = path.match(/^organizations\/([^/]+)\/members\/([^/]+)$/);
-    if (m) return state.members.has(`${m[1]}/${m[2]}`) ? { role: 'owner' } : null;
+    if (m) {
+      const key = `${m[1]}/${m[2]}`;
+      const override = state.roles.get(key);
+      if (override) return override;                 // explicit role/status for RBAC tests
+      return state.members.has(key) ? { role: 'owner' } : null;
+    }
     return state.docs.get(path) ?? null;
   }),
   firestoreSet: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>, opts?: { merge?: boolean }) => {
@@ -64,7 +70,7 @@ function req(method: string, path: string, opts: { token?: string; body?: unknow
 }
 
 beforeEach(() => {
-  state.members.clear(); state.docs.clear(); state.r2.clear();
+  state.members.clear(); state.roles.clear(); state.docs.clear(); state.r2.clear();
   state.members.add('orgA/uid-1'); // uid-1 is a member of orgA only
   state.tokenResult = { ok: true, balanceAfter: 100, tokensConsumed: 10 };
   vi.clearAllMocks();
@@ -88,6 +94,47 @@ describe('store route — auth + isolation', () => {
     expect(res.status).toBe(403);
     expect((await res.json()).code).toBe('FORBIDDEN');
     expect(state.r2.size).toBe(0);
+  });
+});
+
+describe('store route — RBAC (role + status enforcement)', () => {
+  const setMember = (role: string, status?: string) =>
+    state.roles.set('orgA/uid-1', status ? { role, status } : { role });
+
+  it('billing role is walled off from audit content (FORBIDDEN_ROLE on save)', async () => {
+    setMember('billing');
+    const res = await save('orgA');
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('FORBIDDEN_ROLE');
+    expect(state.r2.size).toBe(0);
+  });
+
+  it('client (external) role is denied (FORBIDDEN_ROLE on list)', async () => {
+    setMember('client');
+    const res = await req('GET', '/api/audit-express/list?orgId=orgA', { token: 'valid-token' });
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('FORBIDDEN_ROLE');
+  });
+
+  it('content member can save + list but CANNOT delete or share (owner/admin only)', async () => {
+    setMember('member');
+    const s = await save('orgA');
+    expect(s.status).toBe(200);
+    const { auditId } = await s.json();
+    expect((await req('GET', '/api/audit-express/list?orgId=orgA', { token: 'valid-token' })).status).toBe(200);
+    const del = await req('DELETE', `/api/audit-express/${auditId}?orgId=orgA`, { token: 'valid-token' });
+    expect(del.status).toBe(403);
+    expect((await del.json()).code).toBe('FORBIDDEN_ROLE');
+    const share = await req('POST', `/api/audit-express/${auditId}/share`, { token: 'valid-token', body: { orgId: 'orgA' } });
+    expect(share.status).toBe(403);
+    expect((await share.json()).code).toBe('FORBIDDEN_ROLE');
+  });
+
+  it('a disabled member is denied even with a valid role (ACCOUNT_DISABLED)', async () => {
+    setMember('owner', 'disabled');
+    const res = await save('orgA');
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('ACCOUNT_DISABLED');
   });
 });
 

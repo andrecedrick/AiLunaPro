@@ -43,6 +43,11 @@ export function requireRole(allowed: readonly Role[]) {
         env.FIREBASE_SERVICE_ACCOUNT_JSON,
         `organizations/${orgId}/members/${uid}`,
       );
+      // A disabled member keeps no authority — role alone is not enough.
+      if (member?.status === 'disabled') {
+        console.warn('[requireRole] denied — disabled member uid:', uid, 'orgId:', orgId);
+        return c.json({ error: 'Account disabled.', code: 'ACCOUNT_DISABLED' }, 403);
+      }
       const role = member?.role as Role | undefined;
       if (!role || !allowed.includes(role)) {
         console.warn('[requireRole] denied — uid:', uid, 'orgId:', orgId, 'role:', role ?? 'none', 'allowed:', allowed);

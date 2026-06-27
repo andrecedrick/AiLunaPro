@@ -44,8 +44,13 @@ export function isPlatformAdmin(
 /**
  * SUPER_ADMIN — a verified email in PLATFORM_ADMIN_EMAILS OR ADMIN_EMAILS.
  * Platform operators plus the quote/invoice admin recipients. Verified-email
- * gated, fail-closed (empty allowlists → false). Used only to gate the (org-
- * scoped) Admin Center UI; server-side data access stays role-gated per org.
+ * gated, fail-closed (empty allowlists → false).
+ *
+ * SCOPE (do not widen): used ONLY to gate the (org-scoped) Admin Center UI and to
+ * elevate the quote /list READ scope for an admin-recipient who is ALSO an org
+ * member. NEVER authorize a server WRITE or a privileged data route off this —
+ * use isPlatformAdmin (operator routes), requireRole, or requireOwner. A platform
+ * operator is a non-member, so requireRole/requireOwner already 403 them per org.
  */
 export function isSuperAdmin(
   env: AppEnv['Bindings'],

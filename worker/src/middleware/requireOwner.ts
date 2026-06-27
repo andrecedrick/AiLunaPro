@@ -50,6 +50,10 @@ export function requireOwner() {
         env.FIREBASE_SERVICE_ACCOUNT_JSON,
         `organizations/${orgId}/members/${uid}`,
       );
+      if (member?.status === 'disabled') {
+        console.warn('[requireOwner] denied — disabled member uid:', uid, 'orgId:', orgId);
+        return c.json({ error: 'Account disabled.', code: 'ACCOUNT_DISABLED' }, 403);
+      }
       const role = member?.role as string | undefined;
       if (role !== 'owner') {
         console.warn('[requireOwner] denied — uid:', uid, 'orgId:', orgId, 'role:', role ?? 'none');

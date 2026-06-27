@@ -50,6 +50,7 @@ async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string; r
   const member = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/members/${uid}`);
   const role = typeof member?.role === 'string' ? member.role : '';
   if (!member || !role) return c.json({ error: 'Not a member of this workspace.', code: 'FORBIDDEN' }, 403);
+  if (member.status === 'disabled') return c.json({ error: 'Account disabled.', code: 'ACCOUNT_DISABLED' }, 403);
   // RBAC: financial worksheet is content-role only — billing/client are denied.
   if (!WORKSHEET_ROLES.includes(role)) return c.json({ error: 'Your role cannot access worksheets.', code: 'FORBIDDEN_ROLE' }, 403);
   return { uid, role };

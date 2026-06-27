@@ -615,8 +615,10 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
             onClick={() => { navigate({ name: 'my-quotes' }); onNavigate?.(); }}
           />
         )}
-        {/* Admin Center — super admins only (ADMIN_EMAILS / PLATFORM_ADMIN_EMAILS). */}
-        {isSuperAdmin && (
+        {/* Admin Center — org owner/admin (own-org governance) OR platform super-admin
+            (ADMIN_EMAILS / PLATFORM_ADMIN_EMAILS). Matches AdminCenterPage's gate; all
+            data endpoints stay server-gated to owner/admin, so the nav is UX only. */}
+        {(isSuperAdmin || session?.role === 'owner' || session?.role === 'admin') && (
           <NavItem
             id="admin"
             icon="billing"

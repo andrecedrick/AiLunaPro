@@ -259,7 +259,9 @@ service cloud.firestore {
       // org's saved audits; direct client writes are denied (defense-in-depth).
       // ───────────────────────────────────────────────────────────────────
       match /auditExpress/{auditId} {
-        allow read:  if isAnyMember(orgId);
+        // Content members only (owner/admin/member) — billing/client are walled
+        // off from audit content, matching the audits collection + the worker gate.
+        allow read:  if isContentMember(orgId);
         allow write: if false;
       }
 

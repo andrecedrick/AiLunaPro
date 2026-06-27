@@ -74,8 +74,21 @@ function isExtractSnapshot(v: unknown): v is ExtractSnapshot {
     !!s.identity && typeof s.identity === 'object' && !!s.trace && typeof s.trace === 'object';
 }
 
-/** Auth + org-membership gate. Returns uid or a Response to short-circuit. */
-async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string } | Response> {
+/**
+ * Audit content is walled off from billing/client (mirrors firestore.rules
+ * isContentMember + the worksheet gate). CONTENT_ROLES read/create; destructive
+ * + public-share-link minting is restricted to MANAGE_ROLES (owner/admin),
+ * mirroring reports.ts isPrivileged.
+ */
+const CONTENT_ROLES: readonly string[] = ['owner', 'admin', 'member'];
+const MANAGE_ROLES:  readonly string[] = ['owner', 'admin'];
+
+/**
+ * Auth + org-membership + ROLE gate. Returns {uid, role} or a Response.
+ * Rejects: unauthenticated (401), non-member (403), disabled member (403),
+ * and any role not in `allowed` (403) — default = content roles (no billing/client).
+ */
+async function gate(c: Context<AppEnv>, orgId: string, allowed: readonly string[] = CONTENT_ROLES): Promise<{ uid: string; role: string } | Response> {
   const env = c.env as StoreBindings;
   c.header('Cache-Control', 'no-store');
   const authHeader = c.req.header('Authorization') ?? '';
@@ -85,8 +98,11 @@ async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string } 
   if (!orgId) return c.json({ error: 'orgId required.', code: 'ORG_REQUIRED' }, 400);
   if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 500);
   const member = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/members/${uid}`);
-  if (!member) return c.json({ error: 'Not a member of this workspace.', code: 'FORBIDDEN' }, 403);
-  return { uid };
+  const role = typeof member?.role === 'string' ? member.role : '';
+  if (!member || !role) return c.json({ error: 'Not a member of this workspace.', code: 'FORBIDDEN' }, 403);
+  if (member.status === 'disabled') return c.json({ error: 'Account disabled.', code: 'ACCOUNT_DISABLED' }, 403);
+  if (!allowed.includes(role)) return c.json({ error: 'Your role cannot access audits.', code: 'FORBIDDEN_ROLE' }, 403);
+  return { uid, role };
 }
 
 store.post('/api/audit-express/save', async c => {
@@ -370,7 +386,7 @@ store.post('/api/audit-express/:auditId/title', async c => {
   try { body = (await c.req.json()) as Record<string, unknown>; } catch { c.header('Cache-Control', 'no-store'); return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
   const orgId = safeId(body.orgId);
   const auditId = safeId(c.req.param('auditId'));
-  const g = await gate(c, orgId);
+  const g = await gate(c, orgId, MANAGE_ROLES);
   if (g instanceof Response) return g;
 
   const path = `${COLLECTION(orgId)}/${auditId}`;
@@ -436,7 +452,7 @@ store.post('/api/audit-express/:auditId/share', async c => {
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   const orgId = safeId(body.orgId);
   const auditId = safeId(c.req.param('auditId'));
-  const g = await gate(c, orgId);
+  const g = await gate(c, orgId, MANAGE_ROLES);
   if (g instanceof Response) return g;
   c.header('Cache-Control', 'no-store');
   return mintShare(c, env, orgId, auditId, g.uid, false);
@@ -447,7 +463,7 @@ store.post('/api/audit-express/:auditId/regenerate-share', async c => {
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   const orgId = safeId(body.orgId);
   const auditId = safeId(c.req.param('auditId'));
-  const g = await gate(c, orgId);
+  const g = await gate(c, orgId, MANAGE_ROLES);
   if (g instanceof Response) return g;
   c.header('Cache-Control', 'no-store');
   return mintShare(c, env, orgId, auditId, g.uid, true);
@@ -458,7 +474,7 @@ store.post('/api/audit-express/:auditId/revoke-share', async c => {
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   const orgId = safeId(body.orgId);
   const auditId = safeId(c.req.param('auditId'));
-  const g = await gate(c, orgId);
+  const g = await gate(c, orgId, MANAGE_ROLES);
   if (g instanceof Response) return g;
   c.header('Cache-Control', 'no-store');
 
@@ -476,7 +492,7 @@ store.post('/api/audit-express/:auditId/sharing', async c => {
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   const orgId = safeId(body.orgId);
   const auditId = safeId(c.req.param('auditId'));
-  const g = await gate(c, orgId);
+  const g = await gate(c, orgId, MANAGE_ROLES);
   if (g instanceof Response) return g;
   c.header('Cache-Control', 'no-store');
 
@@ -492,7 +508,7 @@ store.delete('/api/audit-express/:auditId', async c => {
   const env = c.env as StoreBindings;
   const orgId = safeId(c.req.query('orgId'));
   const auditId = safeId(c.req.param('auditId'));
-  const g = await gate(c, orgId);
+  const g = await gate(c, orgId, MANAGE_ROLES);
   if (g instanceof Response) return g;
 
   const doc = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON!, `${COLLECTION(orgId)}/${auditId}`);
