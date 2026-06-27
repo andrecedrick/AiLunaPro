@@ -210,6 +210,13 @@ function AppShell() {
     return () => window.clearTimeout(t);
   }, [isLoading]);
 
+  /* Startup API health probe (non-blocking): logs whether the worker API is
+     reachable early, so a backend outage is visible in diagnostics without
+     blocking the app. Fire-and-forget; has its own timeout. */
+  useEffect(() => {
+    void import('./lib/health/startupHealth').then(m => m.probeApiHealth()).catch(() => {});
+  }, []);
+
   /* Tell the index.html boot watchdog that React produced usable UI — anything
      except the bare initial spinner (the app, login, or the actionable
      "Still connecting" card). Once set, the bundle-independent fallback in

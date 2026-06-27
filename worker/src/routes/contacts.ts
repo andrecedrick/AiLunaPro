@@ -136,6 +136,30 @@ async function findByEmail(saJson: string, orgId: string, emailKey: string, exce
   return rows.some(r => (r.name.split('/').pop() ?? '') !== exceptId);
 }
 
+/**
+ * Load contacts under `parent` (org doc, or '' for a root collectionGroup).
+ * Tries the indexed orderBy(createdAt) query; on ANY failure (e.g. a fresh
+ * collectionGroup with no single-field index yet → FAILED_PRECONDITION) it
+ * retries WITHOUT orderBy and sorts in code, so the endpoint degrades gracefully
+ * instead of 500-ing with QUERY_FAILED. Always returns newest-first.
+ */
+async function loadContacts(saJson: string, parent: string, allDescendants: boolean, limit: number) {
+  const from = [{ collectionId: 'contacts', ...(allDescendants ? { allDescendants: true } : {}) }];
+  let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
+  try {
+    rows = await firestoreRunQuery(saJson, { from, orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit }, parent);
+  } catch (err) {
+    console.warn('[contacts] ordered query failed, retrying without orderBy:', err instanceof Error ? err.message : '');
+    rows = await firestoreRunQuery(saJson, { from, limit }, parent);
+  }
+  rows.sort((a, b) => {
+    const ca = String((a.fields as Record<string, unknown>).createdAt ?? '');
+    const cb = String((b.fields as Record<string, unknown>).createdAt ?? '');
+    return ca < cb ? 1 : ca > cb ? -1 : 0;
+  });
+  return rows;
+}
+
 /* ── GET /api/contacts/list — org-scoped ──────────────────────────────────── */
 contacts.get('/api/contacts/list', requireAuth(), requireRole(ORG_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -148,11 +172,7 @@ contacts.get('/api/contacts/list', requireAuth(), requireRole(ORG_ROLES), async 
 
   let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
   try {
-    rows = await firestoreRunQuery(saJson, {
-      from: [{ collectionId: 'contacts' }],
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
-      limit: 1000,
-    }, `organizations/${orgId}`);
+    rows = await loadContacts(saJson, `organizations/${orgId}`, false, 1000);
   } catch (err) {
     console.error('[contacts] list failed:', err instanceof Error ? err.message : '');
     return c.json({ error: 'Could not load contacts.', code: 'QUERY_FAILED' }, 500);
@@ -292,11 +312,7 @@ contactsPlatform.get('/api/contacts/all', requireAuth(), requirePlatformAdmin(),
 
   let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
   try {
-    rows = await firestoreRunQuery(saJson, {
-      from: [{ collectionId: 'contacts', allDescendants: true }],
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
-      limit: 2000,
-    }, '');
+    rows = await loadContacts(saJson, '', true, 2000);
   } catch (err) {
     console.error('[contacts] cross-org list failed:', err instanceof Error ? err.message : '');
     return c.json({ error: 'Could not load contacts.', code: 'QUERY_FAILED' }, 500);

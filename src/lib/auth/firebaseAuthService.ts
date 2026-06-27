@@ -46,6 +46,24 @@ let _fs: { api: typeof import('firebase/firestore'); db: Firestore } | null = nu
 // instead of hanging forever. No PII in logs (code only).
 const FIRESTORE_LAZY_TIMEOUT_MS = 10_000;
 
+// Bound the per-attempt session build (the Firestore getDoc reads) so it ALWAYS
+// settles. Without this, a network stall makes onAuthStateChanged's async handler
+// hang forever → isLoading never flips → the app is pinned on "Still connecting".
+const SESSION_BUILD_TIMEOUT_MS = 7_000;
+// Auto-retry transient stalls before surfacing the actionable card (total attempts
+// = 1 + retries). Recovers without any user action when the network blip passes.
+const SESSION_BUILD_RETRIES    = 2;
+
+const delay = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
+
+/** Race a promise against a timeout; rejects with `code` if it doesn't settle in time. */
+function withTimeout<T>(p: Promise<T>, ms: number, code: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(code)), ms)),
+  ]);
+}
+
 async function fs(): Promise<{ api: typeof import('firebase/firestore'); db: Firestore }> {
   if (_fs) return _fs;
   const load = Promise.all([import('firebase/firestore'), import('../firestore')]);
@@ -255,28 +273,40 @@ export function subscribeAuthState(
       onSignedOut();
       return;
     }
-    try {
-      const result = await buildSession(firebaseUser);
-      if (result) {
-        onResolved(result.session, result.members, result.orgs);
-      } else {
-        // User exists in Auth but Firestore docs not yet available
-        // (e.g. race window right after signup). Do NOT sign out —
-        // the signup function will force a fresh onAuthStateChanged
-        // after writes complete. Just report signed-out state.
-        onSignedOut();
+    // Bounded + auto-retried session build. Each attempt fails fast on a stall
+    // (SESSION_BUILD_TIMEOUT_MS) instead of hanging; transient failures retry with
+    // backoff. Only after exhausting retries do we surface the actionable card.
+    let lastCode = 'UNKNOWN';
+    for (let attempt = 0; attempt <= SESSION_BUILD_RETRIES; attempt++) {
+      try {
+        const result = await withTimeout(buildSession(firebaseUser), SESSION_BUILD_TIMEOUT_MS, 'SESSION_BUILD_TIMEOUT');
+        if (result) {
+          onResolved(result.session, result.members, result.orgs);
+        } else {
+          // User exists in Auth but Firestore docs not yet available (e.g. race
+          // window right after signup). Do NOT sign out — the signup flow forces
+          // a fresh onAuthStateChanged once writes land. Report signed-out state.
+          onSignedOut();
+        }
+        return; // settled (resolved or clean signed-out) — done.
+      } catch (err) {
+        // Connectivity / lazy-load / timeout failure. Firebase auth is still
+        // valid, so NEVER sign out (that would bounce a logged-in user to login
+        // on a transient blip). Retry a couple of times, then leave the app in its
+        // loading state so the watchdog shows the "Still connecting" card. Log the
+        // code only — never PII.
+        lastCode = (err as Error)?.message ?? 'UNKNOWN';
+        console.warn(`[auth] session resolve attempt ${attempt + 1}/${SESSION_BUILD_RETRIES + 1} failed code:`, lastCode);
+        if (attempt < SESSION_BUILD_RETRIES) await delay(800 * (attempt + 1));
       }
-    } catch (err) {
-      // A THROWN error here is a connectivity / lazy-load failure (e.g. the
-      // firestore chunk was blocked or timed out) — the user's Firebase auth is
-      // still valid, so do NOT sign them out (that would bounce a logged-in user
-      // to the login page on a transient network blip). Leave the app in its
-      // loading state so AppShell's watchdog shows the actionable "Still
-      // connecting" card (Reload + Help); a reload re-runs this callback once
-      // the network recovers. Log the code only — never PII.
-      const code = (err as Error)?.message ?? 'UNKNOWN';
-      if (import.meta.env.DEV) console.warn('[auth] session resolve failed code:', code);
     }
+    // Exhausted retries → record a non-PII boot reason so the card shows the
+    // right cause, then stop (the card's Retry/Reload re-runs this once recovered).
+    try {
+      const w = window as Window & { __BOOT_REASON__?: string };
+      if (!w.__BOOT_REASON__) w.__BOOT_REASON__ = 'TIMEOUT'; // keep an earlier, more-specific reason (e.g. FIRESTORE_CHUNK_BLOCKED) if set
+    } catch { /* ignore */ }
+    console.warn('[auth] session resolve gave up after retries code:', lastCode);
   });
 }
 
