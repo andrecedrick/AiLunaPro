@@ -117,7 +117,7 @@ export function AgentCard({ agent, onOpen }: Props) {
           onClick={e => e.stopPropagation()}
           style={{
             flex: 1, padding: '8px 0', borderRadius: 8,
-            background: isAiLuna ? 'var(--violet)' : 'var(--text-primary)',
+            background: isAiLuna ? 'var(--brand-gradient)' : 'var(--text-primary)',
             color: '#fff', fontWeight: 600, fontSize: 12,
             textAlign: 'center', textDecoration: 'none',
           }}

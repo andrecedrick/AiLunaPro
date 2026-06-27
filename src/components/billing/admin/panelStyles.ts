@@ -51,7 +51,7 @@ export const button = (primary = true): CSSProperties => ({
   padding:      '9px 18px',
   borderRadius: 8,
   border:       primary ? 'none' : '1px solid var(--border)',
-  background:   primary ? 'var(--violet)' : 'transparent',
+  background:   primary ? 'var(--brand-gradient)' : 'transparent',
   color:        primary ? '#fff' : 'var(--text-muted)',
   fontWeight:   600,
   fontSize:     13,

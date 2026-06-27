@@ -251,7 +251,7 @@ export function BillingSuccessPage() {
               padding:      '10px 22px',
               borderRadius: 10,
               border:       'none',
-              background:   'var(--violet)',
+              background:   'var(--brand-gradient)',
               color:        '#fff',
               fontWeight:   600,
               fontSize:     14,
