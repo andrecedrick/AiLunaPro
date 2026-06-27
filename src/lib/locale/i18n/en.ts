@@ -37,6 +37,15 @@ export const en = {
     myQuotes:              'My quotes',
     invoices:              'Invoices',
   },
+  navGroups: {
+    core:    'Core',
+    audit:   'Audit & Analysis',
+    crm:     'Sales / CRM',
+    admin:   'Administration',
+    billing: 'Billing',
+    tools:   'Tools',
+    system:  'System',
+  },
   /** App-shell chrome (sidebar header, org switcher, sign-out, pref widget). */
   bankSettings: {
     heading: 'Bank transfer details',

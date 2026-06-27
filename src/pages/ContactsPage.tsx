@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
+import { Button } from '../components/ui/Button';
 import { fetchPlatformMe } from '../lib/platform/platformService';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
@@ -145,7 +146,7 @@ export function ContactsPage() {
             </div>
           )}
           {!readOnly && isContentRole && (
-            <button onClick={openCreate} style={primaryBtn}>{C.create}</button>
+            <Button variant="primary" size="md" onClick={openCreate}>{C.create}</Button>
           )}
         </div>
       </header>
@@ -213,9 +214,11 @@ export function ContactsPage() {
                   <td style={{ ...td, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
                   {!readOnly && (
                     <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {canEditRow(c) && <button onClick={() => openEdit(c)} style={miniBtn} disabled={busyId === c.contactId}>{C.edit}</button>}
-                      {isManager && <button onClick={() => void toggleBlock(c)} style={miniBtn} disabled={busyId === c.contactId}>{c.status === 'blocked' ? C.unblock : C.block}</button>}
-                      {canEditRow(c) && <button onClick={() => void remove(c)} style={{ ...miniBtn, color: 'var(--red-text)' }} disabled={busyId === c.contactId}>{C.delete}</button>}
+                      <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                        {canEditRow(c) && <Button variant="secondary" size="sm" onClick={() => openEdit(c)} disabled={busyId === c.contactId}>{C.edit}</Button>}
+                        {isManager && <Button variant="secondary" size="sm" onClick={() => void toggleBlock(c)} disabled={busyId === c.contactId}>{c.status === 'blocked' ? C.unblock : C.block}</Button>}
+                        {canEditRow(c) && <Button variant="danger" size="sm" onClick={() => void remove(c)} disabled={busyId === c.contactId}>{C.delete}</Button>}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -256,8 +259,8 @@ export function ContactsPage() {
             </div>
             {formErr && <div style={{ marginTop: 10, color: 'var(--red-text)', fontSize: 13 }}>{errMsg(formErr)}</div>}
             <div style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setDraft(null)} disabled={saving} style={miniBtn}>{C.cancel}</button>
-              <button onClick={() => void submit()} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? '…' : C.save}</button>
+              <Button variant="ghost" size="md" onClick={() => setDraft(null)} disabled={saving}>{C.cancel}</Button>
+              <Button variant="primary" size="md" onClick={() => void submit()} disabled={saving}>{saving ? '…' : C.save}</Button>
             </div>
           </div>
         </div>
@@ -281,8 +284,6 @@ const card: React.CSSProperties = { background: 'var(--surface)', border: '1px s
 const field: React.CSSProperties = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit' };
 const th: React.CSSProperties = { padding: '10px 12px', fontWeight: 700 };
 const td: React.CSSProperties = { padding: '10px 12px', verticalAlign: 'middle' };
-const primaryBtn: React.CSSProperties = { padding: '9px 16px', borderRadius: 10, border: '1px solid var(--violet)', background: 'var(--violet)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
-const miniBtn: React.CSSProperties = { padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginLeft: 6 };
 const toggleBtn: React.CSSProperties = { padding: '7px 14px', border: 'none', background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' };
 const toggleOn: React.CSSProperties = { background: 'var(--violet)', color: '#fff' };
 const tagPill: React.CSSProperties = { padding: '2px 7px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border)' };

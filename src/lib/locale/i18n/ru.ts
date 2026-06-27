@@ -4,6 +4,15 @@
 import type { Dict } from './en';
 
 export const ru: Dict = {
+  navGroups: {
+    core:    'Основное',
+    audit:   'Аудит и анализ',
+    crm:     'Продажи / CRM',
+    admin:   'Администрирование',
+    billing: 'Оплата',
+    tools:   'Инструменты',
+    system:  'Система',
+  },
   nav: {
     dashboard:             'Панель',
     'new-audit':           'Новый аудит',

@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost';
-type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -21,6 +21,12 @@ const VARIANT_STYLES: Record<ButtonVariant, React.CSSProperties> = {
     background: 'var(--brand-tint-bg)',
     color: 'var(--violet-text)',
     border: 'none',
+    fontWeight: 600,
+  },
+  danger: {
+    background: 'transparent',
+    color: 'var(--red-text)',
+    border: '1.5px solid var(--border-strong)',
     fontWeight: 600,
   },
   ghost: {

@@ -3,6 +3,15 @@
 import type { Dict } from './en';
 
 export const pt: Dict = {
+  navGroups: {
+    core:    'Geral',
+    audit:   'Auditoria e análise',
+    crm:     'Vendas / CRM',
+    admin:   'Administração',
+    billing: 'Faturação',
+    tools:   'Ferramentas',
+    system:  'Sistema',
+  },
   nav: {
     dashboard:             'Painel',
     'new-audit':           'Nova auditoria',

@@ -1,29 +1,10 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
-import { mockNavItems } from '../../data/mockDashboard';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocale } from '../../context/LocaleContext';
 import { SidebarPreferences } from './SidebarPreferences';
 import { setSrc } from '../../lib/analytics/srcParam';
 import type { Route, RouteName } from '../../types/audit';
-
-/* Map Sidebar nav item ids to routes (only the ones wired so far). */
-const NAV_ROUTES: Partial<Record<string, Route>> = {
-  dashboard: { name: 'dashboard' },
-  'new-audit': { name: 'audit/new' },
-  reports: { name: 'reports' },
-  'audit-history': { name: 'audit/history' },
-  'audit-express-run': { name: 'audit-express/run' },
-  'audit-express-saved': { name: 'audit-express/saved' },
-  registry: { name: 'registry' },
-  'system-builder': { name: 'system-builder' },
-  agents: { name: 'agents' },
-  team: { name: 'team' },
-  help: { name: 'help' },
-  settings: { name: 'settings/profile' },
-  billing:  { name: 'billing' },
-  invoices: { name: 'invoices' },
-};
 
 /* Map current route → nav item id that should appear active. */
 function routeToActiveId(name: RouteName): string {
@@ -55,6 +36,79 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'admin')                return 'admin';
   if (name === 'contacts')             return 'contacts';
   return '';
+}
+
+/* ── Grouped navigation model (RBAC-gated, collapsible sections) ──────────────
+ * Single source of truth: logical groups → entries. Each entry keeps its route,
+ * icon, and role gate; a group renders only the entries the current role may see
+ * and hides entirely when empty. Reorganization only — every existing route +
+ * gate is preserved (content items stay content-role-only, etc.). */
+type RoleStr = string | undefined;
+const isContent   = (r: RoleStr) => r === 'owner' || r === 'admin' || r === 'member';
+const notClient   = (r: RoleStr) => !!r && r !== 'client';
+const isOrgAdmin  = (r: RoleStr) => r === 'owner' || r === 'admin';
+
+interface NavEntry {
+  id: string;
+  icon: string;
+  route: Route;
+  src?: string;                                   // ?src acquisition tag for public tools
+  gate?: (role: RoleStr, isSuperAdmin: boolean) => boolean; // undefined → visible to all authed
+}
+interface NavGroupDef { id: string; items: NavEntry[]; }
+
+const NAV_GROUPS: NavGroupDef[] = [
+  { id: 'core', items: [
+    { id: 'dashboard', icon: 'dashboard', route: { name: 'dashboard' } },
+  ] },
+  { id: 'audit', items: [
+    { id: 'new-audit',            icon: 'plus',            route: { name: 'audit/new' },            gate: r => isContent(r) },
+    { id: 'audit-history',        icon: 'reports',         route: { name: 'audit/history' },         gate: r => isContent(r) },
+    { id: 'audit-express-run',    icon: 'plus',            route: { name: 'audit-express/run' },     gate: r => isContent(r) },
+    { id: 'audit-express-saved',  icon: 'reports',         route: { name: 'audit-express/saved' },   gate: r => isContent(r) },
+    { id: 'reports',              icon: 'reports',         route: { name: 'reports' },               gate: r => isContent(r) },
+    { id: 'registry',             icon: 'registry',        route: { name: 'registry' },              gate: r => isContent(r) },
+    { id: 'system-builder',       icon: 'registry',        route: { name: 'system-builder' },        gate: r => isContent(r) },
+    { id: 'agents',               icon: 'agents',          route: { name: 'agents' },                gate: r => notClient(r) },
+    { id: 'worksheet',            icon: 'worksheet-tool',  route: { name: 'worksheet' },             gate: r => isContent(r) },
+    { id: 'visibility',           icon: 'visibility-tool', route: { name: 'visibility' },            gate: r => isContent(r) },
+  ] },
+  { id: 'crm', items: [
+    { id: 'quote-tool', icon: 'quote-tool', route: { name: 'quote' },     src: 'menu-quote' },
+    { id: 'my-quotes',  icon: 'reports',    route: { name: 'my-quotes' }, gate: r => notClient(r) },
+    { id: 'contacts',   icon: 'team',       route: { name: 'contacts' },  gate: (r, sa) => sa || isContent(r) },
+  ] },
+  { id: 'admin', items: [
+    { id: 'admin', icon: 'settings', route: { name: 'admin' }, gate: (r, sa) => sa || isOrgAdmin(r) },
+    { id: 'team',  icon: 'team',     route: { name: 'team' },  gate: r => notClient(r) },
+  ] },
+  { id: 'billing', items: [
+    { id: 'billing',  icon: 'billing', route: { name: 'billing' },  gate: r => r === 'owner' || r === 'admin' || r === 'billing' },
+    { id: 'invoices', icon: 'reports', route: { name: 'invoices' }, gate: r => notClient(r) },
+  ] },
+  { id: 'tools', items: [ // public acquisition tools (chromeless SPA pages)
+    { id: 'roi-tool',  icon: 'roi-tool',  route: { name: 'roi-calculator' }, src: 'menu-roi' },
+    { id: 'diag-tool', icon: 'diag-tool', route: { name: 'diagnostic' },     src: 'menu-diagnostic' },
+  ] },
+  { id: 'system', items: [
+    { id: 'settings', icon: 'settings', route: { name: 'settings/profile' } },
+    { id: 'help',     icon: 'help',     route: { name: 'help' } },
+  ] },
+];
+
+/** Localized label for a nav entry id (reuses existing dictionary keys). */
+function navLabel(id: string, T: ReturnType<typeof useLocale>): string {
+  switch (id) {
+    case 'roi-tool':   return T.nav.aiRoiCalculator;
+    case 'diag-tool':  return T.nav.aiMaturityDiagnostic;
+    case 'quote-tool': return T.nav.requestQuote;
+    case 'my-quotes':  return T.nav.myQuotes;
+    case 'worksheet':  return T.auditTools.nav.worksheetLabel;
+    case 'visibility': return T.auditTools.nav.visibilityLabel;
+    case 'admin':      return T.adminCenter.nav;
+    case 'contacts':   return T.contacts.nav;
+    default:           return (T.nav as Record<string, string>)[id] ?? id;
+  }
 }
 
 const LOGO_URL =
@@ -525,123 +579,24 @@ export function Sidebar({ collapsed = false, isMobile = false, mobileOpen = fals
         </div>
       )}
 
-      {/* Nav — RBAC filtered (J1.3F) */}
-      <nav style={{ flex: 1, padding: '2px 12px', overflowY: 'auto' }}>
-        {mockNavItems
-          .filter(item => {
-            const role = session?.role;
-            // Hide Billing for member/client (no access to client billing)
-            if (item.id === 'billing' && role !== 'owner' && role !== 'admin' && role !== 'billing') return false;
-            // Hide Team management for client
-            if (item.id === 'team' && role === 'client') return false;
-            // K0: Hide Agents catalog for client
-            if (item.id === 'agents' && role === 'client') return false;
-            // Invoices follow the quote flow roles (owner/admin/billing/member) — hide for client
-            if (item.id === 'invoices' && role === 'client') return false;
-            return true;
-          })
-          .map(item => (
-            <NavItem
-              key={item.id}
-              {...item}
-              label={T.nav[item.id as keyof typeof T.nav] ?? item.label}
-              active={item.id === activeId}
-              iconsOnly={iconsOnly}
-              onClick={() => {
-                const target = NAV_ROUTES[item.id];
-                if (target) navigate(target);
-                onNavigate?.();
-              }}
-            />
-          ))}
-
-        {/* Secondary — public quick tools. Visually distinct from the core nav
-            (divider + muted section heading). Navigates to the public SPA tools
-            (rendered chromeless with a "Back to app" return); setSrc tags the
-            in-app menu as the acquisition source for analytics. */}
-        <div style={{ height: 1, background: 'var(--border)', margin: '10px 8px' }} />
-        {!iconsOnly && (
-          <div style={{ padding: '2px 12px 6px', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-            {T.nav.toolsSection}
-          </div>
-        )}
-        <NavItem
-          id="roi-tool"
-          icon="roi-tool"
-          label={T.nav.aiRoiCalculator}
-          active={false}
-          iconsOnly={iconsOnly}
-          onClick={() => { setSrc('menu-roi'); navigate({ name: 'roi-calculator' }); onNavigate?.(); }}
-        />
-        <NavItem
-          id="diag-tool"
-          icon="diag-tool"
-          label={T.nav.aiMaturityDiagnostic}
-          active={false}
-          iconsOnly={iconsOnly}
-          onClick={() => { setSrc('menu-diagnostic'); navigate({ name: 'diagnostic' }); onNavigate?.(); }}
-        />
-        <NavItem
-          id="worksheet"
-          icon="worksheet-tool"
-          label={T.auditTools.nav.worksheetLabel}
-          active={activeId === 'worksheet'}
-          iconsOnly={iconsOnly}
-          onClick={() => { navigate({ name: 'worksheet' }); onNavigate?.(); }}
-        />
-        <NavItem
-          id="visibility"
-          icon="visibility-tool"
-          label={T.auditTools.nav.visibilityLabel}
-          active={activeId === 'visibility'}
-          iconsOnly={iconsOnly}
-          onClick={() => { navigate({ name: 'visibility' }); onNavigate?.(); }}
-        />
-        <NavItem
-          id="quote-tool"
-          icon="quote-tool"
-          label={T.nav.requestQuote}
-          active={false}
-          iconsOnly={iconsOnly}
-          onClick={() => { setSrc('menu-quote'); navigate({ name: 'quote' }); onNavigate?.(); }}
-        />
-        {/* My quotes — sender-side lifecycle tracking (owner/admin/billing/member). */}
-        {session?.role !== 'client' && (
-          <NavItem
-            id="my-quotes"
-            icon="reports"
-            label={T.nav.myQuotes}
-            active={activeId === 'my-quotes'}
+      {/* Nav — RBAC-gated, collapsible logical groups (Core / Audit / CRM / Admin / Billing / Tools) */}
+      <nav style={{ flex: 1, padding: '6px 10px', overflowY: 'auto' }}>
+        {NAV_GROUPS.map(group => (
+          <NavGroup
+            key={group.id}
+            group={group}
+            role={session?.role}
+            isSuperAdmin={isSuperAdmin}
+            activeId={activeId}
             iconsOnly={iconsOnly}
-            onClick={() => { navigate({ name: 'my-quotes' }); onNavigate?.(); }}
+            T={T}
+            onSelect={entry => {
+              if (entry.src) setSrc(entry.src);
+              navigate(entry.route);
+              onNavigate?.();
+            }}
           />
-        )}
-        {/* Admin Center — org owner/admin (own-org governance) OR platform super-admin
-            (ADMIN_EMAILS / PLATFORM_ADMIN_EMAILS). Matches AdminCenterPage's gate; all
-            data endpoints stay server-gated to owner/admin, so the nav is UX only. */}
-        {(isSuperAdmin || session?.role === 'owner' || session?.role === 'admin') && (
-          <NavItem
-            id="admin"
-            icon="billing"
-            label={T.adminCenter.nav}
-            active={activeId === 'admin'}
-            iconsOnly={iconsOnly}
-            onClick={() => { navigate({ name: 'admin' }); onNavigate?.(); }}
-          />
-        )}
-
-        {/* Contacts — content roles (owner/admin/member) OR platform super-admin
-            (cross-org read-only). billing/client hidden; API 403s them regardless. */}
-        {(isSuperAdmin || session?.role === 'owner' || session?.role === 'admin' || session?.role === 'member') && (
-          <NavItem
-            id="contacts"
-            icon="team"
-            label={T.contacts.nav}
-            active={activeId === 'contacts'}
-            iconsOnly={iconsOnly}
-            onClick={() => { navigate({ name: 'contacts' }); onNavigate?.(); }}
-          />
-        )}
+        ))}
       </nav>
 
       {/* Language + Currency preferences (hidden in the collapsed rail) */}
@@ -784,6 +739,60 @@ function NavItem({
       )}
       <NavIcon id={icon} />
       {!iconsOnly && label}
+    </div>
+  );
+}
+
+const groupHeaderStyle: React.CSSProperties = {
+  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  padding: '10px 12px 4px', background: 'transparent', border: 'none', cursor: 'pointer',
+  fontSize: 10.5, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase',
+  color: 'var(--text-muted)', fontFamily: 'inherit',
+};
+
+/** A collapsible, RBAC-filtered nav section. Hidden when the role sees no entry;
+ *  the active item's group is always shown expanded; collapse state persists. */
+function NavGroup({ group, role, isSuperAdmin, activeId, iconsOnly, T, onSelect }: {
+  group: NavGroupDef;
+  role: RoleStr;
+  isSuperAdmin: boolean;
+  activeId: string;
+  iconsOnly: boolean;
+  T: ReturnType<typeof useLocale>;
+  onSelect: (entry: NavEntry) => void;
+}) {
+  const visible = group.items.filter(it => !it.gate || it.gate(role, isSuperAdmin));
+  const hasActive = visible.some(it => it.id === activeId);
+  const STORAGE = `ailunapro-nav-group-${group.id}`;
+  const [open, setOpen] = useState<boolean>(() => {
+    try { const v = localStorage.getItem(STORAGE); if (v != null) return v === '1'; } catch { /* ignore */ }
+    return true; // default: expanded
+  });
+  const expanded = open || hasActive; // never hide the section that holds the current page
+  const toggle = () => { const n = !open; setOpen(n); try { localStorage.setItem(STORAGE, n ? '1' : '0'); } catch { /* ignore */ } };
+
+  if (visible.length === 0) return null;
+
+  const rows = visible.map(it => (
+    <NavItem key={it.id} id={it.id} icon={it.icon} label={navLabel(it.id, T)}
+      active={it.id === activeId} iconsOnly={iconsOnly} onClick={() => onSelect(it)} />
+  ));
+
+  // Collapsed rail: no headers, just icons (with a thin separator between groups).
+  if (iconsOnly) {
+    return <div style={{ marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>{rows}</div>;
+  }
+
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <button type="button" onClick={toggle} aria-expanded={expanded} style={groupHeaderStyle}>
+        <span>{(T.navGroups as Record<string, string>)[group.id] ?? group.id}</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', opacity: 0.7 }}>
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+      {expanded && rows}
     </div>
   );
 }

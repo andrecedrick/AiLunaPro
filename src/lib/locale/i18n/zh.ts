@@ -5,6 +5,15 @@
 import type { Dict } from './en';
 
 export const zh: Dict = {
+  navGroups: {
+    core:    '核心',
+    audit:   '审计与分析',
+    crm:     '销售 / CRM',
+    admin:   '管理',
+    billing: '账单',
+    tools:   '工具',
+    system:  '系统',
+  },
   nav: {
     dashboard:             '仪表板',
     'new-audit':           '新建审计',
