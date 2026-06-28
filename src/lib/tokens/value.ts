@@ -41,3 +41,19 @@ export function sessionValueEur(actions: TokenCostAction[]): number {
 export function formatValueEur(v: number): string {
   return Number.isInteger(v) ? `€${v}` : `€${v.toFixed(2)}`;
 }
+
+/**
+ * Actions the worker actually DEBITS today — mirror of the wired consumeTokens
+ * call sites (luna.ts, quote.ts, reports.ts, audit-express-quota.ts). Everything
+ * else (roi.calculate, audit.full, recommendation.run, agent.call, audit.express)
+ * delivers value at ZERO token cost right now, so the UI must not claim a charge.
+ * When a charge is activated (e.g. recommendation.run via its flag), add it here.
+ */
+export const CHARGED_ACTIONS: ReadonlySet<TokenCostAction> = new Set<TokenCostAction>([
+  'luna.message', 'quote.generation', 'report.export.pdf', 'audit_express.pdf',
+]);
+
+/** True when the action is actually token-charged today (else it's free). */
+export function isCharged(action: TokenCostAction): boolean {
+  return CHARGED_ACTIONS.has(action);
+}

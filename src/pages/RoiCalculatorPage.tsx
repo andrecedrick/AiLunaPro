@@ -24,6 +24,7 @@ import { submitRoi, friendlyRoiError } from '../lib/roi/roiClient';
 import type { RoiResult } from '../types/roi';
 import { TurnstileWidget } from '../components/diagnostic/TurnstileWidget';
 import { savePendingResult, saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
+import { ActionValueHint } from '../components/tokens/ActionValueHint';
 import { track } from '../lib/analytics/track';
 import { captureSrc, getSrc, withSrc } from '../lib/analytics/srcParam';
 import { computeRoiPreview, type RoiPreview } from '../lib/roi/score';
@@ -304,6 +305,7 @@ export function RoiCalculatorPage() {
                 >
                   {T.publicTools.roi.submit.idle}
                 </button>
+                <ActionValueHint action="roi.calculate" style={{ width: '100%', textAlign: 'center', marginTop: 8 }} />
               </div>
             ) : (
             <>

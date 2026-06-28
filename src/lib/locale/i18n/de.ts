@@ -831,7 +831,12 @@ export const de: Dict = {
     "reload": "Neu laden",
     "somethingWentWrong": "Etwas ist schiefgelaufen",
     "couldntLoadThePage": "Die Seite konnte nicht geladen werden",
-    "stillConnecting": "Verbindung wird noch aufgebaut…"
+    "stillConnecting": "Verbindung wird noch aufgebaut…",
+    "valueDisplay": {
+      "actionHint": "Verbraucht {tokens} Tokens · ≈ {value} Wert",
+      "actionHintFree": "Kostenlos · ≈ {value} Wert",
+      "sessionTracker": "Diese Sitzung: {value} Wert · {tokens} Tokens"
+    }
   },
   journey: {
     "label": {

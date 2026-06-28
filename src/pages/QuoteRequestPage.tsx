@@ -30,6 +30,7 @@ import { convertToUsd } from '../lib/currency/fxSnapshot';
 import { generateQuote, downloadQuotePdf, emailQuote, QuoteGenError } from '../lib/quote/quoteClient';
 import { tokenCost } from '../lib/tokens/costs';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
+import { ActionValueHint } from '../components/tokens/ActionValueHint';
 import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
 import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnStyle, sectionTitleStyle, listStyle, Field } from '../components/ui-tools';
 import { usePreferences } from '../context/PreferencesContext';
@@ -563,6 +564,7 @@ export function QuoteRequestPage() {
                   >
                     {generating ? Q.generate.loading : `${Q.generate.button} · ${format(Q.generate.cost, { n: tokenCost('quote.generation') })}`}
                   </button>
+                  <ActionValueHint action="quote.generation" style={{ display: 'block', marginTop: 8 }} />
                   {genError && <div style={{ marginTop: 10, color: 'var(--red-text)', fontSize: 13 }}>{genError}</div>}
                 </div>
               )

@@ -847,7 +847,12 @@ export const en = {
     "reload": "Reload",
     "somethingWentWrong": "Something went wrong",
     "couldntLoadThePage": "Couldn’t load the page",
-    "stillConnecting": "Still connecting…"
+    "stillConnecting": "Still connecting…",
+    "valueDisplay": {
+      "actionHint": "Uses {tokens} tokens · ≈ {value} value",
+      "actionHintFree": "Free · ≈ {value} value",
+      "sessionTracker": "This session: {value} value · {tokens} tokens"
+    }
   },
   journey: {
     "label": {

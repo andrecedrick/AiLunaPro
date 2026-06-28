@@ -13,6 +13,8 @@ import { answerLuna } from '../../lib/luna/answer';
 import { askLunaAI } from '../../lib/luna/lunaChatClient';
 import { usePreferences } from '../../context/PreferencesContext';
 import { useAuth } from '../../context/AuthContext';
+import { useSessionValue } from '../../context/SessionValueContext';
+import { ActionValueHint } from '../tokens/ActionValueHint';
 import { RichText } from '../RichText';
 import type { LunaAction } from '../../lib/luna/guidance';
 import type { Route } from '../../types/audit';
@@ -66,6 +68,7 @@ export function LunaChat({ routeName, onNavigate, onNeedTokens }: {
   const { language } = usePreferences();
   const { session } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
+  const { recordAction } = useSessionValue();
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -106,6 +109,9 @@ export function LunaChat({ routeName, onNavigate, onNeedTokens }: {
           // Server already validated route against the allowlist (all param-less routes).
           actions: r.action ? [{ label: r.action.label, route: { name: r.action.route } as Route }] : [],
         };
+        // Part 4: a real Luna answer was delivered. Value-only (free-tier 3/day
+        // uncertain client-side, so we never overstate tokens spent).
+        recordAction('luna.message', { charged: false });
       }
     } catch {
       const a = answerLuna(q, routeName);
@@ -174,6 +180,7 @@ export function LunaChat({ routeName, onNavigate, onNeedTokens }: {
           }}
         >→</button>
       </div>
+      <ActionValueHint action="luna.message" style={{ display: 'block', marginTop: 6 }} />
     </div>
   );
 }

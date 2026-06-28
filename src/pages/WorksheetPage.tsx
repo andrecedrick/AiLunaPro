@@ -22,6 +22,7 @@ import { emit } from '../lib/analytics/events';
 import { saveWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
 import { useMoney } from '../lib/currency/useMoney';
 import { SUPPORTED_CURRENCIES, type Currency } from '../lib/billing/currencyConstants';
+import { ActionValueHint } from '../components/tokens/ActionValueHint';
 import {
   computeWorksheet,
   type WorksheetTask, type Who, type Rules, type Energy, type Verdict, type IncomePeriod,
@@ -524,6 +525,7 @@ export function WorksheetPage() {
             >
               {W.cta.button}
             </button>
+            <ActionValueHint action="quote.generation" style={{ marginTop: 8 }} />
           </div>
         </section>
       )}

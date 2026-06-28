@@ -832,7 +832,12 @@ export const ru: Dict = {
     "reload": "Перезагрузить",
     "somethingWentWrong": "Что-то пошло не так",
     "couldntLoadThePage": "Не удалось загрузить страницу",
-    "stillConnecting": "Подключение…"
+    "stillConnecting": "Подключение…",
+    "valueDisplay": {
+      "actionHint": "Использует {tokens} токенов · ≈ {value} стоимости",
+      "actionHintFree": "Бесплатно · ≈ {value} стоимости",
+      "sessionTracker": "В этой сессии: {value} стоимости · {tokens} токенов"
+    }
   },
   journey: {
     "label": {

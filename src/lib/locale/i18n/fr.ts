@@ -831,7 +831,12 @@ export const fr: Dict = {
     "reload": "Recharger",
     "somethingWentWrong": "Une erreur s'est produite",
     "couldntLoadThePage": "Impossible de charger la page",
-    "stillConnecting": "Connexion en cours…"
+    "stillConnecting": "Connexion en cours…",
+    "valueDisplay": {
+      "actionHint": "Utilise {tokens} jetons · ≈ {value} de valeur",
+      "actionHintFree": "Gratuit · ≈ {value} de valeur",
+      "sessionTracker": "Cette session : {value} de valeur · {tokens} jetons"
+    }
   },
   journey: {
     "label": {

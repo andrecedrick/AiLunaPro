@@ -11,13 +11,19 @@
  */
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { tokenCost, type TokenCostAction } from '../lib/tokens/costs';
-import { tokenValueEur } from '../lib/tokens/value';
+import { tokenValueEur, isCharged } from '../lib/tokens/value';
 
 interface SessionValueState {
   tokens:   number;
   valueEur: number;
   count:    number;
-  recordAction: (action: TokenCostAction) => void;
+  /**
+   * Log a delivered action. `opts.charged` overrides the default (isCharged) so
+   * callers with free-tier knowledge (Luna 3/day, opt-in PDFs, flag-off reco) can
+   * log the VALUE without overstating tokens — we only ever count tokens we're sure
+   * were spent (conservative = honest).
+   */
+  recordAction: (action: TokenCostAction, opts?: { charged?: boolean }) => void;
   reset:    () => void;
 }
 
@@ -32,8 +38,10 @@ export function SessionValueProvider({ children }: { children: ReactNode }) {
   const [valueEur, setValueEur] = useState(0);
   const [count, setCount]       = useState(0);
 
-  const recordAction = useCallback((action: TokenCostAction) => {
-    setTokens(t => t + tokenCost(action));
+  const recordAction = useCallback((action: TokenCostAction, opts?: { charged?: boolean }) => {
+    // Count tokens only when we're sure a charge happened; free actions still add value.
+    const charged = opts?.charged ?? isCharged(action);
+    setTokens(t => t + (charged ? tokenCost(action) : 0));
     setValueEur(v => v + tokenValueEur(action));
     setCount(c => c + 1);
   }, []);

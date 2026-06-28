@@ -1,22 +1,29 @@
 /**
- * ActionValueHint — Part 4: shows "Uses X tokens · ≈ €Y value" before a paid
- * action, so the user sees worth + cost BEFORE spending (transparency, no hidden
- * cost). Gated by ENABLE_TOKEN_MODEL_V2 — renders nothing when the flag is OFF.
+ * ActionValueHint — Part 4: shows cost + worth BEFORE a paid action, so the user
+ * sees value + (honest) token cost before spending. Gated by ENABLE_TOKEN_MODEL_V2.
  *
- * Strings are inline English for now; i18n rollout happens before the flag flips.
+ * Honest: charged actions show "Uses X tokens · ≈ €Y value"; currently-free actions
+ * show "Free · ≈ €Y value" (never claims a charge that doesn't happen). Localized —
+ * no hardcoded copy.
  */
 import type { CSSProperties } from 'react';
+import { useLocale } from '../../context/LocaleContext';
+import { format } from '../../lib/locale/i18n';
 import { ENABLE_TOKEN_MODEL_V2 } from '../../lib/flags';
 import { tokenCost, type TokenCostAction } from '../../lib/tokens/costs';
-import { tokenValueEur, formatValueEur } from '../../lib/tokens/value';
+import { tokenValueEur, formatValueEur, isCharged } from '../../lib/tokens/value';
 
 export function ActionValueHint({ action, style }: { action: TokenCostAction; style?: CSSProperties }) {
+  const T = useLocale();
   if (!ENABLE_TOKEN_MODEL_V2) return null;
-  const tokens = tokenCost(action);
-  const value  = tokenValueEur(action);
+  const vd = T.common.valueDisplay;
+  const value = formatValueEur(tokenValueEur(action));
+  const label = isCharged(action)
+    ? format(vd.actionHint, { tokens: tokenCost(action), value })
+    : format(vd.actionHintFree, { value });
   return (
     <span style={{ fontSize: 12, color: 'var(--text-muted)', ...style }}>
-      Uses {tokens} tokens · ≈ {formatValueEur(value)} value
+      {label}
     </span>
   );
 }

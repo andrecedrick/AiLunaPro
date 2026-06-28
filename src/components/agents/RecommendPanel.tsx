@@ -12,6 +12,8 @@
 import { useMemo, useState } from 'react';
 import { recommendAgents, friendlyRecommendError } from '../../lib/recommendation/recommendClient';
 import { useLocale } from '../../context/LocaleContext';
+import { useSessionValue } from '../../context/SessionValueContext';
+import { ActionValueHint } from '../tokens/ActionValueHint';
 import type { Dict } from '../../lib/locale/i18n';
 import type {
   CompanySize,
@@ -45,6 +47,7 @@ interface Props {
 
 export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props) {
   const T = useLocale();
+  const { recordAction } = useSessionValue();
   const WORKFLOWS = useMemo(() => buildWorkflows(T.agentsPages), [T]);
   const [open, setOpen] = useState(true);
 
@@ -97,6 +100,9 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
 
       const result = await recommendAgents(orgId, profile, idToken);
       onResults(result, profile);
+      // Part 4: recommendation delivered. Value-only today (charge is flag-gated
+      // OFF); when ENABLE_RECOMMENDATION_CHARGE is activated, pass { charged: true }.
+      recordAction('recommendation.run', { charged: false });
     } catch (err) {
       console.warn('[RecommendPanel] failed:', err);
       setError(friendlyRecommendError(err));
@@ -240,6 +246,7 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
             >
               {submitting ? T.agentsPages.recommendPanel.submitting : T.agentsPages.recommendPanel.submit}
             </button>
+            <ActionValueHint action="recommendation.run" />
             {hasResults && (
               <button
                 type="button"

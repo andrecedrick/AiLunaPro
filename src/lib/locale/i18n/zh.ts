@@ -833,7 +833,12 @@ export const zh: Dict = {
     "reload": "重新加载",
     "somethingWentWrong": "出现了问题",
     "couldntLoadThePage": "无法加载页面",
-    "stillConnecting": "仍在连接…"
+    "stillConnecting": "仍在连接…",
+    "valueDisplay": {
+      "actionHint": "使用 {tokens} 个 tokens · ≈ 价值 {value}",
+      "actionHintFree": "免费 · ≈ 价值 {value}",
+      "sessionTracker": "本次会话：价值 {value} · {tokens} 个 tokens"
+    }
   },
   journey: {
     "label": {
