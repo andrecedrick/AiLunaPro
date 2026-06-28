@@ -20,7 +20,7 @@ export const TOKEN_COSTS_DISPLAY = {
   'agent.call':         20,
   'report.export.pdf':   5,
   'audit_express.pdf':  10,
-  'quote.generation':  150,
+  'quote.generation':   60,
   'luna.message':       50,
 } as const;
 

@@ -11,7 +11,7 @@ export const TOKEN_COSTS = {
   'agent.call':         20,
   'report.export.pdf':   5,
   'audit_express.pdf':  10,   // J16.1 — PDF export beyond the 3 free downloads
-  'quote.generation':  150,   // Quote/Devis — paid generation (persist; PDF+email in later phases)
+  'quote.generation':   60,   // Quote/Devis — paid generation (rebalanced 150→60 so a Free plan (100/mo) can complete one quote before the wall; kills the pre-value 402 cliff)
   'luna.message':       50,   // Luna AI chat — per message after the 3 free/day (L2)
 } as const;
 

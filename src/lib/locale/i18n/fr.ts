@@ -1823,7 +1823,7 @@ export const fr: Dict = {
       "lastReset": "Dernière réinitialisation : {lastReset}"
     },
     "packs": {
-      "sectionTitle": "Acheter plus de tokens",
+      "sectionTitle": "Débloquer plus d'analyses",
       "sectionNote": "Les packs de tokens sont actuellement facturés en USD. Les tokens de recharge n'expirent jamais.",
       "readOnlyNotice": "Vous pouvez consulter les tokens, mais seuls les propriétaires, administrateurs et gestionnaires de facturation peuvent acheter des packs.",
       "starterLabel": "Starter",
@@ -1834,7 +1834,7 @@ export const fr: Dict = {
       "maxBlurb": "Boost pour une grosse charge de travail.",
       "tokensUnit": "tokens",
       "amountPrefix": "+{amount}",
-      "buyPack": "Acheter le pack",
+      "buyPack": "Débloquer mon plan complet",
       "redirecting": "Redirection…",
       "readOnlyButton": "Lecture seule"
     },
@@ -2463,7 +2463,7 @@ export const fr: Dict = {
       "submit": {
         "loading": "Calcul en cours…",
         "unlock": "Recevoir mon rapport complet par e-mail →",
-        "idle": "Calculer mon ROI"
+        "idle": "Révéler mes gains en €"
       },
       "signInPrompt": "Vous avez déjà un compte ?",
       "signInLink": "Se connecter",
@@ -2609,7 +2609,7 @@ export const fr: Dict = {
         "proposal": "Obtenez une proposition formelle et un calendrier"
       },
       "generate": {
-        "button": "Générer le devis officiel",
+        "button": "Recevoir mon plan personnalisé",
         "cost": "{n} tokens",
         "loading": "Génération…",
         "success": "Votre devis a été généré et enregistré dans votre espace de travail.",

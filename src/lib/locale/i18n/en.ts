@@ -1698,7 +1698,7 @@ export const en = {
       "lastReset": "Last reset: {lastReset}"
     },
     "packs": {
-      "sectionTitle": "Buy more tokens",
+      "sectionTitle": "Unlock more analyses",
       "sectionNote": "Token packs are currently billed in USD. Top-up tokens never expire.",
       "readOnlyNotice": "You can view tokens but only owners, admins, and billing managers can buy packs.",
       "starterLabel": "Starter",
@@ -1709,7 +1709,7 @@ export const en = {
       "maxBlurb": "Big workload boost.",
       "tokensUnit": "tokens",
       "amountPrefix": "+{amount}",
-      "buyPack": "Buy pack",
+      "buyPack": "Unlock my full plan",
       "redirecting": "Redirecting…",
       "readOnlyButton": "Read-only"
     },
@@ -2479,7 +2479,7 @@ export const en = {
       "submit": {
         "loading": "Calculating…",
         "unlock": "Email me my full report →",
-        "idle": "Calculate my ROI"
+        "idle": "Reveal my savings"
       },
       "signInPrompt": "Already have an account?",
       "signInLink": "Sign in",
@@ -2625,7 +2625,7 @@ export const en = {
         "proposal": "Get a formal proposal & timeline"
       },
       "generate": {
-        "button": "Generate official quote",
+        "button": "Get my personalized plan",
         "cost": "{n} tokens",
         "loading": "Generating…",
         "success": "Your quote has been generated and saved to your workspace.",

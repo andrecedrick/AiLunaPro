@@ -45,7 +45,7 @@ const quote = new Hono<AppEnv>();
 type RoleList = Parameters<typeof requireRole>[0];
 const GEN_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
 
-const QUOTE_COST = 150; // mirrors TOKEN_COSTS['quote.generation']
+const QUOTE_COST = 60; // mirrors TOKEN_COSTS['quote.generation'] (rebalanced 150→60)
 const DESCRIPTION_MIN = 10;
 const DESCRIPTION_MAX = 2000;
 
