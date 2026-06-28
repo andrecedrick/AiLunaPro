@@ -8,6 +8,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { PreferencesProvider } from './context/PreferencesContext';
 import { LocaleProvider } from './context/LocaleContext';
 import { ToastProvider } from './context/ToastContext';
+import { SessionValueProvider } from './context/SessionValueContext';
 import { RouteProvider, useRoute } from './context/RouteContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConsentBanner } from './components/ConsentBanner';
@@ -631,6 +632,7 @@ function App() {
         <PreferencesProvider>
         <LocaleProvider>
         <ToastProvider>
+          <SessionValueProvider>
           <RouteProvider>
             <AuthProvider>
               {/* Data-layer providers are lazy-mounted inside AppShell around
@@ -641,6 +643,7 @@ function App() {
               <AnalyticsBlockedNotice />
             </AuthProvider>
           </RouteProvider>
+          </SessionValueProvider>
         </ToastProvider>
         </LocaleProvider>
         </PreferencesProvider>

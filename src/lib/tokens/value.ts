@@ -36,3 +36,8 @@ export function tokenValueEur(action: TokenCostAction): number {
 export function sessionValueEur(actions: TokenCostAction[]): number {
   return actions.reduce((sum, a) => sum + (TOKEN_VALUE_EUR[a] ?? 0), 0);
 }
+
+/** Format a €-value-delivered amount for display, e.g. "€8", "€1.50". */
+export function formatValueEur(v: number): string {
+  return Number.isInteger(v) ? `€${v}` : `€${v.toFixed(2)}`;
+}

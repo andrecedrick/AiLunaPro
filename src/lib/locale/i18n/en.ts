@@ -3113,7 +3113,7 @@ export const en = {
       cta: {
         headline: "You can recover {value} per year.",
         body: "{count} task(s) to automate or delegate. We price the implementation in a tailored quote.",
-        button: "Request a quote to automate →",
+        button: "Build my automation plan →",
       },
       actions: {
         save: "💾 Save",

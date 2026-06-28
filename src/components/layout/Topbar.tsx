@@ -5,6 +5,7 @@ import { LunaPanel } from '../luna/LunaPanel';
 import { SupportModal } from '../support/SupportModal';
 import { InsufficientTokensModal } from '../tokens/InsufficientTokensModal';
 import { TokenBadge } from '../tokens/TokenBadge';
+import { SessionValueTracker } from '../tokens/SessionValueTracker';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
@@ -278,6 +279,7 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
         )}
       </div>
 
+      <SessionValueTracker />
       <TokenBadge />
 
       {/* S2: Contact support — opens the support-ticket modal */}

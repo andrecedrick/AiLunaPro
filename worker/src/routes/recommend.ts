@@ -17,12 +17,27 @@ import {
   type AgentForRecommendation,
   type RecommendationResult,
 } from '../lib/recommendation';
+import { consumeTokens } from '../lib/tokens';
+import { firestoreDelete } from '../lib/firestoreAdmin';
 import type { AppEnv } from '../index';
 
 const recommend = new Hono<AppEnv>();
 
 type RoleList = Parameters<typeof requireRole>[0];
 const READ_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
+
+// PART 3 — recommendation.run charge is PREPARED but FLAG-GATED OFF by default.
+// Mirrors the quote ledger layout so a failed charge marker can be cleared for retry.
+const USAGE_PATH = (orgId: string, eventId: string) =>
+  `organizations/${orgId}/tokens/current/usage/${eventId}`;
+
+/** Stable, deterministic id from the profile so identical re-submits don't double-charge. */
+function hashProfile(profile: unknown): string {
+  const s = JSON.stringify(profile ?? {});
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
 
 /* ── Inline JWT helper (mirror agents.ts) ─────────────────── */
 
@@ -138,8 +153,31 @@ recommend.post('/api/recommend', requireAuth(), requireRole(READ_ROLES), async c
   const rankings = computeRecommendations(check.profile, agents);
   const result: RecommendationResult = { rankings };
 
-  // No Firestore writes. No persistence.
-  return c.json(result);
+  // PART 3 (flag-gated, default OFF): charge recommendation.run = 30 tokens.
+  // NO behavior change unless ENABLE_RECOMMENDATION_CHARGE === 'true' in the worker
+  // env. Prepared with org/uid + idempotency; activation is a later business
+  // decision (needs Free-user grandfather + comms). Charge AFTER a successful
+  // compute (value gated behind the charge); on insufficient funds the failed
+  // marker is cleared so a retry after a top-up charges correctly.
+  let tokensConsumed = 0;
+  const chargeEnabled = (env as { ENABLE_RECOMMENDATION_CHARGE?: string }).ENABLE_RECOMMENDATION_CHARGE === 'true';
+  if (chargeEnabled) {
+    const uid   = c.get('uid')   as string;
+    const orgId = c.get('orgId') as string;
+    const supplied = (body as { eventId?: unknown }).eventId;
+    const eventId = (typeof supplied === 'string' && supplied)
+      ? supplied.replace(/[^a-zA-Z0-9_:-]/g, '').slice(0, 80)
+      : `reco_${uid}_${hashProfile(check.profile)}`;
+    const charge = await consumeTokens(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, 'recommendation.run', uid, eventId, { source: 'recommend' });
+    if (!charge.ok) {
+      try { await firestoreDelete(env.FIREBASE_SERVICE_ACCOUNT_JSON!, USAGE_PATH(orgId, eventId)); } catch { /* best-effort */ }
+      return c.json({ error: 'Not enough tokens.', code: 'INSUFFICIENT_TOKENS', balance: charge.balance, required: charge.required }, 402);
+    }
+    tokensConsumed = charge.tokensConsumed;
+  }
+
+  // No persistence. (tokensConsumed is 0 unless the charge flag is enabled.)
+  return c.json({ ...result, tokensConsumed });
 });
 
 export default recommend;

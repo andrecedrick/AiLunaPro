@@ -33,6 +33,7 @@ import { InsufficientTokensModal } from '../components/tokens/InsufficientTokens
 import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
 import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnStyle, sectionTitleStyle, listStyle, Field } from '../components/ui-tools';
 import { usePreferences } from '../context/PreferencesContext';
+import { useSessionValue } from '../context/SessionValueContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
 import { takeWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
@@ -79,6 +80,7 @@ export function QuoteRequestPage() {
   const [generating, setGenerating] = useState(false);
   const [genError,   setGenError]   = useState<string | null>(null);
   const [generated,  setGenerated]  = useState(false);
+  const { recordAction } = useSessionValue();
   const [modal,      setModal]      = useState<{ open: boolean; balance: number; required: number }>({ open: false, balance: 0, required: 0 });
   const [downloading, setDownloading] = useState(false);
   const [pdfError,    setPdfError]    = useState<string | null>(null);
@@ -195,6 +197,7 @@ export function QuoteRequestPage() {
         ...(budgetBand   ? { budgetBand: budgetBand as BudgetBand } : {}),
       });
       setGenerated(true);
+      recordAction('quote.generation'); // Part 4: session value tracker (gated by ENABLE_TOKEN_MODEL_V2)
       emit('lead_flow_completed', { flow: 'quote', src: src ?? undefined });
       requestAnimationFrame(() => {
         document.getElementById('quote-generated')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
