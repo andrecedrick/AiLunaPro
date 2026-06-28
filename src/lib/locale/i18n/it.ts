@@ -3097,7 +3097,7 @@ export const it: Dict = {
       cta: {
         headline: "Puoi recuperare {value} all'anno.",
         body: "{count} attività da automatizzare o delegare. Valutiamo l'implementazione in un preventivo su misura.",
-        button: "Richiedi un preventivo per automatizzare →",
+        button: "Crea il mio piano di automazione →",
       },
       actions: {
         save: "💾 Salva",

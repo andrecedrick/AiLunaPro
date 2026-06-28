@@ -3097,7 +3097,7 @@ export const pt: Dict = {
       cta: {
         headline: "Pode recuperar {value} por ano.",
         body: "{count} tarefa(s) para automatizar ou delegar. Orçamentamos a implementação num orçamento personalizado.",
-        button: "Pedir um orçamento para automatizar →",
+        button: "Criar o meu plano de automatização →",
       },
       actions: {
         save: "💾 Guardar",

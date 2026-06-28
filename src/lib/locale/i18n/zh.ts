@@ -3099,7 +3099,7 @@ export const zh: Dict = {
       cta: {
         headline: "你每年可以挽回 {value}。",
         body: "有 {count} 项任务可以自动化或委派。我们会在定制报价中为实施环节定价。",
-        button: "申请自动化报价 →",
+        button: "制定我的自动化方案 →",
       },
       actions: {
         save: "💾 保存",
