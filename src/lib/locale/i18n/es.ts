@@ -1823,7 +1823,7 @@ export const es: Dict = {
       "lastReset": "Último restablecimiento: {lastReset}"
     },
     "packs": {
-      "sectionTitle": "Compra más tokens",
+      "sectionTitle": "Desbloquea más análisis",
       "sectionNote": "Los packs de tokens se facturan actualmente en USD. Los tokens de recarga no caducan nunca.",
       "readOnlyNotice": "Puedes ver los tokens, pero solo los propietarios, administradores y gestores de facturación pueden comprar packs.",
       "starterLabel": "Starter",
@@ -1834,7 +1834,7 @@ export const es: Dict = {
       "maxBlurb": "Un gran impulso para cargas de trabajo intensas.",
       "tokensUnit": "tokens",
       "amountPrefix": "+{amount}",
-      "buyPack": "Comprar pack",
+      "buyPack": "Desbloquear mi plan completo",
       "redirecting": "Redirigiendo…",
       "readOnlyButton": "Solo lectura"
     },
@@ -2463,7 +2463,7 @@ export const es: Dict = {
       "submit": {
         "loading": "Calculando…",
         "unlock": "Enviarme mi informe completo por correo →",
-        "idle": "Calcular mi ROI"
+        "idle": "Revela mis ahorros"
       },
       "signInPrompt": "¿Ya tienes una cuenta?",
       "signInLink": "Iniciar sesión",
@@ -2609,7 +2609,7 @@ export const es: Dict = {
         "proposal": "Obtén una propuesta formal y un calendario"
       },
       "generate": {
-        "button": "Generar presupuesto oficial",
+        "button": "Recibir mi plan personalizado",
         "cost": "{n} tokens",
         "loading": "Generando…",
         "success": "Tu presupuesto se ha generado y guardado en tu espacio de trabajo.",

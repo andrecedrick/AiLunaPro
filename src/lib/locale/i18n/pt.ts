@@ -1823,7 +1823,7 @@ export const pt: Dict = {
       "lastReset": "Última reposição: {lastReset}"
     },
     "packs": {
-      "sectionTitle": "Comprar mais tokens",
+      "sectionTitle": "Desbloquear mais análises",
       "sectionNote": "Os pacotes de tokens são atualmente faturados em USD. Os tokens de recarga nunca expiram.",
       "readOnlyNotice": "Pode ver os tokens, mas apenas proprietários, administradores e gestores de faturação podem comprar pacotes.",
       "starterLabel": "Starter",
@@ -1834,7 +1834,7 @@ export const pt: Dict = {
       "maxBlurb": "Reforço para grande carga de trabalho.",
       "tokensUnit": "tokens",
       "amountPrefix": "+{amount}",
-      "buyPack": "Comprar pacote",
+      "buyPack": "Desbloquear o meu plano completo",
       "redirecting": "A redirecionar…",
       "readOnlyButton": "Só de leitura"
     },
@@ -2463,7 +2463,7 @@ export const pt: Dict = {
       "submit": {
         "loading": "A calcular…",
         "unlock": "Enviar-me o relatório completo por e-mail →",
-        "idle": "Calcular o meu ROI"
+        "idle": "Revelar as minhas poupanças"
       },
       "signInPrompt": "Já tem uma conta?",
       "signInLink": "Iniciar sessão",
@@ -2609,7 +2609,7 @@ export const pt: Dict = {
         "proposal": "Obtenha uma proposta formal e um cronograma"
       },
       "generate": {
-        "button": "Gerar orçamento oficial",
+        "button": "Receber o meu plano personalizado",
         "cost": "{n} tokens",
         "loading": "A gerar…",
         "success": "O seu orçamento foi gerado e guardado no seu espaço de trabalho.",

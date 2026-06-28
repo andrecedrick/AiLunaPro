@@ -1825,7 +1825,7 @@ export const zh: Dict = {
       "lastReset": "上次重置：{lastReset}"
     },
     "packs": {
-      "sectionTitle": "购买更多令牌",
+      "sectionTitle": "解锁更多分析",
       "sectionNote": "令牌包目前以 USD 计费。充值令牌永不过期。",
       "readOnlyNotice": "您可以查看令牌，但只有所有者、管理员和账单管理员才能购买充值包。",
       "starterLabel": "Starter",
@@ -1836,7 +1836,7 @@ export const zh: Dict = {
       "maxBlurb": "大型工作负载加成。",
       "tokensUnit": "令牌",
       "amountPrefix": "+{amount}",
-      "buyPack": "购买充值包",
+      "buyPack": "解锁我的完整方案",
       "redirecting": "正在跳转…",
       "readOnlyButton": "只读"
     },
@@ -2465,7 +2465,7 @@ export const zh: Dict = {
       "submit": {
         "loading": "正在计算……",
         "unlock": "将我的完整报告发送到邮箱 →",
-        "idle": "计算我的 ROI"
+        "idle": "揭晓我能省下多少"
       },
       "signInPrompt": "已有账户？",
       "signInLink": "登录",
@@ -2611,7 +2611,7 @@ export const zh: Dict = {
         "proposal": "获取正式提案与时间表"
       },
       "generate": {
-        "button": "生成正式报价",
+        "button": "获取我的专属方案",
         "cost": "{n} tokens",
         "loading": "正在生成…",
         "success": "您的报价已生成并保存到您的工作区。",

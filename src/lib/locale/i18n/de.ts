@@ -1823,7 +1823,7 @@ export const de: Dict = {
       "lastReset": "Letztes Zurücksetzen: {lastReset}"
     },
     "packs": {
-      "sectionTitle": "Weitere Tokens kaufen",
+      "sectionTitle": "Mehr Analysen freischalten",
       "sectionNote": "Token-Pakete werden derzeit in USD abgerechnet. Aufstockungs-Tokens verfallen nie.",
       "readOnlyNotice": "Sie können Tokens einsehen, aber nur Eigentümer, Admins und Abrechnungsmanager können Pakete kaufen.",
       "starterLabel": "Starter",
@@ -1834,7 +1834,7 @@ export const de: Dict = {
       "maxBlurb": "Großer Schub für hohe Auslastung.",
       "tokensUnit": "Tokens",
       "amountPrefix": "+{amount}",
-      "buyPack": "Paket kaufen",
+      "buyPack": "Meinen kompletten Plan freischalten",
       "redirecting": "Weiterleitung…",
       "readOnlyButton": "Schreibgeschützt"
     },
@@ -2463,7 +2463,7 @@ export const de: Dict = {
       "submit": {
         "loading": "Wird berechnet…",
         "unlock": "Vollständigen Bericht per E-Mail erhalten →",
-        "idle": "Meinen ROI berechnen"
+        "idle": "Meine Einsparungen aufdecken"
       },
       "signInPrompt": "Haben Sie bereits ein Konto?",
       "signInLink": "Anmelden",
@@ -2609,7 +2609,7 @@ export const de: Dict = {
         "proposal": "Erhalten Sie ein formelles Angebot & einen Zeitplan"
       },
       "generate": {
-        "button": "Offizielles Angebot erstellen",
+        "button": "Meinen persönlichen Plan erhalten",
         "cost": "{n} Tokens",
         "loading": "Wird erstellt…",
         "success": "Ihr Angebot wurde erstellt und in Ihrem Arbeitsbereich gespeichert.",
