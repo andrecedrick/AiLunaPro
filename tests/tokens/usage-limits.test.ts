@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decideOverflow, includedFor, planLimitsEnabled, classifyOverflow, planFromAllocation } from '../../worker/src/lib/usage-limits';
+import { decideOverflow, includedFor, planLimitsEnabled, planLimitsEnabledFor, classifyOverflow, planFromAllocation } from '../../worker/src/lib/usage-limits';
 
 /*
  * Part 6 — plan-limit → token-overflow decision logic (PREPARED, INACTIVE).
@@ -83,5 +83,29 @@ describe('usage-limits: classifyOverflow (within=free, exceed=tokens, free=upgra
     expect(planFromAllocation(1_000)).toBe('starter');
     expect(planFromAllocation(10_000)).toBe('professional');
     expect(planFromAllocation(100_000)).toBe('enterprise');
+  });
+});
+
+describe('usage-limits: planLimitsEnabledFor (Phase 4 controlled rollout scope)', () => {
+  it('flag OFF → never enforced, any org', () => {
+    expect(planLimitsEnabledFor({}, 'orgA')).toBe(false);
+    expect(planLimitsEnabledFor({ ENABLE_PLAN_LIMITS_ORGS: 'orgA' }, 'orgA')).toBe(false); // flag still off
+  });
+
+  it('flag ON but EMPTY allowlist → enforce NOBODY (fail-safe, no accidental global)', () => {
+    expect(planLimitsEnabledFor({ ENABLE_PLAN_LIMITS: 'true' }, 'orgA')).toBe(false);
+    expect(planLimitsEnabledFor({ ENABLE_PLAN_LIMITS: 'true', ENABLE_PLAN_LIMITS_ORGS: '  ,  ' }, 'orgA')).toBe(false);
+  });
+
+  it('flag ON + org in allowlist → enforced ONLY for that org (test scope)', () => {
+    const env = { ENABLE_PLAN_LIMITS: 'true', ENABLE_PLAN_LIMITS_ORGS: 'orgTest, orgInternal' };
+    expect(planLimitsEnabledFor(env, 'orgTest')).toBe(true);
+    expect(planLimitsEnabledFor(env, 'orgInternal')).toBe(true);
+    expect(planLimitsEnabledFor(env, 'orgRealUser')).toBe(false); // NOT enforced for non-listed orgs
+  });
+
+  it("allowlist '*' → explicit GLOBAL rollout (every org)", () => {
+    const env = { ENABLE_PLAN_LIMITS: 'true', ENABLE_PLAN_LIMITS_ORGS: '*' };
+    expect(planLimitsEnabledFor(env, 'anyOrg')).toBe(true);
   });
 });

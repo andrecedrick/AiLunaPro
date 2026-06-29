@@ -161,7 +161,7 @@ recommend.post('/api/recommend', requireAuth(), requireRole(READ_ROLES), async c
     ? supplied.replace(/[^a-zA-Z0-9_:-]/g, '').slice(0, 80)
     : `reco_${uid}_${hashProfile(check.profile)}`;
   const chargeOnOverflow = (env as { ENABLE_RECOMMENDATION_CHARGE?: string }).ENABLE_RECOMMENDATION_CHARGE === 'true';
-  const enforce = await enforceUsageLimit(env.FIREBASE_SERVICE_ACCOUNT_JSON!, env as { ENABLE_PLAN_LIMITS?: string }, orgId, 'recommendation.run', uid, eventId, chargeOnOverflow);
+  const enforce = await enforceUsageLimit(env.FIREBASE_SERVICE_ACCOUNT_JSON!, env as { ENABLE_PLAN_LIMITS?: string; ENABLE_PLAN_LIMITS_ORGS?: string }, orgId, 'recommendation.run', uid, eventId, chargeOnOverflow);
   if (!enforce.allowed) {
     const upgrade = enforce.mode === 'upgrade-required';
     return c.json({

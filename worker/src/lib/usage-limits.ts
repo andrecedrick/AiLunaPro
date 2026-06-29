@@ -69,9 +69,29 @@ export function decideOverflow(
   return { enforced: true, included, withinLimit, shouldCharge: !withinLimit };
 }
 
-/** Reads the worker env flag. Default OFF (any value other than the literal 'true'). */
+/** Reads the global worker flag. Default OFF (any value other than the literal 'true'). */
 export function planLimitsEnabled(env: { ENABLE_PLAN_LIMITS?: string }): boolean {
   return env.ENABLE_PLAN_LIMITS === 'true';
+}
+
+export interface PlanLimitsEnv { ENABLE_PLAN_LIMITS?: string; ENABLE_PLAN_LIMITS_ORGS?: string }
+
+/**
+ * Phase 4 — SCOPED activation. Enforcement applies to an org ONLY when:
+ *   1. ENABLE_PLAN_LIMITS === 'true', AND
+ *   2. the org is in the ENABLE_PLAN_LIMITS_ORGS allowlist (comma-separated orgIds),
+ *      or the allowlist contains the literal '*' (explicit GLOBAL rollout).
+ *
+ * FAIL-SAFE: flag on but an EMPTY allowlist → enforce for NOBODY. This makes
+ * accidental global activation impossible: going global requires deliberately
+ * setting ENABLE_PLAN_LIMITS_ORGS='*'. Controlled rollout = list the test orgIds.
+ */
+export function planLimitsEnabledFor(env: PlanLimitsEnv, orgId: string): boolean {
+  if (env.ENABLE_PLAN_LIMITS !== 'true') return false;
+  const allow = (env.ENABLE_PLAN_LIMITS_ORGS ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  if (allow.length === 0) return false;       // flag on, no scope → enforce nobody (fail-safe)
+  if (allow.includes('*')) return true;       // explicit global rollout
+  return allow.includes(orgId);               // test scope: only allowlisted orgs
 }
 
 /* ── Enforcement (I/O) — Phase 3 ──────────────────────────────────────────────
@@ -205,14 +225,15 @@ export interface EnforceResult {
  */
 export async function enforceUsageLimit(
   saJson: string,
-  env: { ENABLE_PLAN_LIMITS?: string },
+  env: PlanLimitsEnv,
   orgId: string,
   action: MeteredAction,
   uid: string,
   eventId: string,
   chargeOnOverflow: boolean,
 ): Promise<EnforceResult> {
-  if (!planLimitsEnabled(env)) {
+  // SCOPED: inert unless the flag is on AND this org is in the allowlist (or '*').
+  if (!planLimitsEnabledFor(env, orgId)) {
     return { enforced: false, allowed: true, mode: 'disabled', charged: 0, used: 0, limit: includedFor('free', action), plan: 'free' };
   }
   const month = monthKey();
@@ -237,7 +258,13 @@ export async function enforceUsageLimit(
     charged = charge.tokensConsumed || TOKEN_COSTS[action];
   }
 
-  // Increment usage once per eventId (marker dedup).
+  // Increment usage once per eventId (marker dedup). Order = marker → increment, a
+  // DELIBERATE conservative bias: if the process dies between them, a retry sees the
+  // marker and skips the increment → the counter UNDER-counts by 1 (org gets one extra
+  // free use later). The token charge stays idempotent on overflow_{eventId}, so this
+  // NEVER double-charges and never over-charges. Exactly-once would need a Firestore
+  // transaction over (counter + marker), which the REST helpers don't expose — deferred;
+  // the under-count bias is the user-safe choice for a controlled rollout.
   let firstTime = true;
   try {
     await firestoreCreateIfNotExists(saJson, EVENT_PATH(orgId, month, eventId), { action, at: new Date().toISOString() });

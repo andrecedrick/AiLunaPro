@@ -10,7 +10,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
-import { resolveOrgPlan, readMonthlyUsage, includedFor, planLimitsEnabled, monthKey } from '../lib/usage-limits';
+import { resolveOrgPlan, readMonthlyUsage, includedFor, planLimitsEnabledFor, monthKey } from '../lib/usage-limits';
 import type { AppEnv } from '../index';
 
 const usage = new Hono<AppEnv>();
@@ -18,7 +18,7 @@ type RoleList = Parameters<typeof requireRole>[0];
 const READ_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
 
 usage.get('/api/usage/current', requireAuth(), requireRole(READ_ROLES), async c => {
-  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string; ENABLE_PLAN_LIMITS?: string };
+  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string; ENABLE_PLAN_LIMITS?: string; ENABLE_PLAN_LIMITS_ORGS?: string };
   const sa = env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!sa) return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
 
@@ -27,7 +27,7 @@ usage.get('/api/usage/current', requireAuth(), requireRole(READ_ROLES), async c 
   const [plan, used] = await Promise.all([resolveOrgPlan(sa, orgId), readMonthlyUsage(sa, orgId, month)]);
 
   return c.json({
-    enforced: planLimitsEnabled(env),
+    enforced: planLimitsEnabledFor(env, orgId),
     month,
     plan,
     audits:          { used: used.auditsUsed,          limit: includedFor(plan, 'audit.full') },
