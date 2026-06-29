@@ -111,6 +111,20 @@ export async function fetchUsage(orgId: string, idToken: string, limit = 50): Pr
   return data.events;
 }
 
+/** Phase 3 — this month's metered usage vs the plan's included allowance. */
+export interface PlanUsage {
+  enforced:        boolean;
+  month:           string;
+  plan:            string;
+  audits:          { used: number; limit: number };
+  recommendations: { used: number; limit: number };
+}
+
+export async function fetchCurrentUsage(orgId: string, idToken: string): Promise<PlanUsage> {
+  const res = await authedFetch(`/api/usage/current?orgId=${encodeURIComponent(orgId)}`, { method: 'GET' }, idToken);
+  return jsonOrThrow<PlanUsage>(res);
+}
+
 export async function createTopupCheckout(orgId: string, pack: TokenPack, idToken: string): Promise<string> {
   const res = await authedFetch('/api/tokens/topup', {
     method:  'POST',

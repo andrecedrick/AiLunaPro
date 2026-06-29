@@ -1845,6 +1845,15 @@ export const zh: Dict = {
       "redirecting": "正在跳转…",
       "readOnlyButton": "只读"
     },
+    "planUsage": {
+      "title": "套餐用量",
+      "included": "您的套餐包含每月 {limit} 次审计",
+      "thisMonth": "本月已用 {used} / {limit} 次审计",
+      "unlimited": "无限次审计",
+      "limitFree": "您已用完所含的 {limit} 次审计。请升级套餐以继续审计。",
+      "limitPaid": "您已使用 {used}/{limit} 次审计 — 额外审计将开始消耗令牌。",
+      "upgradeCta": "升级套餐"
+    },
     "usage": {
       "sectionTitle": "近期用量",
       "loading": "正在加载用量…",

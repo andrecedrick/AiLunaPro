@@ -1718,6 +1718,15 @@ export const en = {
       "redirecting": "Redirecting…",
       "readOnlyButton": "Read-only"
     },
+    "planUsage": {
+      "title": "Plan usage",
+      "included": "{limit} audits/month included with your plan",
+      "thisMonth": "{used} / {limit} audits this month",
+      "unlimited": "Unlimited audits",
+      "limitFree": "You’ve used all {limit} included audits. Upgrade to keep auditing.",
+      "limitPaid": "You’ve used {used}/{limit} audits — extra audits now use tokens.",
+      "upgradeCta": "Upgrade plan"
+    },
     "usage": {
       "sectionTitle": "Recent usage",
       "loading": "Loading usage…",

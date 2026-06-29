@@ -1843,6 +1843,15 @@ export const de: Dict = {
       "redirecting": "Weiterleitung…",
       "readOnlyButton": "Schreibgeschützt"
     },
+    "planUsage": {
+      "title": "Plan-Nutzung",
+      "included": "{limit} Audits/Monat in Ihrem Plan enthalten",
+      "thisMonth": "{used} / {limit} Audits diesen Monat",
+      "unlimited": "Unbegrenzte Audits",
+      "limitFree": "Sie haben alle {limit} enthaltenen Audits aufgebraucht. Führen Sie ein Upgrade durch, um weiter zu auditieren.",
+      "limitPaid": "Sie haben {used}/{limit} Audits verbraucht – zusätzliche Audits verwenden nun Tokens.",
+      "upgradeCta": "Plan upgraden"
+    },
     "usage": {
       "sectionTitle": "Letzte Nutzung",
       "loading": "Nutzung wird geladen…",

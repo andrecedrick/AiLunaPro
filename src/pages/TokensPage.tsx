@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { format } from '../lib/locale/i18n';
+import { PlanUsageBar } from '../components/tokens/PlanUsageBar';
 import type { Dict } from '../lib/locale/i18n/en';
 import { dlog } from '../lib/log';
 import { useRoute } from '../context/RouteContext';
@@ -464,6 +465,9 @@ export function TokensPage() {
           </>
         )}
       </Card>
+
+      {/* Phase 3 — plan usage vs included allowance */}
+      <PlanUsageBar />
 
       {/* Top-up packs */}
       <div style={{ marginBottom: 28 }}>

@@ -1843,6 +1843,15 @@ export const es: Dict = {
       "redirecting": "Redirigiendo…",
       "readOnlyButton": "Solo lectura"
     },
+    "planUsage": {
+      "title": "Uso del plan",
+      "included": "{limit} auditorías/mes incluidas en tu plan",
+      "thisMonth": "{used} / {limit} auditorías este mes",
+      "unlimited": "Auditorías ilimitadas",
+      "limitFree": "Has usado todas las {limit} auditorías incluidas. Cambia a un plan superior para seguir auditando.",
+      "limitPaid": "Has usado {used}/{limit} auditorías — las auditorías adicionales ahora consumen tokens.",
+      "upgradeCta": "Cambiar de plan"
+    },
     "usage": {
       "sectionTitle": "Uso reciente",
       "loading": "Cargando uso…",

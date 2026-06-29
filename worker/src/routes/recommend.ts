@@ -17,19 +17,13 @@ import {
   type AgentForRecommendation,
   type RecommendationResult,
 } from '../lib/recommendation';
-import { consumeTokens } from '../lib/tokens';
-import { firestoreDelete } from '../lib/firestoreAdmin';
+import { enforceUsageLimit } from '../lib/usage-limits';
 import type { AppEnv } from '../index';
 
 const recommend = new Hono<AppEnv>();
 
 type RoleList = Parameters<typeof requireRole>[0];
 const READ_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
-
-// PART 3 — recommendation.run charge is PREPARED but FLAG-GATED OFF by default.
-// Mirrors the quote ledger layout so a failed charge marker can be cleared for retry.
-const USAGE_PATH = (orgId: string, eventId: string) =>
-  `organizations/${orgId}/tokens/current/usage/${eventId}`;
 
 /** Stable, deterministic id from the profile so identical re-submits don't double-charge. */
 function hashProfile(profile: unknown): string {
@@ -153,31 +147,32 @@ recommend.post('/api/recommend', requireAuth(), requireRole(READ_ROLES), async c
   const rankings = computeRecommendations(check.profile, agents);
   const result: RecommendationResult = { rankings };
 
-  // PART 3 (flag-gated, default OFF): charge recommendation.run = 30 tokens.
-  // NO behavior change unless ENABLE_RECOMMENDATION_CHARGE === 'true' in the worker
-  // env. Prepared with org/uid + idempotency; activation is a later business
-  // decision (needs Free-user grandfather + comms). Charge AFTER a successful
-  // compute (value gated behind the charge); on insufficient funds the failed
-  // marker is cleared so a retry after a top-up charges correctly.
-  let tokensConsumed = 0;
-  const chargeEnabled = (env as { ENABLE_RECOMMENDATION_CHARGE?: string }).ENABLE_RECOMMENDATION_CHARGE === 'true';
-  if (chargeEnabled) {
-    const uid   = c.get('uid')   as string;
-    const orgId = c.get('orgId') as string;
-    const supplied = (body as { eventId?: unknown }).eventId;
-    const eventId = (typeof supplied === 'string' && supplied)
-      ? supplied.replace(/[^a-zA-Z0-9_:-]/g, '').slice(0, 80)
-      : `reco_${uid}_${hashProfile(check.profile)}`;
-    const charge = await consumeTokens(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, 'recommendation.run', uid, eventId, { source: 'recommend' });
-    if (!charge.ok) {
-      try { await firestoreDelete(env.FIREBASE_SERVICE_ACCOUNT_JSON!, USAGE_PATH(orgId, eventId)); } catch { /* best-effort */ }
-      return c.json({ error: 'Not enough tokens.', code: 'INSUFFICIENT_TOKENS', balance: charge.balance, required: charge.required }, 402);
-    }
-    tokensConsumed = charge.tokensConsumed;
+  // Phase 3: plan-limit → token-overflow enforcement. INERT unless ENABLE_PLAN_LIMITS
+  // === 'true' (then enforce.mode === 'disabled', allowed, no count, no charge → the
+  // existing free behavior is byte-for-byte preserved). When enforced: within the
+  // plan's monthly allowance = FREE; Free plan over limit = upgrade-required (NO
+  // charge); paid plan over limit = tokens — but recommendation overflow BILLING is
+  // additionally gated by ENABLE_RECOMMENDATION_CHARGE (prepared, default OFF → over
+  // limit stays free for now). Idempotent per eventId.
+  const uid   = c.get('uid')   as string;
+  const orgId = c.get('orgId') as string;
+  const supplied = (body as { eventId?: unknown }).eventId;
+  const eventId = (typeof supplied === 'string' && supplied)
+    ? supplied.replace(/[^a-zA-Z0-9_:-]/g, '').slice(0, 80)
+    : `reco_${uid}_${hashProfile(check.profile)}`;
+  const chargeOnOverflow = (env as { ENABLE_RECOMMENDATION_CHARGE?: string }).ENABLE_RECOMMENDATION_CHARGE === 'true';
+  const enforce = await enforceUsageLimit(env.FIREBASE_SERVICE_ACCOUNT_JSON!, env as { ENABLE_PLAN_LIMITS?: string }, orgId, 'recommendation.run', uid, eventId, chargeOnOverflow);
+  if (!enforce.allowed) {
+    const upgrade = enforce.mode === 'upgrade-required';
+    return c.json({
+      error: upgrade ? 'Monthly recommendation limit reached — upgrade to continue.' : 'Not enough tokens for overflow.',
+      code:  upgrade ? 'UPGRADE_REQUIRED' : 'INSUFFICIENT_TOKENS',
+      mode:  enforce.mode, used: enforce.used, limit: enforce.limit,
+      ...(enforce.balance !== undefined ? { balance: enforce.balance, required: enforce.required } : {}),
+    }, upgrade ? 403 : 402);
   }
 
-  // No persistence. (tokensConsumed is 0 unless the charge flag is enabled.)
-  return c.json({ ...result, tokensConsumed });
+  return c.json({ ...result, usage: { mode: enforce.mode, charged: enforce.charged, used: enforce.used, limit: enforce.limit } });
 });
 
 export default recommend;

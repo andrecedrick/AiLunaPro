@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decideOverflow, includedFor, planLimitsEnabled } from '../../worker/src/lib/usage-limits';
+import { decideOverflow, includedFor, planLimitsEnabled, classifyOverflow, planFromAllocation } from '../../worker/src/lib/usage-limits';
 
 /*
  * Part 6 — plan-limit → token-overflow decision logic (PREPARED, INACTIVE).
@@ -46,5 +46,42 @@ describe('usage-limits: plan-limit → token-overflow decision', () => {
     expect(planLimitsEnabled({})).toBe(false);
     expect(planLimitsEnabled({ ENABLE_PLAN_LIMITS: 'false' })).toBe(false);
     expect(planLimitsEnabled({ ENABLE_PLAN_LIMITS: 'true' })).toBe(true);
+  });
+});
+
+describe('usage-limits: classifyOverflow (within=free, exceed=tokens, free=upgrade)', () => {
+  it('within limit → included, free (NO token usage inside plan limits)', () => {
+    const r = classifyOverflow('starter', true, true);
+    expect(r.mode).toBe('included');
+    expect(r.allowed).toBe(true);
+    expect(r.shouldCharge).toBe(false);
+  });
+
+  it('paid plan over limit + charge active → overflow-charge (tokens triggered)', () => {
+    const r = classifyOverflow('professional', false, true);
+    expect(r.mode).toBe('overflow-charge');
+    expect(r.allowed).toBe(true);
+    expect(r.shouldCharge).toBe(true);
+  });
+
+  it('paid plan over limit + charge NOT active → overflow-free (prepared, not billed)', () => {
+    const r = classifyOverflow('professional', false, false);
+    expect(r.mode).toBe('overflow-free');
+    expect(r.allowed).toBe(true);
+    expect(r.shouldCharge).toBe(false);
+  });
+
+  it('Free plan over limit → upgrade-required, blocked, never charged', () => {
+    const r = classifyOverflow('free', false, true);
+    expect(r.mode).toBe('upgrade-required');
+    expect(r.allowed).toBe(false);
+    expect(r.shouldCharge).toBe(false);
+  });
+
+  it('planFromAllocation reverse-maps the persisted allocation → tier', () => {
+    expect(planFromAllocation(100)).toBe('free');
+    expect(planFromAllocation(1_000)).toBe('starter');
+    expect(planFromAllocation(10_000)).toBe('professional');
+    expect(planFromAllocation(100_000)).toBe('enterprise');
   });
 });

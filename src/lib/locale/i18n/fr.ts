@@ -1843,6 +1843,15 @@ export const fr: Dict = {
       "redirecting": "Redirection…",
       "readOnlyButton": "Lecture seule"
     },
+    "planUsage": {
+      "title": "Utilisation du forfait",
+      "included": "{limit} audits/mois inclus dans votre forfait",
+      "thisMonth": "{used} / {limit} audits ce mois-ci",
+      "unlimited": "Audits illimités",
+      "limitFree": "Vous avez utilisé vos {limit} audits inclus. Passez à un forfait supérieur pour continuer.",
+      "limitPaid": "Vous avez utilisé {used}/{limit} audits — les audits supplémentaires utilisent des tokens.",
+      "upgradeCta": "Changer de forfait"
+    },
     "usage": {
       "sectionTitle": "Utilisation récente",
       "loading": "Chargement de l'utilisation…",

@@ -1843,6 +1843,15 @@ export const pt: Dict = {
       "redirecting": "A redirecionar…",
       "readOnlyButton": "Só de leitura"
     },
+    "planUsage": {
+      "title": "Utilização do plano",
+      "included": "{limit} análises/mês incluídas no seu plano",
+      "thisMonth": "{used} / {limit} análises este mês",
+      "unlimited": "Análises ilimitadas",
+      "limitFree": "Já utilizou as {limit} análises incluídas. Faça upgrade para continuar a fazer análises.",
+      "limitPaid": "Já utilizou {used}/{limit} análises — as análises adicionais passam a usar tokens.",
+      "upgradeCta": "Mudar de plano"
+    },
     "usage": {
       "sectionTitle": "Utilização recente",
       "loading": "A carregar utilização…",
