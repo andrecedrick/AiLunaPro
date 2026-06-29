@@ -25,7 +25,7 @@ export function SessionValueTracker({ style }: { style?: CSSProperties }) {
         padding: '4px 12px', whiteSpace: 'nowrap', ...style,
       }}
     >
-      {format(T.common.valueDisplay.sessionTracker, { value: money.format(valueUsd, { approx: false }), tokens })}
+      {format(T.common.valueDisplay.sessionTracker, { value: money.format(valueUsd, { approx: false, decimals: Number.isInteger(valueUsd) ? 0 : 2 }), tokens })}
     </div>
   );
 }
