@@ -12,6 +12,20 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort"],
       "port": 4173
+    },
+    {
+      "name": "vite-dev-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5174", "--strictPort"],
+      "port": 5174,
+      "env": { "VITE_AUTH_LAYER": "mock" }
+    },
+    {
+      "name": "vite-dev-v2",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5175", "--strictPort"],
+      "port": 5175,
+      "env": { "VITE_AUTH_LAYER": "mock", "VITE_ENABLE_TOKEN_MODEL_V2": "true" }
     }
   ]
 }
