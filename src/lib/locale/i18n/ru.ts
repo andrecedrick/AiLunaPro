@@ -1950,8 +1950,8 @@ export const ru: Dict = {
     },
     "planDesc": {
       "free": "До 3 аудитов, 1 место",
-      "starter": "10 аудитов, 5 мест",
-      "professional": "Неограниченное число аудитов, 20 мест",
+      "starter": "15 аудитов, 5 мест",
+      "professional": "30 аудитов, 20 мест",
       "enterprise": "Индивидуальные лимиты, SSO, SLA"
     },
     "submit": {

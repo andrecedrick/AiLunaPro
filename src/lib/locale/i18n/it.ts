@@ -1949,8 +1949,8 @@ export const it: Dict = {
     },
     "planDesc": {
       "free": "Fino a 3 audit, 1 postazione",
-      "starter": "10 audit, 5 postazioni",
-      "professional": "Audit illimitati, 20 postazioni",
+      "starter": "15 audit, 5 postazioni",
+      "professional": "30 audit, 20 postazioni",
       "enterprise": "Limiti personalizzati, SSO, SLA"
     },
     "submit": {

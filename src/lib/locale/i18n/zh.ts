@@ -1951,8 +1951,8 @@ export const zh: Dict = {
     },
     "planDesc": {
       "free": "最多 3 次审计，1 个席位",
-      "starter": "10 次审计，5 个席位",
-      "professional": "无限次审计，20 个席位",
+      "starter": "15 次审计，5 个席位",
+      "professional": "30 次审计，20 个席位",
       "enterprise": "自定义限额、SSO、SLA"
     },
     "submit": {

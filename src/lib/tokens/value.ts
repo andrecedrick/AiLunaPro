@@ -1,21 +1,19 @@
 /**
- * TOKEN_VALUE_EUR — display-only "value delivered" per paid action.
+ * TOKEN_VALUE_USD — display-only "value delivered" per paid action, in USD base.
  *
- * This is the human-facing WORTH of an action's output (what the deliverable
- * replaces in the real world), NOT its price. Price = tokens × ~€0.0015 retail
- * (see token packs); this map is the *value* side used to show
- * "Estimated value: €X" and the session value tracker.
+ * The human-facing WORTH of an action's output (what the deliverable replaces),
+ * NOT its price. Amounts are USD-base and MUST be rendered through the currency
+ * system (`useMoney().format(...)`) so they show in the user's display currency
+ * ($ by default, auto-detected, override in settings) — never a hardcoded symbol.
+ * This keeps token value, pricing, and value display on ONE currency path (no €/$
+ * mixing). DISPLAY-ONLY — like costs.ts, it must never drive a charge.
  *
- * It is DISPLAY-ONLY — like `costs.ts`, it must never drive a charge. The worker
- * never reads it. Keys mirror the worker's TOKEN_COSTS actions so a value can be
- * looked up for any priced action.
- *
- * Numbers are defensible starting points (real-world equivalent worth of the
- * output) to calibrate against analytics — not contractual amounts.
+ * Numbers are defensible starting points (real-world equivalent worth) to
+ * calibrate against analytics — not contractual amounts.
  */
 import type { TokenCostAction } from './costs';
 
-export const TOKEN_VALUE_EUR: Record<TokenCostAction, number> = {
+export const TOKEN_VALUE_USD: Record<TokenCostAction, number> = {
   'audit.full':         8,   // full EU-AI-Act compliance audit + action plan
   'audit.express':      2,   // quick Shadow-AI / exposure scan
   'recommendation.run': 6,   // curated agent recommendation plan
@@ -27,19 +25,14 @@ export const TOKEN_VALUE_EUR: Record<TokenCostAction, number> = {
   'luna.message':       1.5, // expert AI compliance answer
 };
 
-/** Display-only "value delivered" in € for a paid action. Never use to charge. */
-export function tokenValueEur(action: TokenCostAction): number {
-  return TOKEN_VALUE_EUR[action];
+/** Display-only "value delivered" (USD base) for a paid action. Format via useMoney. */
+export function tokenValueUsd(action: TokenCostAction): number {
+  return TOKEN_VALUE_USD[action];
 }
 
-/** Sum of delivered value (€) across a list of actions taken this session. */
-export function sessionValueEur(actions: TokenCostAction[]): number {
-  return actions.reduce((sum, a) => sum + (TOKEN_VALUE_EUR[a] ?? 0), 0);
-}
-
-/** Format a €-value-delivered amount for display, e.g. "€8", "€1.50". */
-export function formatValueEur(v: number): string {
-  return Number.isInteger(v) ? `€${v}` : `€${v.toFixed(2)}`;
+/** Sum of delivered value (USD base) across a list of actions this session. */
+export function sessionValueUsd(actions: TokenCostAction[]): number {
+  return actions.reduce((sum, a) => sum + (TOKEN_VALUE_USD[a] ?? 0), 0);
 }
 
 /**

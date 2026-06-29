@@ -1993,8 +1993,8 @@ export const en = {
     },
     "planDesc": {
       "free": "Up to 3 audits, 1 seat",
-      "starter": "10 audits, 5 seats",
-      "professional": "Unlimited audits, 20 seats",
+      "starter": "15 audits, 5 seats",
+      "professional": "30 audits, 20 seats",
       "enterprise": "Custom limits, SSO, SLA"
     },
     "submit": {

@@ -1949,8 +1949,8 @@ export const de: Dict = {
     },
     "planDesc": {
       "free": "Bis zu 3 Audits, 1 Platz",
-      "starter": "10 Audits, 5 Plätze",
-      "professional": "Unbegrenzte Audits, 20 Plätze",
+      "starter": "15 Audits, 5 Plätze",
+      "professional": "30 Audits, 20 Plätze",
       "enterprise": "Individuelle Limits, SSO, SLA"
     },
     "submit": {

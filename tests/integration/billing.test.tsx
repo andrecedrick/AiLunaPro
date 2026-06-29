@@ -107,9 +107,16 @@ describe('PLAN_CONFIGS integrity', () => {
     expect(PLAN_CONFIGS.Free.monthlyPrice).toBe(0);
   });
 
-  it('Enterprise has unlimited seats', () => {
+  it('Enterprise has unlimited seats + 90 included audits/month', () => {
     expect(PLAN_CONFIGS.Enterprise.maxSeats).toBe(-1);
-    expect(PLAN_CONFIGS.Enterprise.maxAuditsPerMonth).toBe(-1);
+    expect(PLAN_CONFIGS.Enterprise.maxAuditsPerMonth).toBe(90);
+  });
+
+  it('plan audit limits match the monetization model (3 / 15 / 30 / 90)', () => {
+    expect(PLAN_CONFIGS.Free.maxAuditsPerMonth).toBe(3);
+    expect(PLAN_CONFIGS.Starter.maxAuditsPerMonth).toBe(15);
+    expect(PLAN_CONFIGS.Professional.maxAuditsPerMonth).toBe(30);
+    expect(PLAN_CONFIGS.Enterprise.maxAuditsPerMonth).toBe(90);
   });
 });
 
