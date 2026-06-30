@@ -30,6 +30,14 @@ ALLOWED_ORIGINS     = "https://audit.ailunapro.com"
 APP_BASE_URL        = "https://audit.ailunapro.com"
 APP_ENV             = "production"
 
+# Phase 4 — plan-limit enforcement, SCOPED to a single test org (controlled rollout).
+# ENABLE_PLAN_LIMITS_ORGS is the allowlist: with the flag on but this empty, NOBODY is
+# enforced (fail-safe). Only the listed org(s) are enforced; "*" = explicit global.
+# Rollback = remove these two lines + redeploy. ENABLE_RECOMMENDATION_CHARGE stays unset
+# (OFF) so overflow is detected/blocked-for-Free but never billed for paid plans.
+ENABLE_PLAN_LIMITS      = "true"
+ENABLE_PLAN_LIMITS_ORGS = "org_ux6EH21A_1779743372219_71670faf"
+
 [[env.production.r2_buckets]]
 binding = "AUDIT_PDFS"
 bucket_name = "ailunapro-audit-pdfs"
