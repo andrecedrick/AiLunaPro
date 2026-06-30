@@ -30,13 +30,14 @@ ALLOWED_ORIGINS     = "https://audit.ailunapro.com"
 APP_BASE_URL        = "https://audit.ailunapro.com"
 APP_ENV             = "production"
 
-# Phase 4 — plan-limit enforcement, SCOPED to a single test org (controlled rollout).
-# ENABLE_PLAN_LIMITS_ORGS is the allowlist: with the flag on but this empty, NOBODY is
-# enforced (fail-safe). Only the listed org(s) are enforced; "*" = explicit global.
-# Rollback = remove these two lines + redeploy. ENABLE_RECOMMENDATION_CHARGE stays unset
-# (OFF) so overflow is detected/blocked-for-Free but never billed for paid plans.
+# Phase 5 — plan-limit enforcement, GLOBAL rollout ("*" = all organizations).
+# ENABLE_PLAN_LIMITS_ORGS is the allowlist; "*" enforces every org (was a single test org
+# in the scoped Phase-4 rollout). Within plan = free; over limit = enforced (Free → upgrade,
+# no charge). ENABLE_RECOMMENDATION_CHARGE stays unset (OFF) → overflow is detected/blocked-
+# for-Free but NEVER billed for paid plans (paid over-limit = overflow-free).
+# Rollback to scoped: set ORGS back to the test orgId; full off: remove both lines. Redeploy.
 ENABLE_PLAN_LIMITS      = "true"
-ENABLE_PLAN_LIMITS_ORGS = "org_ux6EH21A_1779743372219_71670faf"
+ENABLE_PLAN_LIMITS_ORGS = "*"
 
 [[env.production.r2_buckets]]
 binding = "AUDIT_PDFS"
