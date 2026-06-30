@@ -2300,7 +2300,12 @@ export const en = {
       "helperText": "Add at least one preference to personalize recommendations.",
       "submit": "Recommend agents",
       "submitting": "Computing…",
-      "clearRecommendations": "Clear recommendations"
+      "clearRecommendations": "Clear recommendations",
+      "limitTitle": "You’ve reached your monthly limit.",
+      "limitBody": "You’ve used all your recommendations this month.",
+      "limitBodyCount": "You’ve used all {used} of {limit} recommendations this month.",
+      "upgradeCta": "Upgrade your plan to continue",
+      "usageProgress": "{used} / {limit} recommendations used this month"
     },
     "card": {
       "external": "External",

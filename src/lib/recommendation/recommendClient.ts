@@ -15,12 +15,19 @@ async function authedFetch(path: string, init: RequestInit, idToken: string): Pr
 export class RecommendError extends Error {
   code:   string;
   status: number;
-  constructor(message: string, code: string, status: number) {
+  used?:  number;
+  limit?: number;
+  constructor(message: string, code: string, status: number, opts?: { used?: number; limit?: number }) {
     super(message);
     this.code   = code;
     this.status = status;
+    this.used   = opts?.used;
+    this.limit  = opts?.limit;
   }
 }
+
+/** Plan-limit usage echoed by the worker on a successful recommend (when enforced). */
+export interface RecUsage { mode: string; used: number; limit: number; charged?: number }
 
 /**
  * orgId is needed by the requireRole middleware on the worker.
@@ -30,7 +37,7 @@ export async function recommendAgents(
   orgId: string,
   profile: RecommendProfile,
   idToken: string,
-): Promise<RecommendationResult> {
+): Promise<RecommendationResult & { usage?: RecUsage }> {
   const params = new URLSearchParams({ orgId });
   const res = await authedFetch(
     `/api/recommend?${params.toString()}`,
@@ -42,10 +49,10 @@ export async function recommendAgents(
     idToken,
   );
   if (!res.ok) {
-    const j = await res.json().catch(() => ({})) as { error?: string; code?: string };
-    throw new RecommendError(j.error ?? `Worker error ${res.status}`, j.code ?? `HTTP_${res.status}`, res.status);
+    const j = await res.json().catch(() => ({})) as { error?: string; code?: string; used?: number; limit?: number };
+    throw new RecommendError(j.error ?? `Worker error ${res.status}`, j.code ?? `HTTP_${res.status}`, res.status, { used: j.used, limit: j.limit });
   }
-  return res.json() as Promise<RecommendationResult>;
+  return res.json() as Promise<RecommendationResult & { usage?: RecUsage }>;
 }
 
 export function friendlyRecommendError(err: unknown): string {
@@ -53,6 +60,9 @@ export function friendlyRecommendError(err: unknown): string {
     return err instanceof Error ? err.message : 'Unexpected error';
   }
   switch (err.code) {
+    case 'UPGRADE_REQUIRED':
+      // Fallback string; RecommendPanel renders a dedicated upgrade CTA for this code.
+      return "You've reached your monthly limit.";
     case 'INVALID_PROFILE':
       return 'Add at least one preference to personalize recommendations.';
     case 'INVALID_INDUSTRY':

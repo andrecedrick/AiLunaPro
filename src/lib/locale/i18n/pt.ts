@@ -2082,7 +2082,12 @@ export const pt: Dict = {
       "helperText": "Adicione pelo menos uma preferência para personalizar as recomendações.",
       "submit": "Recomendar agentes",
       "submitting": "A calcular…",
-      "clearRecommendations": "Limpar recomendações"
+      "clearRecommendations": "Limpar recomendações",
+      "limitTitle": "Atingiu o seu limite mensal.",
+      "limitBody": "Já utilizou todas as suas recomendações este mês.",
+      "limitBodyCount": "Já utilizou as suas {used} de {limit} recomendações este mês.",
+      "upgradeCta": "Atualizar o meu plano para continuar",
+      "usageProgress": "{used} / {limit} recomendações utilizadas este mês"
     },
     "card": {
       "external": "Externo",

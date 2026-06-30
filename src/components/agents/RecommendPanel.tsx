@@ -10,8 +10,10 @@
  */
 
 import { useMemo, useState } from 'react';
-import { recommendAgents, friendlyRecommendError } from '../../lib/recommendation/recommendClient';
+import { recommendAgents, friendlyRecommendError, RecommendError } from '../../lib/recommendation/recommendClient';
 import { useLocale } from '../../context/LocaleContext';
+import { useRoute } from '../../context/RouteContext';
+import { format } from '../../lib/locale/i18n';
 import { useSessionValue } from '../../context/SessionValueContext';
 import { ActionValueHint } from '../tokens/ActionValueHint';
 import type { Dict } from '../../lib/locale/i18n';
@@ -47,6 +49,7 @@ interface Props {
 
 export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props) {
   const T = useLocale();
+  const { navigate } = useRoute();
   const { recordAction } = useSessionValue();
   const WORKFLOWS = useMemo(() => buildWorkflows(T.agentsPages), [T]);
   const [open, setOpen] = useState(true);
@@ -60,6 +63,9 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  // Plan-limit UX: upgrade prompt on 403 UPGRADE_REQUIRED; usage = "X / Y used" progress.
+  const [upgrade, setUpgrade]       = useState<{ used: number; limit: number } | null>(null);
+  const [usage, setUsage]           = useState<{ used: number; limit: number } | null>(null);
 
   const integrationsList = useMemo(() => {
     return integrationsRaw
@@ -86,6 +92,7 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
     if (!hasAnyField) return;
     setSubmitting(true);
     setError(null);
+    setUpgrade(null);
     try {
       const { auth } = await import('../../lib/firebase-auth');
       const idToken = await auth.currentUser?.getIdToken();
@@ -99,13 +106,21 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
       if (integrationsList.length > 0) profile.integrations = integrationsList;
 
       const result = await recommendAgents(orgId, profile, idToken);
+      // Plan-limit progress ("X / Y used"): only when enforced + a finite limit.
+      const u = result.usage;
+      setUsage(u && u.mode !== 'disabled' && u.limit !== -1 ? { used: u.used, limit: u.limit } : null);
       onResults(result, profile);
       // Part 4: recommendation delivered. Value-only today (charge is flag-gated
       // OFF); when ENABLE_RECOMMENDATION_CHARGE is activated, pass { charged: true }.
       recordAction('recommendation.run', { charged: false });
     } catch (err) {
       console.warn('[RecommendPanel] failed:', err);
-      setError(friendlyRecommendError(err));
+      if (err instanceof RecommendError && err.code === 'UPGRADE_REQUIRED') {
+        // Convert the block into a conversion moment (no token/backend change).
+        setUpgrade({ used: err.used ?? 0, limit: err.limit ?? 0 });
+      } else {
+        setError(friendlyRecommendError(err));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -114,6 +129,8 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
   const handleClear = () => {
     onClear();
     setError(null);
+    setUpgrade(null);
+    setUsage(null);
   };
 
   return (
@@ -225,6 +242,44 @@ export function RecommendPanel({ orgId, hasResults, onResults, onClear }: Props)
               background: 'var(--red-soft-bg)', color: 'var(--red-text)', fontSize: 13,
             }}>
               {error}
+            </div>
+          )}
+
+          {/* Plan-limit reached → conversion CTA (gradient), not a dead-end error. */}
+          {upgrade && (
+            <div style={{
+              marginBottom: 12, padding: '14px 16px', borderRadius: 12,
+              border: '1px solid var(--violet)', background: 'rgba(124,58,237,0.06)',
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {T.agentsPages.recommendPanel.limitTitle}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
+                {upgrade.limit > 0
+                  ? format(T.agentsPages.recommendPanel.limitBodyCount, { used: upgrade.used, limit: upgrade.limit })
+                  : T.agentsPages.recommendPanel.limitBody}
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate({ name: 'billing' })}
+                style={{
+                  padding: '10px 18px', borderRadius: 10, border: 'none',
+                  background: 'var(--brand-gradient)', color: '#fff', fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(124,58,237,0.25)', fontFamily: 'inherit',
+                }}
+              >
+                {T.agentsPages.recommendPanel.upgradeCta}
+              </button>
+            </div>
+          )}
+
+          {/* Usage progress ("X / Y used this month") — reminder before the wall. */}
+          {usage && !upgrade && (
+            <div style={{
+              fontSize: 12, fontWeight: 600, marginBottom: 12,
+              color: usage.used >= usage.limit ? 'var(--violet-text)' : 'var(--text-muted)',
+            }}>
+              {format(T.agentsPages.recommendPanel.usageProgress, { used: usage.used, limit: usage.limit })}
             </div>
           )}
 

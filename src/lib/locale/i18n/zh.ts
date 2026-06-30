@@ -2084,7 +2084,12 @@ export const zh: Dict = {
       "helperText": "至少添加一项偏好以个性化推荐。",
       "submit": "推荐代理",
       "submitting": "正在计算…",
-      "clearRecommendations": "清除推荐"
+      "clearRecommendations": "清除推荐",
+      "limitTitle": "您已达到本月的使用上限。",
+      "limitBody": "您本月的推荐次数已全部用完。",
+      "limitBodyCount": "您本月已用完 {limit} 次推荐中的全部 {used} 次。",
+      "upgradeCta": "升级套餐以继续",
+      "usageProgress": "本月已使用 {used} / {limit} 次推荐"
     },
     "card": {
       "external": "外部",
