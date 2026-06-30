@@ -3554,6 +3554,40 @@ Quote/Invoice (§L/§quote). Nouvelles : collection `organizations/{orgId}/works
 
 ---
 
+## 22. Exigences produit futures *(enregistrées — NON IMPLÉMENTÉES)*
+
+> **Contexte (2026-06-30) — Phase 5 : enforcement plan-limit ACTIVÉ GLOBAL.**
+> `ENABLE_PLAN_LIMITS="true"` + `ENABLE_PLAN_LIMITS_ORGS="*"` (toutes les orgs), worker `f6107c1b`.
+> Within plan = gratuit ; au-delà = enforcé (Free → upgrade requis, **aucun débit token**). Facturation overflow
+> toujours **OFF** (`ENABLE_RECOMMENDATION_CHARGE` non défini → paid over-limit = `overflow-free`, jamais facturé).
+> Trigger live = `recommendation.run` (`audit.full` sans endpoint → limites audit inertes jusqu'à câblage).
+> Rollback : `ORGS` → test org (scopé) ou retirer les 2 lignes (off) + redeploy.
+> **Les deux features ci-dessous sont du BACKLOG enregistré, PAS implémentées.**
+
+### 22.1 — FEATURE 1 : Intégrations d'automatisation 🔴 FUTUR — NON IMPLÉMENTÉ
+**But :** automatiser **audits**, **recommandations**, **génération de devis** via **n8n / Zapier / Make**.
+**Exigences :**
+- Système **API / webhooks sécurisé** (auth bearer, signature HMAC des webhooks entrants, idempotence).
+- **Clé API par organisation** (génération + révocation ; scoping org-isolé ; jamais de clé partagée cross-tenant).
+- **RBAC appliqué** — mêmes gates que l'UI ; aucune élévation de privilège via l'API.
+- **Respect des limites tokens + usage** — les appels API passent par `enforceUsageLimit` (within/overflow identiques à l'UI ; pas de chemin parallèle).
+- **Aucun contournement de monétisation** — quotas plan + overflow + (futur) facturation s'appliquent aux appels automatisés.
+- **Rate limiting + logging** par org/clé ; audit trail des appels (sans PII/secret en log).
+**Statut :** FUTUR — NON IMPLÉMENTÉ.
+
+### 22.2 — FEATURE 2 : Validation du numéro de téléphone 🔴 FUTUR — NON IMPLÉMENTÉ
+**Exigence :** numéro de téléphone **obligatoire à l'inscription**.
+**Validation :**
+- Vérification par **OTP SMS** (code à usage unique, expiration courte, tentatives limitées).
+- **Blocage des numéros factices** (format E.164, validation porteur/ligne ; rejet VoIP jetable selon politique).
+**But :** qualité des leads, suivi commercial, conversion.
+**Règles :**
+- **Aucun contournement** — gate au signup ; pas de skip ; pas de complétion de compte sans numéro vérifié.
+- **Fournisseur SMS sécurisé** — clé en secret worker (operator-only) ; aucun numéro/OTP en clair dans les logs.
+**Statut :** FUTUR — NON IMPLÉMENTÉ.
+
+---
+
 **Fin du cahier des charges v2.**
 
 *Document maintenu en parallèle de l'implémentation. Toute décision architecturale ou
