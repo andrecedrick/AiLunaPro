@@ -349,6 +349,7 @@ export function OperatorConsolePage() {
           <Section title="Stripe — secrets (set via Wrangler)">
             <Row label="Secret key" secretName="STRIPE_SECRET_KEY" ok={s.stripeSecretKey} onCopy={copyCmd} />
             <Row label="Webhook secret" secretName="STRIPE_WEBHOOK_SECRET" ok={s.stripeWebhookSecret} onCopy={copyCmd} />
+            <Row label="Token price — Overage" secretName="STRIPE_TOKEN_PRICE_OVERAGE" ok={s.tokenPriceOverage ?? false} onCopy={copyCmd} />
             <Row label="Token price — Starter" secretName="STRIPE_TOKEN_PRICE_STARTER" ok={s.tokenPriceStarter} onCopy={copyCmd} />
             <Row label="Token price — Pro" secretName="STRIPE_TOKEN_PRICE_PRO" ok={s.tokenPricePro} onCopy={copyCmd} />
             <Row label="Token price — Max" secretName="STRIPE_TOKEN_PRICE_MAX" ok={s.tokenPriceMax} onCopy={copyCmd} />

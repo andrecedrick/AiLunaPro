@@ -19,6 +19,7 @@ export interface OpsStatus {
     turnstileSecret: boolean;
     sequenzyApiKey: boolean;
     platformAdminEmails: boolean;
+    tokenPriceOverage?: boolean;
     tokenPriceStarter: boolean;
     tokenPricePro: boolean;
     tokenPriceMax: boolean;
