@@ -62,29 +62,29 @@ const NAV_GROUPS: NavGroupDef[] = [
     { id: 'dashboard', icon: 'dashboard', route: { name: 'dashboard' } },
   ] },
   { id: 'audit', items: [
-    { id: 'new-audit',            icon: 'plus',            route: { name: 'audit/new' },            gate: r => isContent(r) },
-    { id: 'audit-history',        icon: 'reports',         route: { name: 'audit/history' },         gate: r => isContent(r) },
-    { id: 'audit-express-run',    icon: 'plus',            route: { name: 'audit-express/run' },     gate: r => isContent(r) },
-    { id: 'audit-express-saved',  icon: 'reports',         route: { name: 'audit-express/saved' },   gate: r => isContent(r) },
+    { id: 'new-audit',            icon: 'new-audit',       route: { name: 'audit/new' },            gate: r => isContent(r) },
+    { id: 'audit-history',        icon: 'audit-history',   route: { name: 'audit/history' },         gate: r => isContent(r) },
+    { id: 'audit-express-run',    icon: 'audit-express',   route: { name: 'audit-express/run' },     gate: r => isContent(r) },
+    { id: 'audit-express-saved',  icon: 'saved-audits',    route: { name: 'audit-express/saved' },   gate: r => isContent(r) },
     { id: 'reports',              icon: 'reports',         route: { name: 'reports' },               gate: r => isContent(r) },
     { id: 'registry',             icon: 'registry',        route: { name: 'registry' },              gate: r => isContent(r) },
-    { id: 'system-builder',       icon: 'registry',        route: { name: 'system-builder' },        gate: r => isContent(r) },
+    { id: 'system-builder',       icon: 'system-builder',  route: { name: 'system-builder' },        gate: r => isContent(r) },
     { id: 'agents',               icon: 'agents',          route: { name: 'agents' },                gate: r => notClient(r) },
     { id: 'worksheet',            icon: 'worksheet-tool',  route: { name: 'worksheet' },             gate: r => isContent(r) },
     { id: 'visibility',           icon: 'visibility-tool', route: { name: 'visibility' },            gate: r => isContent(r) },
   ] },
   { id: 'crm', items: [
     { id: 'quote-tool', icon: 'quote-tool', route: { name: 'quote' },     src: 'menu-quote' },
-    { id: 'my-quotes',  icon: 'reports',    route: { name: 'my-quotes' }, gate: r => notClient(r) },
-    { id: 'contacts',   icon: 'team',       route: { name: 'contacts' },  gate: (r, sa) => sa || isContent(r) },
+    { id: 'my-quotes',  icon: 'my-quotes',  route: { name: 'my-quotes' }, gate: r => notClient(r) },
+    { id: 'contacts',   icon: 'contacts',   route: { name: 'contacts' },  gate: (r, sa) => sa || isContent(r) },
   ] },
   { id: 'admin', items: [
-    { id: 'admin', icon: 'settings', route: { name: 'admin' }, gate: (r, sa) => sa || isOrgAdmin(r) },
+    { id: 'admin', icon: 'admin',    route: { name: 'admin' }, gate: (r, sa) => sa || isOrgAdmin(r) },
     { id: 'team',  icon: 'team',     route: { name: 'team' },  gate: r => notClient(r) },
   ] },
   { id: 'billing', items: [
-    { id: 'billing',  icon: 'billing', route: { name: 'billing' },  gate: r => r === 'owner' || r === 'admin' || r === 'billing' },
-    { id: 'invoices', icon: 'reports', route: { name: 'invoices' }, gate: r => notClient(r) },
+    { id: 'billing',  icon: 'billing',  route: { name: 'billing' },  gate: r => r === 'owner' || r === 'admin' || r === 'billing' },
+    { id: 'invoices', icon: 'invoices', route: { name: 'invoices' }, gate: r => notClient(r) },
   ] },
   { id: 'tools', items: [ // public acquisition tools (chromeless SPA pages)
     { id: 'roi-tool',  icon: 'roi-tool',  route: { name: 'roi-calculator' }, src: 'menu-roi' },
@@ -125,17 +125,67 @@ function NavIcon({ id }: { id: string }): ReactNode {
           <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
         </svg>
       );
-    case 'plus':
-      return (
-        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-          <circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" />
-        </svg>
-      );
-    case 'reports':
+    case 'new-audit': // file + plus
       return (
         <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+          <line x1="12" y1="12" x2="12" y2="18" /><line x1="9" y1="15" x2="15" y2="15" />
+        </svg>
+      );
+    case 'audit-history': // history clock
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><polyline points="3 3 3 8 8 8" /><polyline points="12 8 12 12 14.5 13.5" />
+        </svg>
+      );
+    case 'audit-express': // lightning bolt
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      );
+    case 'saved-audits': // bookmark
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+        </svg>
+      );
+    case 'my-quotes': // stacked documents
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      );
+    case 'contacts': // contact card
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" />
+          <path d="M5.5 17a3.5 3.5 0 0 1 7 0" /><line x1="15" y1="9" x2="18" y2="9" /><line x1="15" y1="13" x2="18" y2="13" />
+        </svg>
+      );
+    case 'admin': // sliders (admin controls)
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
+          <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" />
+        </svg>
+      );
+    case 'invoices': // receipt
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2h12a1 1 0 0 1 1 1v18l-3-2-2 2-2-2-2 2-2-2-3 2V3a1 1 0 0 1 1-1z" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="9" y1="12" x2="15" y2="12" />
+        </svg>
+      );
+    case 'system-builder': // layers
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" />
+        </svg>
+      );
+    case 'reports': // bar-chart — distinct from quote-tool's file-text
+      return (
+        <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
         </svg>
       );
     case 'registry':
