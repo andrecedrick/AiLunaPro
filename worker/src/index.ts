@@ -74,6 +74,14 @@ export type AppEnv = {
     STRIPE_TOKEN_PRICE_STARTER?:   string;
     STRIPE_TOKEN_PRICE_PRO?:       string;
     STRIPE_TOKEN_PRICE_MAX?:       string;
+    // Phase 6 — small self-serve overage pack (300 tokens). Operator-set price ID.
+    STRIPE_TOKEN_PRICE_OVERAGE?:   string;
+    // Plan-limit enforcement + controlled overflow billing scopes (vars, not secrets).
+    // Both default OFF; '*' = explicit global. See lib/usage-limits.ts.
+    ENABLE_PLAN_LIMITS?:               string;
+    ENABLE_PLAN_LIMITS_ORGS?:          string;
+    ENABLE_RECOMMENDATION_CHARGE?:     string;
+    ENABLE_RECOMMENDATION_CHARGE_ORGS?: string;
     APP_BASE_URL?:                 string;
     TOKEN_DEBUG?:                  string;
     // J1.4A-Hardening — environment marker (development | staging | production).
@@ -141,12 +149,17 @@ app.use('*', async (c, next) => {
       const keyMode = key.startsWith('sk_live_') ? 'live' : key.startsWith('sk_test_') ? 'test' : 'unset';
       const appEnv = (e.APP_ENV ?? '').toLowerCase() || 'development(default)';
       const packs = [
+        e.STRIPE_TOKEN_PRICE_OVERAGE ? 1 : 0,
         e.STRIPE_TOKEN_PRICE_STARTER ? 1 : 0,
         e.STRIPE_TOKEN_PRICE_PRO     ? 1 : 0,
         e.STRIPE_TOKEN_PRICE_MAX     ? 1 : 0,
       ].reduce((a, b) => a + b, 0);
+      // Billing-scope booleans help confirm the controlled-rollout gates at deploy.
+      const planLimits = e.ENABLE_PLAN_LIMITS === 'true' ? (e.ENABLE_PLAN_LIMITS_ORGS || 'none') : 'off';
+      const recoCharge = e.ENABLE_RECOMMENDATION_CHARGE === 'true' ? (e.ENABLE_RECOMMENDATION_CHARGE_ORGS || 'none') : 'off';
       console.log(
-        `[boot] env=${appEnv} keyMode=${keyMode} packs=${packs}/3 ` +
+        `[boot] env=${appEnv} keyMode=${keyMode} packs=${packs}/4 ` +
+        `planLimits=${planLimits} recoCharge=${recoCharge} ` +
         `webhookSecret=${e.STRIPE_WEBHOOK_SECRET ? 'set' : 'unset'} ` +
         `firestoreSA=${e.FIREBASE_SERVICE_ACCOUNT_JSON ? 'set' : 'unset'} ` +
         `appBaseUrl=${e.APP_BASE_URL ? 'set' : 'unset(fallback)'}`

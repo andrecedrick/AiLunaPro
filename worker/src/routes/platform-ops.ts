@@ -38,6 +38,7 @@ platformOps.get('/api/platform/ops-status', requireAuth(), requirePlatformAdmin(
       turnstileSecret:        configured(e.TURNSTILE_SECRET_KEY),
       sequenzyApiKey:         configured((e as unknown as Record<string, string | undefined>).SEQUENZY_API_KEY),
       platformAdminEmails:    configured(e.PLATFORM_ADMIN_EMAILS),
+      tokenPriceOverage:      configured((e as unknown as Record<string, string | undefined>).STRIPE_TOKEN_PRICE_OVERAGE),
       tokenPriceStarter:      configured(e.STRIPE_TOKEN_PRICE_STARTER),
       tokenPricePro:          configured(e.STRIPE_TOKEN_PRICE_PRO),
       tokenPriceMax:          configured(e.STRIPE_TOKEN_PRICE_MAX),

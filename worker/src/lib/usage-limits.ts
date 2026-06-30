@@ -94,6 +94,37 @@ export function planLimitsEnabledFor(env: PlanLimitsEnv, orgId: string): boolean
   return allow.includes(orgId);               // test scope: only allowlisted orgs
 }
 
+export interface RecommendationChargeEnv {
+  ENABLE_RECOMMENDATION_CHARGE?:      string;
+  ENABLE_RECOMMENDATION_CHARGE_ORGS?: string;
+}
+
+/**
+ * Phase 6 — CONTROLLED overflow BILLING scope for recommendation.run.
+ *
+ * Charging an org's paid overflow requires ALL of:
+ *   1. ENABLE_RECOMMENDATION_CHARGE === 'true', AND
+ *   2. the org is in ENABLE_RECOMMENDATION_CHARGE_ORGS (comma-separated orgIds),
+ *      or the list contains the literal '*' (explicit GLOBAL billing), AND
+ *   3. (enforced upstream, not here) planLimitsEnabledFor(env, orgId) is true —
+ *      enforceUsageLimit short-circuits to mode:'disabled' before the charge
+ *      branch when an org isn't enforced, so the EFFECTIVE billed set is always
+ *      `enforced ∩ charge-allowlist`. Billing can NEVER exceed enforcement.
+ *
+ * FAIL-SAFE (mirrors planLimitsEnabledFor): flag on but an EMPTY allowlist →
+ * charge NOBODY. Accidental global billing is impossible: going global requires
+ * DELIBERATELY setting ENABLE_RECOMMENDATION_CHARGE_ORGS='*'. Controlled rollout =
+ * list the test orgIds. With the flag unset (default) this returns false → paid
+ * overflow stays mode:'overflow-free' (detected, never billed).
+ */
+export function recommendationChargeEnabledFor(env: RecommendationChargeEnv, orgId: string): boolean {
+  if (env.ENABLE_RECOMMENDATION_CHARGE !== 'true') return false;
+  const allow = (env.ENABLE_RECOMMENDATION_CHARGE_ORGS ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  if (allow.length === 0) return false;       // flag on, no scope → charge nobody (fail-safe)
+  if (allow.includes('*')) return true;       // explicit global billing rollout
+  return allow.includes(orgId);               // controlled scope: only allowlisted orgs
+}
+
 /* ── Enforcement (I/O) — Phase 3 ──────────────────────────────────────────────
  * All of the below is INERT unless ENABLE_PLAN_LIMITS === 'true'. With the flag
  * off, enforceUsageLimit() short-circuits to { allowed:true, mode:'disabled' } and

@@ -37,7 +37,7 @@ export function allocationForPlan(plan: string | undefined | null): number {
 
 /* ── Top-up packs (USD only, MVP) ───────────────────────── */
 
-export type TokenPack = 'starter' | 'pro' | 'max';
+export type TokenPack = 'overage' | 'starter' | 'pro' | 'max';
 
 export interface TokenPackDef {
   pack:        TokenPack;
@@ -45,14 +45,20 @@ export interface TokenPackDef {
   envVar:      string;            // env name holding the Stripe price ID
 }
 
+// `overage` = small self-serve top-up sized to the overflow model: 300 tokens =
+// 10 recommendations (30 tokens each) ≈ $30 at the $0.10/token anchor (cahier §23).
+// Exists so a paid user who just hit their monthly cap can refill the exact amount
+// they need instead of the next pack up (5 000). Stripe price ID via the env var
+// (operator-set, live mode) — until set, /api/tokens/topup returns PACK_NOT_CONFIGURED.
 export const TOKEN_PACKS: Record<TokenPack, TokenPackDef> = {
+  overage: { pack: 'overage', tokensAdded:     300, envVar: 'STRIPE_TOKEN_PRICE_OVERAGE' },
   starter: { pack: 'starter', tokensAdded:   5_000, envVar: 'STRIPE_TOKEN_PRICE_STARTER' },
   pro:     { pack: 'pro',     tokensAdded:  25_000, envVar: 'STRIPE_TOKEN_PRICE_PRO' },
   max:     { pack: 'max',     tokensAdded: 100_000, envVar: 'STRIPE_TOKEN_PRICE_MAX' },
 };
 
 export function isValidPack(s: string): s is TokenPack {
-  return s === 'starter' || s === 'pro' || s === 'max';
+  return s === 'overage' || s === 'starter' || s === 'pro' || s === 'max';
 }
 
 /* ── Cycle ──────────────────────────────────────────────── */

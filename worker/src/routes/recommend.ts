@@ -17,7 +17,7 @@ import {
   type AgentForRecommendation,
   type RecommendationResult,
 } from '../lib/recommendation';
-import { enforceUsageLimit } from '../lib/usage-limits';
+import { enforceUsageLimit, recommendationChargeEnabledFor, type RecommendationChargeEnv } from '../lib/usage-limits';
 import type { AppEnv } from '../index';
 
 const recommend = new Hono<AppEnv>();
@@ -160,7 +160,10 @@ recommend.post('/api/recommend', requireAuth(), requireRole(READ_ROLES), async c
   const eventId = (typeof supplied === 'string' && supplied)
     ? supplied.replace(/[^a-zA-Z0-9_:-]/g, '').slice(0, 80)
     : `reco_${uid}_${hashProfile(check.profile)}`;
-  const chargeOnOverflow = (env as { ENABLE_RECOMMENDATION_CHARGE?: string }).ENABLE_RECOMMENDATION_CHARGE === 'true';
+  // Phase 6 — overflow billing is CONTROLLED per-org: requires the flag AND this org
+  // in ENABLE_RECOMMENDATION_CHARGE_ORGS (or '*'). Empty allowlist = charge nobody
+  // (fail-safe). Even '*' only bills orgs that are also enforced (enforced ∩ charge).
+  const chargeOnOverflow = recommendationChargeEnabledFor(env as RecommendationChargeEnv, orgId);
   const enforce = await enforceUsageLimit(env.FIREBASE_SERVICE_ACCOUNT_JSON!, env as { ENABLE_PLAN_LIMITS?: string; ENABLE_PLAN_LIMITS_ORGS?: string }, orgId, 'recommendation.run', uid, eventId, chargeOnOverflow);
   if (!enforce.allowed) {
     const upgrade = enforce.mode === 'upgrade-required';

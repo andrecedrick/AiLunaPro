@@ -67,6 +67,7 @@ tokens.post('/api/tokens/topup', requireAuth(), requireRole(['owner', 'billing']
     STRIPE_TOKEN_PRICE_STARTER?:    string;
     STRIPE_TOKEN_PRICE_PRO?:        string;
     STRIPE_TOKEN_PRICE_MAX?:        string;
+    STRIPE_TOKEN_PRICE_OVERAGE?:    string;
     APP_BASE_URL?:                  string;
   };
 

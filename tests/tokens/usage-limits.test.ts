@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { decideOverflow, includedFor, planLimitsEnabled, planLimitsEnabledFor, classifyOverflow, planFromAllocation } from '../../worker/src/lib/usage-limits';
+import { decideOverflow, includedFor, planLimitsEnabled, planLimitsEnabledFor, recommendationChargeEnabledFor, classifyOverflow, planFromAllocation } from '../../worker/src/lib/usage-limits';
+import { TOKEN_PACKS, isValidPack } from '../../worker/src/lib/token-costs';
 
 /*
  * Part 6 — plan-limit → token-overflow decision logic (PREPARED, INACTIVE).
@@ -107,5 +108,45 @@ describe('usage-limits: planLimitsEnabledFor (Phase 4 controlled rollout scope)'
   it("allowlist '*' → explicit GLOBAL rollout (every org)", () => {
     const env = { ENABLE_PLAN_LIMITS: 'true', ENABLE_PLAN_LIMITS_ORGS: '*' };
     expect(planLimitsEnabledFor(env, 'anyOrg')).toBe(true);
+  });
+});
+
+describe('usage-limits: recommendationChargeEnabledFor (Phase 6 controlled BILLING scope)', () => {
+  it('flag OFF (default) → never billed, any org (overflow stays free)', () => {
+    expect(recommendationChargeEnabledFor({}, 'orgA')).toBe(false);
+    // allowlist present but charge flag still off → still nobody
+    expect(recommendationChargeEnabledFor({ ENABLE_RECOMMENDATION_CHARGE_ORGS: '*' }, 'orgA')).toBe(false);
+    expect(recommendationChargeEnabledFor({ ENABLE_RECOMMENDATION_CHARGE: 'false', ENABLE_RECOMMENDATION_CHARGE_ORGS: '*' }, 'orgA')).toBe(false);
+  });
+
+  it('flag ON but EMPTY allowlist → charge NOBODY (fail-safe, no accidental global charge)', () => {
+    expect(recommendationChargeEnabledFor({ ENABLE_RECOMMENDATION_CHARGE: 'true' }, 'orgA')).toBe(false);
+    expect(recommendationChargeEnabledFor({ ENABLE_RECOMMENDATION_CHARGE: 'true', ENABLE_RECOMMENDATION_CHARGE_ORGS: '   ,  ' }, 'orgA')).toBe(false);
+  });
+
+  it('flag ON + org in allowlist → billed ONLY for that org (controlled scope)', () => {
+    const env = { ENABLE_RECOMMENDATION_CHARGE: 'true', ENABLE_RECOMMENDATION_CHARGE_ORGS: 'orgTest, orgInternal' };
+    expect(recommendationChargeEnabledFor(env, 'orgTest')).toBe(true);
+    expect(recommendationChargeEnabledFor(env, 'orgInternal')).toBe(true);
+    expect(recommendationChargeEnabledFor(env, 'orgRealUser')).toBe(false); // NOT billed for non-listed orgs
+  });
+
+  it("allowlist '*' → explicit GLOBAL billing (every org), only when flag ON", () => {
+    expect(recommendationChargeEnabledFor({ ENABLE_RECOMMENDATION_CHARGE: 'true', ENABLE_RECOMMENDATION_CHARGE_ORGS: '*' }, 'anyOrg')).toBe(true);
+  });
+});
+
+describe('token-costs: overage pack (Phase 6 small self-serve top-up)', () => {
+  it('overage is a valid pack of 300 tokens with its own Stripe env var', () => {
+    expect(isValidPack('overage')).toBe(true);
+    expect(TOKEN_PACKS.overage.tokensAdded).toBe(300);
+    expect(TOKEN_PACKS.overage.envVar).toBe('STRIPE_TOKEN_PRICE_OVERAGE');
+  });
+
+  it('existing packs are unchanged (no regression)', () => {
+    expect(TOKEN_PACKS.starter.tokensAdded).toBe(5_000);
+    expect(TOKEN_PACKS.pro.tokensAdded).toBe(25_000);
+    expect(TOKEN_PACKS.max.tokensAdded).toBe(100_000);
+    expect(isValidPack('nope')).toBe(false);
   });
 });
