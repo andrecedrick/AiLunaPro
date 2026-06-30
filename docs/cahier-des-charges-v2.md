@@ -3586,6 +3586,55 @@ Quote/Invoice (§L/§quote). Nouvelles : collection `organizations/{orgId}/works
 - **Fournisseur SMS sécurisé** — clé en secret worker (operator-only) ; aucun numéro/OTP en clair dans les logs.
 **Statut :** FUTUR — NON IMPLÉMENTÉ.
 
+### 22.3 — Contrôle d'accès Workflow Automation (gating par plan) 🔴 FUTUR — NON IMPLÉMENTÉ
+**Référence :** étend §22.1 (intégrations n8n / Zapier / Make). Définit QUI peut y accéder.
+**Accès par plan :**
+- **Free → AUCUN accès.**
+- **Starter → AUCUN accès.**
+- **Professional → workflows limités** (quota d'automatisations défini à l'activation).
+- **Enterprise → automatisation complète.**
+**But :** pousser l'upgrade vers Pro/Enterprise, augmenter la consommation de tokens, cibler les utilisateurs business.
+**Règles :**
+- Gate plan vérifié **côté worker** (`resolveOrgPlan`), jamais côté client ; pas d'IDOR cross-tenant sur les clés API.
+- Chaque exécution de workflow passe par `enforceUsageLimit` (within / overflow / upgrade identiques à l'UI — voir §23.4).
+- L'automatisation **augmente l'usage tokens par design** → le gating Pro/Enterprise garantit que seuls les plans à allocation suffisante y accèdent (pas de Free/Starter qui épuise puis bloque).
+- Workflows respectent limites + (future) facturation overflow ; aucun chemin parallèle.
+**Statut :** FUTUR — NON IMPLÉMENTÉ.
+
+---
+
+## 23. Règles de monétisation avancées — token overflow *(🟡 ENREGISTRÉ — FACTURATION NON ACTIVÉE)*
+
+> **Contexte (2026-06-30).** Modèle de valeur token préparé (cf. mémoire `token-value-model-shipped`).
+> Facturation overflow **OFF** (`ENABLE_RECOMMENDATION_CHARGE` non défini → paid over-limit = `overflow-free`).
+> Cette section **enregistre les règles de tarification**. Aucune implémentation ni activation ici.
+
+### 23.1 — Coût des actions monétisées
+- **`recommendation.run` = 30 tokens** (`worker/src/lib/token-costs.ts`, source de vérité serveur — inchangé).
+- **Valeur délivrée = $6 / session** (`src/lib/tokens/value.ts` `TOKEN_VALUE_USD`, **affichage uniquement**, ne pilote jamais un débit).
+- **Cible coût overflow par recommandation ≈ $3.**
+
+### 23.2 — Prix du token
+- **Prix cible top-up / overflow = $0.10 / token.**
+- **30 tokens × $0.10 = $3.00** par recommandation overflow → atteint la cible $3.
+- **Ratio de valeur :** $3 payé pour $6 délivré = **2×** (honnête, attractif, jamais sous l'eau).
+
+### 23.3 — Règles d'alignement de valeur
+- **Chaque action monétisée ≥ ~$3 de valeur délivrée**, sinon gratuite. Actions triviales (`roi.calculate` $2, `agent.call` $1) **restent gratuites** — on ne facture jamais une action sous-$3.
+- **Les tokens représentent une valeur économique réelle** — adossés à la valeur délivrée, pas un compteur arbitraire.
+- **Overflow TOUJOURS plus cher que l'abonnement.** Taux embarqués (prix plan ÷ allocation) : Starter $0.050/token · Pro $0.015/token · Enterprise $0.005/token. Le top-up à $0.10/token est **au-dessus de tous**.
+- **Les tokens ne sous-cotent JAMAIS un plan.** Plancher prix top-up = taux embarqué Pro ($0.015/token) ; packs bulk tarifés **au-dessus** de ce plancher (Stripe `STRIPE_TOKEN_PRICE_*`, à définir).
+- **L'upgrade reste la meilleure option.** Un utilisateur régulier au-delà des limites doit trouver **moins cher d'upgrader** que de vivre en overflow → tarification overflow délibérément punitive (lève la conversion).
+
+### 23.4 — Invariants de cohérence (système équilibré)
+- **Facturation UNIQUEMENT après limites** — `decideOverflow` → `shouldCharge` seulement si `!withinLimit`.
+- **Aucune facturation dans les limites du plan** — `withinLimit` → `mode:'included'`, aucun débit.
+- **Free over-limit → upgrade requis** — `classifyOverflow` → `upgrade-required`, jamais de débit token.
+- **Aucune feature ne contourne le système de tokens** — y compris Workflow Automation (§22.3) : toute exécution automatisée passe par `enforceUsageLimit`, mêmes gates within/overflow/upgrade que l'UI.
+- **Cohérence Stripe** — le débit overflow consomme le **ledger token** (`organizations/{orgId}/tokens/current`), **pas Stripe en direct** ; Stripe ne bouge qu'à l'**achat de pack**. ⇒ Packs achetables (prix Stripe + clés live) **AVANT** toute activation de charge, sinon paid over-limit = `INSUFFICIENT_TOKENS` (402) sans recours.
+
+**Statut :** RÈGLES ENREGISTRÉES — **facturation (`ENABLE_RECOMMENDATION_CHARGE`) NON ACTIVÉE**. Aucun code, aucun déploiement dans cette étape.
+
 ---
 
 **Fin du cahier des charges v2.**
