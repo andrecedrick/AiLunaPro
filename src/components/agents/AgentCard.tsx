@@ -5,10 +5,14 @@
 import type { AgentCatalogEntry } from '../../types/agents';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
+import { RankBadge } from './RankBadge';
 
 interface Props {
   agent:   AgentCatalogEntry;
   onOpen?: (agentId: string) => void;
+  /** Recommendation rank + score — when both set, the RankBadge renders in the header. */
+  rank?:   number;
+  score?:  number;
 }
 
 const PLAN_LABEL: Record<AgentCatalogEntry['minPlan'], string> = {
@@ -20,7 +24,7 @@ const PLAN_LABEL: Record<AgentCatalogEntry['minPlan'], string> = {
 
 type AgentText = { tagline: string; description: string; problemSolved: string };
 
-export function AgentCard({ agent, onOpen }: Props) {
+export function AgentCard({ agent, onOpen, rank, score }: Props) {
   const T = useLocale();
   const AC = T.agentsContent;
   const content = (AC.byId as Record<string, AgentText>)[agent.agentId];
@@ -45,22 +49,28 @@ export function AgentCard({ agent, onOpen }: Props) {
         minWidth:       0,
       }}
     >
+      {/* Header: source + plan badges (left group), recommendation RankBadge (right). */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8 }}>
-        <span style={{
-          fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
-          background: isAiLuna ? 'var(--violet)' : 'var(--surface-2)',
-          color:      isAiLuna ? '#fff'           : 'var(--text-muted)',
-          textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap',
-        }}>
-          {isAiLuna ? 'AiLunaPro' : T.agentsPages.card.external}
-        </span>
-        <span style={{
-          fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
-          background: 'var(--surface-2)', color: 'var(--text-muted)',
-          textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap',
-        }}>
-          {PLAN_LABEL[agent.minPlan]}+
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
+            background: isAiLuna ? 'var(--violet)' : 'var(--surface-2)',
+            color:      isAiLuna ? '#fff'           : 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap',
+          }}>
+            {isAiLuna ? 'AiLunaPro' : T.agentsPages.card.external}
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
+            background: 'var(--surface-2)', color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap',
+          }}>
+            {PLAN_LABEL[agent.minPlan]}+
+          </span>
+        </div>
+        {typeof rank === 'number' && typeof score === 'number' && (
+          <RankBadge rank={rank} score={score} />
+        )}
       </div>
 
       <h3 style={{

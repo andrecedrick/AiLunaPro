@@ -318,41 +318,7 @@ function RecommendedAgentCard({
   const T = useLocale();
   return (
     <div style={{ position: 'relative' }}>
-      {/* Rank + score chip */}
-      <div style={{
-        position:    'absolute',
-        top:         10,
-        right:       10,
-        zIndex:      2,
-        display:     'flex',
-        alignItems:  'center',
-        gap:         6,
-      }}>
-        <span style={{
-          background:    'var(--violet)',
-          color:         '#fff',
-          fontSize:      10,
-          fontWeight:    800,
-          padding:       '3px 8px',
-          borderRadius:  999,
-          letterSpacing: 0.4,
-          textTransform: 'uppercase',
-        }}>
-          {format(T.agentsPages.list.rankBadge, { rank })}
-        </span>
-        <span style={{
-          background:    'rgba(124,58,237,0.10)',
-          color:         'var(--violet-text)',
-          fontSize:      11,
-          fontWeight:    700,
-          padding:       '3px 8px',
-          borderRadius:  999,
-        }}>
-          {format(T.agentsPages.list.scorePts, { score })}
-        </span>
-      </div>
-
-      <AgentCard agent={agent} onOpen={onOpen} />
+      <AgentCard agent={agent} onOpen={onOpen} rank={rank} score={score} />
 
       {reasons.length > 0 && (
         <details style={{
