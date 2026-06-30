@@ -13,3 +13,12 @@ function envFlag(v: unknown): boolean {
 
 /** Token value model v2 UI: per-action "value €" hints + session value tracker. Default OFF. */
 export const ENABLE_TOKEN_MODEL_V2 = envFlag(import.meta.env.VITE_ENABLE_TOKEN_MODEL_V2);
+
+/**
+ * Quote V2 — value-first quote layout (Phase 1: UI reorder only). When ON the
+ * EstimateView leads with the recommended solution + scope, moves the price card
+ * below the value, surfaces the CTA inside the quote body, and demotes the
+ * disclaimer below the CTA + adds a generic cost-of-delay line. UI-only; no ROI
+ * data, no pricing/flow/billing change. Default OFF → existing layout is unchanged.
+ */
+export const ENABLE_QUOTE_V2 = envFlag(import.meta.env.VITE_ENABLE_QUOTE_V2);

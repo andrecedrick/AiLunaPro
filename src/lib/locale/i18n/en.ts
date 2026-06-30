@@ -2599,6 +2599,7 @@ export const en = {
         "rangeLabel": "Estimated price range",
         "openEndedSuffix": "+",
         "recommendedLabel": "Recommended solution",
+        "costOfDelay": "Every month of delay carries a real cost in lost time and money.",
         "scopeHeading": "What's typically included",
         "nextStepsHeading": "Next steps",
         "opsCostNote": "AI agent & automation projects also carry operating costs (tokens, infrastructure) that typically add {min}–{max}% on top of the build.",

@@ -2583,6 +2583,7 @@ export const de: Dict = {
         "rangeLabel": "Geschätzte Preisspanne",
         "openEndedSuffix": "+",
         "recommendedLabel": "Empfohlene Lösung",
+        "costOfDelay": "Jeder Monat des Wartens verursacht reale Kosten an verlorener Zeit und verlorenem Geld.",
         "scopeHeading": "Was typischerweise enthalten ist",
         "nextStepsHeading": "Nächste Schritte",
         "opsCostNote": "KI-Agenten- und Automatisierungsprojekte verursachen zudem Betriebskosten (Tokens, Infrastruktur), die typischerweise {min}–{max}% auf die Entwicklung aufschlagen.",

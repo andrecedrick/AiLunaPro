@@ -2583,6 +2583,7 @@ export const es: Dict = {
         "rangeLabel": "Rango de precios estimado",
         "openEndedSuffix": "+",
         "recommendedLabel": "Solución recomendada",
+        "costOfDelay": "Cada mes de espera supone un coste real en tiempo y dinero perdidos.",
         "scopeHeading": "Lo que normalmente se incluye",
         "nextStepsHeading": "Próximos pasos",
         "opsCostNote": "Los proyectos de agentes de IA y de automatización conllevan también costes operativos (tokens, infraestructura) que normalmente añaden entre un {min} y un {max}% adicional sobre el desarrollo.",

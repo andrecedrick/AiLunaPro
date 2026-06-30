@@ -2585,6 +2585,7 @@ export const zh: Dict = {
         "rangeLabel": "估算价格区间",
         "openEndedSuffix": "+",
         "recommendedLabel": "推荐方案",
+        "costOfDelay": "每拖延一个月，都会在时间和金钱上造成实实在在的损失。",
         "scopeHeading": "通常包含的内容",
         "nextStepsHeading": "后续步骤",
         "opsCostNote": "AI 智能体与自动化项目还会产生运营成本（令牌、基础设施），通常会在开发费用之外额外增加 {min}–{max}%。",

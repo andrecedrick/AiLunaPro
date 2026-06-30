@@ -2583,6 +2583,7 @@ export const pt: Dict = {
         "rangeLabel": "Faixa de preço estimada",
         "openEndedSuffix": "+",
         "recommendedLabel": "Solução recomendada",
+        "costOfDelay": "Cada mês de espera representa um custo real em tempo e dinheiro perdidos.",
         "scopeHeading": "O que normalmente está incluído",
         "nextStepsHeading": "Próximos passos",
         "opsCostNote": "Os projetos de agentes de IA e de automação implicam também custos operacionais (tokens, infraestrutura) que normalmente acrescentam {min}–{max}% ao custo de desenvolvimento.",

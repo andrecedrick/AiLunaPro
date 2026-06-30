@@ -29,6 +29,7 @@ import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/qu
 import { convertToUsd } from '../lib/currency/fxSnapshot';
 import { generateQuote, downloadQuotePdf, emailQuote, QuoteGenError } from '../lib/quote/quoteClient';
 import { tokenCost } from '../lib/tokens/costs';
+import { ENABLE_QUOTE_V2 } from '../lib/flags';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
 import { ActionValueHint } from '../components/tokens/ActionValueHint';
 import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
@@ -469,7 +470,7 @@ export function QuoteRequestPage() {
 
         {preview && (
           <>
-            <EstimateView preview={preview} onReset={reset} />
+            <EstimateView preview={preview} onReset={reset} v2={ENABLE_QUOTE_V2} />
 
             {isAuthenticated ? (
               generated ? (
@@ -578,6 +579,25 @@ export function QuoteRequestPage() {
               </div>
             ))}
 
+            {ENABLE_QUOTE_V2 && (
+              /* Quote V2 trailer — rendered AFTER the CTA so the value → CTA chain is
+                 unbroken: a generic cost-of-delay nudge, then the disclaimer (demoted
+                 below the decision point), then the rerun link. UI-only, no numbers. */
+              <>
+                <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 10, background: 'var(--amber-soft-bg, #fef3c7)', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55, textAlign: 'center' }}>
+                  {Q.result.costOfDelay}
+                </div>
+                <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>
+                  {Q.result.disclaimer}
+                </div>
+                <div style={{ marginTop: 16, textAlign: 'center' }}>
+                  <button type="button" onClick={reset} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>
+                    {Q.result.rerunButton}
+                  </button>
+                </div>
+              </>
+            )}
+
             <InsufficientTokensModal
               open={modal.open}
               onClose={() => setModal(m => ({ ...m, open: false }))}
@@ -594,7 +614,7 @@ export function QuoteRequestPage() {
 
 /* ── Estimate view ──────────────────────────────────────── */
 
-function EstimateView({ preview, onReset }: { preview: QuotePreview; onReset: () => void }) {
+function EstimateView({ preview, onReset, v2 = false }: { preview: QuotePreview; onReset: () => void; v2?: boolean }) {
   const T = useLocale();
   const money = useMoney();
   const Q = T.publicTools.quote;
@@ -603,49 +623,85 @@ function EstimateView({ preview, onReset }: { preview: QuotePreview; onReset: ()
   const nextSteps = Q.nextSteps as Record<string, string>;
 
   const rangeText = `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? Q.result.openEndedSuffix : ''}`;
+  const solutionTitle = solutions[preview.solutionKey] ?? preview.solutionKey;
+
+  const priceCard = (
+    <div style={{ marginTop: 24, padding: '24px 26px', borderRadius: 16, border: '2px solid var(--violet)', background: 'var(--brand-soft-bg, #f5f3ff)', textAlign: 'center' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 8 }}>
+        {Q.result.rangeLabel}
+      </div>
+      <div style={{ fontSize: 38, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+        {rangeText}
+      </div>
+      {!v2 && (
+        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+          {Q.result.recommendedLabel}: <strong>{solutionTitle}</strong>
+        </div>
+      )}
+    </div>
+  );
+
+  const scopeBlock = (
+    <div style={{ marginTop: v2 ? 14 : 18, padding: '18px 20px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <h2 style={sectionTitleStyle()}>{Q.result.scopeHeading}</h2>
+      <ul style={listStyle()}>
+        {preview.scopeKeys.map(k => <li key={k} style={{ marginBottom: 6 }}>{scopeMap[k] ?? k}</li>)}
+      </ul>
+    </div>
+  );
+
+  const nextStepsBlock = (
+    <div style={{ marginTop: 14, padding: '18px 20px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <h2 style={sectionTitleStyle()}>{Q.result.nextStepsHeading}</h2>
+      <ol style={listStyle()}>
+        {preview.nextStepKeys.map(k => <li key={k} style={{ marginBottom: 6 }}>{nextSteps[k] ?? k}</li>)}
+      </ol>
+    </div>
+  );
+
+  const opsNote = preview.opsCostUpliftPct && (
+    <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--amber-soft-bg, #fef3c7)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
+      {format(Q.result.opsCostNote, { min: String(preview.opsCostUpliftPct.minPct), max: String(preview.opsCostUpliftPct.maxPct) })}
+    </div>
+  );
+
+  const paymentNote = (
+    <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
+      {Q.guided.paymentNote}
+    </div>
+  );
+
+  // V2 — value-first: promote the recommended solution above everything, lead with
+  // scope (the deliverable), then move the price card BELOW the value. The disclaimer
+  // and rerun link are intentionally NOT rendered here — the parent renders them after
+  // the CTA so the value → CTA chain is not broken (Phase 1, UI-only).
+  if (v2) {
+    return (
+      <div id="quote-estimate">
+        <div style={{ marginTop: 24, padding: '20px 22px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 6 }}>
+            {Q.result.recommendedLabel}
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+            {solutionTitle}
+          </div>
+        </div>
+        {scopeBlock}
+        {nextStepsBlock}
+        {priceCard}
+        {opsNote}
+        {paymentNote}
+      </div>
+    );
+  }
 
   return (
     <div id="quote-estimate">
-      {/* Headline range */}
-      <div style={{ marginTop: 24, padding: '24px 26px', borderRadius: 16, border: '2px solid var(--violet)', background: 'var(--brand-soft-bg, #f5f3ff)', textAlign: 'center' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 8 }}>
-          {Q.result.rangeLabel}
-        </div>
-        <div style={{ fontSize: 38, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
-          {rangeText}
-        </div>
-        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
-          {Q.result.recommendedLabel}: <strong>{solutions[preview.solutionKey] ?? preview.solutionKey}</strong>
-        </div>
-      </div>
-
-      {/* Scope */}
-      <div style={{ marginTop: 18, padding: '18px 20px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' }}>
-        <h2 style={sectionTitleStyle()}>{Q.result.scopeHeading}</h2>
-        <ul style={listStyle()}>
-          {preview.scopeKeys.map(k => <li key={k} style={{ marginBottom: 6 }}>{scopeMap[k] ?? k}</li>)}
-        </ul>
-      </div>
-
-      {/* Next steps */}
-      <div style={{ marginTop: 14, padding: '18px 20px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' }}>
-        <h2 style={sectionTitleStyle()}>{Q.result.nextStepsHeading}</h2>
-        <ol style={listStyle()}>
-          {preview.nextStepKeys.map(k => <li key={k} style={{ marginBottom: 6 }}>{nextSteps[k] ?? k}</li>)}
-        </ol>
-      </div>
-
-      {/* Ops-cost note (agents/automation only) */}
-      {preview.opsCostUpliftPct && (
-        <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--amber-soft-bg, #fef3c7)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
-          {format(Q.result.opsCostNote, { min: String(preview.opsCostUpliftPct.minPct), max: String(preview.opsCostUpliftPct.maxPct) })}
-        </div>
-      )}
-
-      {/* B2B payment model (informational only — no automated in-app billing). */}
-      <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
-        {Q.guided.paymentNote}
-      </div>
+      {priceCard}
+      {scopeBlock}
+      {nextStepsBlock}
+      {opsNote}
+      {paymentNote}
 
       {/* Disclaimer (always visible) */}
       <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>

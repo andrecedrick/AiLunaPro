@@ -2583,6 +2583,7 @@ export const it: Dict = {
         "rangeLabel": "Fascia di prezzo stimata",
         "openEndedSuffix": "+",
         "recommendedLabel": "Soluzione consigliata",
+        "costOfDelay": "Ogni mese di attesa comporta un costo reale in tempo e denaro persi.",
         "scopeHeading": "Cosa è solitamente incluso",
         "nextStepsHeading": "Prossimi passi",
         "opsCostNote": "I progetti di agenti AI e automazione comportano anche costi operativi (token, infrastruttura) che in genere aggiungono il {min}–{max}% al costo di realizzazione.",
