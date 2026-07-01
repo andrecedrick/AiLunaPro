@@ -2035,6 +2035,9 @@ export const zh: Dict = {
       },
       "loading": "正在加载代理…",
       "emptyFiltered": "没有代理符合所选筛选条件。",
+      "quoteBridgeTitle": "准备好落地实施了吗？",
+      "quoteBridgeCta": "为此获取报价",
+      "quoteBridgeSeed": "基于推荐智能体的 AI 自动化项目：{agents}",
       "sections": {
         "topRecommendations": "热门推荐",
         "otherAgents": "其他代理"

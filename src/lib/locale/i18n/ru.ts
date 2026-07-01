@@ -2034,6 +2034,9 @@ export const ru: Dict = {
       },
       "loading": "Загрузка агентов…",
       "emptyFiltered": "Нет агентов, соответствующих выбранным фильтрам.",
+      "quoteBridgeTitle": "Готовы внедрить их?",
+      "quoteBridgeCta": "Получить смету на проект",
+      "quoteBridgeSeed": "Проект ИИ-автоматизации на основе рекомендованных агентов: {agents}",
       "sections": {
         "topRecommendations": "Лучшие рекомендации",
         "otherAgents": "Другие агенты"

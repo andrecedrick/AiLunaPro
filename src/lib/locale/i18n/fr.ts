@@ -2033,6 +2033,9 @@ export const fr: Dict = {
       },
       "loading": "Chargement des agents…",
       "emptyFiltered": "Aucun agent ne correspond aux filtres sélectionnés.",
+      "quoteBridgeTitle": "Prêt à les mettre en œuvre ?",
+      "quoteBridgeCta": "Obtenir un devis pour ce projet",
+      "quoteBridgeSeed": "Projet d'automatisation IA basé sur mes agents recommandés : {agents}",
       "sections": {
         "topRecommendations": "Meilleures recommandations",
         "otherAgents": "Autres agents"

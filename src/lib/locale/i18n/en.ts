@@ -2251,6 +2251,9 @@ export const en = {
       },
       "loading": "Loading agents…",
       "emptyFiltered": "No agents match the selected filters.",
+      "quoteBridgeTitle": "Ready to put these to work?",
+      "quoteBridgeCta": "Get a quote for this",
+      "quoteBridgeSeed": "AI automation project based on my recommended agents: {agents}",
       "sections": {
         "topRecommendations": "Top recommendations",
         "otherAgents": "Other agents"

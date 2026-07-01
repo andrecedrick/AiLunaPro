@@ -2033,6 +2033,9 @@ export const de: Dict = {
       },
       "loading": "Agenten werden geladen…",
       "emptyFiltered": "Keine Agenten entsprechen den ausgewählten Filtern.",
+      "quoteBridgeTitle": "Bereit, sie einzusetzen?",
+      "quoteBridgeCta": "Angebot dafür anfordern",
+      "quoteBridgeSeed": "KI-Automatisierungsprojekt auf Basis meiner empfohlenen Agenten: {agents}",
       "sections": {
         "topRecommendations": "Top-Empfehlungen",
         "otherAgents": "Weitere Agenten"

@@ -18,6 +18,9 @@ import type { AgentCatalogEntry } from '../types/agents';
 import { AgentCard } from '../components/agents/AgentCard';
 import { RecommendPanel } from '../components/agents/RecommendPanel';
 import type { RecommendationResult } from '../types/recommendation';
+import { ENABLE_QUOTE_V2 } from '../lib/flags';
+import { saveWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
+import { emit } from '../lib/analytics/events';
 
 function LockedView() {
   const { navigate } = useRoute();
@@ -247,6 +250,31 @@ export function AgentsPage() {
               );
             })}
           </div>
+
+          {/* Phase 5 — Recommendation → Quote bridge: turn the ranked list into an action
+              by pre-seeding the Quote (category + a description built from the top picks)
+              and navigating there. Reuses the existing sessionStorage prefill carrier; no
+              backend, no billing. Gated by V2 so the legacy dead-end is unchanged when OFF. */}
+          {ENABLE_QUOTE_V2 && topThree.length > 0 && (
+            <div style={{ margin: '18px 0', padding: '16px 18px', borderRadius: 12, border: '1px solid var(--violet)', background: 'rgba(124,58,237,0.06)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
+                {T.agentsPages.list.quoteBridgeTitle}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const names = topThree.map(a => a.name).slice(0, 3).join(', ');
+                  saveWorksheetQuotePrefill({ category: 'ai_agent', descriptionSeed: format(T.agentsPages.list.quoteBridgeSeed, { agents: names }) });
+                  emit('cta_clicked', { flow: 'quote', target: 'quote' });
+                  navigate({ name: 'quote' });
+                }}
+                style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {T.agentsPages.list.quoteBridgeCta}
+              </button>
+            </div>
+          )}
+
           {otherAgents.length > 0 && (
             <>
               <SectionHeading style={{ marginTop: 22 }}>{T.agentsPages.list.sections.otherAgents}</SectionHeading>

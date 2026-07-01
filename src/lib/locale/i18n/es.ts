@@ -2033,6 +2033,9 @@ export const es: Dict = {
       },
       "loading": "Cargando agentes…",
       "emptyFiltered": "Ningún agente coincide con los filtros seleccionados.",
+      "quoteBridgeTitle": "¿Listo para ponerlos en marcha?",
+      "quoteBridgeCta": "Obtener un presupuesto para esto",
+      "quoteBridgeSeed": "Proyecto de automatización con IA basado en mis agentes recomendados: {agents}",
       "sections": {
         "topRecommendations": "Mejores recomendaciones",
         "otherAgents": "Otros agentes"
