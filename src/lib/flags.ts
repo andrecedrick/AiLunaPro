@@ -15,10 +15,10 @@ function envFlag(v: unknown): boolean {
 export const ENABLE_TOKEN_MODEL_V2 = envFlag(import.meta.env.VITE_ENABLE_TOKEN_MODEL_V2);
 
 /**
- * Quote V2 — value-first quote layout (Phase 1: UI reorder only). When ON the
- * EstimateView leads with the recommended solution + scope, moves the price card
- * below the value, surfaces the CTA inside the quote body, and demotes the
- * disclaimer below the CTA + adds a generic cost-of-delay line. UI-only; no ROI
- * data, no pricing/flow/billing change. Default OFF → existing layout is unchanged.
+ * Quote V2 — value-first premium quote layout (ROI → decision → solution →
+ * investment → CTA). FORCED ON: V2 is now the only quote layout. The legacy
+ * price-first template has been removed from EstimateView, and forcing the flag
+ * here means the layout no longer depends on the build env (so a rebuild without
+ * VITE_ENABLE_QUOTE_V2 can never silently revert to legacy). UI-only.
  */
-export const ENABLE_QUOTE_V2 = envFlag(import.meta.env.VITE_ENABLE_QUOTE_V2);
+export const ENABLE_QUOTE_V2 = true;

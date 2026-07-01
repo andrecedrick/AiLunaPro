@@ -487,7 +487,7 @@ export function QuoteRequestPage() {
             {/* V2 — one centered, elevated premium card holds the whole value → decision →
                 investment → CTA stack (single card layout). Legacy: plain wrapper, no change. */}
             <div style={ENABLE_QUOTE_V2 ? { maxWidth: 560, margin: '24px auto 0', background: 'var(--surface-2)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 14px 40px rgba(0,0,0,0.05)', padding: '28px 26px 30px' } : undefined}>
-            <EstimateView preview={preview} onReset={reset} v2={ENABLE_QUOTE_V2} roi={roiCtx} />
+            <EstimateView preview={preview} roi={roiCtx} />
 
             {isAuthenticated ? (
               generated ? (
@@ -640,7 +640,7 @@ export function QuoteRequestPage() {
 
 /* ── Estimate view ──────────────────────────────────────── */
 
-function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: QuotePreview; onReset: () => void; v2?: boolean; roi?: PendingRoiSummary | null }) {
+function EstimateView({ preview, roi = null }: { preview: QuotePreview; roi?: PendingRoiSummary | null }) {
   const T = useLocale();
   const money = useMoney();
   const Q = T.publicTools.quote;
@@ -651,10 +651,9 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
   const rangeText = `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? Q.result.openEndedSuffix : ''}`;
   const solutionTitle = solutions[preview.solutionKey] ?? preview.solutionKey;
 
-  // Phase 3 — decision summary, derived purely from the quote investment + ROI savings.
-  // Only when V2 and ROI figures are present; computeDecision returns null when there's
-  // no meaningful decision (no savings) → block is omitted.
-  const decision = (v2 && roi)
+  // Decision summary — derived purely from the quote investment + ROI savings. Null when
+  // there is no meaningful decision (no ROI carried / no savings) → block simply omitted.
+  const decision = roi
     ? computeDecision({
         investmentUsd:   investmentFromRange(preview.priceMinUsd, preview.priceMaxUsd, preview.openEnded),
         yearlySavedUsd:  roi.estimatedYearlyCostSaved,
@@ -662,9 +661,8 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
       })
     : null;
 
-  // V2 — price is a calm, secondary "estimated investment" card (value + decision lead
-  // above it). Legacy keeps the violet 38px focal (unchanged → no regression).
-  const priceCard = v2 ? (
+  // Price = calm, secondary "estimated investment" card (value + decision lead above it).
+  const priceCard = (
     <div style={{ marginTop: 14, padding: '16px 20px', borderRadius: 14, background: 'var(--surface-1)', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
       <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)' }}>
         {Q.result.rangeLabel}
@@ -673,28 +671,13 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
         {rangeText}
       </div>
     </div>
-  ) : (
-    <div style={{ marginTop: 24, padding: '24px 26px', borderRadius: 16, border: '2px solid var(--violet)', background: 'var(--brand-soft-bg, #f5f3ff)', textAlign: 'center' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 8 }}>
-        {Q.result.rangeLabel}
-      </div>
-      <div style={{ fontSize: 38, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
-        {rangeText}
-      </div>
-      <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
-        {Q.result.recommendedLabel}: <strong>{solutionTitle}</strong>
-      </div>
-    </div>
   );
 
-  // V2 sections read as soft tiles inside the one premium card (no heavy borders);
-  // legacy keeps bordered cards (unchanged).
-  const softSection: CSSProperties = v2
-    ? { borderRadius: 14, background: 'var(--surface-1)', border: 'none' }
-    : { borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' };
+  // Sections read as soft, borderless tiles inside the one premium card.
+  const softSection: CSSProperties = { borderRadius: 14, background: 'var(--surface-1)', border: 'none' };
 
   const scopeBlock = (
-    <div style={{ marginTop: v2 ? 14 : 18, padding: '18px 20px', ...softSection }}>
+    <div style={{ marginTop: 14, padding: '18px 20px', ...softSection }}>
       <h2 style={sectionTitleStyle()}>{Q.result.scopeHeading}</h2>
       <ul style={listStyle()}>
         {preview.scopeKeys.map(k => <li key={k} style={{ marginBottom: 6 }}>{scopeMap[k] ?? k}</li>)}
@@ -718,58 +701,33 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
   );
 
   const paymentNote = (
-    <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: v2 ? 14 : 10, background: 'var(--surface-1)', border: v2 ? 'none' : '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
+    <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 14, background: 'var(--surface-1)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
       {Q.guided.paymentNote}
     </div>
   );
 
-  // V2 — value-first: promote the recommended solution above everything, lead with
-  // scope (the deliverable), then move the price card BELOW the value. The disclaimer
-  // and rerun link are intentionally NOT rendered here — the parent renders them after
-  // the CTA so the value → CTA chain is not broken (Phase 1, UI-only).
-  if (v2) {
-    return (
-      <div id="quote-estimate">
-        {/* ROI value block (Phase 2) — the strongest value leads; rendered only when the
-            ROI Calculator carried figures forward, else gracefully omitted. */}
-        {roi && <RoiValueBlock roi={roi} />}
-        {/* Decision engine (Phase 3) — AFTER the ROI block, BEFORE the price. */}
-        {decision && <DecisionBlock decision={decision} />}
-        <div style={{ marginTop: roi ? 16 : 4, padding: '18px 22px', borderRadius: 14, background: 'var(--surface-1)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--violet-text)', marginBottom: 6 }}>
-            {Q.result.recommendedLabel}
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25 }}>
-            {solutionTitle}
-          </div>
-        </div>
-        {scopeBlock}
-        {nextStepsBlock}
-        {priceCard}
-        {opsNote}
-        {paymentNote}
-      </div>
-    );
-  }
-
+  // Value-first is the ONLY layout — no legacy price-first fallback. Order is always:
+  // ROI (if carried) → decision (if computable) → solution → scope → next steps →
+  // investment → notes. Disclaimer + rerun render in the parent after the CTA so the
+  // value → CTA chain stays unbroken. When ROI/decision are absent the block is simply
+  // omitted and the solution leads — the premium card layout is preserved either way.
   return (
     <div id="quote-estimate">
-      {priceCard}
+      {roi && <RoiValueBlock roi={roi} />}
+      {decision && <DecisionBlock decision={decision} />}
+      <div style={{ marginTop: roi ? 16 : 4, padding: '18px 22px', borderRadius: 14, background: 'var(--surface-1)' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--violet-text)', marginBottom: 6 }}>
+          {Q.result.recommendedLabel}
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25 }}>
+          {solutionTitle}
+        </div>
+      </div>
       {scopeBlock}
       {nextStepsBlock}
+      {priceCard}
       {opsNote}
       {paymentNote}
-
-      {/* Disclaimer (always visible) */}
-      <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>
-        {Q.result.disclaimer}
-      </div>
-
-      <div style={{ marginTop: 18, textAlign: 'center' }}>
-        <button type="button" onClick={onReset} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>
-          {Q.result.rerunButton}
-        </button>
-      </div>
     </div>
   );
 }
