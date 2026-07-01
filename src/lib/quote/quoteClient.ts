@@ -199,12 +199,13 @@ export async function sendQuoteToClient(
  *  `render` is persisted server-side so the link regenerates the same PDF. */
 export async function emailQuote(
   orgId: string, quoteId: string, locale: string, render: QuotePdfRender, sendAdminCopy = false, clientEmail?: string, expectedBudgetUsd?: number,
+  roi?: Record<string, string>,
 ): Promise<{ emailed: boolean }> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/quote/email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ orgId, quoteId, locale, render, sendAdminCopy, ...(clientEmail ? { clientEmail } : {}), ...(expectedBudgetUsd !== undefined ? { expectedBudgetUsd } : {}) }),
+    body: JSON.stringify({ orgId, quoteId, locale, render, sendAdminCopy, ...(clientEmail ? { clientEmail } : {}), ...(expectedBudgetUsd !== undefined ? { expectedBudgetUsd } : {}), ...(roi ? { roi } : {}) }),
   });
   const j = await res.json().catch(() => null) as ({ emailed?: boolean; code?: string }) | null;
   if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);

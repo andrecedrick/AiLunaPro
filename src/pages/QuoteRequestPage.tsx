@@ -338,7 +338,30 @@ export function QuoteRequestPage() {
     const expectedBudgetUsd = Math.round(convertToUsd(budgetNum, money.currency));
     setEmailState('sending');
     try {
-      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, email, expectedBudgetUsd);
+      // ROI + decision merge variables for the email — formatted EXACTLY like the in-app
+      // blocks (useMoney, no leading ≈ since the template adds it; i18n time/payback/×).
+      // Sent only when the ROI Calculator carried figures forward; the worker falls back
+      // to em dashes for any missing value so no raw {{VAR}} ever leaks.
+      const roiVars = roiCtx ? (() => {
+        const R = T.publicTools.roi.result;
+        const QR = T.publicTools.quote.result;
+        const dec = computeDecision({
+          investmentUsd:   investmentFromRange(preview.priceMinUsd, preview.priceMaxUsd, preview.openEnded),
+          yearlySavedUsd:  roiCtx.estimatedYearlyCostSaved,
+          monthlySavedUsd: roiCtx.estimatedMonthlyCostSaved,
+        });
+        const dash = '—';
+        return {
+          MONTHLY_SAVED: money.format(roiCtx.estimatedMonthlyCostSaved, { approx: false }),
+          YEARLY_SAVED:  money.format(roiCtx.estimatedYearlyCostSaved, { approx: false }),
+          TIME_SAVED:    format(R.timeSavedValue, { hours: roiCtx.estimatedTimeSavedHoursPerMonth.toLocaleString('en-US') }),
+          PAYBACK:       roiCtx.estimatedPaybackMonths === null ? dash : format(R.paybackValue, { months: roiCtx.estimatedPaybackMonths.toLocaleString('en-US') }),
+          ROI_MULTIPLE:  dec ? format(QR.decisionMultiple, { mult: dec.roiYear1.toFixed(1) }) : dash,
+          BREAKEVEN:     dec && dec.paybackMonths !== null ? format(QR.decisionMonths, { months: String(Math.round(dec.paybackMonths)) }) : dash,
+          THREE_YEAR:    dec ? format(QR.decisionMultiple, { mult: dec.roi3yr.toFixed(1) }) : dash,
+        } as Record<string, string>;
+      })() : undefined;
+      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, email, expectedBudgetUsd, roiVars);
       emit('quote_emailed', { flow: 'quote', emailed: r.emailed, src: src ?? undefined });
       setEmailState('sent');
     } catch {

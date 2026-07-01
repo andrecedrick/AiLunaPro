@@ -34,6 +34,7 @@ import { consumeTokens } from '../lib/tokens';
 import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { buildQuotePdf, formatUsdRange, type QuotePdfInput } from '../lib/quote-pdf';
 import { sendTransactional } from '../lib/sequenzy';
+import { sanitizeQuoteRoiVars } from '../lib/quote-email-vars';
 import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
 import { sanitizeText } from '../lib/support-shared';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
@@ -427,7 +428,7 @@ function countryToLang(cc: string | undefined): string {
   return cc ? (COUNTRY_LANG[cc.toUpperCase()] ?? 'en') : 'en';
 }
 
-interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown; clientEmail?: unknown; expectedBudgetUsd?: unknown }
+interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown; clientEmail?: unknown; expectedBudgetUsd?: unknown; roi?: unknown }
 
 quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -540,6 +541,9 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
     NEG_BUDGET:   render.negBudget,
     NEG_ADJUSTED: render.negAdjusted,
     PDF_URL:      pdfUrl,
+    // ROI + decision figures (client formats them exactly like the in-app blocks;
+    // sanitized + always-present here → no raw {{VAR}} and no null in the email).
+    ...sanitizeQuoteRoiVars(body.roi),
   };
 
   const result = await sendTransactional(env.SEQUENZY_API_KEY, { to: recipient, slug: `quote-${slugLang}`, variables, replyTo: tokenEmail });
