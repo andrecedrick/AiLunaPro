@@ -2593,6 +2593,7 @@ export const fr: Dict = {
         "decisionBreakevenLabel": "Rentabilité",
         "decisionMultiple": "{mult}×",
         "decisionMonths": "~{months} mois",
+        "ctaStartRecovering": "Commencez à récupérer {amount}/mois",
         "scopeHeading": "Ce qui est généralement inclus",
         "nextStepsHeading": "Étapes suivantes",
         "opsCostNote": "Les projets d'agents IA et d'automatisation comportent également des coûts d'exploitation (tokens, infrastructure) qui ajoutent généralement {min}–{max} % au-dessus du développement.",
@@ -2806,6 +2807,7 @@ export const fr: Dict = {
         "stateInvoice": "Facture",
         "budgetLabel": "Votre budget proposé",
         "waitingValidation": "En attente de validation",
+        "waitingActive": "Nous finalisons votre montant — vous pourrez payer dès qu'il sera prêt.",
         "back": "Retour à l'outil de devis"
       }
     }

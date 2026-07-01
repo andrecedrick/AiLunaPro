@@ -2594,6 +2594,7 @@ export const ru: Dict = {
         "decisionBreakevenLabel": "Окупаемость",
         "decisionMultiple": "{mult}×",
         "decisionMonths": "~{months} мес.",
+        "ctaStartRecovering": "Начните возвращать {amount}/мес.",
         "scopeHeading": "Что обычно включено",
         "nextStepsHeading": "Следующие шаги",
         "opsCostNote": "Проекты с AI-агентами и автоматизацией также влекут эксплуатационные расходы (токены, инфраструктура), которые обычно добавляют {min}–{max}% к стоимости разработки.",
@@ -2807,6 +2808,7 @@ export const ru: Dict = {
         "stateInvoice": "Счёт",
         "budgetLabel": "Предлагаемый вами бюджет",
         "waitingValidation": "Ожидание подтверждения",
+        "waitingActive": "Мы утверждаем вашу сумму — вы сможете оплатить, как только всё будет готово.",
         "back": "Вернуться к инструменту смет"
       }
     }

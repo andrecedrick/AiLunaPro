@@ -2593,6 +2593,7 @@ export const de: Dict = {
         "decisionBreakevenLabel": "Amortisation",
         "decisionMultiple": "{mult}×",
         "decisionMonths": "~{months} Mon.",
+        "ctaStartRecovering": "Holen Sie sich {amount}/Monat zurück",
         "scopeHeading": "Was typischerweise enthalten ist",
         "nextStepsHeading": "Nächste Schritte",
         "opsCostNote": "KI-Agenten- und Automatisierungsprojekte verursachen zudem Betriebskosten (Tokens, Infrastruktur), die typischerweise {min}–{max}% auf die Entwicklung aufschlagen.",
@@ -2806,6 +2807,7 @@ export const de: Dict = {
         "stateInvoice": "Rechnung",
         "budgetLabel": "Ihr vorgeschlagenes Budget",
         "waitingValidation": "Warten auf Validierung",
+        "waitingActive": "Wir finalisieren Ihren Betrag — Sie können zahlen, sobald er bereit ist.",
         "back": "Zurück zum Angebots-Tool"
       }
     }

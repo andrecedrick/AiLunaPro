@@ -13,6 +13,7 @@ import { useLocale } from '../context/LocaleContext';
 import { useMoney } from '../lib/currency/useMoney';
 import { primaryBtnStyle } from '../components/ui-tools';
 import { QuoteProgress } from '../components/QuoteProgress';
+import { ENABLE_QUOTE_V2 } from '../lib/flags';
 
 function hashState(): { quoteId: string; state: 'review' | 'negotiation' | 'waiting' | 'invoice'; budgetUsd: number | null } {
   const h = typeof window !== 'undefined' ? window.location.hash : '';
@@ -53,7 +54,11 @@ export function QuoteStatusPage() {
         <div style={{ margin: '0 auto 20px', maxWidth: 360, padding: '16px 18px', borderRadius: 12, background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--violet)' }}>
           <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text)', marginBottom: 6 }}>{S.budgetLabel}</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{money.format(budgetUsd)}</div>
-          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8 }}>⏳ {S.waitingValidation}</div>
+          {/* Phase 4 — remove the passive "waiting" dead-end feel: V2 shows a forward,
+              reassuring line (payment comes next); legacy keeps the plain status. */}
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8 }}>
+            {ENABLE_QUOTE_V2 ? S.waitingActive : `⏳ ${S.waitingValidation}`}
+          </div>
         </div>
       )}
 

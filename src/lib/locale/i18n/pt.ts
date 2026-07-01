@@ -2593,6 +2593,7 @@ export const pt: Dict = {
         "decisionBreakevenLabel": "Amortização",
         "decisionMultiple": "{mult}×",
         "decisionMonths": "~{months} meses",
+        "ctaStartRecovering": "Comece a recuperar {amount}/mês",
         "scopeHeading": "O que normalmente está incluído",
         "nextStepsHeading": "Próximos passos",
         "opsCostNote": "Os projetos de agentes de IA e de automação implicam também custos operacionais (tokens, infraestrutura) que normalmente acrescentam {min}–{max}% ao custo de desenvolvimento.",
@@ -2806,6 +2807,7 @@ export const pt: Dict = {
         "stateInvoice": "Fatura",
         "budgetLabel": "O orçamento que propõe",
         "waitingValidation": "A aguardar validação",
+        "waitingActive": "Estamos a finalizar o seu valor — poderá pagar assim que estiver pronto.",
         "back": "Voltar à ferramenta de orçamentos"
       }
     }

@@ -124,6 +124,13 @@ export function QuoteRequestPage() {
   }, []);
 
   const Q = T.publicTools.quote;
+  // Phase 4 — value-framed primary CTA ("Start recovering {amount}/month"), shown only
+  // in V2 when ROI figures are present; else null → the existing labels are used (graceful).
+  // The label drives the SAME existing action (sign up / generate); the surrounding subtext
+  // keeps the mechanical step honest.
+  const recoverCta = (ENABLE_QUOTE_V2 && roiCtx)
+    ? format(Q.result.ctaStartRecovering, { amount: money.format(roiCtx.estimatedMonthlyCostSaved) })
+    : null;
   const suggestions = Q.guided.suggestions as Record<string, string>;
   const effectiveDescription = buildDescription(picks, suggestions, details);
   const togglePick = (k: string) => setPicks(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]);
@@ -570,8 +577,14 @@ export function QuoteRequestPage() {
                     onClick={() => void onGenerate()}
                     style={{ ...primaryBtnStyle(), opacity: generating ? 0.6 : 1, cursor: generating ? 'wait' : 'pointer' }}
                   >
-                    {generating ? Q.generate.loading : `${Q.generate.button} · ${format(Q.generate.cost, { n: tokenCost('quote.generation') })}`}
+                    {generating ? Q.generate.loading : (recoverCta ?? `${Q.generate.button} · ${format(Q.generate.cost, { n: tokenCost('quote.generation') })}`)}
                   </button>
+                  {/* Keep the token cost visible when the value CTA replaces the "· N tokens" label (honesty). */}
+                  {recoverCta && !generating && (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                      {format(Q.generate.cost, { n: tokenCost('quote.generation') })}
+                    </div>
+                  )}
                   <ActionValueHint action="quote.generation" style={{ display: 'block', marginTop: 8 }} />
                   {genError && <div style={{ marginTop: 10, color: 'var(--red-text)', fontSize: 13 }}>{genError}</div>}
                 </div>
@@ -581,7 +594,7 @@ export function QuoteRequestPage() {
                 <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{Q.result.ctaHeading}</div>
                 <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>{Q.result.ctaBody}</div>
                 <button type="button" onClick={() => { emit('cta_clicked', { flow: 'quote', target: 'signup', src: src ?? undefined }); navigate({ name: 'signup' }); }} style={{ display: 'inline-block', padding: '11px 28px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-                  {Q.result.ctaButton}
+                  {recoverCta ?? Q.result.ctaButton}
                 </button>
               </div>
             ))}

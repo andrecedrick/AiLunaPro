@@ -2595,6 +2595,7 @@ export const zh: Dict = {
         "decisionBreakevenLabel": "回本周期",
         "decisionMultiple": "{mult}×",
         "decisionMonths": "约 {months} 个月",
+        "ctaStartRecovering": "开始每月收回 {amount}",
         "scopeHeading": "通常包含的内容",
         "nextStepsHeading": "后续步骤",
         "opsCostNote": "AI 智能体与自动化项目还会产生运营成本（令牌、基础设施），通常会在开发费用之外额外增加 {min}–{max}%。",
@@ -2808,6 +2809,7 @@ export const zh: Dict = {
         "stateInvoice": "发票",
         "budgetLabel": "您提出的预算",
         "waitingValidation": "等待确认",
+        "waitingActive": "我们正在确认您的金额——准备好后即可付款。",
         "back": "返回报价工具"
       }
     }
