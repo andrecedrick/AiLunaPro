@@ -37,7 +37,8 @@ import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnSt
 import { usePreferences } from '../context/PreferencesContext';
 import { useSessionValue } from '../context/SessionValueContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
-import { saveFlowProgress, readFlowProgress, clearFlowProgress } from '../lib/leads/pendingLead';
+import { saveFlowProgress, readFlowProgress, clearFlowProgress, readPendingResult, type PendingRoiSummary } from '../lib/leads/pendingLead';
+import { RoiValueBlock } from '../components/quote/RoiValueBlock';
 import { takeWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
 import { emit } from '../lib/analytics/events';
 import { captureSrc } from '../lib/analytics/srcParam';
@@ -77,6 +78,10 @@ export function QuoteRequestPage() {
 
   const [errors,  setErrors]  = useState<FormErrors>({});
   const [preview, setPreview] = useState<QuotePreview | null>(null);
+  // Phase 2 — value-first Quote reads the structured ROI figures the ROI Calculator
+  // stashed (non-PII, localStorage). V2 only; absent → graceful fallback (no ROI block,
+  // generic cost-of-delay). Read once at mount so it stays stable across re-renders.
+  const [roiCtx] = useState<PendingRoiSummary | null>(() => ENABLE_QUOTE_V2 ? (readPendingResult('roi')?.roi ?? null) : null);
 
   // Q2 — token-charged generation (authenticated only).
   const [generating, setGenerating] = useState(false);
@@ -470,7 +475,7 @@ export function QuoteRequestPage() {
 
         {preview && (
           <>
-            <EstimateView preview={preview} onReset={reset} v2={ENABLE_QUOTE_V2} />
+            <EstimateView preview={preview} onReset={reset} v2={ENABLE_QUOTE_V2} roi={roiCtx} />
 
             {isAuthenticated ? (
               generated ? (
@@ -585,7 +590,9 @@ export function QuoteRequestPage() {
                  below the decision point), then the rerun link. UI-only, no numbers. */
               <>
                 <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 10, background: 'var(--amber-soft-bg, #fef3c7)', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55, textAlign: 'center' }}>
-                  {Q.result.costOfDelay}
+                  {roiCtx
+                    ? format(Q.result.costOfDelayAmount, { amount: money.format(roiCtx.estimatedMonthlyCostSaved) })
+                    : Q.result.costOfDelay}
                 </div>
                 <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface-2)', color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>
                   {Q.result.disclaimer}
@@ -614,7 +621,7 @@ export function QuoteRequestPage() {
 
 /* ── Estimate view ──────────────────────────────────────── */
 
-function EstimateView({ preview, onReset, v2 = false }: { preview: QuotePreview; onReset: () => void; v2?: boolean }) {
+function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: QuotePreview; onReset: () => void; v2?: boolean; roi?: PendingRoiSummary | null }) {
   const T = useLocale();
   const money = useMoney();
   const Q = T.publicTools.quote;
@@ -678,7 +685,10 @@ function EstimateView({ preview, onReset, v2 = false }: { preview: QuotePreview;
   if (v2) {
     return (
       <div id="quote-estimate">
-        <div style={{ marginTop: 24, padding: '20px 22px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+        {/* ROI value block (Phase 2) — the strongest value leads; rendered only when the
+            ROI Calculator carried figures forward, else gracefully omitted. */}
+        {roi && <RoiValueBlock roi={roi} />}
+        <div style={{ marginTop: roi ? 14 : 24, padding: '20px 22px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)' }}>
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 6 }}>
             {Q.result.recommendedLabel}
           </div>

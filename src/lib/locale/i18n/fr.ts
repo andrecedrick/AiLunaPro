@@ -2584,6 +2584,7 @@ export const fr: Dict = {
         "openEndedSuffix": "+",
         "recommendedLabel": "Solution recommandée",
         "costOfDelay": "Chaque mois d'attente a un coût réel en temps et en argent perdus.",
+        "costOfDelayAmount": "Chaque mois d'attente vous coûte environ {amount} en temps et en argent perdus.",
         "scopeHeading": "Ce qui est généralement inclus",
         "nextStepsHeading": "Étapes suivantes",
         "opsCostNote": "Les projets d'agents IA et d'automatisation comportent également des coûts d'exploitation (tokens, infrastructure) qui ajoutent généralement {min}–{max} % au-dessus du développement.",

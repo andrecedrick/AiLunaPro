@@ -187,7 +187,19 @@ export function RoiCalculatorPage() {
       // B2.3/B2.4: completed — clear resume state; keep a non-PII headline for
       // post-auth continuity (guided journey start banner).
       clearFlowProgress('roi');
-      savePendingResult({ kind: 'roi', headline: `estimated savings of ${money.format(r.result.estimatedMonthlyCostSaved)}/month`, createdAt: new Date().toISOString() });
+      savePendingResult({
+        kind: 'roi',
+        headline: `estimated savings of ${money.format(r.result.estimatedMonthlyCostSaved)}/month`,
+        createdAt: new Date().toISOString(),
+        // Phase 2 — carry the structured ROI figures (non-PII) so the value-first Quote
+        // can display the SAME numbers without recomputing. Reuses RoiResult fields.
+        roi: {
+          estimatedMonthlyCostSaved:       r.result.estimatedMonthlyCostSaved,
+          estimatedYearlyCostSaved:        r.result.estimatedYearlyCostSaved,
+          estimatedTimeSavedHoursPerMonth: r.result.estimatedTimeSavedHoursPerMonth,
+          estimatedPaybackMonths:          r.result.estimatedPaybackMonths,
+        },
+      });
       track('lead_flow_completed', { flow: 'roi', src: src ?? undefined });
       requestAnimationFrame(() => {
         const el = document.getElementById('roi-result');

@@ -14,6 +14,27 @@ export type LeadFlowKind = 'diagnostic' | 'roi' | 'quote';
       auth on the guided journey start, cleared once seen/used. No email is
       stored here — only the non-PII headline numbers for the banner. ───────── */
 
+/**
+ * Non-PII structured ROI figures carried from the ROI Calculator so a later surface
+ * (e.g. the value-first Quote) can render the SAME numbers without recomputing. Field
+ * names mirror RoiResult (src/types/roi.ts) — no new calculation, display-only.
+ */
+export interface PendingRoiSummary {
+  estimatedMonthlyCostSaved:       number;
+  estimatedYearlyCostSaved:        number;
+  estimatedTimeSavedHoursPerMonth: number;
+  estimatedPaybackMonths:          number | null;
+}
+
+function isValidRoiSummary(v: unknown): v is PendingRoiSummary {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  const num = (x: unknown) => typeof x === 'number' && Number.isFinite(x);
+  return num(r.estimatedMonthlyCostSaved) && num(r.estimatedYearlyCostSaved)
+    && num(r.estimatedTimeSavedHoursPerMonth)
+    && (r.estimatedPaybackMonths === null || num(r.estimatedPaybackMonths));
+}
+
 export interface PendingLeadResult {
   kind: LeadFlowKind;
   /** Headline for the post-auth banner, e.g. score or monthly savings. */
@@ -25,6 +46,12 @@ export interface PendingLeadResult {
    * figure. Display conversion is deterministic per deploy (single versioned snapshot).
    */
   fxSnapshotVersion?: string;
+  /**
+   * Optional structured ROI numbers (set by the ROI Calculator). Consumed by the
+   * value-first Quote to display monthly/yearly savings, time saved, and payback.
+   * Absent for other flows → consumers must fall back gracefully.
+   */
+  roi?: PendingRoiSummary;
 }
 
 const RESULT_KEY = (k: LeadFlowKind) => `ailunapro.lead.v1.${k}.result`;
@@ -42,6 +69,7 @@ export function readPendingResult(kind: LeadFlowKind): PendingLeadResult | null 
     if (!raw) return null;
     const p = JSON.parse(raw) as PendingLeadResult;
     if (p?.kind !== kind || typeof p.headline !== 'string' || typeof p.createdAt !== 'string') return null;
+    if (p.roi !== undefined && !isValidRoiSummary(p.roi)) delete p.roi; // graceful: drop malformed ROI, keep the result
     return p;
   } catch { return null; }
 }
