@@ -39,6 +39,8 @@ import { useSessionValue } from '../context/SessionValueContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress, readPendingResult, type PendingRoiSummary } from '../lib/leads/pendingLead';
 import { RoiValueBlock } from '../components/quote/RoiValueBlock';
+import { DecisionBlock } from '../components/quote/DecisionBlock';
+import { computeDecision, investmentFromRange } from '../lib/quote/decision';
 import { takeWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
 import { emit } from '../lib/analytics/events';
 import { captureSrc } from '../lib/analytics/srcParam';
@@ -632,6 +634,17 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
   const rangeText = `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? Q.result.openEndedSuffix : ''}`;
   const solutionTitle = solutions[preview.solutionKey] ?? preview.solutionKey;
 
+  // Phase 3 — decision summary, derived purely from the quote investment + ROI savings.
+  // Only when V2 and ROI figures are present; computeDecision returns null when there's
+  // no meaningful decision (no savings) → block is omitted.
+  const decision = (v2 && roi)
+    ? computeDecision({
+        investmentUsd:   investmentFromRange(preview.priceMinUsd, preview.priceMaxUsd, preview.openEnded),
+        yearlySavedUsd:  roi.estimatedYearlyCostSaved,
+        monthlySavedUsd: roi.estimatedMonthlyCostSaved,
+      })
+    : null;
+
   const priceCard = (
     <div style={{ marginTop: 24, padding: '24px 26px', borderRadius: 16, border: '2px solid var(--violet)', background: 'var(--brand-soft-bg, #f5f3ff)', textAlign: 'center' }}>
       <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 8 }}>
@@ -688,6 +701,8 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
         {/* ROI value block (Phase 2) — the strongest value leads; rendered only when the
             ROI Calculator carried figures forward, else gracefully omitted. */}
         {roi && <RoiValueBlock roi={roi} />}
+        {/* Decision engine (Phase 3) — AFTER the ROI block, BEFORE the price. */}
+        {decision && <DecisionBlock decision={decision} />}
         <div style={{ marginTop: roi ? 14 : 24, padding: '20px 22px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)' }}>
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 6 }}>
             {Q.result.recommendedLabel}
