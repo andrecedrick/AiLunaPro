@@ -20,17 +20,17 @@ export function RoiValueBlock({ roi }: { roi: PendingRoiSummary }) {
 
   return (
     <div style={{
-      marginTop: 24, padding: '24px 26px', borderRadius: 16,
-      border: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'center',
+      marginTop: 4, padding: '34px 26px', borderRadius: 18,
+      background: 'var(--green-soft-bg, #ecfdf5)', textAlign: 'center',
     }}>
-      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--green-text, #059669)', marginBottom: 12 }}>
         {R.monthlySavingsLabel}
       </div>
-      <div style={{ fontSize: 44, fontWeight: 800, color: 'var(--green-text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ fontSize: 56, fontWeight: 800, color: 'var(--green-text, #059669)', lineHeight: 0.95, fontVariantNumeric: 'tabular-nums' }}>
         {money.format(roi.estimatedMonthlyCostSaved)}
-        <span style={{ fontSize: 20, color: 'var(--text-muted)', fontWeight: 600 }}>{R.monthlySavingsUnit}</span>
+        <span style={{ fontSize: 20, color: 'var(--green-text, #059669)', opacity: 0.7, fontWeight: 600 }}>{R.monthlySavingsUnit}</span>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 24, marginTop: 20 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 28, marginTop: 24 }}>
         <Stat label={R.yearlySavingsLabel} value={money.format(roi.estimatedYearlyCostSaved)} />
         <Stat label={R.timeSavedLabel} value={format(R.timeSavedValue, { hours: roi.estimatedTimeSavedHoursPerMonth.toLocaleString('en-US') })} />
         <Stat label={R.paybackLabel} value={roi.estimatedPaybackMonths === null ? R.paybackEmpty : format(R.paybackValue, { months: roi.estimatedPaybackMonths.toLocaleString('en-US') })} />

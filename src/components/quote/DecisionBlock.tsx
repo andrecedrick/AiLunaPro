@@ -10,7 +10,6 @@
 import { useLocale } from '../../context/LocaleContext';
 import { useMoney } from '../../lib/currency/useMoney';
 import { format } from '../../lib/locale/i18n';
-import { Stat } from '../ui-tools';
 import type { Decision } from '../../lib/quote/decision';
 
 export function DecisionBlock({ decision }: { decision: Decision }) {
@@ -32,17 +31,24 @@ export function DecisionBlock({ decision }: { decision: Decision }) {
     : format(Q.decisionSummaryStrong, { invest, yearly, y1 });
 
   return (
-    <div style={{ marginTop: 14, padding: '18px 20px', borderRadius: 12, border: '1px solid var(--border-strong, var(--border))', background: 'var(--surface)' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 10 }}>
+    <div style={{ marginTop: 16, padding: '22px 24px', borderRadius: 16, border: '1px solid var(--violet, #7c3aed)', background: 'var(--brand-soft-bg, #f5f3ff)' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--violet-text)', marginBottom: 10 }}>
         {Q.decisionHeading}
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 14 }}>
+      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 18 }}>
         {summary}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
-        <Stat label={Q.decisionReturnLabel} value={format(Q.decisionMultiple, { mult: y1 })} />
-        <Stat label={Q.decisionThreeYearLabel} value={format(Q.decisionMultiple, { mult: y3 })} />
-        <Stat label={Q.decisionBreakevenLabel} value={months === null ? '—' : format(Q.decisionMonths, { months })} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+        {[
+          { label: Q.decisionReturnLabel, value: format(Q.decisionMultiple, { mult: y1 }) },
+          { label: Q.decisionBreakevenLabel, value: months === null ? '—' : format(Q.decisionMonths, { months }) },
+          { label: Q.decisionThreeYearLabel, value: format(Q.decisionMultiple, { mult: y3 }) },
+        ].map((s, i) => (
+          <div key={i} style={{ background: 'var(--surface-2, #fff)', borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>{s.label}</div>
+          </div>
+        ))}
       </div>
     </div>
   );

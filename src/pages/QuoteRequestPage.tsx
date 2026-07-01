@@ -14,7 +14,7 @@
  * never the free-text project description.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRoute } from '../context/RouteContext';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
@@ -484,6 +484,9 @@ export function QuoteRequestPage() {
 
         {preview && (
           <>
+            {/* V2 — one centered, elevated premium card holds the whole value → decision →
+                investment → CTA stack (single card layout). Legacy: plain wrapper, no change. */}
+            <div style={ENABLE_QUOTE_V2 ? { maxWidth: 560, margin: '24px auto 0', background: 'var(--surface-2)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 14px 40px rgba(0,0,0,0.05)', padding: '28px 26px 30px' } : undefined}>
             <EstimateView preview={preview} onReset={reset} v2={ENABLE_QUOTE_V2} roi={roiCtx} />
 
             {isAuthenticated ? (
@@ -619,6 +622,7 @@ export function QuoteRequestPage() {
                 </div>
               </>
             )}
+            </div>
 
             <InsufficientTokensModal
               open={modal.open}
@@ -658,7 +662,18 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
       })
     : null;
 
-  const priceCard = (
+  // V2 — price is a calm, secondary "estimated investment" card (value + decision lead
+  // above it). Legacy keeps the violet 38px focal (unchanged → no regression).
+  const priceCard = v2 ? (
+    <div style={{ marginTop: 14, padding: '16px 20px', borderRadius: 14, background: 'var(--surface-1)', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)' }}>
+        {Q.result.rangeLabel}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+        {rangeText}
+      </div>
+    </div>
+  ) : (
     <div style={{ marginTop: 24, padding: '24px 26px', borderRadius: 16, border: '2px solid var(--violet)', background: 'var(--brand-soft-bg, #f5f3ff)', textAlign: 'center' }}>
       <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 8 }}>
         {Q.result.rangeLabel}
@@ -666,16 +681,20 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
       <div style={{ fontSize: 38, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
         {rangeText}
       </div>
-      {!v2 && (
-        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
-          {Q.result.recommendedLabel}: <strong>{solutionTitle}</strong>
-        </div>
-      )}
+      <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+        {Q.result.recommendedLabel}: <strong>{solutionTitle}</strong>
+      </div>
     </div>
   );
 
+  // V2 sections read as soft tiles inside the one premium card (no heavy borders);
+  // legacy keeps bordered cards (unchanged).
+  const softSection: CSSProperties = v2
+    ? { borderRadius: 14, background: 'var(--surface-1)', border: 'none' }
+    : { borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' };
+
   const scopeBlock = (
-    <div style={{ marginTop: v2 ? 14 : 18, padding: '18px 20px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+    <div style={{ marginTop: v2 ? 14 : 18, padding: '18px 20px', ...softSection }}>
       <h2 style={sectionTitleStyle()}>{Q.result.scopeHeading}</h2>
       <ul style={listStyle()}>
         {preview.scopeKeys.map(k => <li key={k} style={{ marginBottom: 6 }}>{scopeMap[k] ?? k}</li>)}
@@ -684,7 +703,7 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
   );
 
   const nextStepsBlock = (
-    <div style={{ marginTop: 14, padding: '18px 20px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+    <div style={{ marginTop: 14, padding: '18px 20px', ...softSection }}>
       <h2 style={sectionTitleStyle()}>{Q.result.nextStepsHeading}</h2>
       <ol style={listStyle()}>
         {preview.nextStepKeys.map(k => <li key={k} style={{ marginBottom: 6 }}>{nextSteps[k] ?? k}</li>)}
@@ -699,7 +718,7 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
   );
 
   const paymentNote = (
-    <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
+    <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: v2 ? 14 : 10, background: 'var(--surface-1)', border: v2 ? 'none' : '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
       {Q.guided.paymentNote}
     </div>
   );
@@ -716,11 +735,11 @@ function EstimateView({ preview, onReset, v2 = false, roi = null }: { preview: Q
         {roi && <RoiValueBlock roi={roi} />}
         {/* Decision engine (Phase 3) — AFTER the ROI block, BEFORE the price. */}
         {decision && <DecisionBlock decision={decision} />}
-        <div style={{ marginTop: roi ? 14 : 24, padding: '20px 22px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--violet-text)', marginBottom: 6 }}>
+        <div style={{ marginTop: roi ? 16 : 4, padding: '18px 22px', borderRadius: 14, background: 'var(--surface-1)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--violet-text)', marginBottom: 6 }}>
             {Q.result.recommendedLabel}
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25 }}>
             {solutionTitle}
           </div>
         </div>
