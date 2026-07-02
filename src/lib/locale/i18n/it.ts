@@ -2803,6 +2803,8 @@ export const it: Dict = {
         "intro": "Ecco a che punto è la tua richiesta nel nostro processo. Ti invieremo un'email a ogni passaggio.",
         "reviewNote": "Un esperto sta esaminando la tua richiesta e confermerà l'importo finale.",
         "nextStep": "Passaggio successivo: un amministratore confermerà l'importo.",
+        "payNow": "Paga ora",
+        "payReady": "La tua fattura è pronta: paga in modo sicuro ora.",
         "budgetLabel": "Il budget che proponi",
         "waitingValidation": "In attesa di convalida",
         "waitingActive": "Stiamo finalizzando il tuo importo: potrai pagare non appena è pronto.",

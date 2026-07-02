@@ -14,6 +14,7 @@ import { useMoney } from '../lib/currency/useMoney';
 import { primaryBtnStyle } from '../components/ui-tools';
 import { QuoteProgress } from '../components/QuoteProgress';
 import { ENABLE_QUOTE_V2 } from '../lib/flags';
+import { readQuotePayLink } from '../lib/quote/quoteClient';
 
 function hashState(): { quoteId: string; state: 'review' | 'negotiation' | 'waiting' | 'invoice'; budgetUsd: number | null } {
   const h = typeof window !== 'undefined' ? window.location.hash : '';
@@ -36,6 +37,10 @@ export function QuoteStatusPage() {
   const flow = Q.flow;
   const steps = [flow.s1, flow.s2, flow.s3, flow.s4];
   const { quoteId, state, budgetUsd } = hashState();
+  // U1 — instant "Pay now": the Stripe link stashed by the confirm page when a
+  // within-range accept auto-finalised. Present → the buyer pays immediately (no wait).
+  const payUrl = quoteId ? readQuotePayLink(quoteId) : null;
+  const mutedLink = { background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textDecoration: 'underline', padding: 0 } as const;
 
   const badgeLabel = state === 'negotiation' ? S.stateNegotiation
     : state === 'waiting' ? S.stateWaiting
@@ -57,7 +62,7 @@ export function QuoteStatusPage() {
           {/* Phase 4 — remove the passive "waiting" dead-end feel: V2 shows a forward,
               reassuring line (payment comes next); legacy keeps the plain status. */}
           <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8 }}>
-            {ENABLE_QUOTE_V2 ? S.waitingActive : `⏳ ${S.waitingValidation}`}
+            {payUrl ? S.payReady : ENABLE_QUOTE_V2 ? S.waitingActive : `⏳ ${S.waitingValidation}`}
           </div>
         </div>
       )}
@@ -69,10 +74,19 @@ export function QuoteStatusPage() {
 
       <QuoteProgress active={activeStep} />
 
-      <div style={{ margin: '0 auto 16px', maxWidth: 400, padding: '12px 16px', borderRadius: 10, background: 'var(--amber-soft-bg, #fef3c7)', color: 'var(--text-secondary)', fontSize: 13.5, lineHeight: 1.55 }}>
-        ⏳ {S.reviewNote}
-      </div>
-      <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', margin: '0 auto 28px', maxWidth: 400 }}>{S.nextStep}</p>
+      {/* U1 — a payable quote skips the "an admin will confirm the amount" wait copy. */}
+      {payUrl ? (
+        <div style={{ margin: '0 auto 24px', maxWidth: 400, padding: '12px 16px', borderRadius: 10, background: 'var(--green-soft-bg, #e1f5ee)', color: 'var(--text-secondary)', fontSize: 13.5, lineHeight: 1.55 }}>
+          ✅ {S.payReady}
+        </div>
+      ) : (
+        <>
+          <div style={{ margin: '0 auto 16px', maxWidth: 400, padding: '12px 16px', borderRadius: 10, background: 'var(--amber-soft-bg, #fef3c7)', color: 'var(--text-secondary)', fontSize: 13.5, lineHeight: 1.55 }}>
+            ⏳ {S.reviewNote}
+          </div>
+          <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', margin: '0 auto 28px', maxWidth: 400 }}>{S.nextStep}</p>
+        </>
+      )}
 
       <ol style={{ listStyle: 'none', margin: '0 auto 28px', padding: 0, display: 'grid', gap: 10, maxWidth: 380, textAlign: 'left' }}>
         {steps.map((s, i) => (
@@ -84,8 +98,10 @@ export function QuoteStatusPage() {
       </ol>
 
       <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
-        <button type="button" onClick={() => navigate({ name: 'invoices', ...(quoteId ? { quoteId } : {}) })} style={primaryBtnStyle()}>{S.openPanel}</button>
-        <button type="button" onClick={() => navigate({ name: 'quote' })} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textDecoration: 'underline', padding: 0 }}>{S.back}</button>
+        {/* U1 — instant "Pay now" (external Stripe Checkout) when the quote auto-finalised. */}
+        {payUrl && <a href={payUrl} style={{ ...primaryBtnStyle(), textDecoration: 'none' }}>{S.payNow}</a>}
+        <button type="button" onClick={() => navigate({ name: 'invoices', ...(quoteId ? { quoteId } : {}) })} style={payUrl ? mutedLink : primaryBtnStyle()}>{S.openPanel}</button>
+        <button type="button" onClick={() => navigate({ name: 'quote' })} style={mutedLink}>{S.back}</button>
       </div>
     </div>
   );

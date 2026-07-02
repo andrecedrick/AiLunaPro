@@ -2803,6 +2803,8 @@ export const de: Dict = {
         "intro": "Hier sehen Sie, wo sich Ihre Anfrage in unserem Prozess befindet. Wir benachrichtigen Sie bei jedem Schritt per E-Mail.",
         "reviewNote": "Ein Experte prüft Ihre Anfrage und bestätigt den Endbetrag.",
         "nextStep": "Nächster Schritt: Ein Administrator bestätigt den Betrag.",
+        "payNow": "Jetzt bezahlen",
+        "payReady": "Ihre Rechnung ist bereit — jetzt sicher bezahlen.",
         "openPanel": "Rechnungsbereich öffnen",
         "stateReview": "Prüfung",
         "stateNegotiation": "Verhandlung",

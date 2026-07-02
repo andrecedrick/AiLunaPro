@@ -16,6 +16,7 @@ import {
   firestoreGetWithMeta,
   firestoreSetIfMatch,
   firestoreCreateIfNotExists,
+  firestoreDelete,
 } from './firestoreAdmin';
 import {
   TOKEN_COSTS,
@@ -204,25 +205,37 @@ export async function consumeTokens(
   const required = TOKEN_COSTS[action];
   const usagePath = `${BALANCE_PATH(orgId)}/usage/${eventId}`;
 
-  // Idempotency: try to create usage doc first; if already exists, return current balance
+  const usageDoc = () => ({
+    eventId,
+    module:   action.split('.')[0] ?? 'unknown',
+    action,
+    tokens:   required,
+    uid,
+    status:   'consumed',
+    metadata: JSON.stringify(metadata),
+    at:       new Date().toISOString(),
+  });
+
+  // Idempotency: create the usage marker first. A marker only proves a real prior
+  // charge when its status is 'consumed'. A leftover NON-'consumed' marker (a
+  // previous insufficient-balance / interrupted attempt) is NOT a charge — it must
+  // never short-circuit a retry into a free action, so we clear it and re-create
+  // so this attempt actually bills. (Fixes the free-usage bypass: the old code
+  // marked failures 'failed' but kept them, and a retry saw ALREADY_EXISTS.)
   try {
-    await firestoreCreateIfNotExists(saJson, usagePath, {
-      eventId,
-      module:   action.split('.')[0] ?? 'unknown',
-      action,
-      tokens:   required,
-      uid,
-      status:   'consumed',
-      metadata: JSON.stringify(metadata),
-      at:       new Date().toISOString(),
-    });
+    await firestoreCreateIfNotExists(saJson, usagePath, usageDoc());
   } catch (err) {
-    if (err instanceof Error && err.message === 'ALREADY_EXISTS') {
-      // Already consumed; return current balance
+    if (!(err instanceof Error && err.message === 'ALREADY_EXISTS')) throw err;
+    const existing = await firestoreGet(saJson, usagePath);
+    if (existing && existing.status === 'consumed') {
+      // Genuine prior charge for this eventId → idempotent no-op.
       const fresh = await ensureTokenCycleFresh(saJson, orgId);
       return { ok: true, balanceAfter: fresh.balance, tokensConsumed: 0 };
     }
-    throw err;
+    // Stale, non-'consumed' marker → drop it and re-create so we proceed to bill.
+    await firestoreDelete(saJson, usagePath);
+    try { await firestoreCreateIfNotExists(saJson, usagePath, usageDoc()); }
+    catch (e) { if (!(e instanceof Error && e.message === 'ALREADY_EXISTS')) throw e; }
   }
 
   // Decrement with optimistic concurrency
@@ -230,10 +243,9 @@ export async function consumeTokens(
   for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
     const fresh = await ensureTokenCycleFresh(saJson, orgId);
     if (fresh.balance < required) {
-      // Mark usage event as failed (best-effort)
-      try {
-        await firestoreSet(saJson, usagePath, { status: 'failed' }, { merge: true });
-      } catch { /* ignore */ }
+      // Insufficient balance: DELETE the marker (never leave a poisoning stub), so
+      // a later retry after a top-up re-creates it and actually charges.
+      try { await firestoreDelete(saJson, usagePath); } catch { /* best-effort */ }
       return { ok: false, status: 402, balance: fresh.balance, required };
     }
     const meta = await firestoreGetWithMeta(saJson, BALANCE_PATH(orgId));
@@ -253,5 +265,8 @@ export async function consumeTokens(
       throw err;
     }
   }
+  // Concurrency exhausted → NO decrement happened. Delete the 'consumed' marker so
+  // it can never grant a free retry, then surface the failure to the caller.
+  try { await firestoreDelete(saJson, usagePath); } catch { /* best-effort */ }
   throw new Error('consumeTokens: optimistic concurrency exhausted');
 }

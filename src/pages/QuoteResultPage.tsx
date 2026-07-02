@@ -23,7 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { useMoney } from '../lib/currency/useMoney';
 import { primaryBtnStyle } from '../components/ui-tools';
 import { QuoteProgress } from '../components/QuoteProgress';
-import { confirmQuoteDecisionByToken } from '../lib/quote/quoteClient';
+import { confirmQuoteDecisionByToken, stashQuotePayLink } from '../lib/quote/quoteClient';
 
 // Roles that may see the Invoices surface (mirrors the sidebar gate; 'client' excluded).
 const INVOICE_ROLES = ['owner', 'admin', 'billing', 'member'];
@@ -54,9 +54,13 @@ export function QuoteResultPage() {
   const { action, fromEmail, token, quoteId, budgetUsd } = hashFlags();
   const canViewInvoice = !!session && INVOICE_ROLES.includes(session.role ?? '');
   const [phase, setPhase] = useState<'idle' | 'confirming' | 'done' | 'error'>('idle');
+  // U1 — set once the accept auto-finalised within range (a pay link was returned +
+  // stashed): the status page then shows an instant "Pay now" instead of the wait.
+  const [payReady, setPayReady] = useState(false);
   const goQuote = () => navigate({ name: 'quote' });
-  // Carry the proposed budget to the status page so it shows the exact amount.
-  const goStatus = () => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}), ...(budgetUsd !== null && budgetUsd > 0 ? { budgetUsd } : {}) });
+  // Carry the proposed budget to the status page so it shows the exact amount; when a
+  // pay link is ready, land in the 'invoice' state so "Pay now" is surfaced.
+  const goStatus = () => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}), ...(budgetUsd !== null && budgetUsd > 0 ? { budgetUsd } : {}), ...(payReady ? { state: 'invoice' } : {}) });
 
   // Waiting/confirmation state (in-app submit, or a successful email confirm):
   // progress stepper at "Review", what-happens-next checklist, track CTA.
@@ -104,7 +108,10 @@ export function QuoteResultPage() {
       try {
         // FIX 1 — carry the proposed budget so the admin notify always has it, even
         // if it wasn't persisted at email time (server-stored value still wins).
-        await confirmQuoteDecisionByToken(token, isAccept ? 'accepted' : 'discussion', budgetUsd !== null && budgetUsd > 0 ? { expectedBudgetUsd: budgetUsd } : undefined);
+        const r = await confirmQuoteDecisionByToken(token, isAccept ? 'accepted' : 'discussion', budgetUsd !== null && budgetUsd > 0 ? { expectedBudgetUsd: budgetUsd } : undefined);
+        // U1 — within-range accept auto-finalised → stash the instant pay link so the
+        // status page shows "Pay now" (no admin-wait dead-end).
+        if (isAccept && r.paymentUrl && quoteId) { stashQuotePayLink(quoteId, r.paymentUrl); setPayReady(true); }
         setPhase('done');
       } catch { setPhase('error'); }
     };

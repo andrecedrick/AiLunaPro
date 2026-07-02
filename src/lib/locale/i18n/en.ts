@@ -2822,6 +2822,8 @@ export const en = {
         "waitingActive": "We're finalizing your amount — you'll be able to pay as soon as it's ready.",
         "reviewNote": "An expert is reviewing your request and will confirm the final amount.",
         "nextStep": "Next step: an admin will confirm the amount.",
+        "payNow": "Pay now",
+        "payReady": "Your invoice is ready — pay securely now.",
         "openPanel": "Open the invoices panel",
         "stateReview": "Review",
         "stateNegotiation": "Negotiation",

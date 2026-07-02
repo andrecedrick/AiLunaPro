@@ -26,13 +26,28 @@ export const QUOTE_ROI_KEYS = [
 export type QuoteRoiVarKey = typeof QUOTE_ROI_KEYS[number];
 
 const FALLBACK = '—'; // em dash
-const MAX_LEN = 40;
+const MAX_LEN = 40;       // ROI values are short (money / × / months)
+const MAX_LEN_TEXT = 80;  // display strings (title / solution / range) can be longer
 
-/** Strip template/HTML metacharacters, trim, cap length. */
-function sanitizeValue(v: unknown): string {
+/** Strip template/HTML metacharacters (`<>{}` — HTML tags + Sequenzy `{{merge}}`
+ *  delimiters), trim, cap length. Shared by the ROI vars and every other
+ *  client-derived string bound for the email template. */
+function sanitizeValue(v: unknown, maxLen = MAX_LEN): string {
   if (typeof v !== 'string') return '';
-  const cleaned = v.replace(/[<>{}]/g, '').trim().slice(0, MAX_LEN).trim();
+  const cleaned = v.replace(/[<>{}]/g, '').trim().slice(0, maxLen).trim();
   return cleaned;
+}
+
+/**
+ * Sanitize ONE display variable bound for the Sequenzy quote email
+ * (QUOTE_TITLE / SOLUTION / RANGE / BUDGET / NEG_*). Same rule as the ROI vars —
+ * strips `<>{}` so an (authenticated) sender can't inject markup or a nested
+ * `{{VAR}}` into the client's mail — with the em-dash fallback for empties.
+ * URLs (ACCEPT_URL / DISCUSS_URL / PDF_URL) are server-generated and must NOT be
+ * passed through here: the length cap would break them.
+ */
+export function sanitizeEmailVar(v: unknown): string {
+  return sanitizeValue(v, MAX_LEN_TEXT) || FALLBACK;
 }
 
 /**

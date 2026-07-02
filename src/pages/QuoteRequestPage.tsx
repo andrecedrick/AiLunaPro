@@ -37,7 +37,7 @@ import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnSt
 import { usePreferences } from '../context/PreferencesContext';
 import { useSessionValue } from '../context/SessionValueContext';
 import { EN, pdfLocale } from '../lib/locale/i18n';
-import { saveFlowProgress, readFlowProgress, clearFlowProgress, readPendingResult, type PendingRoiSummary } from '../lib/leads/pendingLead';
+import { saveFlowProgress, readFlowProgress, clearFlowProgress, readFreshRoi, bindRoiToQuote, clearPendingResult, type PendingRoiSummary } from '../lib/leads/pendingLead';
 import { RoiValueBlock } from '../components/quote/RoiValueBlock';
 import { DecisionBlock } from '../components/quote/DecisionBlock';
 import { computeDecision, investmentFromRange } from '../lib/quote/decision';
@@ -80,10 +80,12 @@ export function QuoteRequestPage() {
 
   const [errors,  setErrors]  = useState<FormErrors>({});
   const [preview, setPreview] = useState<QuotePreview | null>(null);
-  // Phase 2 — value-first Quote reads the structured ROI figures the ROI Calculator
-  // stashed (non-PII, localStorage). V2 only; absent → graceful fallback (no ROI block,
-  // generic cost-of-delay). Read once at mount so it stays stable across re-renders.
-  const [roiCtx] = useState<PendingRoiSummary | null>(() => ENABLE_QUOTE_V2 ? (readPendingResult('roi')?.roi ?? null) : null);
+  // Phase 2 / D2 — value-first Quote reads the structured ROI figures the ROI
+  // Calculator stashed (non-PII, localStorage), but ONLY when FRESH (<30 min).
+  // V2 only; stale/absent → graceful fallback (no ROI block, generic cost-of-delay),
+  // never wrong values. Re-validated + bound to the quote before it ever reaches the
+  // client email (see onGenerate/onSendProposal), and cleared once used.
+  const [roiCtx, setRoiCtx] = useState<PendingRoiSummary | null>(() => ENABLE_QUOTE_V2 ? readFreshRoi(Date.now()) : null);
 
   // Q2 — token-charged generation (authenticated only).
   const [generating, setGenerating] = useState(false);
@@ -189,6 +191,9 @@ export function QuoteRequestPage() {
     setBudgetInput(''); setBudgetError(null);
     setEmailState('idle'); setEmailError(null); setClientEmail('');
     quoteIdRef.current = '';
+    // D2 — new quote context: re-read the ROI under the freshness gate (drops it if
+    // now stale) so the next quote never shows/sends a previous quote's numbers.
+    setRoiCtx(ENABLE_QUOTE_V2 ? readFreshRoi(Date.now()) : null);
     clearFlowProgress('quote');
   };
 
@@ -201,6 +206,9 @@ export function QuoteRequestPage() {
       const raw = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `q-${src ?? 'x'}-${preview?.solutionKey ?? ''}`;
       quoteIdRef.current = raw.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
     }
+    // D2 — attach the (fresh) ROI to THIS quote so it can never surface on a different
+    // quote's client email. No-op when there is no ROI to bind.
+    if (ENABLE_QUOTE_V2 && roiCtx) bindRoiToQuote(quoteIdRef.current);
     setGenerating(true); setGenError(null);
     try {
       await generateQuote(orgId, {
@@ -340,22 +348,24 @@ export function QuoteRequestPage() {
     try {
       // ROI + decision merge variables for the email — formatted EXACTLY like the in-app
       // blocks (useMoney, no leading ≈ since the template adds it; i18n time/payback/×).
-      // Sent only when the ROI Calculator carried figures forward; the worker falls back
-      // to em dashes for any missing value so no raw {{VAR}} ever leaks.
-      const roiVars = roiCtx ? (() => {
+      // D2 — RE-VALIDATE at send time: the ROI must still be FRESH (<30 min) AND bound
+      // to THIS quote; otherwise no ROI is sent and the worker/template hide the block.
+      // Guarantees the client email never carries stale or another quote's ROI.
+      const boundRoi = ENABLE_QUOTE_V2 ? readFreshRoi(Date.now(), quoteIdRef.current) : null;
+      const roiVars = boundRoi ? (() => {
         const R = T.publicTools.roi.result;
         const QR = T.publicTools.quote.result;
         const dec = computeDecision({
           investmentUsd:   investmentFromRange(preview.priceMinUsd, preview.priceMaxUsd, preview.openEnded),
-          yearlySavedUsd:  roiCtx.estimatedYearlyCostSaved,
-          monthlySavedUsd: roiCtx.estimatedMonthlyCostSaved,
+          yearlySavedUsd:  boundRoi.estimatedYearlyCostSaved,
+          monthlySavedUsd: boundRoi.estimatedMonthlyCostSaved,
         });
         const dash = '—';
         return {
-          MONTHLY_SAVED: money.format(roiCtx.estimatedMonthlyCostSaved, { approx: false }),
-          YEARLY_SAVED:  money.format(roiCtx.estimatedYearlyCostSaved, { approx: false }),
-          TIME_SAVED:    format(R.timeSavedValue, { hours: roiCtx.estimatedTimeSavedHoursPerMonth.toLocaleString('en-US') }),
-          PAYBACK:       roiCtx.estimatedPaybackMonths === null ? dash : format(R.paybackValue, { months: roiCtx.estimatedPaybackMonths.toLocaleString('en-US') }),
+          MONTHLY_SAVED: money.format(boundRoi.estimatedMonthlyCostSaved, { approx: false }),
+          YEARLY_SAVED:  money.format(boundRoi.estimatedYearlyCostSaved, { approx: false }),
+          TIME_SAVED:    format(R.timeSavedValue, { hours: boundRoi.estimatedTimeSavedHoursPerMonth.toLocaleString('en-US') }),
+          PAYBACK:       boundRoi.estimatedPaybackMonths === null ? dash : format(R.paybackValue, { months: boundRoi.estimatedPaybackMonths.toLocaleString('en-US') }),
           ROI_MULTIPLE:  dec ? format(QR.decisionMultiple, { mult: dec.roiYear1.toFixed(1) }) : dash,
           BREAKEVEN:     dec && dec.paybackMonths !== null ? format(QR.decisionMonths, { months: String(Math.round(dec.paybackMonths)) }) : dash,
           THREE_YEAR:    dec ? format(QR.decisionMultiple, { mult: dec.roi3yr.toFixed(1) }) : dash,
@@ -363,6 +373,10 @@ export function QuoteRequestPage() {
       })() : undefined;
       const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, email, expectedBudgetUsd, roiVars);
       emit('quote_emailed', { flow: 'quote', emailed: r.emailed, src: src ?? undefined });
+      // D2 — clear the ROI after it has been consumed by a send so it can never be
+      // reused on a later, unrelated quote.
+      clearPendingResult('roi');
+      setRoiCtx(null);
       setEmailState('sent');
     } catch {
       setEmailState('error');

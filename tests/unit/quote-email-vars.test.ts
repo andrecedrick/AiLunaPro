@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeQuoteRoiVars, QUOTE_ROI_KEYS } from '../../worker/src/lib/quote-email-vars';
+import { sanitizeQuoteRoiVars, sanitizeEmailVar, QUOTE_ROI_KEYS } from '../../worker/src/lib/quote-email-vars';
 
 describe('quote email ROI vars — sanitize + fallback (no null, no raw {{VAR}})', () => {
   it('always returns ALL 7 keys, even for an empty/absent payload', () => {
@@ -45,5 +45,37 @@ describe('quote email ROI vars — sanitize + fallback (no null, no raw {{VAR}})
       const out = sanitizeQuoteRoiVars(bad);
       expect(out.THREE_YEAR).toBe('—');
     }
+  });
+});
+
+describe('sanitizeEmailVar — display vars (SOLUTION/RANGE/BUDGET/QUOTE_TITLE/NEG_*)', () => {
+  it('passes a clean value through unchanged', () => {
+    expect(sanitizeEmailVar('AI Agent')).toBe('AI Agent');
+    expect(sanitizeEmailVar('$10,000–$20,000')).toBe('$10,000–$20,000');
+    expect(sanitizeEmailVar('$1,500')).toBe('$1,500');
+  });
+
+  it('strips HTML tags and Sequenzy {{merge}} delimiters (no injection)', () => {
+    const out = sanitizeEmailVar('<a href="https://phish">Pay now</a>');
+    expect(out).not.toContain('<');
+    expect(out).not.toContain('>');
+    expect(sanitizeEmailVar('{{ADMIN_TOKEN}}')).toBe('ADMIN_TOKEN');
+    expect(sanitizeEmailVar('{{ADMIN_TOKEN}}')).not.toMatch(/[{}]/);
+  });
+
+  it('falls back to em dash for empty/blank/non-string', () => {
+    expect(sanitizeEmailVar('')).toBe('—');
+    expect(sanitizeEmailVar('   ')).toBe('—');
+    expect(sanitizeEmailVar(undefined)).toBe('—');
+    expect(sanitizeEmailVar(42)).toBe('—');
+    expect(sanitizeEmailVar(null)).toBe('—');
+  });
+
+  it('caps length at 80 chars', () => {
+    expect(sanitizeEmailVar('x'.repeat(200)).length).toBeLessThanOrEqual(80);
+  });
+
+  it('a value that is ONLY markup collapses to the em-dash fallback', () => {
+    expect(sanitizeEmailVar('<>{}')).toBe('—');
   });
 });

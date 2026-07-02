@@ -104,6 +104,76 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
   return { emailed: res.ok, emailError: res.error };
 }
 
+/**
+ * U1 — the invoice-birth core, shared by the admin finalise route AND the within-range
+ * auto-finalise on client accept (quote.ts). Creates the invoice ONCE (create-if-not-
+ * exists → no duplicate invoice / no duplicate payment), mints the Stripe payment link
+ * (graceful null when Stripe unset), sends the invoice-client email, and advances the
+ * quote stage finalized → invoice_sent. The amount is used AS-IS (no pricing change).
+ * Callers validate the amount range + governance (blocked/suspended) before calling.
+ */
+export async function finalizeQuoteInvoice(
+  env: AppEnv['Bindings'], saJson: string,
+  a: { orgId: string; quoteId: string; quote: Record<string, unknown>; amount: number; appBase: string },
+): Promise<{ invoiceId: string; status: string; amount: number; paymentUrl: string | null; emailed: boolean; emailError?: string; alreadyFinalized: boolean }> {
+  const { orgId, quoteId, quote, amount, appBase } = a;
+  const invoiceId = `quote_${quoteId}`;
+  const invPath = `invoices/${invoiceId}`;
+
+  // Idempotent fast-path: an invoice already exists → never recreate / re-charge.
+  const existing = await firestoreGet(saJson, invPath) as Record<string, unknown> | null;
+  if (existing) {
+    return {
+      invoiceId,
+      status: typeof existing.status === 'string' ? existing.status : 'pending',
+      amount: typeof existing.amount === 'number' ? existing.amount : amount,
+      paymentUrl: typeof existing.paymentUrl === 'string' ? existing.paymentUrl : null,
+      emailed: false, alreadyFinalized: true,
+    };
+  }
+
+  const rangeMinUsd = typeof quote.overrideMinUsd === 'number' ? quote.overrideMinUsd : typeof quote.priceMinUsd === 'number' ? quote.priceMinUsd : null;
+  const rangeMaxUsd = typeof quote.overrideMaxUsd === 'number' ? quote.overrideMaxUsd : typeof quote.priceMaxUsd === 'number' ? quote.priceMaxUsd : null;
+  let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
+  if (typeof quote.renderJson === 'string') {
+    try { const r = JSON.parse(quote.renderJson) as Record<string, unknown>; if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle; } catch { /* keep default */ }
+  }
+  const customer = typeof quote.customerEmail === 'string' ? quote.customerEmail : '';
+  const nowIso = new Date().toISOString();
+
+  const invoice = {
+    id: invoiceId, quoteId, orgId, quoteTitle, customerEmail: customer,
+    rangeMinUsd, rangeMaxUsd,
+    expectedBudgetUsd: typeof quote.expectedBudgetUsd === 'number' ? quote.expectedBudgetUsd : null,
+    amount, currency: 'usd', status: 'pending', source: 'quote', schemaVersion: 1,
+    createdAt: nowIso, confirmedAt: nowIso,
+  };
+  // Atomic create-once: a race (double-click / retry / concurrent admin+auto) → the
+  // loser throws ALREADY_EXISTS and returns WITHOUT a second invoice or email.
+  try {
+    await firestoreCreateIfNotExists(saJson, invPath, invoice as unknown as Parameters<typeof firestoreCreateIfNotExists>[2]);
+  } catch (err) {
+    if (err instanceof Error && err.message === 'ALREADY_EXISTS') {
+      const now = await firestoreGet(saJson, invPath) as Record<string, unknown> | null;
+      return {
+        invoiceId,
+        status: typeof now?.status === 'string' ? now.status : 'pending',
+        amount: typeof now?.amount === 'number' ? now.amount : amount,
+        paymentUrl: typeof now?.paymentUrl === 'string' ? now.paymentUrl : null,
+        emailed: false, alreadyFinalized: true,
+      };
+    }
+    throw err;
+  }
+  // Quote → finalized now; → invoice_sent only if the client email actually goes out.
+  await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'finalized', finalAmountUsd: amount, updatedAt: nowIso }, { merge: true });
+
+  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId, amount, project: quoteTitle, appBase });
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId, project: quoteTitle, customer, amount, appBase, paymentUrl });
+  if (emailed) await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'invoice_sent', invoiceSentAt: nowIso }, { merge: true });
+  return { invoiceId, status: 'pending', amount, paymentUrl, emailed, emailError, alreadyFinalized: false };
+}
+
 invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
   const env = c.env as AppEnv['Bindings'];
@@ -241,57 +311,15 @@ invoices.post('/api/invoices/finalize', requireAuth(), requireRole(CONFIRM_ROLES
     return c.json({ error: 'This quote is blocked or suspended.', code: 'QUOTE_BLOCKED' }, 409);
   }
 
-  const invPath = `invoices/quote_${quoteId}`;
-  const existing = await firestoreGet(saJson, invPath) as Record<string, unknown> | null;
-  if (existing) {
-    // Defense-in-depth on the flat invoices/ collection: the org-scoped quote lookup
-    // above already prevents reaching another org's invoice, but assert it explicitly.
-    if (existing.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
-    // Already finalized — never recreate / re-amount / re-send (idempotent).
-    return c.json({ ok: true, status: typeof existing.status === 'string' ? existing.status : 'pending', invoiceId: `quote_${quoteId}`, alreadyFinalized: true });
-  }
-
-  // Derive the invoice fields from the persisted quote (title from the render).
-  const rangeMinUsd = typeof quote.overrideMinUsd === 'number' ? quote.overrideMinUsd : typeof quote.priceMinUsd === 'number' ? quote.priceMinUsd : null;
-  const rangeMaxUsd = typeof quote.overrideMaxUsd === 'number' ? quote.overrideMaxUsd : typeof quote.priceMaxUsd === 'number' ? quote.priceMaxUsd : null;
-  let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
-  if (typeof quote.renderJson === 'string') {
-    try { const r = JSON.parse(quote.renderJson) as Record<string, unknown>; if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle; } catch { /* keep default */ }
-  }
-  const customer = typeof quote.customerEmail === 'string' ? quote.customerEmail : '';
-  const nowIso = new Date().toISOString();
-
-  const invoice = {
-    id: `quote_${quoteId}`, quoteId, orgId, quoteTitle, customerEmail: customer,
-    rangeMinUsd, rangeMaxUsd,
-    expectedBudgetUsd: typeof quote.expectedBudgetUsd === 'number' ? quote.expectedBudgetUsd : null,
-    amount, currency: 'usd', status: 'pending', source: 'quote', schemaVersion: 1,
-    createdAt: nowIso, confirmedAt: nowIso,
-  };
-  // Atomic create-once: if two finalise requests race (double-click / retry / two
-  // admins), the loser throws ALREADY_EXISTS and returns WITHOUT re-sending the client
-  // email. The firestoreGet fast-path above is just an optimisation, not the guard.
-  try {
-    await firestoreCreateIfNotExists(saJson, invPath, invoice as unknown as Parameters<typeof firestoreCreateIfNotExists>[2]);
-  } catch (err) {
-    if (err instanceof Error && err.message === 'ALREADY_EXISTS') {
-      return c.json({ ok: true, status: 'pending', invoiceId: `quote_${quoteId}`, alreadyFinalized: true });
-    }
-    throw err;
-  }
-  // Quote → finalized now; → invoice_sent only if the client email actually goes out
-  // (so a failed send leaves it re-sendable from the invoices list).
-  await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'finalized', finalAmountUsd: amount, updatedAt: nowIso }, { merge: true });
+  // Defense-in-depth: an existing invoice for this quote must belong to the caller's org.
+  const existing0 = await firestoreGet(saJson, `invoices/quote_${quoteId}`) as Record<string, unknown> | null;
+  if (existing0 && existing0.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
 
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  // ISSUE 6 — create the Stripe payment link (graceful: null when Stripe unset) so the
-  // invoice email carries a "Pay online" button matching the EXACT invoice amount.
-  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: `quote_${quoteId}`, amount, project: quoteTitle, appBase });
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: `quote_${quoteId}`, project: quoteTitle, customer, amount, appBase, paymentUrl });
-  if (emailed) await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'invoice_sent', invoiceSentAt: nowIso }, { merge: true });
-  dlog(env, '[invoices] finalized', quoteId, 'emailed=', emailed, 'payLink=', !!paymentUrl);
-
-  return c.json({ ok: true, status: 'pending', amount, emailed, invoiceId: `quote_${quoteId}`, paymentUrl: paymentUrl ?? null, ...(emailError ? { emailError } : {}) });
+  const r = await finalizeQuoteInvoice(env, saJson, { orgId, quoteId, quote, amount, appBase });
+  if (r.alreadyFinalized) return c.json({ ok: true, status: r.status, invoiceId: r.invoiceId, alreadyFinalized: true });
+  dlog(env, '[invoices] finalized', quoteId, 'emailed=', r.emailed, 'payLink=', !!r.paymentUrl);
+  return c.json({ ok: true, status: 'pending', amount: r.amount, emailed: r.emailed, invoiceId: r.invoiceId, paymentUrl: r.paymentUrl ?? null, ...(r.emailError ? { emailError: r.emailError } : {}) });
 });
 
 /* ── POST /api/invoices/:id/payment-link — get/create the Stripe payment link ──

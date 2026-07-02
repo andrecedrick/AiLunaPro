@@ -2805,6 +2805,8 @@ export const zh: Dict = {
         "intro": "这里显示您的请求在我们流程中的进度。每一步我们都会通过邮件通知您。",
         "reviewNote": "专家正在审核您的请求，并将确认最终金额。",
         "nextStep": "下一步：管理员将确认金额。",
+        "payNow": "立即付款",
+        "payReady": "您的发票已就绪 — 立即安全付款。",
         "openPanel": "打开发票面板",
         "stateReview": "审核中",
         "stateNegotiation": "协商中",

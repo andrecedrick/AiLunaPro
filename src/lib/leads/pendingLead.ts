@@ -52,9 +52,20 @@ export interface PendingLeadResult {
    * Absent for other flows → consumers must fall back gracefully.
    */
   roi?: PendingRoiSummary;
+  /**
+   * D2 — the quote this ROI is bound to. Stamped when the Quote page attaches the
+   * (fresh) ROI to a specific generated quote so the numbers can NEVER bleed into a
+   * different quote's client email. Unset until bound.
+   */
+  quoteId?: string;
 }
 
 const RESULT_KEY = (k: LeadFlowKind) => `ailunapro.lead.v1.${k}.result`;
+
+/** D2 — ROI figures older than this are considered stale and are NOT reused on the
+ *  Quote (block hidden, email gets em-dashes). Kept short so a client email can only
+ *  ever carry ROI the user computed for THIS session. */
+export const PENDING_ROI_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export function savePendingResult(r: PendingLeadResult): void {
   try {
@@ -76,6 +87,34 @@ export function readPendingResult(kind: LeadFlowKind): PendingLeadResult | null 
 
 export function clearPendingResult(kind: LeadFlowKind): void {
   try { localStorage.removeItem(RESULT_KEY(kind)); } catch { /* non-fatal */ }
+}
+
+/**
+ * D2 — read the pending ROI ONLY when it is safe to attach to a quote:
+ *  - it exists and is well-formed,
+ *  - it is FRESH (createdAt within PENDING_ROI_TTL_MS of `nowMs`), and
+ *  - if `quoteId` is given AND the stored ROI is already bound, the binding matches.
+ * Returns null otherwise → the caller hides the ROI block / sends no ROI to the email
+ * (never wrong/stale values). `nowMs` is injected so this stays pure + testable.
+ */
+export function readFreshRoi(nowMs: number, quoteId?: string | null): PendingRoiSummary | null {
+  const p = readPendingResult('roi');
+  if (!p || !p.roi) return null;
+  const age = nowMs - Date.parse(p.createdAt);
+  if (!Number.isFinite(age) || age < 0 || age > PENDING_ROI_TTL_MS) return null; // stale / bad timestamp
+  if (quoteId && p.quoteId && p.quoteId !== quoteId) return null;                // bound to a different quote
+  return p.roi;
+}
+
+/**
+ * D2 — attach the current pending ROI to a specific quote (stamp its quoteId). The
+ * original createdAt is preserved so freshness is still measured from the ROI
+ * computation, not the binding. Best-effort; no-op when there is no ROI to bind.
+ */
+export function bindRoiToQuote(quoteId: string): void {
+  const p = readPendingResult('roi');
+  if (!p || !p.roi) return;
+  savePendingResult({ ...p, quoteId });
 }
 
 /** Most recent pending result across flows (for the journey-start banner). */

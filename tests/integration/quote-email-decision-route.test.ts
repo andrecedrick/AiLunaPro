@@ -40,8 +40,13 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
     return path.includes('/quotes/') ? store.stored : null;
   }),
   firestoreSet: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>) => {
-    if (path.startsWith('invoices/')) store.invoices.set(path, data);
+    if (path.startsWith('invoices/')) store.invoices.set(path, { ...(store.invoices.get(path) ?? {}), ...data });
     store.writes.set(path, { ...(store.writes.get(path) ?? {}), ...data });
+  }),
+  firestoreCreateIfNotExists: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>) => {
+    const map = path.startsWith('invoices/') ? store.invoices : store.writes;
+    if (map.has(path)) throw new Error('ALREADY_EXISTS');
+    map.set(path, data);
   }),
   firestoreDelete: vi.fn(async () => {}),
 }));
@@ -111,6 +116,30 @@ describe('POST /api/quote/email (B2 — client recipient + reply-to + rate limit
     expect(res.status).toBe(200);
     expect(seq.sends.some(s => s.slug === 'quote-fr')).toBe(true);   // FR edge → French template
   });
+
+  it('S1 — sanitizes ALL client render vars: no HTML / {{merge}} reaches the template, URLs preserved', async () => {
+    const res = await emailReq({
+      orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com',
+      render: {
+        docTitle:     '<script>alert(1)</script>Acme',
+        solutionLabel:'<b>AI</b> Agent',
+        rangeText:    '{{ADMIN_TOKEN}}$10k–$20k',
+        negInitial:   '<i>x</i>', negBudget: '', negAdjusted: 'ok',
+      },
+    });
+    expect(res.status).toBe(200);
+    const v = seq.sends.find(s => s.slug === 'quote-en')!.variables as Record<string, string>;
+    // no markup or Sequenzy merge delimiter survives on ANY display var
+    for (const k of ['QUOTE_TITLE', 'SOLUTION', 'RANGE', 'BUDGET', 'NEG_INITIAL', 'NEG_BUDGET', 'NEG_ADJUSTED']) {
+      expect(v[k]).not.toMatch(/[<>{}]/);
+    }
+    expect(v.RANGE).not.toContain('{{');
+    expect(v.NEG_BUDGET).toBe('—');                       // empty → em-dash fallback
+    // server-generated URLs are NOT length-capped / stripped — they still work
+    expect(v.ACCEPT_URL).toContain('/#/quote/result?action=accept');
+    expect(v.DISCUSS_URL).toContain('/#/quote/result?action=discuss');
+    expect(v.PDF_URL).toContain('/api/quote/shared/');
+  });
 });
 
 describe('client response → state machine, NO invoice (FIX 1/2)', () => {
@@ -172,6 +201,103 @@ describe('POST /api/quote/:id/decision (B3 — discussion message)', () => {
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
     expect(res.status).toBe(200);
     expect(seq.sends.find(s => s.slug === 'quote-discussion-admin')).toBeFalsy();
+  });
+});
+
+describe('D1 — finalized/invoiced quotes are locked (no decision regression)', () => {
+  it('authed decision on an invoice_sent quote → 409 QUOTE_LOCKED, no write, no admin email', async () => {
+    store.stored!.stage = 'invoice_sent';                                   // invoice already live/payable
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'reopen please' });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
+    expect(store.writes.get('organizations/orgA/quotes/q1')).toBeUndefined();  // stage NOT regressed
+    expect(seq.sends.length).toBe(0);                                          // admins NOT re-notified
+  });
+
+  it('authed decision on a finalized quote → 409 QUOTE_LOCKED', async () => {
+    store.stored!.stage = 'finalized';
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(409);
+    expect(store.writes.get('organizations/orgA/quotes/q1')).toBeUndefined();
+  });
+
+  it('negotiation still works before finalization (stage=negotiation → accepted, 200)', async () => {
+    store.stored!.stage = 'negotiation';                                    // pre-finalise, editable
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(200);
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('client_responded');
+  });
+
+  it('public confirm backstops a terminal quote whose decidedAt is unset → 409', async () => {
+    store.stored!.stage = 'invoice_sent';                                   // terminal, but no decidedAt
+    share.verify.mockResolvedValue(okV2);
+    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'x' });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
+    expect(seq.sends.length).toBe(0);
+  });
+});
+
+describe('U1 — within-range auto-invoice on accept (instant pay, no admin dead-end)', () => {
+  // base store.stored has priceMinUsd 10000 / priceMaxUsd 20000.
+  it('WITHIN-RANGE accept auto-finalises: invoice born + client invoice email, no "set amount" admin email', async () => {
+    store.stored!.customerEmail = 'client@co.com';
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 15000 });
+    expect(res.status).toBe(200);
+    const inv = store.invoices.get('invoices/quote_q1') as Record<string, unknown> | undefined;
+    expect(inv).toBeTruthy();
+    expect(inv!.amount).toBe(15000);                                          // charged amount = accepted budget (no pricing change)
+    expect(inv!.status).toBe('pending');
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('invoice_sent');
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();     // buyer gets the payable invoice
+    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeFalsy(); // admin "set the amount" skipped
+  });
+
+  it('OUT-OF-RANGE accept does NOT auto-finalise (keeps admin review + no invoice)', async () => {
+    store.stored!.customerEmail = 'client@co.com';
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 25000 }); // > max 20000
+    expect(res.status).toBe(200);
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
+    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('client_responded');
+    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeTruthy();
+  });
+
+  it('OPEN-ENDED accept never auto-finalises, even within range', async () => {
+    store.stored!.customerEmail = 'client@co.com';
+    store.stored!.openEnded = true;
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 15000 });
+    expect(res.status).toBe(200);
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
+    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeTruthy();
+  });
+
+  it('accept WITHOUT a budget stays on the admin path (no amount to charge)', async () => {
+    store.stored!.customerEmail = 'client@co.com';
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(200);
+    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
+    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeTruthy();
+  });
+
+  it('the public token accept also auto-finalises within range', async () => {
+    store.stored!.customerEmail = 'client@co.com';
+    share.verify.mockResolvedValue(okV2);
+    const res = await confirmReq({ token: 'tok', decision: 'accepted', expectedBudgetUsd: 15000 });
+    expect(res.status).toBe(200);
+    expect(store.invoices.has('invoices/quote_q1')).toBe(true);
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();
+  });
+
+  it('a second accept on the now-invoiced quote is blocked (no duplicate invoice/payment)', async () => {
+    store.stored!.customerEmail = 'client@co.com';
+    await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 15000 }); // auto-finalises
+    // Simulate the quote now reading back as terminal (finalised).
+    store.stored!.stage = 'invoice_sent';
+    seq.sends.length = 0;
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'reopen' });
+    expect(res.status).toBe(409);                                             // D1 lock
+    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
+    expect(seq.sends.length).toBe(0);
   });
 });
 

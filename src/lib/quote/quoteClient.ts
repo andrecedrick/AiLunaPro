@@ -146,16 +146,16 @@ export async function overrideQuotePrice(
  *  budget (USD) on the quote. Non-binding, intent only. */
 export async function recordDecision(
   orgId: string, quoteId: string, input: { decision: 'accepted' | 'discussion'; expectedBudgetUsd?: number; message?: string },
-): Promise<{ status: string }> {
+): Promise<{ status: string; paymentUrl?: string }> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/quote/${encodeURIComponent(quoteId)}/decision`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ orgId, ...input }),
   });
-  const j = await res.json().catch(() => null) as ({ status?: string; code?: string }) | null;
+  const j = await res.json().catch(() => null) as ({ status?: string; code?: string; paymentUrl?: string }) | null;
   if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
-  return { status: j.status ?? input.decision };
+  return { status: j.status ?? input.decision, ...(typeof j.paymentUrl === 'string' ? { paymentUrl: j.paymentUrl } : {}) };
 }
 
 /** Record a decision from the email Accept/Discuss CTA — PUBLIC, no auth. The HMAC
@@ -163,7 +163,7 @@ export async function recordDecision(
  *  quote, opens the draft invoice, and notifies the admin. */
 export async function confirmQuoteDecisionByToken(
   token: string, decision: 'accepted' | 'discussion', opts?: { message?: string; expectedBudgetUsd?: number },
-): Promise<{ status: string }> {
+): Promise<{ status: string; paymentUrl?: string }> {
   const res = await fetch(`${WORKER_BASE}/api/quote/decision/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -173,9 +173,21 @@ export async function confirmQuoteDecisionByToken(
       ...(opts?.expectedBudgetUsd !== undefined ? { expectedBudgetUsd: opts.expectedBudgetUsd } : {}),
     }),
   });
-  const j = await res.json().catch(() => null) as ({ status?: string; code?: string }) | null;
+  const j = await res.json().catch(() => null) as ({ status?: string; code?: string; paymentUrl?: string }) | null;
   if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
-  return { status: j.status ?? decision };
+  return { status: j.status ?? decision, ...(typeof j.paymentUrl === 'string' ? { paymentUrl: j.paymentUrl } : {}) };
+}
+
+/* U1 — instant-pay carrier: the Stripe checkout URL returned by an accept that
+ * auto-finalised within range. Stashed by the confirm page and read by the status
+ * page (same tab, client-only — QuoteStatusPage stays fetch-free). The URL is a
+ * public Stripe bearer link, so sessionStorage is an acceptable short-lived carrier. */
+const PAYLINK_KEY = (quoteId: string) => `ailunapro.quote.paylink.${quoteId}`;
+export function stashQuotePayLink(quoteId: string, url: string): void {
+  try { sessionStorage.setItem(PAYLINK_KEY(quoteId), url); } catch { /* non-fatal */ }
+}
+export function readQuotePayLink(quoteId: string): string | null {
+  try { return sessionStorage.getItem(PAYLINK_KEY(quoteId)); } catch { return null; }
 }
 
 /** Admin "Send Quote" (ISSUE 5): (re)send the proposal email to the client using the

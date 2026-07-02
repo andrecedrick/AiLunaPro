@@ -2803,6 +2803,8 @@ export const pt: Dict = {
         "intro": "Veja em que ponto do nosso processo está o seu pedido. Iremos enviar-lhe um e-mail em cada etapa.",
         "reviewNote": "Um especialista está a analisar o seu pedido e irá confirmar o valor final.",
         "nextStep": "Passo seguinte: um administrador irá confirmar o valor.",
+        "payNow": "Pagar agora",
+        "payReady": "A sua fatura está pronta — pague com segurança agora.",
         "openPanel": "Abrir o painel de faturas",
         "stateReview": "Em análise",
         "stateNegotiation": "Negociação",

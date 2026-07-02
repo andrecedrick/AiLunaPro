@@ -34,7 +34,8 @@ import { consumeTokens } from '../lib/tokens';
 import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { buildQuotePdf, formatUsdRange, type QuotePdfInput } from '../lib/quote-pdf';
 import { sendTransactional } from '../lib/sequenzy';
-import { sanitizeQuoteRoiVars } from '../lib/quote-email-vars';
+import { sanitizeQuoteRoiVars, sanitizeEmailVar } from '../lib/quote-email-vars';
+import { finalizeQuoteInvoice } from './invoices';
 import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
 import { sanitizeText } from '../lib/support-shared';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
@@ -404,6 +405,13 @@ const EMAIL_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
 const PRICING_ROLES: RoleList = ['owner', 'admin']; // pricing queue + finalise are admin-only
 // Quote stages awaiting the admin's final amount (the pricing queue).
 const PENDING_STAGES = ['client_responded', 'negotiation'];
+// Terminal stages: the quote has been finalised / invoiced / paid, so a live
+// invoice exists downstream. A new accept/discuss decision here would regress
+// the stage back into the pricing queue and desync the invoice — it is locked
+// (audit D1). 'accepted'/'paid' are defensive: no code sets them on the quote
+// doc today (accept → 'client_responded'; 'paid' is an invoice status), so
+// including them never blocks the legitimate pre-finalise negotiation flow.
+const TERMINAL_STAGES = ['accepted', 'finalized', 'invoice_sent', 'paid'];
 const PDF_LANGS = new Set(['en', 'fr', 'es', 'de', 'it', 'pt']);
 const SHARE_TTL = 14 * 24 * 3600; // 14 days
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -530,29 +538,46 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const budgetDisplay = (render.negBudget && render.negBudget.trim())
     ? render.negBudget
     : (hasEmailBudget ? `$${Math.round(emailBudget).toLocaleString('en-US')}` : '');
+  // Every CLIENT-derived display string is sanitized (strip <>{}, cap, em-dash
+  // fallback) so a sender can't inject HTML or a nested {{VAR}} into their client's
+  // mail. URLs are server-generated (signed token + encoded quoteId) and are NOT
+  // sanitized — the length cap would break them; they carry no client markup.
   const variables: Record<string, string> = {
-    QUOTE_TITLE:  render.docTitle,
+    QUOTE_TITLE:  sanitizeEmailVar(render.docTitle),
     ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email&t=${actionToken}&quoteId=${encodeURIComponent(quoteId)}${budgetSuffix}`,
     DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email&t=${actionToken}&quoteId=${encodeURIComponent(quoteId)}${budgetSuffix}`,
-    SOLUTION:     render.solutionLabel,
-    BUDGET:       budgetDisplay,
-    RANGE:        render.rangeText,
-    NEG_INITIAL:  render.negInitial,
-    NEG_BUDGET:   render.negBudget,
-    NEG_ADJUSTED: render.negAdjusted,
+    SOLUTION:     sanitizeEmailVar(render.solutionLabel),
+    BUDGET:       sanitizeEmailVar(budgetDisplay),
+    RANGE:        sanitizeEmailVar(render.rangeText),
+    NEG_INITIAL:  sanitizeEmailVar(render.negInitial),
+    NEG_BUDGET:   sanitizeEmailVar(render.negBudget),
+    NEG_ADJUSTED: sanitizeEmailVar(render.negAdjusted),
     PDF_URL:      pdfUrl,
     // ROI + decision figures (client formats them exactly like the in-app blocks;
     // sanitized + always-present here → no raw {{VAR}} and no null in the email).
     ...sanitizeQuoteRoiVars(body.roi),
   };
 
-  const result = await sendTransactional(env.SEQUENZY_API_KEY, { to: recipient, slug: `quote-${slugLang}`, variables, replyTo: tokenEmail });
+  const clientSlug = `quote-${slugLang}`;
+  const result = await sendTransactional(env.SEQUENZY_API_KEY, { to: recipient, slug: clientSlug, variables, replyTo: tokenEmail });
+  // Debug (non-PII): which template slug actually fired + whether Sequenzy accepted
+  // it. Lets `wrangler tail` confirm the resolved slug/lang and the send outcome
+  // without exposing the recipient. keyConfigured guards the silent-no-op case.
+  console.log('[quote] proposal email', JSON.stringify({
+    slug: clientSlug,
+    slugLang,
+    baseLocale: baseLocale || null,
+    cfCountry: c.req.header('CF-IPCountry') ?? null,
+    keyConfigured: !!env.SEQUENZY_API_KEY,
+    emailed: result.ok,
+    err: result.ok ? undefined : result.error,
+  }));
 
   if (body.sendAdminCopy === true && env.ADMIN_EMAIL) {
     await sendTransactional(env.SEQUENZY_API_KEY, {
       to: env.ADMIN_EMAIL,
       slug: 'quote-admin',
-      variables: { ...variables, CUSTOMER_EMAIL: recipient },
+      variables: { ...variables, CUSTOMER_EMAIL: sanitizeEmailVar(recipient) },
       replyTo: tokenEmail,
     });
   }
@@ -830,8 +855,16 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   orgId: string; quoteId: string; stored: Record<string, unknown>;
   decision: 'accepted' | 'discussion'; hasBudget: boolean; budget: number;
   message: string | null; customerEmail: string | undefined; appBase: string;
-}): Promise<void> {
+}): Promise<{ locked: false; paymentUrl: string | null } | { locked: true; stage: string }> {
   const { orgId, quoteId, stored, decision, hasBudget, budget, message, customerEmail, appBase } = a;
+
+  // Integrity guard (audit D1): once a quote is finalised/invoiced/paid it is
+  // locked — re-recording a decision would overwrite decision/status/stage and
+  // pull the quote back into the pricing queue while its invoice is already live
+  // and payable. Mirrors the public confirm path's single-effect intent for the
+  // terminal states. No write, no admin notification when locked.
+  const curStage = typeof stored.stage === 'string' ? stored.stage : '';
+  if (TERMINAL_STAGES.includes(curStage)) return { locked: true, stage: curStage };
 
   // Budget-first: when the caller supplies no budget (the public email-accept path
   // carries none), fall back to the budget the user proposed when the quote was
@@ -861,6 +894,35 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   }
   await firestoreSet(saJson, `${COLLECTION(orgId)}/${quoteId}`, patch, { merge: true });
 
+  // U1 — within-range auto-finalise: when the client ACCEPTS and their budget falls
+  // INSIDE the estimate range (and the quote is neither open-ended nor governance-
+  // blocked), create the invoice + Stripe payment link NOW so the buyer can pay
+  // instantly — no admin-review wait. Reuses the exact finalise path (idempotent: one
+  // invoice per quote → no duplicate payment). Open-ended / out-of-range / blocked
+  // quotes fall through to the normal admin-review flow. Best-effort: a failure here
+  // degrades gracefully to the admin path, never blocks recording the decision.
+  let autoPaymentUrl: string | null = null;
+  let autoFinalized = false;
+  if (decision === 'accepted' && effHasBudget) {
+    const min = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
+      : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
+    const max = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
+      : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
+    const amt = Math.round(effBudget);
+    const openEnded = stored.openEnded === true;
+    const blocked = stored.adminState === 'blocked' || stored.adminState === 'suspended';
+    const withinRange = min !== null && max !== null && amt >= min && amt <= max;
+    if (!openEnded && !blocked && withinRange) {
+      try {
+        const fin = await finalizeQuoteInvoice(env, saJson, { orgId, quoteId, quote: stored, amount: amt, appBase });
+        autoPaymentUrl = fin.paymentUrl;
+        autoFinalized = true;
+      } catch (e) {
+        console.warn('[quote] within-range auto-finalise failed (falls back to admin review):', e instanceof Error ? e.message : '');
+      }
+    }
+  }
+
   // Display fields for the admin notification (title · solution · range).
   let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
   const rangeMinUsd = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
@@ -884,8 +946,10 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   const admins = adminRecipients(env);
 
   // FIX 2 — notify the admins that the client RESPONDED so they can review + set the
-  // final amount on the Invoices/pricing panel. No invoice exists yet (FIX 1).
-  if (decision === 'accepted' && admins.length) {
+  // final amount on the Invoices/pricing panel. Skipped when the quote was auto-
+  // finalised (U1): the invoice already exists, so "please set the amount" would be
+  // misleading — the admin sees the pending invoice in the Invoices panel instead.
+  if (decision === 'accepted' && !autoFinalized && admins.length) {
     for (const to of admins) {
       const r = await sendTransactional(env.SEQUENZY_API_KEY, {
         to, slug: 'invoice-admin-pending', replyTo: customerEmail,
@@ -897,7 +961,7 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
       });
       if (!r.ok) console.warn('[quote] accept admin-notify NOT sent to an admin (check SEQUENZY_API_KEY / invoice-admin-pending):', r.error ?? 'unknown');
     }
-  } else if (decision === 'accepted') {
+  } else if (decision === 'accepted' && !autoFinalized) {
     console.warn('[quote] no admin recipients (ADMIN_EMAILS/ADMIN_EMAIL unset) — no notification for accepted quote', quoteId);
   }
 
@@ -918,6 +982,8 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   } else if (decision === 'discussion') {
     console.warn('[quote] no admin recipients (ADMIN_EMAILS/ADMIN_EMAIL unset) — no discussion notification for', quoteId);
   }
+
+  return { locked: false, paymentUrl: autoPaymentUrl };
 }
 
 interface DecisionBody { orgId?: unknown; decision?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
@@ -951,11 +1017,14 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
 
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  await applyQuoteDecision(env, saJson, {
+  const res = await applyQuoteDecision(env, saJson, {
     orgId, quoteId, stored, decision, hasBudget, budget, message,
     customerEmail: c.get('email') as string | undefined, appBase,
   });
-  return c.json({ ok: true, status: decision });
+  // D1 — a finalised/invoiced/paid quote is locked; refuse the regression.
+  if (res.locked) return c.json({ error: 'Quote cannot be modified after finalization.', code: 'QUOTE_LOCKED', stage: res.stage }, 409);
+  // U1 — surface the instant pay link when the accept auto-finalised within range.
+  return c.json({ ok: true, status: decision, ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
 });
 
 /* ── POST /api/quote/decision/confirm — PUBLIC, token-gated email accept/discuss ──
@@ -1029,8 +1098,12 @@ quote.post('/api/quote/decision/confirm', async c => {
   // confirm-body value only when the quote has none persisted (legacy quotes).
   const storedHasBudget = typeof stored.expectedBudgetUsd === 'number' && Number.isFinite(stored.expectedBudgetUsd);
   const useUrlBudget = !storedHasBudget && Number.isFinite(urlBudget) && urlBudget >= 0 && urlBudget <= PRICE_MAX;
-  await applyQuoteDecision(env, saJson, { orgId, quoteId, stored, decision, hasBudget: useUrlBudget, budget: useUrlBudget ? urlBudget : NaN, message, customerEmail, appBase });
-  return c.json({ ok: true, status: decision });
+  const res = await applyQuoteDecision(env, saJson, { orgId, quoteId, stored, decision, hasBudget: useUrlBudget, budget: useUrlBudget ? urlBudget : NaN, message, customerEmail, appBase });
+  // D1 — terminal quote: locked. (The decidedAt guard above already covers the
+  // common case; this backstops a finalised quote whose decidedAt is unset.)
+  if (res.locked) return c.json({ error: 'This quote can no longer be changed.', code: 'QUOTE_LOCKED', stage: res.stage }, 409);
+  // U1 — surface the instant pay link when the accept auto-finalised within range.
+  return c.json({ ok: true, status: decision, ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
 });
 
 export default quote;
