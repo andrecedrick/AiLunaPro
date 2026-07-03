@@ -159,6 +159,20 @@ export function scoreQuote(inputs: QuoteInputs): QuoteScored {
   return { ...stamp(QUOTE_RULESET_VERSION), estimate, trace };
 }
 
+/* ── Canonical price (fixed-price model) ─────────────────────────
+ *
+ * The single locked quote price (USD, integer). `price` is authoritative; legacy
+ * quotes issued before the fixed-price model fall back to finalAmountUsd →
+ * expectedBudgetUsd → the estimate minimum so historical docs never read as null.
+ * The estimate-minimum FLOOR is enforced once, at write time (when the price is
+ * locked on send); this reader returns the stored canonical value as-is.
+ */
+export function quotePrice(q: Record<string, unknown>): number | null {
+  const num = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
+  return num(q.price) ?? num(q.finalAmountUsd) ?? num(q.expectedBudgetUsd) ?? num(q.priceMinUsd);
+}
+
 /* ── ID helper (local, generic body) ─────────────────────────── */
 
 export function generateQuoteId(): string {

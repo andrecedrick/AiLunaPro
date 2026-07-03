@@ -40,10 +40,11 @@ import invoices from '../../worker/src/routes/invoices';
 
 const ENV = { FIREBASE_SERVICE_ACCOUNT_JSON: '{}', SEQUENZY_API_KEY: 'k', ADMIN_EMAIL: 'admin@x.com', APP_BASE_URL: 'https://audit.ailunapro.com' } as unknown as Record<string, unknown>;
 const get = (org = 'orgA') => invoices.request(`/api/invoices?orgId=${org}`, { headers: { Authorization: 'Bearer t' } }, ENV);
-const confirm = (id: string, amount: unknown, org = 'orgA') =>
+// Fixed-price: confirm is RE-SEND only (no amount input — the amount is immutable).
+const confirm = (id: string, org = 'orgA') =>
   invoices.request(`/api/invoices/${id}/confirm?orgId=${org}`, {
     method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orgId: org, amount }),
+    body: JSON.stringify({ orgId: org }),
   }, ENV);
 
 beforeEach(() => {
@@ -72,127 +73,65 @@ describe('GET /api/invoices', () => {
   });
 });
 
-describe('POST /api/invoices/:id/confirm (Step B)', () => {
-  it('confirms a draft → pending, sets amount, sends the invoice-client email', async () => {
-    const res = await confirm('quote_a', 15000);
+describe('POST /api/invoices/:id/confirm — re-send only (no re-amount)', () => {
+  it('re-sends a pending invoice at its LOCKED amount (unchanged)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', status: 'pending', amount: 15000 });
+    const res = await confirm('quote_a');
     expect(res.status).toBe(200);
     const j = await res.json() as { status: string; emailed: boolean };
-    expect(j.status).toBe('pending');
-    expect(j.emailed).toBe(true);                        // delivery confirmed to the caller
-    const doc = state.docs.get('invoices/quote_a')!;
-    expect(doc.status).toBe('pending');
-    expect(doc.amount).toBe(15000);
+    expect(j.emailed).toBe(true);
+    expect(state.docs.get('invoices/quote_a')!.amount).toBe(15000);   // NOT re-amounted
     const send = seq.sends.find(s => s.slug === 'invoice-client')!;
     expect(send.to).toBe('c@x.com');
     const v = send.variables as Record<string, string>;
-    expect(v.PROJECT).toBe('Acme bot');
     expect(v.AMOUNT).toBe('$15,000');
-    expect(v.INVOICE_URL).toContain('/#/invoices');      // "View your invoice" link
-    expect(v.BANK_DETAILS).toContain('available on request');   // FIX 4 — graceful fallback, never blank
+    expect(v.INVOICE_URL).toContain('/#/invoices');
+    expect(v.BANK_DETAILS).toContain('available on request');   // graceful fallback, never blank
   });
 
-  it('includes the configured region bank details in the email (FIX 4)', async () => {
+  it('includes the configured region bank details in the email', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', customerEmail: 'c@x.com', status: 'pending', amount: 15000 });
     state.docs.set('organizations/orgA/settings/billing', { region: 'eu', accountName: 'Acme SARL', iban: 'FR7630006000011234567890189', bic: 'BNPAFRPP' });
-    await confirm('quote_a', 15000);
+    await confirm('quote_a');
     const v = seq.sends.find(s => s.slug === 'invoice-client')!.variables as Record<string, string>;
     expect(v.BANK_DETAILS).toContain('FR7630006000011234567890189');
     expect(v.BANK_DETAILS).toContain('IBAN:');
   });
 
-  it('rejects confirming an invoice from another org (cross-org guard)', async () => {
-    const res = await confirm('quote_a', 15000, 'orgB');   // verified org = orgB, invoice = orgA
+  it('rejects re-sending an invoice from another org (cross-org guard)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'pending', amount: 15000 });
+    const res = await confirm('quote_a', 'orgB');
     expect(res.status).toBe(404);
-    expect(state.docs.get('invoices/quote_a')!.status).toBe('draft');  // unchanged
     expect(seq.sends.length).toBe(0);
   });
 
-  it('re-confirms + re-sends a pending invoice (explicit admin resend)', async () => {
-    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', customerEmail: 'c@x.com', status: 'pending', amount: 9000 });
-    const res = await confirm('quote_a', 12000);
-    expect(res.status).toBe(200);
-    expect(state.docs.get('invoices/quote_a')!.amount).toBe(12000);                 // updated
-    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();          // re-sent
-  });
-
-  it('does not re-amount or re-send a PAID invoice (final)', async () => {
+  it('does not re-send a PAID invoice (final)', async () => {
     state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 9000 });
-    const res = await confirm('quote_a', 12000);
+    const res = await confirm('quote_a');
     expect(res.status).toBe(200);
     expect((await res.json() as { alreadyConfirmed?: boolean }).alreadyConfirmed).toBe(true);
-    expect(state.docs.get('invoices/quote_a')!.amount).toBe(9000);   // unchanged
     expect(seq.sends.length).toBe(0);
   });
 
-  it('rejects an invalid amount', async () => {
-    expect((await confirm('quote_a', 0)).status).toBe(400);
-    expect((await confirm('quote_a', 'x')).status).toBe(400);
-  });
-});
-
-const finalize = (quoteId: string, amount: unknown, org = 'orgA') =>
-  invoices.request(`/api/invoices/finalize?orgId=${org}`, {
-    method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orgId: org, quoteId, amount }),
-  }, ENV);
-
-describe('POST /api/invoices/finalize (admin sets amount → the invoice is born)', () => {
-  beforeEach(() => {
-    // An accepted quote awaiting pricing (no invoice yet — the new model).
-    state.docs.set('organizations/orgA/quotes/qX', {
-      customerEmail: 'c@x.com', stage: 'client_responded',
-      priceMinUsd: 10000, priceMaxUsd: 20000, expectedBudgetUsd: 1500,
-      renderJson: JSON.stringify({ docTitle: 'Acme bot' }),
-    });
-  });
-
-  it('creates the pending invoice, advances the quote to invoice_sent, and emails the client', async () => {
-    const res = await finalize('qX', 15000);
-    expect(res.status).toBe(200);
-    const j = await res.json() as { status: string; emailed: boolean; invoiceId: string };
-    expect(j.status).toBe('pending');
-    expect(j.emailed).toBe(true);
-    expect(j.invoiceId).toBe('quote_qX');
-    const inv = state.docs.get('invoices/quote_qX')!;
-    expect(inv.status).toBe('pending');         // created already-pending (no draft)
-    expect(inv.amount).toBe(15000);
-    expect(inv.customerEmail).toBe('c@x.com');
-    expect(inv.expectedBudgetUsd).toBe(1500);
-    expect(state.docs.get('organizations/orgA/quotes/qX')!.stage).toBe('invoice_sent');   // FIX 5
-    const send = seq.sends.find(s => s.slug === 'invoice-client')!;
-    expect(send.to).toBe('c@x.com');
-    expect((send.variables as Record<string, string>).AMOUNT).toBe('$15,000');
-    expect((send.variables as Record<string, string>).INVOICE_URL).toContain('/#/invoices?invoiceId=quote_qX');  // deep-link to the exact invoice
-  });
-
-  it('is idempotent — never recreates / re-amounts / re-sends once the invoice exists', async () => {
-    state.docs.set('invoices/quote_qX', { orgId: 'orgA', status: 'pending', amount: 9000 });
-    const res = await finalize('qX', 15000);
-    expect(res.status).toBe(200);
-    expect((await res.json() as { alreadyFinalized?: boolean }).alreadyFinalized).toBe(true);
-    expect(state.docs.get('invoices/quote_qX')!.amount).toBe(9000);   // unchanged
-    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeFalsy();
-  });
-
-  it('404 when the quote does not exist', async () => {
-    expect((await finalize('nope', 15000)).status).toBe(404);
-    expect(state.docs.has('invoices/quote_nope')).toBe(false);
-  });
-
-  it('rejects an invalid amount + missing quoteId (400)', async () => {
-    expect((await finalize('qX', 0)).status).toBe(400);
-    expect((await finalize('qX', 'x')).status).toBe(400);
-    expect((await finalize('', 15000)).status).toBe(400);
-  });
-
-  it('rejects finalizing a blocked/suspended quote (409 — ISSUE 3 governance)', async () => {
-    state.docs.set('organizations/orgA/quotes/qX', { customerEmail: 'c@x.com', stage: 'client_responded', adminState: 'blocked', priceMinUsd: 10000, priceMaxUsd: 20000 });
-    const res = await finalize('qX', 15000);
+  it('409 when the invoice has no amount yet', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'draft', amount: null });
+    const res = await confirm('quote_a');
     expect(res.status).toBe(409);
-    expect(state.docs.has('invoices/quote_qX')).toBe(false);   // no invoice minted
+    expect((await res.json() as { code: string }).code).toBe('NO_AMOUNT');
   });
 });
 
-describe('POST /api/invoices/:id/payment-link (ISSUE 6 — graceful Stripe)', () => {
+describe('POST /api/invoices/finalize — REMOVED (no admin pricing in the fixed-price model)', () => {
+  it('the finalize route no longer exists (404)', async () => {
+    const res = await invoices.request('/api/invoices/finalize?orgId=orgA', {
+      method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orgId: 'orgA', quoteId: 'qX', amount: 15000 }),
+    }, ENV);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('POST /api/invoices/:id/payment-link (graceful Stripe)', () => {
   const payLink = (id: string, org = 'orgA') =>
     invoices.request(`/api/invoices/${id}/payment-link?orgId=${org}`, {
       method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: org }),

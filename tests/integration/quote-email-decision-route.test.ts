@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /*
- * B2 + B3 — quote email + discussion endpoints.
- *  - email: optional client recipient (else token email), reply-to = token email,
- *    per-user rate limit (anti-abuse).
- *  - decision (discuss): sanitized message stored on the quote doc + admin email
- *    carrying TYPE / MESSAGE / EMAIL / CONTEXT.
+ * Fixed-price quote flow — email (locks the price), accept (auto-invoices at the locked
+ * price → Stripe pay link), superadmin list, governance-only PATCH. No admin pricing,
+ * no negotiation, no pending queue.
  */
 
 const seq = vi.hoisted(() => ({ sends: [] as Array<Record<string, unknown>> }));
@@ -18,14 +16,14 @@ vi.mock('../../worker/src/middleware/auth', () => ({
   requireAuth: () => async (c: { req: { header: (k: string) => string | undefined }; set: (k: string, v: unknown) => void }, next: () => Promise<void>) => {
     c.set('uid', c.req.header('x-test-uid') ?? 'uid-1');
     const em = c.req.header('x-test-email'); if (em) c.set('email', em);
-    c.set('emailVerified', true);                                  // verified email (isSuperAdmin gate)
+    c.set('emailVerified', true);
     await next();
   },
 }));
 vi.mock('../../worker/src/middleware/requireRole', () => ({
   requireRole: () => async (c: { req: { header: (k: string) => string | undefined }; set: (k: string, v: unknown) => void }, next: () => Promise<void>) => {
     c.set('orgId', c.req.header('x-test-org') ?? 'orgA');
-    c.set('role', c.req.header('x-test-role') ?? 'owner');         // override the membership-verified role per test
+    c.set('role', c.req.header('x-test-role') ?? 'owner');
     await next();
   },
 }));
@@ -65,20 +63,22 @@ const ENV = {
 const H = (uid = 'uid-1', email = 'owner@acme.com', org = 'orgA') =>
   ({ 'Content-Type': 'application/json', 'x-test-uid': uid, 'x-test-email': email, 'x-test-org': org });
 
-const emailReq = (body: unknown) =>
-  quote.request('/api/quote/email', { method: 'POST', headers: H(), body: JSON.stringify(body) }, ENV);
+// Fixed-price: a send REQUIRES a budget ≥ the estimate minimum (10000 in the fixture).
+const emailReq = (body: Record<string, unknown>) =>
+  quote.request('/api/quote/email', { method: 'POST', headers: H(), body: JSON.stringify({ expectedBudgetUsd: 15000, ...body }) }, ENV);
 const decisionReq = (quoteId: string, body: unknown) =>
   quote.request(`/api/quote/${quoteId}/decision`, { method: 'POST', headers: H(), body: JSON.stringify(body) }, ENV);
-// Public token-gated email confirm — no auth headers (the HMAC token is the gate).
 const confirmReq = (body: unknown) =>
   quote.request('/api/quote/decision/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, ENV);
 const okV2 = { ok: true, payload: { orgId: 'orgA', auditId: 'q1', exp: 9_999_999_999, shareVersion: 2 } };
+const qDoc = 'organizations/orgA/quotes/q1';
 
 beforeEach(() => {
   seq.sends.length = 0; store.writes.clear(); store.invoices.clear();
   rl.cooldown.mockResolvedValue({ ok: true }); rl.cap.mockResolvedValue({ ok: true });
   store.stored = {
     createdAt: '2026-06-20T00:00:00.000Z', priceMinUsd: 10000, priceMaxUsd: 20000,
+    customerEmail: 'client@co.com',
     renderJson: JSON.stringify({ docTitle: 'Quote for Acme', solutionLabel: 'AI Agent', rangeText: '$10k–$20k', negInitial: '$15k', negBudget: '', negAdjusted: '' }),
   };
   vi.clearAllMocks();
@@ -86,241 +86,165 @@ beforeEach(() => {
   rl.cooldown.mockResolvedValue({ ok: true }); rl.cap.mockResolvedValue({ ok: true });
 });
 
-describe('POST /api/quote/email (B2 — client recipient + reply-to + rate limit)', () => {
-  it('sends to a valid client email with the token email as reply-to', async () => {
-    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'Client@Co.com' });
+describe('POST /api/quote/email — locks the single price', () => {
+  it('sends the quote + LOCKS the price (= budget) at USD, with the token email as reply-to', async () => {
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'Client@Co.com', expectedBudgetUsd: 15000 });
     expect(res.status).toBe(200);
     const send = seq.sends.find(s => s.slug === 'quote-en')!;
-    expect(send.to).toBe('client@co.com');          // lowercased
-    expect(send.replyTo).toBe('owner@acme.com');     // sender always the reply-to
+    expect(send.to).toBe('client@co.com');
+    expect(send.replyTo).toBe('owner@acme.com');
+    const w = store.writes.get(qDoc)!;
+    expect(w.price).toBe(15000);
+    expect(w.currency).toBe('usd');
+    // the email BUDGET var is the single locked price (USD), no range / negotiation vars
+    const v = send.variables as Record<string, string>;
+    expect(v.BUDGET).toBe('$15,000');
+    expect(v.ACCEPT_URL).toContain('action=accept');
+    expect(v.DISCUSS_URL).toBeUndefined();
+    expect(v.RANGE).toBeUndefined();
   });
 
-  it('falls back to the token email when the client email is missing or invalid', async () => {
-    await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'not-an-email' });
-    expect(seq.sends.find(s => s.slug === 'quote-en')!.to).toBe('owner@acme.com');
-    seq.sends.length = 0;
-    await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en' });
-    expect(seq.sends.find(s => s.slug === 'quote-en')!.to).toBe('owner@acme.com');
+  it('rejects a budget BELOW the estimate minimum (BUDGET_BELOW_MIN, no send)', async () => {
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 5000 });
+    expect(res.status).toBe(400);
+    expect((await res.json() as { code: string }).code).toBe('BUDGET_BELOW_MIN');
+    expect(seq.sends.length).toBe(0);
+  });
+
+  it('rejects a send with NO budget when the quote has no price yet (NO_BUDGET)', async () => {
+    const res = await quote.request('/api/quote/email', { method: 'POST', headers: H(), body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' }) }, ENV);
+    expect(res.status).toBe(400);
+    expect((await res.json() as { code: string }).code).toBe('NO_BUDGET');
+  });
+
+  it('once locked, a re-send with a DIFFERENT budget is refused (PRICE_LOCKED)', async () => {
+    store.stored!.price = 15000;
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 18000 });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('PRICE_LOCKED');
+  });
+
+  it('a re-send with NO budget on a locked quote keeps the price and sends', async () => {
+    store.stored!.price = 15000;
+    const res = await quote.request('/api/quote/email', { method: 'POST', headers: H(), body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' }) }, ENV);
+    expect(res.status).toBe(200);
+    expect(seq.sends.some(s => s.slug === 'quote-en')).toBe(true);
   });
 
   it('rate-limits the sender (cooldown → 429, no send)', async () => {
     rl.cooldown.mockResolvedValueOnce({ ok: false, retryAfterSec: 12 });
-    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' });
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 15000 });
     expect(res.status).toBe(429);
     expect(seq.sends.length).toBe(0);
   });
 
-  it('falls back to the CF edge country language when no locale is supplied (Part 4)', async () => {
+  it('falls back to the CF edge country language when no locale is supplied', async () => {
     const res = await quote.request('/api/quote/email',
-      { method: 'POST', headers: { ...H(), 'CF-IPCountry': 'FR' }, body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1' }) }, ENV);
+      { method: 'POST', headers: { ...H(), 'CF-IPCountry': 'FR' }, body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1', expectedBudgetUsd: 15000 }) }, ENV);
     expect(res.status).toBe(200);
-    expect(seq.sends.some(s => s.slug === 'quote-fr')).toBe(true);   // FR edge → French template
+    expect(seq.sends.some(s => s.slug === 'quote-fr')).toBe(true);
   });
 
-  it('S1 — sanitizes ALL client render vars: no HTML / {{merge}} reaches the template, URLs preserved', async () => {
+  it('S1 — sanitizes client render vars: no HTML / {{merge}} reaches the template; URLs preserved', async () => {
     const res = await emailReq({
-      orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com',
-      render: {
-        docTitle:     '<script>alert(1)</script>Acme',
-        solutionLabel:'<b>AI</b> Agent',
-        rangeText:    '{{ADMIN_TOKEN}}$10k–$20k',
-        negInitial:   '<i>x</i>', negBudget: '', negAdjusted: 'ok',
-      },
+      orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 15000,
+      render: { docTitle: '<script>alert(1)</script>Acme', solutionLabel: '<b>AI</b> Agent', rangeText: '{{X}}', negBudget: '' },
     });
     expect(res.status).toBe(200);
     const v = seq.sends.find(s => s.slug === 'quote-en')!.variables as Record<string, string>;
-    // no markup or Sequenzy merge delimiter survives on ANY display var
-    for (const k of ['QUOTE_TITLE', 'SOLUTION', 'RANGE', 'BUDGET', 'NEG_INITIAL', 'NEG_BUDGET', 'NEG_ADJUSTED']) {
-      expect(v[k]).not.toMatch(/[<>{}]/);
-    }
-    expect(v.RANGE).not.toContain('{{');
-    expect(v.NEG_BUDGET).toBe('—');                       // empty → em-dash fallback
-    // server-generated URLs are NOT length-capped / stripped — they still work
+    for (const k of ['QUOTE_TITLE', 'SOLUTION', 'BUDGET']) expect(v[k]).not.toMatch(/[<>{}]/);
     expect(v.ACCEPT_URL).toContain('/#/quote/result?action=accept');
-    expect(v.DISCUSS_URL).toContain('/#/quote/result?action=discuss');
     expect(v.PDF_URL).toContain('/api/quote/shared/');
   });
 });
 
-describe('client response → state machine, NO invoice (FIX 1/2)', () => {
-  it('advances the quote to client_responded + notifies the admin — but creates NO invoice', async () => {
+describe('Accept → auto-invoice at the locked price (Quote → Accept → Pay)', () => {
+  it('accept auto-invoices at quote.price → invoice + client email, stage invoice_sent, NO admin email', async () => {
+    store.stored!.price = 15000;
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
-    expect(res.status).toBe(200);
-    expect(store.invoices.has('invoices/quote_q1')).toBe(false);   // FIX 1 — no invoice on accept
-    const patch = store.writes.get('organizations/orgA/quotes/q1')!;
-    expect(patch.stage).toBe('client_responded');                 // FIX 5 — state machine
-    expect(patch.decision).toBe('accepted');
-    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeFalsy();   // no client invoice email yet
-    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending');  // FIX 2 — admin notified on response
-    expect(admin).toBeTruthy();
-    expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('owner@acme.com');
-    expect((admin!.variables as Record<string, string>).PANEL_URL).toContain('/#/invoices?quoteId=q1');  // deep-link to the exact quote
-  });
-
-  it('stores the client budget on the quote + admin email, still no invoice (FIX 3)', async () => {
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 1500 });
-    expect(res.status).toBe(200);
-    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.expectedBudgetUsd).toBe(1500);
-    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending')!;
-    expect((admin.variables as Record<string, string>).BUDGET).toBe('$1,500');
-  });
-
-  it('marks the budget "Not specified" on the admin email when none is given', async () => {
-    await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
-    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending')!;
-    expect((admin.variables as Record<string, string>).BUDGET).toBe('Not specified');
-  });
-
-  it('advances to negotiation (not invoice) on discuss', async () => {
-    await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'hi' });
-    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('negotiation');
-  });
-});
-
-describe('POST /api/quote/:id/decision (B3 — discussion message)', () => {
-  it('stores a sanitized message and notifies the admin with TYPE/MESSAGE/EMAIL/CONTEXT', async () => {
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', expectedBudgetUsd: 12000, message: 'Please <script>x</script> lower it to 12k.' });
-    expect(res.status).toBe(200);
-    const patch = store.writes.get('organizations/orgA/quotes/q1')!;
-    expect(patch.discussionMessage).toContain('lower it to 12k');
-    expect(String(patch.discussionMessage)).not.toContain('<script>');   // markup defanged
-    const admin = seq.sends.find(s => s.slug === 'quote-discussion-admin')!;
-    expect(admin.to).toBe('admin@x.com');
-    expect(admin.replyTo).toBe('owner@acme.com');
-    const v = admin.variables as Record<string, string>;
-    expect(v.TYPE).toBe('discussion');
-    expect(v.MESSAGE).toContain('lower it to 12k');
-    expect(v.EMAIL).toBe('owner@acme.com');
-    expect(v.CONTEXT).toContain('Quote for Acme');
-    expect(v.BUDGET).toBe('$12,000');
-  });
-
-  it('does not notify the admin on an accept', async () => {
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
-    expect(res.status).toBe(200);
-    expect(seq.sends.find(s => s.slug === 'quote-discussion-admin')).toBeFalsy();
-  });
-});
-
-describe('D1 — finalized/invoiced quotes are locked (no decision regression)', () => {
-  it('authed decision on an invoice_sent quote → 409 QUOTE_LOCKED, no write, no admin email', async () => {
-    store.stored!.stage = 'invoice_sent';                                   // invoice already live/payable
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'reopen please' });
-    expect(res.status).toBe(409);
-    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
-    expect(store.writes.get('organizations/orgA/quotes/q1')).toBeUndefined();  // stage NOT regressed
-    expect(seq.sends.length).toBe(0);                                          // admins NOT re-notified
-  });
-
-  it('authed decision on a finalized quote → 409 QUOTE_LOCKED', async () => {
-    store.stored!.stage = 'finalized';
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
-    expect(res.status).toBe(409);
-    expect(store.writes.get('organizations/orgA/quotes/q1')).toBeUndefined();
-  });
-
-  it('negotiation still works before finalization (stage=negotiation → accepted, 200)', async () => {
-    store.stored!.stage = 'negotiation';                                    // pre-finalise, editable
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
-    expect(res.status).toBe(200);
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('client_responded');
-  });
-
-  it('public confirm backstops a terminal quote whose decidedAt is unset → 409', async () => {
-    store.stored!.stage = 'invoice_sent';                                   // terminal, but no decidedAt
-    share.verify.mockResolvedValue(okV2);
-    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'x' });
-    expect(res.status).toBe(409);
-    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
-    expect(seq.sends.length).toBe(0);
-  });
-});
-
-describe('U1 — within-range auto-invoice on accept (instant pay, no admin dead-end)', () => {
-  // base store.stored has priceMinUsd 10000 / priceMaxUsd 20000.
-  it('WITHIN-RANGE accept auto-finalises: invoice born + client invoice email, no "set amount" admin email', async () => {
-    store.stored!.customerEmail = 'client@co.com';
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 15000 });
     expect(res.status).toBe(200);
     const inv = store.invoices.get('invoices/quote_q1') as Record<string, unknown> | undefined;
     expect(inv).toBeTruthy();
-    expect(inv!.amount).toBe(15000);                                          // charged amount = accepted budget (no pricing change)
+    expect(inv!.amount).toBe(15000);          // invoice amount === quote.price (same everywhere)
     expect(inv!.status).toBe('pending');
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('invoice_sent');
-    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();     // buyer gets the payable invoice
-    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeFalsy(); // admin "set the amount" skipped
+    expect(store.writes.get(qDoc)!.stage).toBe('invoice_sent');
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();
+    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeFalsy();
   });
 
-  it('OUT-OF-RANGE accept does NOT auto-finalise (keeps admin review + no invoice)', async () => {
-    store.stored!.customerEmail = 'client@co.com';
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 25000 }); // > max 20000
+  it('with no explicit price, accept invoices at the estimate minimum (quotePrice fallback)', async () => {
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
     expect(res.status).toBe(200);
-    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('client_responded');
-    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeTruthy();
+    expect((store.invoices.get('invoices/quote_q1') as Record<string, unknown>).amount).toBe(10000);
   });
 
-  it('OPEN-ENDED accept never auto-finalises, even within range', async () => {
-    store.stored!.customerEmail = 'client@co.com';
-    store.stored!.openEnded = true;
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 15000 });
-    expect(res.status).toBe(200);
-    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
-    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeTruthy();
+  it('negotiation is DISABLED — discussion → 400 NEGOTIATION_DISABLED, no write', async () => {
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'lower it' });
+    expect(res.status).toBe(400);
+    expect((await res.json() as { code: string }).code).toBe('NEGOTIATION_DISABLED');
+    expect(store.writes.get(qDoc)).toBeUndefined();
   });
 
-  it('accept WITHOUT a budget stays on the admin path (no amount to charge)', async () => {
-    store.stored!.customerEmail = 'client@co.com';
+  it('a BLOCKED quote is NOT invoiced on accept — admins are notified instead', async () => {
+    store.stored!.price = 15000;
+    store.stored!.adminState = 'blocked';
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
     expect(res.status).toBe(200);
     expect(store.invoices.has('invoices/quote_q1')).toBe(false);
     expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeTruthy();
   });
 
-  it('the public token accept also auto-finalises within range', async () => {
-    store.stored!.customerEmail = 'client@co.com';
-    share.verify.mockResolvedValue(okV2);
-    const res = await confirmReq({ token: 'tok', decision: 'accepted', expectedBudgetUsd: 15000 });
-    expect(res.status).toBe(200);
-    expect(store.invoices.has('invoices/quote_q1')).toBe(true);
-    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();
-  });
-
-  it('a second accept on the now-invoiced quote is blocked (no duplicate invoice/payment)', async () => {
-    store.stored!.customerEmail = 'client@co.com';
-    await decisionReq('q1', { orgId: 'orgA', decision: 'accepted', expectedBudgetUsd: 15000 }); // auto-finalises
-    // Simulate the quote now reading back as terminal (finalised).
-    store.stored!.stage = 'invoice_sent';
-    seq.sends.length = 0;
-    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'reopen' });
-    expect(res.status).toBe(409);                                             // D1 lock
-    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
-    expect(seq.sends.length).toBe(0);
-  });
-});
-
-describe('POST /api/quote/decision/confirm (public token-gated email accept)', () => {
-  it('accepts with a valid v2 action token: advances stage + notifies admin, but NO invoice', async () => {
-    store.stored!.customerEmail = 'client@co.com';            // recipient persisted at email time
+  it('the public token accept also auto-invoices', async () => {
+    store.stored!.price = 15000;
     share.verify.mockResolvedValue(okV2);
     const res = await confirmReq({ token: 'tok', decision: 'accepted' });
     expect(res.status).toBe(200);
     expect((await res.json() as { status: string }).status).toBe('accepted');
-    expect(store.invoices.has('invoices/quote_q1')).toBe(false);   // FIX 1 — no invoice on accept
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.stage).toBe('client_responded');
-    const admin = seq.sends.find(s => s.slug === 'invoice-admin-pending');
-    expect(admin).toBeTruthy();
-    expect((admin!.variables as Record<string, string>).CUSTOMER_EMAIL).toBe('client@co.com');   // persisted recipient, not the caller
+    expect(store.invoices.has('invoices/quote_q1')).toBe(true);
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();
   });
 
-  it('rejects a v1 PDF-link token (wrong share version) — no invoice', async () => {
-    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'q1', exp: 9_999_999_999, shareVersion: 1 } });
-    const res = await confirmReq({ token: 'tok', decision: 'accepted' });
-    expect(res.status).toBe(401);
-    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
+  it('the public token confirm rejects negotiation (400)', async () => {
+    share.verify.mockResolvedValue(okV2);
+    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'x' });
+    expect(res.status).toBe(400);
+    expect((await res.json() as { code: string }).code).toBe('NEGOTIATION_DISABLED');
+  });
+
+  it('a second accept on the now-invoiced quote is blocked (D1 — no duplicate invoice)', async () => {
+    store.stored!.price = 15000;
+    await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });   // auto-invoices
+    store.stored!.stage = 'invoice_sent';                              // now terminal
+    seq.sends.length = 0;
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
     expect(seq.sends.length).toBe(0);
+  });
+});
+
+describe('D1 — terminal quotes are locked', () => {
+  it('authed accept on an invoice_sent quote → 409 QUOTE_LOCKED, no write', async () => {
+    store.stored!.stage = 'invoice_sent';
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
+    expect(store.writes.get(qDoc)).toBeUndefined();
+  });
+
+  it('public confirm backstops a terminal quote whose decidedAt is unset → 409', async () => {
+    store.stored!.stage = 'finalized';
+    share.verify.mockResolvedValue(okV2);
+    const res = await confirmReq({ token: 'tok', decision: 'accepted' });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('QUOTE_LOCKED');
+  });
+});
+
+describe('POST /api/quote/decision/confirm — token gating + single-effect', () => {
+  it('rejects a v1 PDF-link token (wrong share version)', async () => {
+    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'q1', exp: 9_999_999_999, shareVersion: 1 } });
+    expect((await confirmReq({ token: 'tok', decision: 'accepted' })).status).toBe(401);
   });
 
   it('rejects an invalid token (401) and an expired token (410)', async () => {
@@ -328,187 +252,100 @@ describe('POST /api/quote/decision/confirm (public token-gated email accept)', (
     expect((await confirmReq({ token: 'bad', decision: 'accepted' })).status).toBe(401);
     share.verify.mockResolvedValueOnce({ ok: false, code: 'SHARE_EXPIRED' });
     expect((await confirmReq({ token: 'old', decision: 'accepted' })).status).toBe(410);
-    expect(store.invoices.size).toBe(0);
   });
 
-  it('records a discussion via token and notifies the admin (no invoice)', async () => {
-    share.verify.mockResolvedValue(okV2);
-    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'Can we lower it?' });
-    expect(res.status).toBe(200);
-    expect(seq.sends.find(s => s.slug === 'quote-discussion-admin')).toBeTruthy();
-    expect(store.invoices.has('invoices/quote_q1')).toBe(false);
-  });
-
-  it('rejects an unknown decision value (400)', async () => {
-    share.verify.mockResolvedValue(okV2);
-    expect((await confirmReq({ token: 'tok', decision: 'maybe' })).status).toBe(400);
-  });
-
-  it('is single-effect: a repeat confirm on an already-decided quote is an idempotent no-op', async () => {
+  it('is single-effect: a replay on an already-decided quote is an idempotent no-op', async () => {
     store.stored!.decidedAt = '2026-06-21T00:00:00.000Z';
     store.stored!.decision = 'accepted';
     share.verify.mockResolvedValue(okV2);
-    // A leaked token replayed with a different decision must NOT re-write or re-notify.
-    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'spam the admin' });
+    const res = await confirmReq({ token: 'tok', decision: 'accepted' });
     expect(res.status).toBe(200);
     expect((await res.json() as { alreadyRecorded?: boolean }).alreadyRecorded).toBe(true);
-    expect(seq.sends.length).toBe(0);          // no admin email re-sent
-    expect(store.invoices.size).toBe(0);       // no new invoice
-  });
-
-  it('rate-limits replay bursts (per-quote cooldown → 429, nothing recorded)', async () => {
-    share.verify.mockResolvedValue(okV2);
-    rl.cooldown.mockResolvedValueOnce({ ok: false, retryAfterSec: 8 });
-    const res = await confirmReq({ token: 'tok', decision: 'discussion', message: 'x' });
-    expect(res.status).toBe(429);
-    expect(seq.sends.length).toBe(0);
     expect(store.invoices.size).toBe(0);
   });
 
-  it('the SERVER-stored budget wins — a token-body budget cannot overwrite it', async () => {
-    store.stored!.expectedBudgetUsd = 1500;                 // recorded by the authed sender at email time
+  it('rate-limits replay bursts (per-quote cooldown → 429)', async () => {
     share.verify.mockResolvedValue(okV2);
-    const res = await confirmReq({ token: 'tok', decision: 'accepted', expectedBudgetUsd: 999999 });  // hostile/forged URL value
-    expect(res.status).toBe(200);
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.expectedBudgetUsd).toBe(1500);   // stored wins
-    expect((seq.sends.find(s => s.slug === 'invoice-admin-pending')!.variables as Record<string, string>).BUDGET).toBe('$1,500');
-  });
-
-  it('uses the token-body budget only as a fallback when nothing was persisted', async () => {
-    share.verify.mockResolvedValue(okV2);                   // store.stored has no expectedBudgetUsd
-    const res = await confirmReq({ token: 'tok', decision: 'accepted', expectedBudgetUsd: 5000 });
-    expect(res.status).toBe(200);
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.expectedBudgetUsd).toBe(5000);   // URL fallback applied
-    expect((seq.sends.find(s => s.slug === 'invoice-admin-pending')!.variables as Record<string, string>).BUDGET).toBe('$5,000');
+    rl.cooldown.mockResolvedValueOnce({ ok: false, retryAfterSec: 8 });
+    expect((await confirmReq({ token: 'tok', decision: 'accepted' })).status).toBe(429);
   });
 });
 
-describe('GET /api/quote/pending (admin pricing queue)', () => {
-  it('lists quotes awaiting pricing with title, budget, message + stage', async () => {
+describe('GET /api/quote/list — superadmin visibility', () => {
+  it('returns createdBy / source / price / currency + joined payment status + Stripe id', async () => {
+    store.invoices.set('invoices/quote_qPaid', { orgId: 'orgA', status: 'paid', paidAt: '2026-06-25T00:00:00.000Z', paymentSessionId: 'cs_123', paymentUrl: 'https://pay', amount: 15000 });
     runQuery.mockResolvedValueOnce([
-      { name: 'organizations/orgA/quotes/q9', fields: { customerEmail: 'c@x.com', stage: 'negotiation', priceMinUsd: 10000, priceMaxUsd: 20000, expectedBudgetUsd: 1500, discussionMessage: 'can we lower it?', decision: 'discussion', decidedAt: '2026-06-21T00:00:00.000Z', renderJson: JSON.stringify({ docTitle: 'Acme bot' }) } },
+      { name: 'organizations/orgA/quotes/qPaid', fields: { stage: 'invoice_sent', decision: 'accepted', customerEmail: 'b@x.com', createdBy: 'uid-9', source: 'audit', price: 15000, currency: 'usd', createdAt: '2026-06-19T00:00:00.000Z', decidedAt: '2026-06-22T00:00:00.000Z' } },
     ]);
-    const res = await quote.request('/api/quote/pending?orgId=orgA', { headers: H() }, ENV);
+    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);
     expect(res.status).toBe(200);
     const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
-    expect(quotes).toHaveLength(1);
-    expect(quotes[0].quoteId).toBe('q9');
-    expect(quotes[0].quoteTitle).toBe('Acme bot');
-    expect(quotes[0].expectedBudgetUsd).toBe(1500);
-    expect(quotes[0].message).toBe('can we lower it?');
-    expect(quotes[0].stage).toBe('negotiation');
-    expect(quotes[0].rangeMinUsd).toBe(10000);
+    const q = quotes[0];
+    expect(q.createdBy).toBe('uid-9');
+    expect(q.source).toBe('audit');
+    expect(q.price).toBe(15000);
+    expect(q.currency).toBe('usd');
+    expect(q.paymentStatus).toBe('paid');
+    expect(q.stripePaymentId).toBe('cs_123');
+    expect(q.paidAt).toBe('2026-06-25T00:00:00.000Z');
   });
 
-  it('returns an empty list when nothing awaits pricing', async () => {
-    runQuery.mockResolvedValueOnce([]);
-    const res = await quote.request('/api/quote/pending?orgId=orgA', { headers: H() }, ENV);
-    expect((await res.json() as { quotes: unknown[] }).quotes).toEqual([]);
-  });
-});
-
-describe('multi-admin notifications (PART 3)', () => {
-  it('notifies EVERY admin (ADMIN_EMAILS + ADMIN_EMAIL), de-duped + lower-cased', async () => {
-    const ENV2 = { ...ENV, ADMIN_EMAILS: 'A@x.com, b@x.com, admin@x.com' } as unknown as Record<string, unknown>;
-    await quote.request('/api/quote/q1/decision', { method: 'POST', headers: H(), body: JSON.stringify({ orgId: 'orgA', decision: 'accepted' }) }, ENV2);
-    const to = seq.sends.filter(s => s.slug === 'invoice-admin-pending').map(s => s.to);
-    expect(new Set(to)).toEqual(new Set(['a@x.com', 'b@x.com', 'admin@x.com']));  // admin@x.com (ADMIN_EMAIL) not doubled
-    expect(to.length).toBe(3);
-  });
-});
-
-describe('GET /api/quote/list (full-lifecycle tracking)', () => {
-  it('admin sees ALL quotes incl. drafts, newest-activity-first (ISSUE 2)', async () => {
+  it('derives price from a legacy expectedBudgetUsd when price is absent (back-compat)', async () => {
     runQuery.mockResolvedValueOnce([
-      { name: 'organizations/orgA/quotes/qSent', fields: { stage: 'sent', customerEmail: 'a@x.com', expectedBudgetUsd: 5000, priceMinUsd: 10000, priceMaxUsd: 20000, createdAt: '2026-06-20T00:00:00.000Z', sentAt: '2026-06-21T00:00:00.000Z', renderJson: JSON.stringify({ docTitle: 'Sent quote' }) } },
-      { name: 'organizations/orgA/quotes/qResp', fields: { stage: 'client_responded', decision: 'accepted', customerEmail: 'b@x.com', expectedBudgetUsd: 8000, createdAt: '2026-06-19T00:00:00.000Z', decidedAt: '2026-06-22T00:00:00.000Z' } },
-      { name: 'organizations/orgA/quotes/qDraft', fields: { status: 'generated', createdAt: '2026-06-18T00:00:00.000Z' } },  // no stage (draft) — admin still sees it
+      { name: 'organizations/orgA/quotes/qOld', fields: { stage: 'sent', expectedBudgetUsd: 8000, priceMinUsd: 5000, createdAt: '2026-06-19T00:00:00.000Z' } },
     ]);
-    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);  // owner → full visibility
-    expect(res.status).toBe(200);
+    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);
     const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
-    expect(quotes.map(q => q.quoteId)).toEqual(['qResp', 'qSent', 'qDraft']);   // draft included; newest activity first
-    expect(quotes[0].stage).toBe('client_responded');
-    expect(quotes[1].quoteTitle).toBe('Sent quote');
-    // Regression guard — the proposed budget field must always be mapped through (a
-    // budget-bearing quote returns its integer USD; an empty one returns null, never dropped).
-    expect(quotes[0].expectedBudgetUsd).toBe(8000);
-    expect(quotes[1].expectedBudgetUsd).toBe(5000);
-    expect(quotes[2].expectedBudgetUsd).toBeNull();   // legacy/no-budget quote → null (UI shows —)
+    expect(quotes[0].price).toBe(8000);
   });
 
-  it('?mine=1 returns only the caller\'s own staged quotes (drafts + others hidden)', async () => {
+  it('?mine=1 returns only the caller\'s own staged quotes', async () => {
     runQuery.mockResolvedValueOnce([
-      { name: 'organizations/orgA/quotes/qMine', fields: { stage: 'sent', createdBy: 'uid-1', createdAt: '2026-06-20T00:00:00.000Z', sentAt: '2026-06-21T00:00:00.000Z' } },
-      { name: 'organizations/orgA/quotes/qMineDraft', fields: { createdBy: 'uid-1', createdAt: '2026-06-19T00:00:00.000Z' } },  // own but no stage → hidden
-      { name: 'organizations/orgA/quotes/qOther', fields: { stage: 'sent', createdBy: 'uid-2', createdAt: '2026-06-18T00:00:00.000Z' } },  // not mine → hidden
+      { name: 'organizations/orgA/quotes/qMine', fields: { stage: 'sent', createdBy: 'uid-1', createdAt: '2026-06-20T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qOther', fields: { stage: 'sent', createdBy: 'uid-2', createdAt: '2026-06-18T00:00:00.000Z' } },
     ]);
     const res = await quote.request('/api/quote/list?orgId=orgA&mine=1', { headers: H() }, ENV);
     const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
     expect(quotes.map(q => q.quoteId)).toEqual(['qMine']);
   });
 
-  it('admin-all returns quotes in EVERY governance state — blocked + suspended never hidden', async () => {
-    runQuery.mockResolvedValueOnce([
-      { name: 'organizations/orgA/quotes/qActive', fields: { stage: 'sent', createdBy: 'uid-2', createdAt: '2026-06-22T00:00:00.000Z' } },
-      { name: 'organizations/orgA/quotes/qBlocked', fields: { stage: 'negotiation', adminState: 'blocked', createdBy: 'uid-3', createdAt: '2026-06-21T00:00:00.000Z' } },
-      { name: 'organizations/orgA/quotes/qSuspended', fields: { stage: 'finalized', adminState: 'suspended', createdBy: 'uid-4', createdAt: '2026-06-20T00:00:00.000Z' } },
-      { name: 'organizations/orgA/quotes/qDraft', fields: { createdBy: 'uid-5', createdAt: '2026-06-19T00:00:00.000Z' } },  // draft, no stage
-    ]);
-    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);  // role=owner (default)
-    const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
-    expect(quotes.map(q => q.quoteId).sort()).toEqual(['qActive', 'qBlocked', 'qDraft', 'qSuspended']);
-    expect(quotes.find(q => q.quoteId === 'qBlocked')!.adminState).toBe('blocked');
-    expect(quotes.find(q => q.quoteId === 'qSuspended')!.adminState).toBe('suspended');
-  });
-
-  it('a SUPER-ADMIN whose org role is "member" still sees ALL org quotes (not just own)', async () => {
+  it('a super-admin whose org role is "member" still sees ALL org quotes', async () => {
     const ENV2 = { ...ENV, ADMIN_EMAILS: 'super@x.com' };
     runQuery.mockResolvedValueOnce([
-      { name: 'organizations/orgA/quotes/qOthers', fields: { stage: 'sent', createdBy: 'someone-else', createdAt: '2026-06-22T00:00:00.000Z' } },
-      { name: 'organizations/orgA/quotes/qMoreOthers', fields: { stage: 'negotiation', createdBy: 'uid-9', createdAt: '2026-06-21T00:00:00.000Z' } },
+      { name: 'organizations/orgA/quotes/qA', fields: { stage: 'sent', createdBy: 'someone', createdAt: '2026-06-22T00:00:00.000Z' } },
     ]);
-    const res = await quote.request('/api/quote/list?orgId=orgA',
-      { headers: { ...H('uid-1', 'super@x.com'), 'x-test-role': 'member' } }, ENV2);
+    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: { ...H('uid-1', 'super@x.com'), 'x-test-role': 'member' } }, ENV2);
     const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
-    expect(quotes.map(q => q.quoteId).sort()).toEqual(['qMoreOthers', 'qOthers']);  // full visibility despite member role
-  });
-
-  it('a plain MEMBER (not a super-admin) sees only their OWN staged quotes', async () => {
-    runQuery.mockResolvedValueOnce([
-      { name: 'organizations/orgA/quotes/qMine', fields: { stage: 'sent', createdBy: 'uid-1', createdAt: '2026-06-22T00:00:00.000Z' } },
-      { name: 'organizations/orgA/quotes/qOther', fields: { stage: 'sent', createdBy: 'uid-9', createdAt: '2026-06-21T00:00:00.000Z' } },
-    ]);
-    const res = await quote.request('/api/quote/list?orgId=orgA',
-      { headers: { ...H('uid-1', 'plain@x.com'), 'x-test-role': 'member' } }, ENV);  // not in ADMIN_EMAILS
-    const { quotes } = await res.json() as { quotes: Array<Record<string, unknown>> };
-    expect(quotes.map(q => q.quoteId)).toEqual(['qMine']);
-  });
-
-  it('returns an empty list when the org has no quotes', async () => {
-    runQuery.mockResolvedValueOnce([]);
-    const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);
-    expect((await res.json() as { quotes: unknown[] }).quotes).toEqual([]);
+    expect(quotes.map(q => q.quoteId)).toEqual(['qA']);
   });
 });
 
-describe('PATCH /api/quote/:id (admin governance — ISSUE 3)', () => {
+describe('multi-admin notifications', () => {
+  it('a blocked accept notifies EVERY admin (ADMIN_EMAILS + ADMIN_EMAIL), de-duped', async () => {
+    store.stored!.price = 15000; store.stored!.adminState = 'blocked';
+    const ENV2 = { ...ENV, ADMIN_EMAILS: 'A@x.com, b@x.com, admin@x.com' } as unknown as Record<string, unknown>;
+    await quote.request('/api/quote/q1/decision', { method: 'POST', headers: H(), body: JSON.stringify({ orgId: 'orgA', decision: 'accepted' }) }, ENV2);
+    const to = seq.sends.filter(s => s.slug === 'invoice-admin-pending').map(s => s.to);
+    expect(new Set(to)).toEqual(new Set(['a@x.com', 'b@x.com', 'admin@x.com']));
+    expect(to.length).toBe(3);
+  });
+});
+
+describe('PATCH /api/quote/:id — governance only (no price/budget edit)', () => {
   const patch = (id: string, body: unknown) =>
     quote.request(`/api/quote/${id}`, { method: 'PATCH', headers: H(), body: JSON.stringify(body) }, ENV);
 
   it('blocks then re-activates a quote (adminState flag)', async () => {
     expect((await patch('q1', { orgId: 'orgA', adminState: 'blocked' })).status).toBe(200);
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.adminState).toBe('blocked');
+    expect(store.writes.get(qDoc)!.adminState).toBe('blocked');
     expect((await patch('q1', { orgId: 'orgA', adminState: 'active' })).status).toBe(200);
-    expect(store.writes.get('organizations/orgA/quotes/q1')!.adminState).toBeNull();   // 'active' clears it
+    expect(store.writes.get(qDoc)!.adminState).toBeNull();
   });
 
-  it('edits the proposed budget and syncs the render', async () => {
+  it('a budget-only PATCH is rejected (no fields) — price cannot be edited', async () => {
     const res = await patch('q1', { orgId: 'orgA', expectedBudgetUsd: 7000 });
-    expect(res.status).toBe(200);
-    const w = store.writes.get('organizations/orgA/quotes/q1')!;
-    expect(w.expectedBudgetUsd).toBe(7000);
-    expect(JSON.parse(String(w.renderJson)).negBudget).toBe('$7,000');
+    expect(res.status).toBe(400);
+    expect((await res.json() as { code: string }).code).toBe('NO_FIELDS');
   });
 
   it('rejects an invalid state (400) and 404 for an unknown quote', async () => {

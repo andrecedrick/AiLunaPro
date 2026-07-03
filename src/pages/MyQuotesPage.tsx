@@ -96,22 +96,21 @@ export function MyQuotesPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{title(q)}</div>
                     {q.customerEmail && <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 2 }}>{q.customerEmail}</div>}
-                    {q.expectedBudgetUsd != null && (
+                    {q.price != null && (
                       <div style={{ marginTop: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-muted)' }}>
                         {M.proposedBudget}
-                        <span style={{ display: 'block', fontSize: 18, fontWeight: 800, textTransform: 'none', letterSpacing: 0, color: 'var(--violet-text)', marginTop: 1 }}>{money.format(q.expectedBudgetUsd)}</span>
+                        <span style={{ display: 'block', fontSize: 18, fontWeight: 800, textTransform: 'none', letterSpacing: 0, color: 'var(--violet-text)', marginTop: 1 }}>{money.format(q.price)}</span>
                       </div>
                     )}
                   </div>
                   <span style={{ flex: '0 0 auto', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: pillColor[lc], background: 'rgba(124,58,237,0.08)', borderRadius: 999, padding: '4px 11px' }}>{statusLabel[lc]}</span>
                 </div>
 
-                {/* Negotiation: the client's message + a clear sender next-step. */}
+                {/* Legacy negotiation quotes (fixed-price model has no negotiation). */}
                 {lc === 'negotiation' && (
                   <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--amber-soft-bg, #fef3c7)', border: '1px solid #f59e0b' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#b45309', marginBottom: q.message ? 4 : 0 }}>💬 {M.changesRequested}</div>
-                    {q.message && <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>“{q.message}”</div>}
-                    <div style={{ marginTop: q.message ? 6 : 4, fontSize: 12, color: '#b45309' }}>→ {M.negotiationNextStep}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#b45309' }}>💬 {M.changesRequested}</div>
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#b45309' }}>→ {M.negotiationNextStep}</div>
                   </div>
                 )}
                 {lc === 'sent' && (

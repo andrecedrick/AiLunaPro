@@ -26,8 +26,7 @@ const invoices = new Hono<AppEnv>();
 
 type RoleList = Parameters<typeof requireRole>[0];
 const INVOICE_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
-const CONFIRM_ROLES: RoleList = ['owner', 'admin']; // confirming + sending is admin-only
-const AMOUNT_MAX = 10_000_000;
+const CONFIRM_ROLES: RoleList = ['owner', 'admin']; // re-sending is admin-only
 
 const QUOTE_DOC = (orgId: string, quoteId: string) => `organizations/${orgId}/quotes/${quoteId}`;
 
@@ -217,13 +216,11 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
   return c.json({ ok: true, invoices: items });
 });
 
-/* ── POST /api/invoices/:id/confirm — admin re-amounts + re-sends an invoice ────
+/* ── POST /api/invoices/:id/confirm — admin RE-SENDS an invoice (no re-amount) ──
  *
- * Owner/admin only. Operates on an EXISTING invoice (created by finalise): updates
- * the amount → pending and re-sends the invoice-client email (e.g. when the first
- * send failed, or the amount needs correcting). It also still upgrades any legacy
- * 'draft' invoice to pending. NO Stripe execution: the payment link is a placeholder
- * (bank transfer is the live method). A paid invoice is final, never re-amounted.
+ * Owner/admin only. Fixed-price model: the invoice amount is immutable (= quote.price),
+ * so this ONLY re-sends the invoice-client email and reuses the existing Stripe link
+ * (creates one if missing). No amount input, no re-amount. A paid invoice is final.
  * Cross-org guard: the invoice must belong to the caller's membership-verified org.
  */
 invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_ROLES), async c => {
@@ -236,90 +233,26 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   const id = (c.req.param('id') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
   if (!id) return c.json({ error: 'Invalid invoice id.', code: 'INVALID_ID' }, 400);
 
-  let body: { amount?: unknown };
-  try { body = await c.req.json() as { amount?: unknown }; }
-  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
-
-  const amount = typeof body.amount === 'number' ? Math.round(body.amount) : NaN;
-  if (!Number.isFinite(amount) || amount <= 0 || amount > AMOUNT_MAX) {
-    return c.json({ error: 'A valid amount is required.', code: 'INVALID_AMOUNT' }, 400);
-  }
-
   const invPath = `invoices/${id}`;
   const inv = await firestoreGet(saJson, invPath) as Record<string, unknown> | null;
   if (!inv) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
   // Cross-org guard: an admin of org A must not touch org B's invoice.
   if (inv.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
-  // A paid invoice is final — never re-amount or re-send. Draft OR pending can be
-  // (re)confirmed: draft = first confirm; pending = an explicit admin re-send with a
-  // possibly-updated amount (admin-initiated via a button, so not an accidental dup).
-  if (inv.status === 'paid') {
-    return c.json({ ok: true, status: 'paid', alreadyConfirmed: true });
-  }
+  if (inv.status === 'paid') return c.json({ ok: true, status: 'paid', alreadyConfirmed: true });
 
-  // Persist amount + pending. NO Stripe execution: the payment link is a
-  // placeholder (app invoices page) until Stripe Checkout is wired.
-  await firestoreSet(saJson, invPath, {
-    amount, status: 'pending', confirmedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-  }, { merge: true });
+  const amount = typeof inv.amount === 'number' ? inv.amount : NaN;
+  if (!Number.isFinite(amount) || amount <= 0) return c.json({ error: 'Invoice has no amount.', code: 'NO_AMOUNT' }, 409);
 
-  // Send the invoice to the customer (best-effort, non-fatal).
+  // Re-send at the LOCKED amount; reuse the existing Stripe link (never re-amount).
   const appBase  = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
   const project  = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
     : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
   const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
-  // Re-amount may change the total → mint a fresh payment link for the new amount and
-  // void the old one (so the client can't pay a stale total).
-  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, prevSessionId: typeof inv.paymentSessionId === 'string' ? inv.paymentSessionId : undefined });
+  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined });
   const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, appBase, paymentUrl });
-  dlog(env, '[invoices] confirmed (re-send)', id, 'emailed=', emailed, 'payLink=', !!paymentUrl);
+  dlog(env, '[invoices] re-sent', id, 'emailed=', emailed, 'payLink=', !!paymentUrl);
 
-  return c.json({ ok: true, status: 'pending', amount, emailed, paymentUrl: paymentUrl ?? null, ...(emailError ? { emailError } : {}) });
-});
-
-/* ── POST /api/invoices/finalize — admin sets the final amount → the invoice is born ──
- *
- * Owner/admin only. STEP 4 of the workflow: the admin confirms the final amount for
- * an accepted/negotiating quote. This is the ONLY place an invoice is created (status
- * 'pending') — no invoice exists before this point (FIX 1). The client invoice email
- * is sent and the quote advances to stage 'finalized' → 'invoice_sent'. Idempotent:
- * a quote whose invoice already exists is returned unchanged, never recreated.
- * Cross-org safe — orgId is the membership-verified org from requireRole.
- */
-invoices.post('/api/invoices/finalize', requireAuth(), requireRole(CONFIRM_ROLES), async c => {
-  c.header('Cache-Control', 'no-store');
-  const env = c.env as AppEnv['Bindings'];
-  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
-
-  const orgId = c.get('orgId') as string; // membership-verified
-  let body: { quoteId?: unknown; amount?: unknown };
-  try { body = await c.req.json() as { quoteId?: unknown; amount?: unknown }; }
-  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
-
-  const quoteId = typeof body.quoteId === 'string' ? body.quoteId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80) : '';
-  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
-  const amount = typeof body.amount === 'number' ? Math.round(body.amount) : NaN;
-  if (!Number.isFinite(amount) || amount <= 0 || amount > AMOUNT_MAX) {
-    return c.json({ error: 'A valid amount is required.', code: 'INVALID_AMOUNT' }, 400);
-  }
-
-  const quote = await firestoreGet(saJson, QUOTE_DOC(orgId, quoteId)) as Record<string, unknown> | null;
-  if (!quote) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
-  // Governance guard (ISSUE 3): a blocked/suspended quote cannot be invoiced.
-  if (quote.adminState === 'blocked' || quote.adminState === 'suspended') {
-    return c.json({ error: 'This quote is blocked or suspended.', code: 'QUOTE_BLOCKED' }, 409);
-  }
-
-  // Defense-in-depth: an existing invoice for this quote must belong to the caller's org.
-  const existing0 = await firestoreGet(saJson, `invoices/quote_${quoteId}`) as Record<string, unknown> | null;
-  if (existing0 && existing0.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
-
-  const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  const r = await finalizeQuoteInvoice(env, saJson, { orgId, quoteId, quote, amount, appBase });
-  if (r.alreadyFinalized) return c.json({ ok: true, status: r.status, invoiceId: r.invoiceId, alreadyFinalized: true });
-  dlog(env, '[invoices] finalized', quoteId, 'emailed=', r.emailed, 'payLink=', !!r.paymentUrl);
-  return c.json({ ok: true, status: 'pending', amount: r.amount, emailed: r.emailed, invoiceId: r.invoiceId, paymentUrl: r.paymentUrl ?? null, ...(r.emailError ? { emailError: r.emailError } : {}) });
+  return c.json({ ok: true, status: typeof inv.status === 'string' ? inv.status : 'pending', amount, emailed, paymentUrl: paymentUrl ?? null, ...(emailError ? { emailError } : {}) });
 });
 
 /* ── POST /api/invoices/:id/payment-link — get/create the Stripe payment link ──

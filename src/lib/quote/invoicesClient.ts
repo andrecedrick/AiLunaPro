@@ -1,7 +1,7 @@
 /**
- * Invoices client — read-only list for the quote → accept → invoice flow.
+ * Invoices client — read-only list for the quote → accept → pay flow.
  * Calls the auth-gated, org-scoped worker route with the Firebase ID token.
- * No payment, no Stripe — display only.
+ * Fixed-price model: no admin pricing/finalize — display + governance + re-send only.
  */
 
 import { WORKER_BASE } from '../billing/stripeClient';
@@ -16,47 +16,41 @@ export interface InvoiceItem {
   currency:      string;
   rangeMinUsd:   number | null;
   rangeMaxUsd:   number | null;
-  expectedBudgetUsd?: number | null;
   status:        string;
   paymentUrl?:   string | null;
   createdAt:     string;
 }
 
-/** A quote a client has responded to, awaiting the admin's final amount (no invoice yet). */
-export interface PendingQuote {
-  quoteId:           string;
-  quoteTitle:        string;
-  customerEmail:     string;
-  rangeMinUsd:       number | null;
-  rangeMaxUsd:       number | null;
-  expectedBudgetUsd: number | null;
-  message:           string;
-  stage:             string;   // 'client_responded' | 'negotiation'
-  decision:          string;   // 'accepted' | 'discussion'
-  decidedAt:         string;
-}
-
-/** A quote at any lifecycle stage — full-visibility tracking (sender + admin). */
+/** A quote at any lifecycle stage — full-visibility tracking (sender + superadmin). */
 export interface QuoteListItem {
   quoteId:           string;
   quoteTitle:        string;
   customerEmail:     string;
-  rangeMinUsd:       number | null;
+  createdBy:         string;        // client/sender uid (superadmin visibility)
+  orgId:             string;
+  source:            string;        // audit / dashboard / …
+  price:             number | null; // the single LOCKED price (USD)
+  currency:          string;
+  rangeMinUsd:       number | null; // the estimate range (informational)
   rangeMaxUsd:       number | null;
-  expectedBudgetUsd: number | null;
-  message:           string;
-  stage:             string;   // 'sent' | 'client_responded' | 'negotiation' | 'finalized' | 'invoice_sent'
-  status:            string;   // raw quote.status (generated/overridden/accepted/discussion)
+  stage:             string;   // 'sent' | 'client_responded' | 'finalized' | 'invoice_sent'
+  status:            string;
   adminState:        string;   // 'blocked' | 'suspended' | '' (admin governance)
-  decision:          string;   // 'accepted' | 'discussion' | ''
+  decision:          string;   // 'accepted' | ''
   createdAt:         string;
   sentAt:            string;
-  decidedAt:         string;
+  decidedAt:         string;   // accepted-at
   updatedAt:         string;
+  // Payment (superadmin, joined from the invoice; blank until accepted/invoiced).
+  paymentStatus:     string;   // 'pending' | 'paid' | ''
+  paidAt:            string;
+  stripePaymentId:   string;   // Stripe Checkout session id
+  paymentUrl:        string;
+  invoiceAmount:     number | null;
 }
 
 /** List the org's quotes. `mine` → only the caller's own (for /my-quotes); otherwise
- *  owner/admin get full org visibility (incl. drafts), server-enforced. Throws on non-OK. */
+ *  owner/admin/superadmin get full org visibility (incl. drafts), server-enforced. */
 export async function listAllQuotes(orgId: string, opts?: { mine?: boolean }): Promise<QuoteListItem[]> {
   const idToken = await getIdToken();
   const q = `orgId=${encodeURIComponent(orgId)}${opts?.mine ? '&mine=1' : ''}`;
@@ -68,11 +62,11 @@ export async function listAllQuotes(orgId: string, opts?: { mine?: boolean }): P
   return j?.quotes ?? [];
 }
 
-/** Admin: edit a quote (budget / message) or govern it (block / suspend / re-activate).
- *  Owner/admin + org-scoped, server-enforced. Throws on non-OK. */
+/** Admin GOVERNANCE only: block / suspend / re-activate a quote. Fixed-price — there is
+ *  no price/budget/message edit. Owner/admin + org-scoped, server-enforced. */
 export async function patchQuote(
   orgId: string, quoteId: string,
-  input: { adminState?: 'blocked' | 'suspended' | 'active'; expectedBudgetUsd?: number; message?: string },
+  input: { adminState: 'blocked' | 'suspended' | 'active' },
 ): Promise<void> {
   const idToken = await getIdToken();
   // orgId goes in the QUERY string: requireRole only clones the body for POST, so a
@@ -85,7 +79,7 @@ export async function patchQuote(
   if (!res.ok) throw new Error(`HTTP_${res.status}`);
 }
 
-/** Admin: get/create the Stripe payment link for an invoice (ISSUE 6). Throws
+/** Admin: get/create the Stripe payment link for an invoice. Throws
  *  QuoteGenError('PAYMENT_UNAVAILABLE') when Stripe is not configured (→ bank transfer). */
 export async function createInvoicePaymentLink(orgId: string, invoiceId: string): Promise<{ paymentUrl: string | null; status?: string }> {
   const idToken = await getIdToken();
@@ -99,39 +93,6 @@ export async function createInvoicePaymentLink(orgId: string, invoiceId: string)
   return { paymentUrl: j?.paymentUrl ?? null, status: j?.status };
 }
 
-/** The finalize-amount prefill: default to the client's PROPOSED BUDGET (so the invoice
- *  matches the budget), then the estimate range ceiling, else blank. USD integer. */
-export function prefillFinalizeAmount(q: { expectedBudgetUsd: number | null; rangeMaxUsd: number | null }): string {
-  if (q.expectedBudgetUsd != null && q.expectedBudgetUsd > 0) return String(q.expectedBudgetUsd);
-  if (q.rangeMaxUsd != null) return String(q.rangeMaxUsd);
-  return '';
-}
-
-/** Admin: list quotes awaiting the final amount (the pricing queue). Throws on non-OK. */
-export async function listPendingQuotes(orgId: string): Promise<PendingQuote[]> {
-  const idToken = await getIdToken();
-  const res = await fetch(`${WORKER_BASE}/api/quote/pending?orgId=${encodeURIComponent(orgId)}`, {
-    headers: { Authorization: `Bearer ${idToken}` },
-  });
-  if (!res.ok) throw new Error(`HTTP_${res.status}`);
-  const j = await res.json().catch(() => null) as { quotes?: PendingQuote[] } | null;
-  return j?.quotes ?? [];
-}
-
-/** Admin: confirm the final amount for a quote → creates the invoice + sends it to
- *  the client (STEP 4). The ONLY place an invoice is created. Throws on non-OK. */
-export async function finalizeQuote(orgId: string, quoteId: string, amount: number): Promise<{ status: string; emailed: boolean }> {
-  const idToken = await getIdToken();
-  const res = await fetch(`${WORKER_BASE}/api/invoices/finalize`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ orgId, quoteId, amount }),
-  });
-  if (!res.ok) throw new Error(`HTTP_${res.status}`);
-  const j = await res.json().catch(() => null) as { status?: string; emailed?: boolean } | null;
-  return { status: j?.status ?? 'pending', emailed: j?.emailed === true };
-}
-
 /** List the org's invoices (newest first). Throws on a non-OK response. */
 export async function listInvoices(orgId: string): Promise<InvoiceItem[]> {
   const idToken = await getIdToken();
@@ -143,14 +104,14 @@ export async function listInvoices(orgId: string): Promise<InvoiceItem[]> {
   return j?.invoices ?? [];
 }
 
-/** Admin: confirm the final amount and send the invoice (draft → pending).
- *  No Stripe execution yet. Throws on a non-OK response. */
-export async function confirmInvoice(orgId: string, id: string, amount: number): Promise<{ status: string; emailed: boolean }> {
+/** Admin: RE-SEND an invoice to the client (fixed amount = quote.price, immutable).
+ *  No amount input, no re-amount. Throws on a non-OK response. */
+export async function resendInvoice(orgId: string, id: string): Promise<{ status: string; emailed: boolean }> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/invoices/${encodeURIComponent(id)}/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ orgId, amount }),
+    body: JSON.stringify({ orgId }),
   });
   if (!res.ok) throw new Error(`HTTP_${res.status}`);
   const j = await res.json().catch(() => null) as { status?: string; emailed?: boolean } | null;

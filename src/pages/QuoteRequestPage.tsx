@@ -340,10 +340,13 @@ export function QuoteRequestPage() {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     const budgetNum = Number(budgetInput);
     const validBudget = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum > 0;
+    const expectedBudgetUsd = validBudget ? Math.round(convertToUsd(budgetNum, money.currency)) : 0;
+    // Fixed-price model: this budget IS the final locked price, so it must be at least
+    // the estimate minimum (a below-min budget is rejected, not silently raised).
+    const belowMin = validBudget && expectedBudgetUsd < preview.priceMinUsd;
     setEmailError(emailOk ? null : Q.send.emailRequired);
-    setBudgetError(validBudget ? null : Q.decision.budgetRequired);
-    if (!emailOk || !validBudget) return;
-    const expectedBudgetUsd = Math.round(convertToUsd(budgetNum, money.currency));
+    setBudgetError(!validBudget ? Q.decision.budgetRequired : belowMin ? format(Q.send.budgetBelowMin, { min: money.format(preview.priceMinUsd) }) : null);
+    if (!emailOk || !validBudget || belowMin) return;
     setEmailState('sending');
     try {
       // ROI + decision merge variables for the email — formatted EXACTLY like the in-app

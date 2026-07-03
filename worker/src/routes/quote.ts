@@ -26,6 +26,7 @@ import { requireRole } from '../middleware/requireRole';
 import {
   validateInputs,
   scoreQuote,
+  quotePrice,
   type QuoteInputs,
   type QuoteCategory,
   type QuoteTier,
@@ -37,7 +38,6 @@ import { sendTransactional } from '../lib/sequenzy';
 import { sanitizeQuoteRoiVars, sanitizeEmailVar } from '../lib/quote-email-vars';
 import { finalizeQuoteInvoice } from './invoices';
 import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
-import { sanitizeText } from '../lib/support-shared';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { adminRecipients, isSuperAdmin } from '../lib/platformAdmin';
 import type { AppEnv } from '../index';
@@ -324,74 +324,10 @@ quote.post('/api/quote/pdf', requireAuth(), requireRole(GEN_ROLES), async c => {
   });
 });
 
-/* ── POST /api/quote/:quoteId/override — admin manual price adjustment ──────
- *
- * Owner/admin only. Records an override (min/max USD) + justification while
- * PRESERVING the original computed price + estimate. Keeps the persisted render
- * payload consistent so the email/shared PDF reflects the adjusted price.
- */
-
+// Shared admin roles + the max price bound (used by send + PATCH governance).
+// Fixed-price model: there is NO admin price override — the price is locked at send.
 const OVERRIDE_ROLES: RoleList = ['owner', 'admin'];
 const PRICE_MAX = 100_000_000;
-
-interface OverrideBody { orgId?: unknown; minUsd?: unknown; maxUsd?: unknown; reason?: unknown }
-
-quote.post('/api/quote/:quoteId/override', requireAuth(), requireRole(OVERRIDE_ROLES), async c => {
-  c.header('Cache-Control', 'no-store');
-  const env = c.env as AppEnv['Bindings'];
-  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
-
-  const orgId = c.get('orgId') as string;
-  const uid   = c.get('uid') as string;
-  const quoteId = safeId(c.req.param('quoteId'));
-  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
-
-  let body: OverrideBody;
-  try { body = (await c.req.json()) as OverrideBody; }
-  catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
-
-  const min = typeof body.minUsd === 'number' ? body.minUsd : NaN;
-  const max = typeof body.maxUsd === 'number' ? body.maxUsd : NaN;
-  if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < 0 || min > PRICE_MAX || max > PRICE_MAX) {
-    return c.json({ error: 'min/max must be valid USD amounts.', code: 'INVALID_PRICE' }, 400);
-  }
-  if (min > max) return c.json({ error: 'min must be <= max.', code: 'INVALID_PRICE_ORDER' }, 400);
-  const reason = sanitizeDescription(body.reason).slice(0, 500);
-  if (reason.length < 3) return c.json({ error: 'A justification is required.', code: 'INVALID_REASON' }, 400);
-
-  const path = `${COLLECTION(orgId)}/${quoteId}`;
-  const stored = await firestoreGet(saJson, path);
-  if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
-
-  const overrideMinUsd = Math.round(min);
-  const overrideMaxUsd = Math.round(max);
-
-  const patch: Record<string, string | number> = {
-    overrideMinUsd,
-    overrideMaxUsd,
-    overrideReason: reason,
-    overriddenBy:   uid,
-    overriddenAt:   new Date().toISOString(),
-    status:         'overridden',
-    updatedAt:      new Date().toISOString(),
-  };
-
-  // Keep the persisted render (used by the email/shared PDF) consistent with the
-  // override so a regenerated document shows the adjusted price (USD).
-  if (typeof stored.renderJson === 'string') {
-    try {
-      const r = JSON.parse(stored.renderJson) as QuotePdfInput;
-      r.rangeText = formatUsdRange(overrideMinUsd, overrideMaxUsd);
-      r.negAdjusted = formatUsdRange(overrideMinUsd, overrideMaxUsd);
-      patch.renderJson = JSON.stringify(r);
-    } catch { /* leave renderJson as-is */ }
-  }
-
-  await firestoreSet(saJson, path, patch, { merge: true });
-  // Original price preserved: priceMinUsd/priceMaxUsd + estimateJson are untouched.
-  return c.json({ quoteId, overrideMinUsd, overrideMaxUsd, status: 'overridden' });
-});
 
 /* ── POST /api/quote/email — send the quote as a tokenized PDF link ─────────
  *
@@ -402,9 +338,6 @@ quote.post('/api/quote/:quoteId/override', requireAuth(), requireRole(OVERRIDE_R
  */
 
 const EMAIL_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
-const PRICING_ROLES: RoleList = ['owner', 'admin']; // pricing queue + finalise are admin-only
-// Quote stages awaiting the admin's final amount (the pricing queue).
-const PENDING_STAGES = ['client_responded', 'negotiation'];
 // Terminal stages: the quote has been finalised / invoiced / paid, so a live
 // invoice exists downstream. A new accept/discuss decision here would regress
 // the stage back into the pricing queue and desync the invoice — it is locked
@@ -467,15 +400,32 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const quoteId = safeId(body.quoteId);
   if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
 
-  // Budget-first: the user's proposed budget (USD). Persisted now so the later
-  // token-gated email accept can notify the admin with this amount even though the
-  // public confirm carries no budget, and so the Accept/Discuss CTAs can deep-link it.
-  const emailBudget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
-  const hasEmailBudget = Number.isFinite(emailBudget) && emailBudget >= 0 && emailBudget <= PRICE_MAX;
-
   const path = `${COLLECTION(orgId)}/${quoteId}`;
   const stored = await firestoreGet(saJson, path);
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  // FIXED-PRICE MODEL — this send LOCKS the single price. The entered budget becomes
+  // the final price, floored at the estimate minimum (a below-min budget is rejected,
+  // not silently raised). Once locked, the price is immutable: a re-send with a
+  // different budget is refused (409). USD is the charge currency (Stripe/invoice).
+  const priceMin = typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : 0;
+  const providedBudget = typeof body.expectedBudgetUsd === 'number' && Number.isFinite(body.expectedBudgetUsd)
+    ? Math.round(body.expectedBudgetUsd) : null;
+  const lockedAlready = typeof stored.price === 'number' && Number.isFinite(stored.price);
+  let price: number;
+  if (lockedAlready) {
+    price = stored.price as number;
+    if (providedBudget !== null && providedBudget !== price) {
+      return c.json({ error: 'This quote price is locked and cannot be changed.', code: 'PRICE_LOCKED', priceUsd: price }, 409);
+    }
+  } else {
+    // Legacy mid-flight quotes may carry only expectedBudgetUsd; accept it as the base.
+    const base = providedBudget ?? (typeof stored.expectedBudgetUsd === 'number' && Number.isFinite(stored.expectedBudgetUsd) ? Math.round(stored.expectedBudgetUsd) : null);
+    if (base === null) return c.json({ error: 'A budget is required to send this proposal.', code: 'NO_BUDGET' }, 400);
+    if (base > PRICE_MAX) return c.json({ error: 'Budget is too large.', code: 'BUDGET_TOO_LARGE' }, 400);
+    if (base < priceMin) return c.json({ error: 'Budget is below the estimated minimum.', code: 'BUDGET_BELOW_MIN', minUsd: priceMin }, 400);
+    price = base;
+  }
 
   // Persist the recipient so a later token-gated email accept addresses the draft
   // invoice + client invoice email to the right person (the unauthenticated email
@@ -483,10 +433,12 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   // STEP 1 — the quote has been sent. A RE-SEND must NEVER regress the lifecycle: a
   // quote the client already responded to (or that's finalised) keeps its stage, so a
   // resend can't pull it out of the admin pricing queue. sentAt is set once.
-  const REACHED = ['client_responded', 'negotiation', 'finalized', 'invoice_sent'];
+  const REACHED = ['client_responded', 'finalized', 'invoice_sent'];
   const curStage = typeof stored.stage === 'string' ? stored.stage : '';
   const nextStage = REACHED.includes(curStage) ? curStage : 'sent';
-  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: nextStage, ...(typeof stored.sentAt === 'string' && stored.sentAt ? {} : { sentAt: new Date().toISOString() }), ...(hasEmailBudget ? { expectedBudgetUsd: Math.round(emailBudget) } : {}) }, { merge: true }); }
+  // Lock the single price (+ currency) here. expectedBudgetUsd is written to the same
+  // value for backward-compat reads of older clients only.
+  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: nextStage, price, currency: 'usd', expectedBudgetUsd: price, ...(typeof stored.sentAt === 'string' && stored.sentAt ? {} : { sentAt: new Date().toISOString() }) }, { merge: true }); }
   catch (err) { console.error('[quote] recipient persist failed:', err instanceof Error ? err.message : ''); }
 
   // Persist the render payload if supplied (so the shared link can regenerate it).
@@ -531,27 +483,23 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   // action in-UI). Deliberately NOT a mutate-on-GET link, so an email scanner
   // that prefetches the URL can never accidentally accept a proposal.
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  // Budget-first email: BUDGET is the PRIMARY field (the user's proposed amount,
-  // already localized in render.negBudget; USD fallback if missing). The Accept/
-  // Discuss CTAs carry the budget so the in-app confirm page shows it too.
-  const budgetSuffix = hasEmailBudget ? `&budgetUsd=${Math.round(emailBudget)}` : '';
-  const budgetDisplay = (render.negBudget && render.negBudget.trim())
-    ? render.negBudget
-    : (hasEmailBudget ? `$${Math.round(emailBudget).toLocaleString('en-US')}` : '');
+  // Fixed-price email: BUDGET is the single locked price (USD — the exact amount the
+  // invoice + Stripe will charge, so the number is identical everywhere). The Accept
+  // CTA carries it so the in-app confirm + status pages show the same figure.
+  const budgetSuffix = `&budgetUsd=${price}`;
+  const budgetDisplay = `$${price.toLocaleString('en-US')}`;
   // Every CLIENT-derived display string is sanitized (strip <>{}, cap, em-dash
   // fallback) so a sender can't inject HTML or a nested {{VAR}} into their client's
   // mail. URLs are server-generated (signed token + encoded quoteId) and are NOT
   // sanitized — the length cap would break them; they carry no client markup.
+  // Fixed-price email: ONE price (BUDGET), Accept only. No range, no negotiation
+  // ("Request changes") button, no neg-* triplet — those inconsistent price sources
+  // are gone. All client-derived strings stay sanitized (S1 — no HTML/{{VAR}} inject).
   const variables: Record<string, string> = {
     QUOTE_TITLE:  sanitizeEmailVar(render.docTitle),
     ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email&t=${actionToken}&quoteId=${encodeURIComponent(quoteId)}${budgetSuffix}`,
-    DISCUSS_URL:  `${appBase}/#/quote/result?action=discuss&src=email&t=${actionToken}&quoteId=${encodeURIComponent(quoteId)}${budgetSuffix}`,
     SOLUTION:     sanitizeEmailVar(render.solutionLabel),
     BUDGET:       sanitizeEmailVar(budgetDisplay),
-    RANGE:        sanitizeEmailVar(render.rangeText),
-    NEG_INITIAL:  sanitizeEmailVar(render.negInitial),
-    NEG_BUDGET:   sanitizeEmailVar(render.negBudget),
-    NEG_ADJUSTED: sanitizeEmailVar(render.negAdjusted),
     PDF_URL:      pdfUrl,
     // ROI + decision figures (client formats them exactly like the in-app blocks;
     // sanitized + always-present here → no raw {{VAR}} and no null in the email).
@@ -635,60 +583,6 @@ quote.get('/api/quote/shared/:token', async c => {
   });
 });
 
-/* ── GET /api/quote/pending — admin pricing queue ──────────────────────────
- *
- * Owner/admin only. Lists the org's quotes that a client has responded to
- * (stage 'client_responded' or 'negotiation') and that await the admin's final
- * amount — i.e. before any invoice exists. The admin sets the amount here, which
- * creates the invoice (POST /api/invoices/finalize). Single-field IN filter → no
- * composite index. Worker-only (quotes are not client-readable).
- */
-quote.get('/api/quote/pending', requireAuth(), requireRole(PRICING_ROLES), async c => {
-  c.header('Cache-Control', 'no-store');
-  const env = c.env as AppEnv['Bindings'];
-  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
-
-  const orgId = c.get('orgId') as string; // membership-verified by requireRole
-
-  let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
-  try {
-    rows = await firestoreRunQuery(saJson, {
-      from:  [{ collectionId: 'quotes' }],
-      where: { fieldFilter: { field: { fieldPath: 'stage' }, op: 'IN', value: { arrayValue: { values: PENDING_STAGES.map(s => ({ stringValue: s })) } } } },
-      limit: 200,
-    }, `organizations/${orgId}`);
-  } catch (err) {
-    console.error('[quote] pending query failed:', err instanceof Error ? err.message : '');
-    return c.json({ error: 'Could not load pending quotes.', code: 'QUERY_FAILED' }, 500);
-  }
-
-  const quotes = rows.map(r => {
-    const f = r.fields as Record<string, unknown>;
-    const rangeMinUsd = typeof f.overrideMinUsd === 'number' ? f.overrideMinUsd : typeof f.priceMinUsd === 'number' ? f.priceMinUsd : null;
-    const rangeMaxUsd = typeof f.overrideMaxUsd === 'number' ? f.overrideMaxUsd : typeof f.priceMaxUsd === 'number' ? f.priceMaxUsd : null;
-    let quoteTitle = '';
-    if (typeof f.renderJson === 'string') {
-      try { const rj = JSON.parse(f.renderJson) as Record<string, unknown>; if (typeof rj.docTitle === 'string') quoteTitle = rj.docTitle; } catch { /* ignore */ }
-    }
-    return {
-      quoteId:           r.name.split('/').pop() ?? '',
-      quoteTitle,
-      customerEmail:     typeof f.customerEmail === 'string' ? f.customerEmail : '',
-      rangeMinUsd, rangeMaxUsd,
-      expectedBudgetUsd: typeof f.expectedBudgetUsd === 'number' ? f.expectedBudgetUsd : null,
-      message:           typeof f.discussionMessage === 'string' ? f.discussionMessage : '',
-      stage:             typeof f.stage === 'string' ? f.stage : '',
-      decision:          typeof f.decision === 'string' ? f.decision : '',
-      decidedAt:         typeof f.decidedAt === 'string' ? f.decidedAt : '',
-    };
-  });
-  // Newest response first.
-  quotes.sort((a, b) => (a.decidedAt < b.decidedAt ? 1 : a.decidedAt > b.decidedAt ? -1 : 0));
-
-  return c.json({ ok: true, quotes });
-});
-
 /* ── GET /api/quote/list — full-lifecycle quote tracking (sender + admin) ───
  *
  * Member+ roles, org-scoped (parent-path query, no stage filter → no composite index).
@@ -741,8 +635,8 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
     })
     .map(r => {
       const f = r.fields as Record<string, unknown>;
-      const rangeMinUsd = typeof f.overrideMinUsd === 'number' ? f.overrideMinUsd : typeof f.priceMinUsd === 'number' ? f.priceMinUsd : null;
-      const rangeMaxUsd = typeof f.overrideMaxUsd === 'number' ? f.overrideMaxUsd : typeof f.priceMaxUsd === 'number' ? f.priceMaxUsd : null;
+      const rangeMinUsd = typeof f.priceMinUsd === 'number' ? f.priceMinUsd : null;
+      const rangeMaxUsd = typeof f.priceMaxUsd === 'number' ? f.priceMaxUsd : null;
       let quoteTitle = '';
       if (typeof f.renderJson === 'string') {
         try { const rj = JSON.parse(f.renderJson) as Record<string, unknown>; if (typeof rj.docTitle === 'string') quoteTitle = rj.docTitle; } catch { /* ignore */ }
@@ -751,19 +645,48 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
         quoteId:           r.name.split('/').pop() ?? '',
         quoteTitle,
         customerEmail:     typeof f.customerEmail === 'string' ? f.customerEmail : '',
+        // PART 3 — superadmin visibility (all already-persisted fields, no IP capture).
+        createdBy:         typeof f.createdBy === 'string' ? f.createdBy : '',   // client/sender uid
+        orgId,
+        source:            typeof f.source === 'string' ? f.source : '',
+        price:             quotePrice(f),                                        // single locked price (USD)
+        currency:          typeof f.currency === 'string' ? f.currency : 'usd',
         rangeMinUsd, rangeMaxUsd,
-        expectedBudgetUsd: typeof f.expectedBudgetUsd === 'number' ? f.expectedBudgetUsd : null,
-        message:           typeof f.discussionMessage === 'string' ? f.discussionMessage : '',
         stage:             typeof f.stage === 'string' ? f.stage : '',
         status:            typeof f.status === 'string' ? f.status : '',
         adminState:        typeof f.adminState === 'string' ? f.adminState : '',
         decision:          typeof f.decision === 'string' ? f.decision : '',
         createdAt:         typeof f.createdAt === 'string' ? f.createdAt : '',
         sentAt:            typeof f.sentAt === 'string' ? f.sentAt : '',
-        decidedAt:         typeof f.decidedAt === 'string' ? f.decidedAt : '',
+        decidedAt:         typeof f.decidedAt === 'string' ? f.decidedAt : '',   // accepted-at
         updatedAt:         typeof f.updatedAt === 'string' ? f.updatedAt : '',
+        // Payment (filled by the invoice join below, admin scope only).
+        paymentStatus:     '',
+        paidAt:            '',
+        stripePaymentId:   '',
+        paymentUrl:        '',
+        invoiceAmount:     null as number | null,
       };
     });
+
+  // PART 3 — join the invoice per quote so the superadmin panel shows payment status /
+  // Stripe id / paid-at. Bounded: admin scope only, and only for quotes that could
+  // have an invoice (accepted / finalised). Best-effort — a failed join leaves blanks.
+  if (adminAll) {
+    await Promise.all(quotes.map(async q => {
+      if (!q.decidedAt && q.stage !== 'finalized' && q.stage !== 'invoice_sent') return;
+      try {
+        const inv = await firestoreGet(saJson, `invoices/quote_${q.quoteId}`) as Record<string, unknown> | null;
+        if (!inv || inv.orgId !== orgId) return;
+        q.paymentStatus   = typeof inv.status === 'string' ? inv.status : '';
+        q.paidAt          = typeof inv.paidAt === 'string' ? inv.paidAt : '';
+        q.stripePaymentId = typeof inv.paymentSessionId === 'string' ? inv.paymentSessionId : '';
+        q.paymentUrl      = typeof inv.paymentUrl === 'string' ? inv.paymentUrl : '';
+        q.invoiceAmount   = typeof inv.amount === 'number' ? inv.amount : null;
+      } catch { /* best-effort join */ }
+    }));
+  }
+
   // Newest activity first (decidedAt → sentAt → createdAt).
   const ts = (q: { decidedAt: string; sentAt: string; createdAt: string }) => q.decidedAt || q.sentAt || q.createdAt || '';
   quotes.sort((a, b) => (ts(a) < ts(b) ? 1 : ts(a) > ts(b) ? -1 : 0));
@@ -771,15 +694,15 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
   return c.json({ ok: true, quotes });
 });
 
-/* ── PATCH /api/quote/:quoteId — admin edit + governance (ISSUE 3) ──────────
+/* ── PATCH /api/quote/:quoteId — admin GOVERNANCE only (block / suspend) ────
  *
- * Owner/admin only, org-scoped (membership-verified orgId — no cross-tenant). Lets an
- * admin correct a quote (proposed budget, client message) and govern it (block /
- * suspend / re-activate). `adminState` is a SEPARATE governance flag layered over the
- * lifecycle stage (no state-machine bypass). A blocked/suspended quote is excluded
- * from the pricing queue and cannot be finalised (enforced at /api/invoices/finalize).
+ * Owner/admin only, org-scoped (membership-verified orgId — no cross-tenant).
+ * Fixed-price model: an admin can NO LONGER edit the price/budget or messages — only
+ * govern the quote (block / suspend / re-activate). `adminState` is a SEPARATE
+ * governance flag layered over the lifecycle stage. A blocked/suspended quote can no
+ * longer be accepted (its auto-invoice is skipped) — the only admin control that stays.
  */
-interface PatchBody { orgId?: unknown; adminState?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
+interface PatchBody { orgId?: unknown; adminState?: unknown }
 const ADMIN_STATES = new Set(['blocked', 'suspended', 'active']);
 
 quote.patch('/api/quote/:quoteId', requireAuth(), requireRole(OVERRIDE_ROLES), async c => {
@@ -811,22 +734,6 @@ quote.patch('/api/quote/:quoteId', requireAuth(), requireRole(OVERRIDE_ROLES), a
     patch.adminState = s === 'active' ? null : s;
     touched = true;
   }
-  // Edit the proposed budget (integer USD, bounded). Keep the persisted render in sync.
-  if (body.expectedBudgetUsd !== undefined) {
-    const b = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
-    if (!Number.isFinite(b) || b < 0 || b > PRICE_MAX) return c.json({ error: 'Invalid budget.', code: 'INVALID_BUDGET' }, 400);
-    patch.expectedBudgetUsd = Math.round(b);
-    if (typeof stored.renderJson === 'string') {
-      try { const r = JSON.parse(stored.renderJson) as Record<string, unknown>; r.negBudget = `$${Math.round(b).toLocaleString('en-US')}`; patch.renderJson = JSON.stringify(r); }
-      catch { /* leave render as-is */ }
-    }
-    touched = true;
-  }
-  // Edit the client message (sanitized).
-  if (body.message !== undefined) {
-    patch.discussionMessage = typeof body.message === 'string' ? sanitizeText(body.message, 2000) : '';
-    touched = true;
-  }
 
   if (!touched) return c.json({ error: 'Nothing to update.', code: 'NO_FIELDS' }, 400);
 
@@ -847,146 +754,79 @@ quote.patch('/api/quote/:quoteId', requireAuth(), requireRole(OVERRIDE_ROLES), a
 const QUOTE_ACTION_SHARE_VERSION = 2;
 
 /* Shared core for both the authed in-app decision and the public token-gated email
- * confirm. Advances the quote state machine (accept → 'client_responded', discuss →
- * 'negotiation') and notifies the admin so they can set the final amount. NO invoice
- * is created here (FIX 1) — the invoice is born only at admin finalise (STEP 4).
- * Best-effort emails (non-fatal). Callers resolve orgId/quoteId/customerEmail + validate. */
+ * confirm. FIXED-PRICE MODEL: accepting a quote records the accept AND immediately
+ * auto-invoices at the LOCKED price (quotePrice) → Stripe link → the buyer pays now.
+ * No admin pricing step, no negotiation. Idempotent (one invoice per quote → no
+ * duplicate payment). Governance block/suspend is the only thing that stops it — then
+ * the admins are notified to follow up. Best-effort emails (non-fatal). */
 async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   orgId: string; quoteId: string; stored: Record<string, unknown>;
-  decision: 'accepted' | 'discussion'; hasBudget: boolean; budget: number;
-  message: string | null; customerEmail: string | undefined; appBase: string;
+  customerEmail: string | undefined; appBase: string;
 }): Promise<{ locked: false; paymentUrl: string | null } | { locked: true; stage: string }> {
-  const { orgId, quoteId, stored, decision, hasBudget, budget, message, customerEmail, appBase } = a;
+  const { orgId, quoteId, stored, customerEmail, appBase } = a;
 
-  // Integrity guard (audit D1): once a quote is finalised/invoiced/paid it is
-  // locked — re-recording a decision would overwrite decision/status/stage and
-  // pull the quote back into the pricing queue while its invoice is already live
-  // and payable. Mirrors the public confirm path's single-effect intent for the
-  // terminal states. No write, no admin notification when locked.
+  // Integrity guard (D1): a finalised/invoiced/paid quote is locked — never re-decide.
   const curStage = typeof stored.stage === 'string' ? stored.stage : '';
   if (TERMINAL_STAGES.includes(curStage)) return { locked: true, stage: curStage };
 
-  // Budget-first: when the caller supplies no budget (the public email-accept path
-  // carries none), fall back to the budget the user proposed when the quote was
-  // emailed (persisted on the quote). Guarantees the admin always sees the amount.
-  let effHasBudget = hasBudget;
-  let effBudget = budget;
-  if (!effHasBudget && typeof stored.expectedBudgetUsd === 'number' && Number.isFinite(stored.expectedBudgetUsd)) {
-    effHasBudget = true; effBudget = stored.expectedBudgetUsd;
+  // Record the accept.
+  await firestoreSet(saJson, `${COLLECTION(orgId)}/${quoteId}`, {
+    decision: 'accepted', status: 'accepted', stage: 'client_responded',
+    decidedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  // Fixed-price auto-invoice: charge the LOCKED price NOW (no admin review). Skipped
+  // only when the quote is governance-blocked/suspended or has no price. Reuses the
+  // exact invoice-birth path (idempotent: one invoice per quote → no duplicate payment).
+  const price = quotePrice(stored);
+  const blocked = stored.adminState === 'blocked' || stored.adminState === 'suspended';
+  let autoPaymentUrl: string | null = null;
+  let autoFinalized = false;
+  if (price !== null && price > 0 && !blocked) {
+    try {
+      const fin = await finalizeQuoteInvoice(env, saJson, { orgId, quoteId, quote: stored, amount: price, appBase });
+      autoPaymentUrl = fin.paymentUrl;
+      autoFinalized = true;
+    } catch (e) {
+      console.warn('[quote] auto-invoice on accept failed (admin can re-send from the panel):', e instanceof Error ? e.message : '');
+    }
   }
 
-  const stage = decision === 'accepted' ? 'client_responded' : 'negotiation';
-  const patch: Record<string, string | number> = {
-    decision, status: decision, stage,
-    decidedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-  };
-  if (message) patch.discussionMessage = message;
-  if (effHasBudget) {
-    patch.expectedBudgetUsd = Math.round(effBudget);
-    // Keep the persisted render in sync so the email/shared PDF shows the budget row.
+  // Only notify admins when NO invoice was created (blocked/suspended, missing price, or
+  // a transient finalise error) so a human can follow up. When auto-finalised the admin
+  // sees the pending invoice in the panel and the client already has the invoice email.
+  if (!autoFinalized) {
+    const admins = adminRecipients(env);
+    let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
+    let solutionLabel = '';
     if (typeof stored.renderJson === 'string') {
       try {
         const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
-        r.negBudget = `$${Math.round(effBudget).toLocaleString('en-US')}`;
-        patch.renderJson = JSON.stringify(r);
-      } catch { /* leave renderJson as-is */ }
+        if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle;
+        if (typeof r.solutionLabel === 'string') solutionLabel = r.solutionLabel;
+      } catch { /* keep defaults */ }
     }
-  }
-  await firestoreSet(saJson, `${COLLECTION(orgId)}/${quoteId}`, patch, { merge: true });
-
-  // U1 — within-range auto-finalise: when the client ACCEPTS and their budget falls
-  // INSIDE the estimate range (and the quote is neither open-ended nor governance-
-  // blocked), create the invoice + Stripe payment link NOW so the buyer can pay
-  // instantly — no admin-review wait. Reuses the exact finalise path (idempotent: one
-  // invoice per quote → no duplicate payment). Open-ended / out-of-range / blocked
-  // quotes fall through to the normal admin-review flow. Best-effort: a failure here
-  // degrades gracefully to the admin path, never blocks recording the decision.
-  let autoPaymentUrl: string | null = null;
-  let autoFinalized = false;
-  if (decision === 'accepted' && effHasBudget) {
-    const min = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
-      : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
-    const max = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
-      : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
-    const amt = Math.round(effBudget);
-    const openEnded = stored.openEnded === true;
-    const blocked = stored.adminState === 'blocked' || stored.adminState === 'suspended';
-    const withinRange = min !== null && max !== null && amt >= min && amt <= max;
-    if (!openEnded && !blocked && withinRange) {
-      try {
-        const fin = await finalizeQuoteInvoice(env, saJson, { orgId, quoteId, quote: stored, amount: amt, appBase });
-        autoPaymentUrl = fin.paymentUrl;
-        autoFinalized = true;
-      } catch (e) {
-        console.warn('[quote] within-range auto-finalise failed (falls back to admin review):', e instanceof Error ? e.message : '');
+    const budgetText = price !== null ? `$${price.toLocaleString('en-US')}` : 'Not specified';
+    if (admins.length) {
+      for (const to of admins) {
+        const r = await sendTransactional(env.SEQUENZY_API_KEY, {
+          to, slug: 'invoice-admin-pending', replyTo: customerEmail,
+          variables: {
+            QUOTE_TITLE: quoteTitle, CUSTOMER_EMAIL: customerEmail ?? '', RANGE: solutionLabel,
+            BUDGET: budgetText, PANEL_URL: `${appBase}/#/invoices?quoteId=${encodeURIComponent(quoteId)}`,
+          },
+        });
+        if (!r.ok) console.warn('[quote] accept admin-notify NOT sent (check SEQUENZY_API_KEY / invoice-admin-pending):', r.error ?? 'unknown');
       }
+    } else {
+      console.warn('[quote] accepted quote not auto-invoiced and no admin recipients set:', quoteId);
     }
-  }
-
-  // Display fields for the admin notification (title · solution · range).
-  let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
-  const rangeMinUsd = typeof stored.overrideMinUsd === 'number' ? stored.overrideMinUsd
-    : typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : null;
-  const rangeMaxUsd = typeof stored.overrideMaxUsd === 'number' ? stored.overrideMaxUsd
-    : typeof stored.priceMaxUsd === 'number' ? stored.priceMaxUsd : null;
-  let rangeText = rangeMinUsd != null && rangeMaxUsd != null ? formatUsdRange(rangeMinUsd, rangeMaxUsd) : '';
-  let solutionLabel = '';
-  if (typeof stored.renderJson === 'string') {
-    try {
-      const r = JSON.parse(stored.renderJson) as Record<string, unknown>;
-      if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle;
-      if (typeof r.rangeText === 'string' && r.rangeText) rangeText = r.rangeText;
-      if (typeof r.solutionLabel === 'string') solutionLabel = r.solutionLabel;
-    } catch { /* keep defaults */ }
-  }
-  const budgetText = effHasBudget ? `$${Math.round(effBudget).toLocaleString('en-US')}` : '';
-
-  // Notify EVERY admin (ADMIN_EMAILS + ADMIN_EMAIL, de-duped). Each send is
-  // best-effort and independent — one failure never blocks the others (graceful).
-  const admins = adminRecipients(env);
-
-  // FIX 2 — notify the admins that the client RESPONDED so they can review + set the
-  // final amount on the Invoices/pricing panel. Skipped when the quote was auto-
-  // finalised (U1): the invoice already exists, so "please set the amount" would be
-  // misleading — the admin sees the pending invoice in the Invoices panel instead.
-  if (decision === 'accepted' && !autoFinalized && admins.length) {
-    for (const to of admins) {
-      const r = await sendTransactional(env.SEQUENZY_API_KEY, {
-        to, slug: 'invoice-admin-pending', replyTo: customerEmail,
-        variables: {
-          QUOTE_TITLE: quoteTitle, CUSTOMER_EMAIL: customerEmail ?? '', RANGE: rangeText,
-          // Deep-link to the exact quote in the pricing queue (highlights + scrolls to it).
-          BUDGET: budgetText || 'Not specified', PANEL_URL: `${appBase}/#/invoices?quoteId=${encodeURIComponent(quoteId)}`,
-        },
-      });
-      if (!r.ok) console.warn('[quote] accept admin-notify NOT sent to an admin (check SEQUENZY_API_KEY / invoice-admin-pending):', r.error ?? 'unknown');
-    }
-  } else if (decision === 'accepted' && !autoFinalized) {
-    console.warn('[quote] no admin recipients (ADMIN_EMAILS/ADMIN_EMAIL unset) — no notification for accepted quote', quoteId);
-  }
-
-  // Discuss/negotiation → admin notification carrying the client's budget + message.
-  if (decision === 'discussion' && admins.length) {
-    const context = [quoteTitle, solutionLabel, rangeText].filter(Boolean).join(' · ') || quoteId;
-    for (const to of admins) {
-      const r = await sendTransactional(env.SEQUENZY_API_KEY, {
-        to, slug: 'quote-discussion-admin', replyTo: customerEmail,
-        variables: {
-          // CHANGE 4 — always show the budget (never a blank row) + the client message.
-          TYPE: 'discussion', MESSAGE: message || 'No message provided', EMAIL: customerEmail ?? '',
-          CONTEXT: context, BUDGET: budgetText || 'Not specified', QUOTE_ID: quoteId,
-        },
-      });
-      if (!r.ok) console.warn('[quote] quote-discussion-admin NOT sent to an admin:', r.error ?? 'unknown');
-    }
-  } else if (decision === 'discussion') {
-    console.warn('[quote] no admin recipients (ADMIN_EMAILS/ADMIN_EMAIL unset) — no discussion notification for', quoteId);
   }
 
   return { locked: false, paymentUrl: autoPaymentUrl };
 }
 
-interface DecisionBody { orgId?: unknown; decision?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
+interface DecisionBody { orgId?: unknown; decision?: unknown }
 
 quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -1002,42 +842,32 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
   try { body = (await c.req.json()) as DecisionBody; }
   catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
 
-  const decision = body.decision === 'accepted' ? 'accepted'
-    : body.decision === 'discussion' ? 'discussion' : null;
-  if (!decision) return c.json({ error: 'Invalid decision.', code: 'INVALID_DECISION' }, 400);
-
-  const budget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
-  const hasBudget = Number.isFinite(budget) && budget >= 0 && budget <= PRICE_MAX;
-
-  // B3 — optional negotiation message (sanitized: control chars stripped, markup
-  // defanged, capped 2000). Stored on the quote doc only — no separate collection.
-  const message = typeof body.message === 'string' ? sanitizeText(body.message, 2000) : null;
+  // Fixed-price model: ACCEPT only. Negotiation is disabled.
+  if (body.decision === 'discussion') return c.json({ error: 'Negotiation is disabled — this quote is fixed-price.', code: 'NEGOTIATION_DISABLED' }, 400);
+  if (body.decision !== 'accepted') return c.json({ error: 'Invalid decision.', code: 'INVALID_DECISION' }, 400);
 
   const stored = await firestoreGet(saJson, `${COLLECTION(orgId)}/${quoteId}`);
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
 
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
   const res = await applyQuoteDecision(env, saJson, {
-    orgId, quoteId, stored, decision, hasBudget, budget, message,
-    customerEmail: c.get('email') as string | undefined, appBase,
+    orgId, quoteId, stored, customerEmail: c.get('email') as string | undefined, appBase,
   });
   // D1 — a finalised/invoiced/paid quote is locked; refuse the regression.
   if (res.locked) return c.json({ error: 'Quote cannot be modified after finalization.', code: 'QUOTE_LOCKED', stage: res.stage }, 409);
-  // U1 — surface the instant pay link when the accept auto-finalised within range.
-  return c.json({ ok: true, status: decision, ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
+  // Accept auto-invoices at the locked price → surface the instant pay link.
+  return c.json({ ok: true, status: 'accepted', ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
 });
 
-/* ── POST /api/quote/decision/confirm — PUBLIC, token-gated email accept/discuss ──
+/* ── POST /api/quote/decision/confirm — PUBLIC, token-gated email accept ────
  *
- * The quote email's Accept/Discuss CTAs carry an HMAC action token (shareVersion 2,
- * distinct from the v1 PDF-link token so a forwarded PDF URL can't accept). The
- * unauthenticated recipient lands on #/quote/result and clicks Confirm, which POSTs
- * here — POST-only by design, so an email scanner prefetching the GET link can never
- * accept. The token binds {orgId, quoteId}; the action records a NON-BINDING decision,
- * advances the quote stage (client_responded / negotiation), and notifies the admin so
- * they can set the final amount later on the Invoices panel. NO invoice is created here
- * (FIX 1 — the invoice is born only at admin finalise). Idempotent (single-effect). */
-interface TokenDecisionBody { token?: unknown; decision?: unknown; expectedBudgetUsd?: unknown; message?: unknown }
+ * The quote email's Accept CTA carries an HMAC action token (shareVersion 2, distinct
+ * from the v1 PDF-link token so a forwarded PDF URL can't accept). The unauthenticated
+ * recipient lands on #/quote/result and clicks Confirm, which POSTs here — POST-only by
+ * design, so an email scanner prefetching the GET link can never accept. Fixed-price:
+ * accepting AUTO-INVOICES at the locked price → Stripe pay link. Idempotent (single-
+ * effect: the decidedAt guard blocks token replay). */
+interface TokenDecisionBody { token?: unknown; decision?: unknown }
 
 quote.post('/api/quote/decision/confirm', async c => {
   c.header('Cache-Control', 'no-store');
@@ -1063,13 +893,9 @@ quote.post('/api/quote/decision/confirm', async c => {
     return c.json({ error: 'This link is invalid.', code: 'SHARE_INVALID' }, 401);
   }
 
-  const decision = body.decision === 'accepted' ? 'accepted'
-    : body.decision === 'discussion' ? 'discussion' : null;
-  if (!decision) return c.json({ error: 'Invalid decision.', code: 'INVALID_DECISION' }, 400);
-  // Budget carried in the (unsigned) confirm body — only a FALLBACK; the server-
-  // recorded budget on the quote (set by the authed sender at email time) wins.
-  const urlBudget = typeof body.expectedBudgetUsd === 'number' ? body.expectedBudgetUsd : NaN;
-  const message = typeof body.message === 'string' ? sanitizeText(body.message, 2000) : null;
+  // Fixed-price model: ACCEPT only. Negotiation is disabled.
+  if (body.decision === 'discussion') return c.json({ error: 'Negotiation is disabled — this quote is fixed-price.', code: 'NEGOTIATION_DISABLED' }, 400);
+  if (body.decision !== 'accepted') return c.json({ error: 'Invalid decision.', code: 'INVALID_DECISION' }, 400);
 
   const { orgId, auditId: quoteId } = v.payload;
 
@@ -1086,24 +912,19 @@ quote.post('/api/quote/decision/confirm', async c => {
   // later ones are idempotent no-ops (closes admin-email flooding + decision tampering
   // via a leaked/forwarded link). The authed in-app path is unaffected.
   if (typeof stored.decidedAt === 'string' && stored.decidedAt) {
-    return c.json({ ok: true, status: typeof stored.decision === 'string' ? stored.decision : decision, alreadyRecorded: true });
+    return c.json({ ok: true, status: typeof stored.decision === 'string' ? stored.decision : 'accepted', alreadyRecorded: true });
   }
 
   // Address the invoice + client email to the recipient persisted when the quote
   // was emailed (the unauthenticated caller's identity is never trusted).
   const customerEmail = typeof stored.customerEmail === 'string' && stored.customerEmail ? stored.customerEmail : undefined;
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  // FIX 1 — guarantee a budget on the admin notification. Prefer the server-recorded
-  // value (applyQuoteDecision falls back to it when hasBudget is false); use the
-  // confirm-body value only when the quote has none persisted (legacy quotes).
-  const storedHasBudget = typeof stored.expectedBudgetUsd === 'number' && Number.isFinite(stored.expectedBudgetUsd);
-  const useUrlBudget = !storedHasBudget && Number.isFinite(urlBudget) && urlBudget >= 0 && urlBudget <= PRICE_MAX;
-  const res = await applyQuoteDecision(env, saJson, { orgId, quoteId, stored, decision, hasBudget: useUrlBudget, budget: useUrlBudget ? urlBudget : NaN, message, customerEmail, appBase });
+  const res = await applyQuoteDecision(env, saJson, { orgId, quoteId, stored, customerEmail, appBase });
   // D1 — terminal quote: locked. (The decidedAt guard above already covers the
   // common case; this backstops a finalised quote whose decidedAt is unset.)
   if (res.locked) return c.json({ error: 'This quote can no longer be changed.', code: 'QUOTE_LOCKED', stage: res.stage }, 409);
-  // U1 — surface the instant pay link when the accept auto-finalised within range.
-  return c.json({ ok: true, status: decision, ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
+  // Accept auto-invoices at the locked price → surface the instant pay link.
+  return c.json({ ok: true, status: 'accepted', ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
 });
 
 export default quote;
