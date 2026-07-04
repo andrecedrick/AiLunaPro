@@ -26,7 +26,7 @@ import {
   type QuoteCategory, type QuoteTier, type BusinessSize, type Urgency, type BudgetBand,
 } from '../data/quote-config';
 import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/quote/score';
-import { convertToUsd } from '../lib/currency/fxSnapshot';
+import { convertToUsd, convertFromUsd } from '../lib/currency/fxSnapshot';
 import { generateQuote, downloadQuotePdf, emailQuote, QuoteGenError } from '../lib/quote/quoteClient';
 import { tokenCost } from '../lib/tokens/costs';
 import { ENABLE_QUOTE_V2 } from '../lib/flags';
@@ -340,10 +340,18 @@ export function QuoteRequestPage() {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     const budgetNum = Number(budgetInput);
     const validBudget = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum > 0;
-    const expectedBudgetUsd = validBudget ? Math.round(convertToUsd(budgetNum, money.currency)) : 0;
-    // Fixed-price model: this budget IS the final locked price, so it must be at least
-    // the estimate minimum (a below-min budget is rejected, not silently raised).
-    const belowMin = validBudget && expectedBudgetUsd < preview.priceMinUsd;
+    // Fixed-price model: this budget IS the final locked price. Validate in the DISPLAY
+    // currency against the SAME rounded minimum the user sees (money.format uses
+    // round(usd × rate)), so entering exactly the shown minimum is accepted — never a
+    // false "below" from the USD round-trip. A budget below the shown min is rejected.
+    const displayMin = Math.round(convertFromUsd(preview.priceMinUsd, money.currency));
+    const belowMin = validBudget && budgetNum < displayMin;
+    // Lock the USD price at >= the true estimate minimum: the max() absorbs the sub-unit
+    // rounding gap when the user enters exactly the displayed minimum (keeps the worker's
+    // own >= priceMinUsd check satisfied).
+    const expectedBudgetUsd = validBudget
+      ? Math.max(Math.round(convertToUsd(budgetNum, money.currency)), preview.priceMinUsd)
+      : 0;
     setEmailError(emailOk ? null : Q.send.emailRequired);
     setBudgetError(!validBudget ? Q.decision.budgetRequired : belowMin ? format(Q.send.budgetBelowMin, { min: money.format(preview.priceMinUsd) }) : null);
     if (!emailOk || !validBudget || belowMin) return;
@@ -386,14 +394,16 @@ export function QuoteRequestPage() {
     }
   };
 
-  // U2 — budget comparison (display currency → USD; compared to the shown price).
-  const budgetUsdInput = budgetInput.trim() !== '' && Number.isFinite(Number(budgetInput))
-    ? convertToUsd(Number(budgetInput), money.currency) : null;
-  const budgetVerdict = (preview && budgetUsdInput !== null && budgetUsdInput >= 0)
+  // U2 — budget comparison, done in the DISPLAY currency at the SAME rounding shown to the
+  // user (money.format uses round(usd × rate)). Keeps the live below/within/above hint
+  // consistent with the displayed range, so the exact shown minimum reads as "within".
+  const budgetDisplayInput = budgetInput.trim() !== '' && Number.isFinite(Number(budgetInput))
+    ? Number(budgetInput) : null;
+  const budgetVerdict = (preview && budgetDisplayInput !== null && budgetDisplayInput >= 0)
     ? compareBudget(
-        budgetUsdInput,
-        preview.priceMinUsd,
-        preview.priceMaxUsd,
+        budgetDisplayInput,
+        Math.round(convertFromUsd(preview.priceMinUsd, money.currency)),
+        Math.round(convertFromUsd(preview.priceMaxUsd, money.currency)),
         preview.openEnded,
       )
     : null;
