@@ -2801,12 +2801,6 @@ export const zh: Dict = {
         "discussionSent": "请求已发送——我们将与您联系沟通。",
         "error": "无法保存您的选择，请重试。"
       },
-      "negotiation": {
-        "heading": "谈判摘要",
-        "initialLabel": "初始估算",
-        "budgetLabel": "您的预算",
-        "adjustedLabel": "调整后价格"
-      },
       "progress": {
         "submit": "提交",
         "review": "审核",

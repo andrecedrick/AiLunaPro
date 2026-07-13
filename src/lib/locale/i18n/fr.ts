@@ -2799,12 +2799,6 @@ export const fr: Dict = {
         "discussionSent": "Demande envoyée — nous vous contacterons pour en discuter.",
         "error": "Impossible d'enregistrer votre choix. Veuillez réessayer."
       },
-      "negotiation": {
-        "heading": "Récapitulatif de négociation",
-        "initialLabel": "Estimation initiale",
-        "budgetLabel": "Votre budget",
-        "adjustedLabel": "Prix ajusté"
-      },
       "progress": {
         "submit": "Envoi",
         "review": "Examen",

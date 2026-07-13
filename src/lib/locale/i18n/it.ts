@@ -2799,12 +2799,6 @@ export const it: Dict = {
         "discussionSent": "Richiesta inviata — ti contatteremo per discuterne.",
         "error": "Impossibile salvare la tua scelta. Riprova."
       },
-      "negotiation": {
-        "heading": "Riepilogo trattativa",
-        "initialLabel": "Stima iniziale",
-        "budgetLabel": "Il tuo budget",
-        "adjustedLabel": "Prezzo modificato"
-      },
       "progress": {
         "submit": "Invia",
         "review": "Revisione",

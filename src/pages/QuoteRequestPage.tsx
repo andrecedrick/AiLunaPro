@@ -268,14 +268,6 @@ export function QuoteRequestPage() {
       justification.push(format(prop.justification.ops, { min: String(p.opsCostUpliftPct.minPct), max: String(p.opsCostUpliftPct.maxPct) }));
     }
 
-    // U3 — negotiation summary values (initial / budget / adjusted), localized currency.
-    const neg = pq.negotiation;
-    const initialText = `${money.format(p.priceMinUsd)} – ${money.format(p.priceMaxUsd)}${p.openEnded ? '+' : ''}`;
-    const adjustedText = '';
-    const bNum = Number(budgetInput);
-    const bUsd = budgetInput.trim() !== '' && Number.isFinite(bNum) && bNum >= 0 ? convertToUsd(bNum, money.currency) : null;
-    const budgetText = bUsd !== null ? money.format(bUsd) : '';
-
     return {
       docTitle:             pq.pdf.docTitle,
       projectName:          solutionLabel,
@@ -303,13 +295,6 @@ export function QuoteRequestPage() {
       timelineHeading:      prop.timelineHeading,
       timeline:             (timelineMap[tCat] ?? '').split('\n').map(s => s.trim()).filter(Boolean),
       disclaimer:           pq.result.disclaimer,
-      negHeading:           neg.heading,
-      negInitialLabel:      neg.initialLabel,
-      negBudgetLabel:       neg.budgetLabel,
-      negAdjustedLabel:     neg.adjustedLabel,
-      negInitial:           initialText,
-      negBudget:            budgetText,
-      negAdjusted:          adjustedText,
     };
   };
 
@@ -408,8 +393,7 @@ export function QuoteRequestPage() {
       )
     : null;
 
-  // Estimated range (secondary line shown above the primary budget input). Same
-  // value that goes into the PDF/email negotiation summary.
+  // Estimated range (secondary line shown above the primary budget input).
   const rangeText = preview ? `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? '+' : ''}` : '';
 
   const tierOptions = category ? QUOTE_TIERS[category] : [];

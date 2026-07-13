@@ -263,13 +263,6 @@ function parseRender(r: Record<string, unknown>, createdAt: string, quoteId: str
     timelineHeading:      str(r.timelineHeading),
     timeline:             strList(r.timeline),
     disclaimer:           str(r.disclaimer, 600),
-    negHeading:           str(r.negHeading, 120),
-    negInitialLabel:      str(r.negInitialLabel, 60),
-    negBudgetLabel:       str(r.negBudgetLabel, 60),
-    negAdjustedLabel:     str(r.negAdjustedLabel, 60),
-    negInitial:           str(r.negInitial, 120),
-    negBudget:            str(r.negBudget, 120),
-    negAdjusted:          str(r.negAdjusted, 120),
   };
 }
 

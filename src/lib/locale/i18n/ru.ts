@@ -2800,12 +2800,6 @@ export const ru: Dict = {
         "discussionSent": "Запрос отправлен — мы свяжемся для обсуждения.",
         "error": "Не удалось сохранить ваш выбор. Повторите попытку."
       },
-      "negotiation": {
-        "heading": "Сводка по переговорам",
-        "initialLabel": "Первоначальная оценка",
-        "budgetLabel": "Ваш бюджет",
-        "adjustedLabel": "Изменённая цена"
-      },
       "progress": {
         "submit": "Отправка",
         "review": "Рассмотрение",

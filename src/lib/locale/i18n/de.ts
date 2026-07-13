@@ -2799,12 +2799,6 @@ export const de: Dict = {
         "discussionSent": "Anfrage gesendet — wir melden uns zur Besprechung.",
         "error": "Ihre Entscheidung konnte nicht gespeichert werden. Bitte erneut versuchen."
       },
-      "negotiation": {
-        "heading": "Verhandlungsübersicht",
-        "initialLabel": "Erste Schätzung",
-        "budgetLabel": "Ihr Budget",
-        "adjustedLabel": "Angepasster Preis"
-      },
       "progress": {
         "submit": "Absenden",
         "review": "Prüfung",
