@@ -325,21 +325,17 @@ export function QuoteRequestPage() {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     const budgetNum = Number(budgetInput);
     const validBudget = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum > 0;
-    // Fixed-price model: this budget IS the final locked price. Validate in the DISPLAY
-    // currency against the SAME rounded minimum the user sees (money.format uses
-    // round(usd × rate)), so entering exactly the shown minimum is accepted — never a
-    // false "below" from the USD round-trip. A budget below the shown min is rejected.
-    const displayMin = Math.round(convertFromUsd(preview.priceMinUsd, money.currency));
-    const belowMin = validBudget && budgetNum < displayMin;
-    // Lock the USD price at >= the true estimate minimum: the max() absorbs the sub-unit
-    // rounding gap when the user enters exactly the displayed minimum (keeps the worker's
-    // own >= priceMinUsd check satisfied).
+    // Fixed-price model: this budget IS the final locked price, FLOORED at the estimate
+    // minimum. Any positive budget is ACCEPTED — a below-min entry is silently raised to
+    // the minimum (never rejected). The max() locks the USD price at >= the true estimate
+    // min (and absorbs the display-currency rounding gap at the exact displayed min), so
+    // the worker's own >= priceMinUsd check is always satisfied.
     const expectedBudgetUsd = validBudget
       ? Math.max(Math.round(convertToUsd(budgetNum, money.currency)), preview.priceMinUsd)
       : 0;
     setEmailError(emailOk ? null : Q.send.emailRequired);
-    setBudgetError(!validBudget ? Q.decision.budgetRequired : belowMin ? format(Q.send.budgetBelowMin, { min: money.format(preview.priceMinUsd) }) : null);
-    if (!emailOk || !validBudget || belowMin) return;
+    setBudgetError(validBudget ? null : Q.decision.budgetRequired);
+    if (!emailOk || !validBudget) return;
     setEmailState('sending');
     try {
       // ROI + decision merge variables for the email — formatted EXACTLY like the in-app
