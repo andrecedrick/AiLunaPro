@@ -121,6 +121,8 @@ export const fr: Dict = {
     reactivate: 'Réactiver',
     sendQuote: 'Envoyer le devis',
     sendAndPay: 'Envoyer et payer',
+    markPaidBtn: 'Marquer comme payé',
+    awaitingTransfer: 'Virement en attente',
     openPaymentLink: 'Ouvrir le lien de paiement',
     genPaymentLink: 'Générer un lien de paiement',
     superadminHeading: 'Visibilité superadmin — tous les devis',
@@ -2751,6 +2753,8 @@ export const fr: Dict = {
         }
       },
       "accepted": {
+        "bankProceedCta": "Procéder au virement bancaire",
+        "bankMessage": "Pour les projets de plus de 15 000 $, le paiement est sécurisé par virement bancaire.",
         "title": "Votre réponse a bien été envoyée",
         "s1": "Nous examinons votre demande",
         "s2": "Un expert confirmera le montant final",
@@ -2820,6 +2824,21 @@ export const fr: Dict = {
         "stateInvoice": "Facture",
         "budgetLabel": "Votre budget proposé",
         "waitingValidation": "En attente de validation",
+        "bank": {
+          "heading": "Instructions de virement bancaire",
+          "secureNote": "Effectuez votre paiement par virement bancaire sécurisé à l'aide des informations ci-dessous.",
+          "cardHint": "Paiement sécurisé par virement bancaire",
+          "amountLabel": "Montant",
+          "referenceLabel": "Référence de paiement",
+          "companyLabel": "Société",
+          "bankLabel": "Banque",
+          "ibanLabel": "IBAN",
+          "swiftLabel": "SWIFT / BIC",
+          "deadlineLabel": "À payer avant le",
+          "initiateBtn": "J'ai effectué le virement",
+          "awaitingConfirm": "Merci — nous confirmerons dès réception de votre virement.",
+          "invoiceNote": "Une facture est émise dès réception du paiement."
+        },
         "waitingActive": "Nous finalisons votre montant — vous pourrez payer dès qu'il sera prêt.",
         "back": "Retour à l'outil de devis"
       }

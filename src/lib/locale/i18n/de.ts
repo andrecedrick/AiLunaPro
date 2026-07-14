@@ -118,6 +118,8 @@ export const de: Dict = {
     reactivate: 'Reaktivieren',
     sendQuote: 'Angebot senden',
     sendAndPay: 'Senden & bezahlen',
+    markPaidBtn: 'Als bezahlt markieren',
+    awaitingTransfer: 'Überweisung ausstehend',
     openPaymentLink: 'Zahlungslink öffnen',
     genPaymentLink: 'Zahlungslink erstellen',
     superadminHeading: 'Superadmin-Übersicht — alle Angebote',
@@ -2751,6 +2753,8 @@ export const de: Dict = {
         }
       },
       "accepted": {
+        "bankProceedCta": "Mit Banküberweisung fortfahren",
+        "bankMessage": "Bei Projekten über 15.000 $ erfolgt die Zahlung sicher per Banküberweisung.",
         "title": "Ihre Antwort wurde gesendet",
         "s1": "Wir prüfen Ihre Anfrage",
         "s2": "Ein Experte bestätigt den Endbetrag",
@@ -2820,6 +2824,21 @@ export const de: Dict = {
         "stateInvoice": "Rechnung",
         "budgetLabel": "Ihr vorgeschlagenes Budget",
         "waitingValidation": "Warten auf Validierung",
+        "bank": {
+          "heading": "Anweisungen zur Banküberweisung",
+          "secureNote": "Führen Sie Ihre Zahlung per sicherer Banküberweisung mit den folgenden Angaben durch.",
+          "cardHint": "Zahlung sicher per Banküberweisung",
+          "amountLabel": "Betrag",
+          "referenceLabel": "Zahlungsreferenz",
+          "companyLabel": "Firma",
+          "bankLabel": "Bank",
+          "ibanLabel": "IBAN",
+          "swiftLabel": "SWIFT / BIC",
+          "deadlineLabel": "Zahlbar bis",
+          "initiateBtn": "Ich habe die Überweisung veranlasst",
+          "awaitingConfirm": "Danke — wir bestätigen, sobald Ihre Überweisung eingegangen ist.",
+          "invoiceNote": "Eine Rechnung wird nach Zahlungseingang ausgestellt."
+        },
         "waitingActive": "Wir finalisieren Ihren Betrag — Sie können zahlen, sobald er bereit ist.",
         "back": "Zurück zum Angebots-Tool"
       }

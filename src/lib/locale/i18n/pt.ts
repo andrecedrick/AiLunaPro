@@ -121,6 +121,8 @@ export const pt: Dict = {
     reactivate: 'Reativar',
     sendQuote: 'Enviar orçamento',
     sendAndPay: 'Enviar e pagar',
+    markPaidBtn: 'Marcar como pago',
+    awaitingTransfer: 'Transferência pendente',
     openPaymentLink: 'Abrir link de pagamento',
     genPaymentLink: 'Gerar link de pagamento',
     superadminHeading: 'Visibilidade de superadmin — todos os orçamentos',
@@ -2751,6 +2753,8 @@ export const pt: Dict = {
         }
       },
       "accepted": {
+        "bankProceedCta": "Prosseguir com transferência bancária",
+        "bankMessage": "Para projetos acima de 15 000 $, o pagamento é protegido por transferência bancária.",
         "title": "A sua resposta foi enviada",
         "s1": "Estamos a analisar o seu pedido",
         "s2": "Um especialista irá confirmar o valor final",
@@ -2820,6 +2824,21 @@ export const pt: Dict = {
         "stateInvoice": "Fatura",
         "budgetLabel": "O orçamento que propõe",
         "waitingValidation": "A aguardar validação",
+        "bank": {
+          "heading": "Instruções de transferência bancária",
+          "secureNote": "Efetue o seu pagamento por transferência bancária segura com os dados abaixo.",
+          "cardHint": "Pagamento seguro por transferência bancária",
+          "amountLabel": "Montante",
+          "referenceLabel": "Referência de pagamento",
+          "companyLabel": "Empresa",
+          "bankLabel": "Banco",
+          "ibanLabel": "IBAN",
+          "swiftLabel": "SWIFT / BIC",
+          "deadlineLabel": "Pagar até",
+          "initiateBtn": "Já efetuei a transferência",
+          "awaitingConfirm": "Obrigado — confirmaremos assim que a sua transferência chegar.",
+          "invoiceNote": "Uma fatura é emitida após a receção do pagamento."
+        },
         "waitingActive": "Estamos a finalizar o seu valor — poderá pagar assim que estiver pronto.",
         "back": "Voltar à ferramenta de orçamentos"
       }

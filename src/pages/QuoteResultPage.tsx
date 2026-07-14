@@ -24,6 +24,7 @@ import { useMoney } from '../lib/currency/useMoney';
 import { primaryBtnStyle } from '../components/ui-tools';
 import { QuoteProgress } from '../components/QuoteProgress';
 import { confirmQuoteDecisionByToken, stashQuotePayLink } from '../lib/quote/quoteClient';
+import { SMB_MAX_USD } from '../data/quote-config';
 
 // Roles that may see the Invoices surface (mirrors the sidebar gate; 'client' excluded).
 const INVOICE_ROLES = ['owner', 'admin', 'billing', 'member'];
@@ -52,6 +53,8 @@ export function QuoteResultPage() {
   const A = Q.accepted;
   const money = useMoney();
   const { action, fromEmail, token, quoteId, budgetUsd } = hashFlags();
+  // High-ticket (> $15k) = bank transfer: relabel the accept CTA + show the secure-transfer note.
+  const isBankTransfer = budgetUsd !== null && budgetUsd > SMB_MAX_USD;
   const canViewInvoice = !!session && INVOICE_ROLES.includes(session.role ?? '');
   const [phase, setPhase] = useState<'idle' | 'confirming' | 'done' | 'error'>('idle');
   // U1 — set once the accept auto-finalised within range (a pay link was returned +
@@ -60,7 +63,7 @@ export function QuoteResultPage() {
   const goQuote = () => navigate({ name: 'quote' });
   // Carry the proposed budget to the status page so it shows the exact amount; when a
   // pay link is ready, land in the 'invoice' state so "Pay now" is surfaced.
-  const goStatus = () => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}), ...(budgetUsd !== null && budgetUsd > 0 ? { budgetUsd } : {}), ...(payReady ? { state: 'invoice' } : {}) });
+  const goStatus = () => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}), ...(budgetUsd !== null && budgetUsd > 0 ? { budgetUsd } : {}), ...(payReady || isBankTransfer ? { state: 'invoice' } : {}) });
 
   // Waiting/confirmation state (in-app submit, or a successful email confirm):
   // progress stepper at "Review", what-happens-next checklist, track CTA.
@@ -125,10 +128,15 @@ export function QuoteResultPage() {
             <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{money.format(budgetUsd)}</div>
           </div>
         )}
+        {isAccept && isBankTransfer && (
+          <div style={{ margin: '0 auto 18px', maxWidth: 380, padding: '10px 14px', borderRadius: 10, background: 'var(--brand-tint-bg, rgba(124,58,237,0.08))', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55 }}>
+            🏦 {A.bankMessage}
+          </div>
+        )}
         <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 26px' }}>{isAccept ? A.confirmBody : A.discussConfirmBody}</p>
         <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
           <button type="button" disabled={phase === 'confirming'} onClick={() => void onConfirm()} style={{ ...primaryBtnStyle(), opacity: phase === 'confirming' ? 0.6 : 1, cursor: phase === 'confirming' ? 'wait' : 'pointer' }}>
-            {phase === 'confirming' ? A.confirming : isAccept ? A.confirmCta : A.discussCta}
+            {phase === 'confirming' ? A.confirming : isAccept ? (isBankTransfer ? A.bankProceedCta : A.confirmCta) : A.discussCta}
           </button>
           <button type="button" onClick={goQuote} style={linkBtn}>{A.back}</button>
         </div>

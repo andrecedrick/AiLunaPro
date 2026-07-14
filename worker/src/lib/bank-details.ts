@@ -120,3 +120,15 @@ export function formatBankDetails(s: Record<string, unknown> | null | undefined)
   }
   return lines.join('\n');
 }
+
+/** Normalized bank fields for the transfer-details page (region-agnostic best-effort). */
+export function bankDetailsFields(s: Record<string, unknown> | null | undefined):
+  { companyName: string; bankName: string; iban: string; swiftBic: string } {
+  const g = (k: string): string => (s && typeof s[k] === 'string' ? (s[k] as string) : '');
+  return {
+    companyName: g('accountName') || g('accountHolder'),
+    bankName:    g('bankName'),
+    iban:        g('iban'),
+    swiftBic:    g('bic') || g('swiftCode'),
+  };
+}

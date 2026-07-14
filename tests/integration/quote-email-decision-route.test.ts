@@ -163,10 +163,28 @@ describe('Accept → auto-invoice at the locked price (Quote → Accept → Pay)
     const inv = store.invoices.get('invoices/quote_q1') as Record<string, unknown> | undefined;
     expect(inv).toBeTruthy();
     expect(inv!.amount).toBe(15000);          // invoice amount === quote.price (same everywhere)
+    expect(inv!.paymentMethod).toBe('stripe');       // ≤ 15k → Stripe self-serve (unchanged)
     expect(inv!.status).toBe('pending');
     expect(store.writes.get(qDoc)!.stage).toBe('invoice_sent');
     expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeTruthy();
     expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeFalsy();
+  });
+
+  it('HIGH-TICKET (>15k) accept → bank_transfer, NO Stripe link, 14-day deadline set', async () => {
+    store.stored!.price = 60000;
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(200);
+    const j = await res.json() as { paymentMethod: string; paymentUrl?: string };
+    expect(j.paymentMethod).toBe('bank_transfer');
+    expect(j.paymentUrl).toBeUndefined();              // no Stripe link for high-ticket
+    const inv = store.invoices.get('invoices/quote_q1') as Record<string, unknown>;
+    expect(inv.amount).toBe(60000);
+    expect(inv.paymentMethod).toBe('bank_transfer');
+    expect(typeof inv.transferDeadline).toBe('string');   // 14-day deadline
+    const v = seq.sends.find(s => s.slug === 'invoice-client')!.variables as Record<string, string>;
+    expect(v.BANK_TRANSFER).toBe('1');
+    expect(v.REFERENCE).toBe('q1');
+    expect(v.DEADLINE).not.toBe('');
   });
 
   it('with no explicit price yet, accept invoices at the published price (quotePrice ← priceUsd)', async () => {

@@ -139,16 +139,16 @@ export async function overrideQuotePrice(
  *  budget (USD) on the quote. Non-binding, intent only. */
 export async function recordDecision(
   orgId: string, quoteId: string, input: { decision: 'accepted' | 'discussion'; expectedBudgetUsd?: number; message?: string },
-): Promise<{ status: string; paymentUrl?: string }> {
+): Promise<{ status: string; paymentUrl?: string; paymentMethod?: string }> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/quote/${encodeURIComponent(quoteId)}/decision`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ orgId, ...input }),
   });
-  const j = await res.json().catch(() => null) as ({ status?: string; code?: string; paymentUrl?: string }) | null;
+  const j = await res.json().catch(() => null) as ({ status?: string; code?: string; paymentUrl?: string; paymentMethod?: string }) | null;
   if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
-  return { status: j.status ?? input.decision, ...(typeof j.paymentUrl === 'string' ? { paymentUrl: j.paymentUrl } : {}) };
+  return { status: j.status ?? input.decision, ...(typeof j.paymentUrl === 'string' ? { paymentUrl: j.paymentUrl } : {}), ...(typeof j.paymentMethod === 'string' ? { paymentMethod: j.paymentMethod } : {}) };
 }
 
 /** Record a decision from the email Accept/Discuss CTA — PUBLIC, no auth. The HMAC
@@ -156,7 +156,7 @@ export async function recordDecision(
  *  quote, opens the draft invoice, and notifies the admin. */
 export async function confirmQuoteDecisionByToken(
   token: string, decision: 'accepted' | 'discussion', opts?: { message?: string; expectedBudgetUsd?: number },
-): Promise<{ status: string; paymentUrl?: string }> {
+): Promise<{ status: string; paymentUrl?: string; paymentMethod?: string }> {
   const res = await fetch(`${WORKER_BASE}/api/quote/decision/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -166,9 +166,30 @@ export async function confirmQuoteDecisionByToken(
       ...(opts?.expectedBudgetUsd !== undefined ? { expectedBudgetUsd: opts.expectedBudgetUsd } : {}),
     }),
   });
-  const j = await res.json().catch(() => null) as ({ status?: string; code?: string; paymentUrl?: string }) | null;
+  const j = await res.json().catch(() => null) as ({ status?: string; code?: string; paymentUrl?: string; paymentMethod?: string }) | null;
   if (!res.ok || !j) throw new QuoteGenError(j?.code ?? `HTTP_${res.status}`);
-  return { status: j.status ?? decision, ...(typeof j.paymentUrl === 'string' ? { paymentUrl: j.paymentUrl } : {}) };
+  return { status: j.status ?? decision, ...(typeof j.paymentUrl === 'string' ? { paymentUrl: j.paymentUrl } : {}), ...(typeof j.paymentMethod === 'string' ? { paymentMethod: j.paymentMethod } : {}) };
+}
+
+/** PUBLIC — bank-transfer instructions for a high-ticket invoice (invoiceId = quote_<quoteId>).
+ *  Bank details are the company's RECEIVING account (non-secret); no auth needed. */
+export interface TransferDetails {
+  paymentMethod: string; status: string; reference: string;
+  amount: number | null; currency: string; deadlineIso: string | null;
+  bankText: string; companyName: string; bankName: string; iban: string; swiftBic: string; available: boolean;
+}
+export async function getTransferDetails(invoiceId: string): Promise<TransferDetails> {
+  const res = await fetch(`${WORKER_BASE}/api/invoices/${encodeURIComponent(invoiceId)}/transfer-details`);
+  if (!res.ok) throw new QuoteGenError(`HTTP_${res.status}`);
+  return await res.json() as TransferDetails;
+}
+/** PUBLIC flag — the buyer confirms they initiated the wire (pending → awaiting_transfer). */
+export async function markTransferInitiated(invoiceId: string): Promise<{ status: string }> {
+  const res = await fetch(`${WORKER_BASE}/api/invoices/${encodeURIComponent(invoiceId)}/transfer-initiated`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+  });
+  if (!res.ok) throw new QuoteGenError(`HTTP_${res.status}`);
+  return await res.json() as { status: string };
 }
 
 /* U1 — instant-pay carrier: the Stripe checkout URL returned by an accept that

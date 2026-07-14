@@ -123,6 +123,8 @@ export const zh: Dict = {
     reactivate: '重新启用',
     sendQuote: '发送报价',
     sendAndPay: '发送并付款',
+    markPaidBtn: '标记为已付款',
+    awaitingTransfer: '等待转账',
     openPaymentLink: '打开付款链接',
     genPaymentLink: '生成付款链接',
     superadminHeading: '超级管理员可见性 — 所有报价',
@@ -2753,6 +2755,8 @@ export const zh: Dict = {
         }
       },
       "accepted": {
+        "bankProceedCta": "继续银行转账",
+        "bankMessage": "超过 15,000 美元的项目通过银行转账安全支付。",
         "title": "您的回复已发送",
         "s1": "我们正在审核您的请求",
         "s2": "专家将确认最终金额",
@@ -2822,6 +2826,21 @@ export const zh: Dict = {
         "stateInvoice": "发票",
         "budgetLabel": "您提出的预算",
         "waitingValidation": "等待确认",
+        "bank": {
+          "heading": "银行转账说明",
+          "secureNote": "请使用以下信息通过安全银行转账完成付款。",
+          "cardHint": "通过银行转账安全支付",
+          "amountLabel": "金额",
+          "referenceLabel": "付款参考号",
+          "companyLabel": "公司",
+          "bankLabel": "银行",
+          "ibanLabel": "IBAN",
+          "swiftLabel": "SWIFT / BIC",
+          "deadlineLabel": "付款截止",
+          "initiateBtn": "我已发起转账",
+          "awaitingConfirm": "谢谢 — 收到您的转账后我们会确认。",
+          "invoiceNote": "收到付款后将开具发票。"
+        },
         "waitingActive": "我们正在确认您的金额——准备好后即可付款。",
         "back": "返回报价工具"
       }

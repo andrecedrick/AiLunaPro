@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { fetchPlatformMe } from '../lib/platform/platformService';
-import { listInvoices, listAllQuotes, patchQuote, resendInvoice, createInvoicePaymentLink, type InvoiceItem, type QuoteListItem } from '../lib/quote/invoicesClient';
+import { listInvoices, listAllQuotes, patchQuote, resendInvoice, createInvoicePaymentLink, markInvoicePaid, type InvoiceItem, type QuoteListItem } from '../lib/quote/invoicesClient';
 import { sendQuoteToClient } from '../lib/quote/quoteClient';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
@@ -78,6 +78,12 @@ export function AdminCenterPage() {
     try { const r = await createInvoicePaymentLink(orgId, inv.id); if (r.paymentUrl) window.open(r.paymentUrl, '_blank', 'noopener'); reload(); }
     catch { setError(true); } finally { setGovBusy(null); }
   };
+  // Bank-transfer only: admin confirms receipt (there is no Stripe webhook for these).
+  const markPaid = async (inv: InvoiceItem) => {
+    setGovBusy(inv.id);
+    try { await markInvoicePaid(orgId, inv.id); reload(); }
+    catch { setError(true); } finally { setGovBusy(null); }
+  };
   const resend = async (inv: InvoiceItem) => {
     setResendId(inv.id);
     try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed }); }
@@ -85,7 +91,7 @@ export function AdminCenterPage() {
   };
 
   const qTitle = (t: string | undefined, id: string) => t && t.trim() ? t : `${I.quoteLabel} · ${id.slice(0, 8)}`;
-  const statusLabel = (s: string) => s === 'pending' ? I.statusPending : s === 'paid' ? I.statusPaid : s;
+  const statusLabel = (s: string) => s === 'pending' ? I.statusPending : s === 'paid' ? I.statusPaid : s === 'awaiting_transfer' ? A.awaitingTransfer : s;
   const payLabel = (s: string) => s === 'paid' ? A.paymentPaid : s === 'pending' ? A.paymentPending : A.paymentNone;
   const payColor = (s: string) => s === 'paid' ? 'var(--green-text, #059669)' : s === 'pending' ? '#b45309' : 'var(--text-muted)';
 
@@ -225,12 +231,14 @@ export function AdminCenterPage() {
                   {done?.id === inv.id && (done.emailed
                     ? <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>✅ {I.sent}</div>
                     : <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: '#b45309' }}>⚠ {I.sentNoEmail}</div>)}
-                  {inv.status === 'pending' && done?.id !== inv.id && (
+                  {inv.status !== 'paid' && done?.id !== inv.id && (
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : I.resendBtn}</button>
-                      {inv.paymentUrl
-                        ? <button type="button" onClick={() => window.open(inv.paymentUrl as string, '_blank', 'noopener')} style={govBtn('var(--violet)', '#fff')}>{A.openPaymentLink}</button>
-                        : <button type="button" disabled={govBusy === inv.id} onClick={() => void genPaymentLink(inv)} style={govBtnOutline}>{govBusy === inv.id ? '…' : A.genPaymentLink}</button>}
+                      {inv.paymentMethod === 'bank_transfer'
+                        ? <button type="button" disabled={govBusy === inv.id} onClick={() => void markPaid(inv)} style={govBtn('var(--green-text, #059669)', '#fff')}>{govBusy === inv.id ? '…' : A.markPaidBtn}</button>
+                        : inv.paymentUrl
+                          ? <button type="button" onClick={() => window.open(inv.paymentUrl as string, '_blank', 'noopener')} style={govBtn('var(--violet)', '#fff')}>{A.openPaymentLink}</button>
+                          : <button type="button" disabled={govBusy === inv.id} onClick={() => void genPaymentLink(inv)} style={govBtnOutline}>{govBusy === inv.id ? '…' : A.genPaymentLink}</button>}
                     </div>
                   )}
                 </div>

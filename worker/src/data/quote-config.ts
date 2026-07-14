@@ -79,6 +79,11 @@ export const QUOTE_RANGES: Record<QuoteCategory, Record<string, PriceRange>> = {
  * Operating-cost uplift annotation (tokens, infra). Display-only — NOT added to
  * the range. Applies to AI agents & automation; null elsewhere.
  */
+/** Payment split (single source of truth): offers at or below this price use Stripe
+ *  self-serve checkout; above it, payment is by bank transfer (no Stripe). */
+export const SMB_MAX_USD = 15_000;
+export const isBankTransfer = (priceUsd: number): boolean => priceUsd > SMB_MAX_USD;
+
 export const OPS_COST_UPLIFT: Record<QuoteCategory, { minPct: number; maxPct: number } | null> = {
   ai_agent:   { minPct: 40, maxPct: 80 },
   automation: { minPct: 40, maxPct: 80 },

@@ -151,4 +151,110 @@ describe('POST /api/invoices/:id/payment-link (graceful Stripe)', () => {
     state.docs.set('invoices/quote_a', { id: 'quote_a', orgId: 'orgA', status: 'draft', amount: null });
     expect((await payLink('quote_a')).status).toBe(409);
   });
+
+  it('BANK_TRANSFER_ONLY for a >15k invoice — never mints Stripe', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', orgId: 'orgA', status: 'pending', amount: 60000, quoteTitle: 'Acme', paymentMethod: 'bank_transfer' });
+    const res = await payLink('quote_h');
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('BANK_TRANSFER_ONLY');
+  });
+
+  it('BANK_TRANSFER_ONLY even if paymentMethod unset (amount > 15k threshold)', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', orgId: 'orgA', status: 'pending', amount: 30000, quoteTitle: 'Acme' });
+    expect((await payLink('quote_h')).status).toBe(409);
+  });
+});
+
+describe('GET /api/invoices/:id/transfer-details (PUBLIC, high-ticket)', () => {
+  const td = (id: string) => invoices.request(`/api/invoices/${id}/transfer-details`, {}, ENV);
+
+  it('returns bank fields + reference(quoteId) + amount + deadline from org settings', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', quoteId: 'h', orgId: 'orgA', status: 'awaiting_transfer', amount: 60000, currency: 'usd', paymentMethod: 'bank_transfer', transferDeadline: '2026-07-28T00:00:00.000Z' });
+    state.docs.set('organizations/orgA/settings/billing', { region: 'eu', accountName: 'Acme SARL', bankName: 'BNP', iban: 'FR7630006000011234567890189', bic: 'BNPAFRPP' });
+    const j = await (await td('quote_h')).json() as Record<string, unknown>;
+    expect(j.paymentMethod).toBe('bank_transfer');
+    expect(j.reference).toBe('h');
+    expect(j.amount).toBe(60000);
+    expect(j.iban).toBe('FR7630006000011234567890189');
+    expect(j.swiftBic).toBe('BNPAFRPP');
+    expect(j.companyName).toBe('Acme SARL');
+    expect(j.deadlineIso).toBe('2026-07-28T00:00:00.000Z');
+    expect(j.available).toBe(true);
+  });
+
+  it('falls back to "Available upon request" when billing is not configured', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', quoteId: 'h', orgId: 'orgA', status: 'pending', amount: 60000, paymentMethod: 'bank_transfer' });
+    const j = await (await td('quote_h')).json() as Record<string, unknown>;
+    expect(j.bankText).toContain('Available upon request');
+    expect(j.available).toBe(false);
+  });
+
+  it('404 for an unknown invoice', async () => {
+    expect((await td('nope')).status).toBe(404);
+  });
+});
+
+describe('POST /api/invoices/:id/transfer-initiated (PUBLIC flag)', () => {
+  const ti = (id: string) => invoices.request(`/api/invoices/${id}/transfer-initiated`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, ENV);
+
+  it('flips a bank-transfer invoice pending → awaiting_transfer + timestamps it', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', orgId: 'orgA', status: 'pending', amount: 60000, paymentMethod: 'bank_transfer' });
+    const res = await ti('quote_h');
+    expect(res.status).toBe(200);
+    expect((await res.json() as { status: string }).status).toBe('awaiting_transfer');
+    const inv = state.docs.get('invoices/quote_h')!;
+    expect(inv.status).toBe('awaiting_transfer');
+    expect(typeof inv.transferInitiatedAt).toBe('string');
+  });
+
+  it('refuses a Stripe (≤15k) invoice (NOT_BANK_TRANSFER)', async () => {
+    state.docs.set('invoices/quote_s', { id: 'quote_s', orgId: 'orgA', status: 'pending', amount: 5000, paymentMethod: 'stripe' });
+    const res = await ti('quote_s');
+    expect(res.status).toBe(400);
+    expect((await res.json() as { code: string }).code).toBe('NOT_BANK_TRANSFER');
+  });
+
+  it('no-op on a PAID invoice (never un-pays)', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', orgId: 'orgA', status: 'paid', amount: 60000, paymentMethod: 'bank_transfer' });
+    const res = await ti('quote_h');
+    expect(res.status).toBe(200);
+    expect((await res.json() as { status: string }).status).toBe('paid');
+    expect(state.docs.get('invoices/quote_h')!.status).toBe('paid');
+  });
+});
+
+describe('POST /api/invoices/:id/mark-paid (ADMIN, bank-transfer only)', () => {
+  const markPaid = (id: string, org = 'orgA') =>
+    invoices.request(`/api/invoices/${id}/mark-paid?orgId=${org}`, { method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: org }) }, ENV);
+
+  it('marks a bank-transfer invoice paid + records paidBy + mirrors the quote stage', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', quoteId: 'h', orgId: 'orgA', status: 'awaiting_transfer', amount: 60000, paymentMethod: 'bank_transfer' });
+    const res = await markPaid('quote_h');
+    expect(res.status).toBe(200);
+    expect((await res.json() as { status: string }).status).toBe('paid');
+    const inv = state.docs.get('invoices/quote_h')!;
+    expect(inv.status).toBe('paid');
+    expect(inv.paidBy).toBe('u1');
+    expect(typeof inv.paidAt).toBe('string');
+    expect(state.docs.get('organizations/orgA/quotes/h')!.stage).toBe('paid');
+  });
+
+  it('refuses to mark a Stripe invoice paid (NOT_BANK_TRANSFER — no Stripe bypass)', async () => {
+    state.docs.set('invoices/quote_s', { id: 'quote_s', orgId: 'orgA', status: 'pending', amount: 5000, paymentMethod: 'stripe' });
+    const res = await markPaid('quote_s');
+    expect(res.status).toBe(400);
+    expect((await res.json() as { code: string }).code).toBe('NOT_BANK_TRANSFER');
+  });
+
+  it('cross-org guard (404)', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', orgId: 'orgA', status: 'awaiting_transfer', amount: 60000, paymentMethod: 'bank_transfer' });
+    expect((await markPaid('quote_h', 'orgB')).status).toBe(404);
+  });
+
+  it('idempotent — an already-paid invoice returns paid', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', orgId: 'orgA', status: 'paid', amount: 60000, paymentMethod: 'bank_transfer' });
+    const res = await markPaid('quote_h');
+    expect(res.status).toBe(200);
+    expect((await res.json() as { alreadyPaid?: boolean }).alreadyPaid).toBe(true);
+  });
 });

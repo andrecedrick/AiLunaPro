@@ -118,6 +118,8 @@ export const es: Dict = {
     reactivate: 'Reactivar',
     sendQuote: 'Enviar presupuesto',
     sendAndPay: 'Enviar y pagar',
+    markPaidBtn: 'Marcar como pagado',
+    awaitingTransfer: 'Transferencia pendiente',
     openPaymentLink: 'Abrir enlace de pago',
     genPaymentLink: 'Generar enlace de pago',
     superadminHeading: 'Visibilidad superadmin — todos los presupuestos',
@@ -2751,6 +2753,8 @@ export const es: Dict = {
         }
       },
       "accepted": {
+        "bankProceedCta": "Continuar con transferencia bancaria",
+        "bankMessage": "Para proyectos de más de 15 000 $, el pago se realiza de forma segura mediante transferencia bancaria.",
         "title": "Tu respuesta ha sido enviada",
         "s1": "Estamos revisando tu solicitud",
         "s2": "Un experto confirmará el importe final",
@@ -2820,6 +2824,21 @@ export const es: Dict = {
         "stateInvoice": "Factura",
         "budgetLabel": "Tu presupuesto propuesto",
         "waitingValidation": "Esperando validación",
+        "bank": {
+          "heading": "Instrucciones de transferencia bancaria",
+          "secureNote": "Realiza tu pago mediante transferencia bancaria segura con los datos siguientes.",
+          "cardHint": "Pago seguro por transferencia bancaria",
+          "amountLabel": "Importe",
+          "referenceLabel": "Referencia de pago",
+          "companyLabel": "Empresa",
+          "bankLabel": "Banco",
+          "ibanLabel": "IBAN",
+          "swiftLabel": "SWIFT / BIC",
+          "deadlineLabel": "Pagar antes del",
+          "initiateBtn": "He realizado la transferencia",
+          "awaitingConfirm": "Gracias — lo confirmaremos en cuanto llegue tu transferencia.",
+          "invoiceNote": "Se emite una factura una vez recibido el pago."
+        },
         "waitingActive": "Estamos finalizando tu importe: podrás pagar en cuanto esté listo.",
         "back": "Volver a la herramienta de presupuestos"
       }

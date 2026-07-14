@@ -17,8 +17,9 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { firestoreRunQuery, firestoreGet, firestoreSet, firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { sendTransactional } from '../lib/sequenzy';
-import { formatBankDetails } from '../lib/bank-details';
+import { formatBankDetails, bankDetailsFields } from '../lib/bank-details';
 import { getStripe } from '../lib/stripe';
+import { SMB_MAX_USD } from '../data/quote-config';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
@@ -80,10 +81,11 @@ async function resolveBankDetails(saJson: string, orgId: string): Promise<string
 }
 
 /** Send the invoice-client email (best-effort, non-fatal). Shared by confirm + finalize. */
-async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; paymentUrl?: string | null }): Promise<{ emailed: boolean; emailError?: string }> {
+async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; paymentUrl?: string | null; method?: 'stripe' | 'bank_transfer'; reference?: string; deadlineIso?: string | null }): Promise<{ emailed: boolean; emailError?: string }> {
   if (!a.customer) return { emailed: false };
   const bankDetails = await resolveBankDetails(saJson, a.orgId);
   const appInvoiceUrl = `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`;
+  const isBank = a.method === 'bank_transfer';
   const res = await sendTransactional(env.SEQUENZY_API_KEY, {
     to:      a.customer,
     slug:    'invoice-client',
@@ -93,10 +95,16 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
       AMOUNT:       `$${a.amount.toLocaleString('en-US')}`,
       // Deep-link to the exact invoice so the panel highlights + scrolls to it.
       INVOICE_URL:  appInvoiceUrl,
-      // ISSUE 6 — "Pay online": the Stripe Checkout link when configured, else the
-      // in-app invoice page (so the button always works). Bank transfer stays below.
-      PAYMENT_URL:  a.paymentUrl || appInvoiceUrl,
+      // "Pay online": Stripe Checkout for SMB (≤ SMB_MAX_USD). For bank transfer the
+      // button points at the in-app invoice page — NEVER a Stripe link (the template
+      // hides the button when BANK_TRANSFER is set). Bank details stay below.
+      PAYMENT_URL:  isBank ? appInvoiceUrl : (a.paymentUrl || appInvoiceUrl),
       BANK_DETAILS: bankDetails,
+      // Bank-transfer vars for the single invoice-client template's conditional block:
+      // reference = quote id (must appear on the wire), deadline = +14 days, flag = show bank.
+      REFERENCE:    a.reference ?? a.invoiceId,
+      DEADLINE:     a.deadlineIso ? a.deadlineIso.slice(0, 10) : '',
+      BANK_TRANSFER: isBank ? '1' : '',
     },
   });
   if (!res.ok) console.warn('[invoices] invoice-client NOT sent (check SEQUENZY_API_KEY / invoice-client):', res.error ?? 'unknown');
@@ -141,11 +149,17 @@ export async function finalizeQuoteInvoice(
   const customer = typeof quote.customerEmail === 'string' ? quote.customerEmail : '';
   const nowIso = new Date().toISOString();
 
+  // Payment split: ≤ SMB_MAX_USD → Stripe self-serve; above → bank transfer (no Stripe).
+  const paymentMethod: 'stripe' | 'bank_transfer' = amount > SMB_MAX_USD ? 'bank_transfer' : 'stripe';
+  const transferDeadline = paymentMethod === 'bank_transfer'
+    ? new Date(Date.parse(nowIso) + 14 * 24 * 60 * 60 * 1000).toISOString() : null;
+
   const invoice = {
     id: invoiceId, quoteId, orgId, quoteTitle, customerEmail: customer,
     rangeMinUsd, rangeMaxUsd,
     expectedBudgetUsd: typeof quote.expectedBudgetUsd === 'number' ? quote.expectedBudgetUsd : null,
     amount, currency: 'usd', status: 'pending', source: 'quote', schemaVersion: 1,
+    paymentMethod, ...(transferDeadline ? { transferDeadline } : {}),
     createdAt: nowIso, confirmedAt: nowIso,
   };
   // Atomic create-once: a race (double-click / retry / concurrent admin+auto) → the
@@ -168,8 +182,11 @@ export async function finalizeQuoteInvoice(
   // Quote → finalized now; → invoice_sent only if the client email actually goes out.
   await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'finalized', finalAmountUsd: amount, updatedAt: nowIso }, { merge: true });
 
-  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId, amount, project: quoteTitle, appBase });
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId, project: quoteTitle, customer, amount, appBase, paymentUrl });
+  // Bank transfer → never mint a Stripe link.
+  const paymentUrl = paymentMethod === 'stripe'
+    ? await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId, amount, project: quoteTitle, appBase })
+    : null;
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId, project: quoteTitle, customer, amount, appBase, paymentUrl, method: paymentMethod, reference: quoteId, deadlineIso: transferDeadline });
   if (emailed) await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'invoice_sent', invoiceSentAt: nowIso }, { merge: true });
   return { invoiceId, status: 'pending', amount, paymentUrl, emailed, emailError, alreadyFinalized: false };
 }
@@ -208,6 +225,10 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
       expectedBudgetUsd: typeof f.expectedBudgetUsd === 'number' ? f.expectedBudgetUsd : null,
       status:        typeof f.status === 'string' ? f.status : 'draft',
       paymentUrl:    typeof f.paymentUrl === 'string' ? f.paymentUrl : null,
+      paymentMethod: typeof f.paymentMethod === 'string' ? f.paymentMethod : 'stripe',
+      transferInitiatedAt: typeof f.transferInitiatedAt === 'string' ? f.transferInitiatedAt : null,
+      transferDeadline:    typeof f.transferDeadline === 'string' ? f.transferDeadline : null,
+      paidAt:        typeof f.paidAt === 'string' ? f.paidAt : null,
       createdAt:     typeof f.createdAt === 'string' ? f.createdAt : '',
     };
   });
@@ -249,9 +270,12 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   const project  = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
     : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
   const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
-  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined });
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, appBase, paymentUrl });
-  dlog(env, '[invoices] re-sent', id, 'emailed=', emailed, 'payLink=', !!paymentUrl);
+  const method: 'stripe' | 'bank_transfer' = (inv.paymentMethod === 'bank_transfer' || amount > SMB_MAX_USD) ? 'bank_transfer' : 'stripe';
+  const paymentUrl = method === 'stripe'
+    ? await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined })
+    : null;
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, appBase, paymentUrl, method, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id, deadlineIso: typeof inv.transferDeadline === 'string' ? inv.transferDeadline : null });
+  dlog(env, '[invoices] re-sent', id, 'emailed=', emailed, 'method=', method, 'payLink=', !!paymentUrl);
 
   return c.json({ ok: true, status: typeof inv.status === 'string' ? inv.status : 'pending', amount, emailed, paymentUrl: paymentUrl ?? null, ...(emailError ? { emailError } : {}) });
 });
@@ -278,12 +302,114 @@ invoices.post('/api/invoices/:id/payment-link', requireAuth(), requireRole(CONFI
 
   const amount = typeof inv.amount === 'number' ? inv.amount : NaN;
   if (!Number.isFinite(amount) || amount <= 0) return c.json({ error: 'Invoice has no amount yet.', code: 'NO_AMOUNT' }, 409);
+  // High-ticket (> SMB_MAX_USD) is bank transfer only — never mint a Stripe link.
+  if (amount > SMB_MAX_USD || inv.paymentMethod === 'bank_transfer') {
+    return c.json({ error: 'This invoice is paid by bank transfer.', code: 'BANK_TRANSFER_ONLY' }, 409);
+  }
 
   const project = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle : id;
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
   const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined });
   if (!paymentUrl) return c.json({ error: 'Online payment is not configured.', code: 'PAYMENT_UNAVAILABLE' }, 503);
   return c.json({ ok: true, paymentUrl });
+});
+
+/* ── GET /api/invoices/:id/transfer-details — PUBLIC bank-transfer instructions ──
+ *
+ * Display-only. Bank details are the company's RECEIVING account (non-secret); the
+ * client reaches this from the email/accept flow (not an org member). No client PII
+ * is returned. The money-releasing action (mark-paid) stays admin-only.
+ */
+invoices.get('/api/invoices/:id/transfer-details', async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+  const id = (c.req.param('id') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+  if (!id) return c.json({ error: 'Invalid invoice id.', code: 'INVALID_ID' }, 400);
+
+  const inv = await firestoreGet(saJson, `invoices/${id}`) as Record<string, unknown> | null;
+  if (!inv) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
+  const orgId  = typeof inv.orgId === 'string' ? inv.orgId : '';
+  const amount = typeof inv.amount === 'number' ? inv.amount : 0;
+  const method = inv.paymentMethod === 'bank_transfer' || amount > SMB_MAX_USD ? 'bank_transfer' : 'stripe';
+
+  let settings: Record<string, unknown> | null = null;
+  try { settings = await firestoreGet(saJson, `organizations/${orgId}/settings/billing`) as Record<string, unknown> | null; } catch { /* optional */ }
+  const fields = bankDetailsFields(settings);
+  const bankText = formatBankDetails(settings) || 'Available upon request — reply to your quote email.';
+
+  return c.json({
+    ok:          true,
+    paymentMethod: method,
+    status:      typeof inv.status === 'string' ? inv.status : 'pending',
+    reference:   typeof inv.quoteId === 'string' ? inv.quoteId : id,
+    amount:      typeof inv.amount === 'number' ? inv.amount : null,
+    currency:    typeof inv.currency === 'string' ? inv.currency : 'usd',
+    deadlineIso: typeof inv.transferDeadline === 'string' ? inv.transferDeadline : null,
+    bankText,
+    companyName: fields.companyName,
+    bankName:    fields.bankName,
+    iban:        fields.iban,
+    swiftBic:    fields.swiftBic,
+    available:   !!(fields.iban || fields.swiftBic || fields.companyName),
+  });
+});
+
+/* ── POST /api/invoices/:id/transfer-initiated — PUBLIC flag ("I've initiated it") ──
+ *
+ * Low-stakes: flips pending → awaiting_transfer + records the timestamp so an admin
+ * follows up. Never touches 'paid'. Bank-transfer invoices only. Idempotent.
+ */
+invoices.post('/api/invoices/:id/transfer-initiated', async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+  const id = (c.req.param('id') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+  if (!id) return c.json({ error: 'Invalid invoice id.', code: 'INVALID_ID' }, 400);
+
+  const inv = await firestoreGet(saJson, `invoices/${id}`) as Record<string, unknown> | null;
+  if (!inv) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
+  const amount = typeof inv.amount === 'number' ? inv.amount : 0;
+  const method = inv.paymentMethod === 'bank_transfer' || amount > SMB_MAX_USD ? 'bank_transfer' : 'stripe';
+  if (method !== 'bank_transfer') return c.json({ error: 'Not a bank-transfer invoice.', code: 'NOT_BANK_TRANSFER' }, 400);
+  if (inv.status === 'paid') return c.json({ ok: true, status: 'paid' });
+
+  await firestoreSet(saJson, `invoices/${id}`, { status: 'awaiting_transfer', transferInitiatedAt: new Date().toISOString() }, { merge: true });
+  return c.json({ ok: true, status: 'awaiting_transfer' });
+});
+
+/* ── POST /api/invoices/:id/mark-paid — ADMIN ONLY, bank-transfer only ──
+ *
+ * Bank-transfer invoices get no Stripe webhook, so an owner/admin confirms receipt
+ * here. Refused for Stripe invoices (they reconcile automatically) so this can never
+ * bypass Stripe. Org-scoped + idempotent. Mirrors the quote stage to 'paid'.
+ */
+invoices.post('/api/invoices/:id/mark-paid', requireAuth(), requireRole(CONFIRM_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+  const orgId = c.get('orgId') as string; // membership-verified
+  const uid   = c.get('uid') as string;
+  const id = (c.req.param('id') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+  if (!id) return c.json({ error: 'Invalid invoice id.', code: 'INVALID_ID' }, 400);
+
+  const inv = await firestoreGet(saJson, `invoices/${id}`) as Record<string, unknown> | null;
+  if (!inv || inv.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
+  const amount = typeof inv.amount === 'number' ? inv.amount : 0;
+  const method = inv.paymentMethod === 'bank_transfer' || amount > SMB_MAX_USD ? 'bank_transfer' : 'stripe';
+  if (method !== 'bank_transfer') return c.json({ error: 'Stripe invoices reconcile automatically.', code: 'NOT_BANK_TRANSFER' }, 400);
+  if (inv.status === 'paid') return c.json({ ok: true, status: 'paid', alreadyPaid: true });
+
+  const nowIso = new Date().toISOString();
+  await firestoreSet(saJson, `invoices/${id}`, { status: 'paid', paidAt: nowIso, paidBy: uid, paymentMethod: 'bank_transfer' }, { merge: true });
+  if (typeof inv.quoteId === 'string' && inv.quoteId) {
+    try { await firestoreSet(saJson, QUOTE_DOC(orgId, inv.quoteId), { stage: 'paid', paidAt: nowIso }, { merge: true }); } catch { /* best-effort */ }
+  }
+  dlog(env, '[invoices] mark-paid', id, 'by', uid);
+  return c.json({ ok: true, status: 'paid' });
 });
 
 export default invoices;

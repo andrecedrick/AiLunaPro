@@ -11,10 +11,12 @@
 import { useRoute } from '../context/RouteContext';
 import { useLocale } from '../context/LocaleContext';
 import { useMoney } from '../lib/currency/useMoney';
+import { useEffect, useState } from 'react';
 import { primaryBtnStyle } from '../components/ui-tools';
 import { QuoteProgress } from '../components/QuoteProgress';
 import { ENABLE_QUOTE_V2 } from '../lib/flags';
-import { readQuotePayLink } from '../lib/quote/quoteClient';
+import { SMB_MAX_USD } from '../data/quote-config';
+import { readQuotePayLink, getTransferDetails, markTransferInitiated, type TransferDetails } from '../lib/quote/quoteClient';
 
 function hashState(): { quoteId: string; state: 'review' | 'negotiation' | 'waiting' | 'invoice'; budgetUsd: number | null } {
   const h = typeof window !== 'undefined' ? window.location.hash : '';
@@ -42,6 +44,33 @@ export function QuoteStatusPage() {
   const payUrl = quoteId ? readQuotePayLink(quoteId) : null;
   const mutedLink = { background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontWeight: 600, textDecoration: 'underline', padding: 0 } as const;
 
+  // High-ticket (> $15k) = bank transfer: fetch the (public) instructions + let the buyer
+  // flag the wire as initiated. invoiceId = quote_<quoteId>.
+  const isBankTransfer = budgetUsd !== null && budgetUsd > SMB_MAX_USD;
+  const [transfer, setTransfer] = useState<TransferDetails | null>(null);
+  const [initiated, setInitiated] = useState(false);
+  const [initiating, setInitiating] = useState(false);
+  useEffect(() => {
+    if (!isBankTransfer || !quoteId) return;
+    let live = true;
+    getTransferDetails(`quote_${quoteId}`)
+      .then(d => { if (live) { setTransfer(d); if (d.status === 'awaiting_transfer') setInitiated(true); } })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [isBankTransfer, quoteId]);
+  const onInitiated = async () => {
+    if (!quoteId || initiating) return;
+    setInitiating(true);
+    try { await markTransferInitiated(`quote_${quoteId}`); setInitiated(true); }
+    catch { /* non-fatal — admin still follows up */ } finally { setInitiating(false); }
+  };
+  const bankRow = (label: string, value: string, strong = false) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
+      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <strong style={{ color: 'var(--text-primary)', fontWeight: strong ? 800 : 600, fontVariantNumeric: 'tabular-nums', textAlign: 'right', wordBreak: 'break-all' }}>{value}</strong>
+    </div>
+  );
+
   const badgeLabel = state === 'negotiation' ? S.stateNegotiation
     : state === 'waiting' ? S.stateWaiting
     : state === 'invoice' ? S.stateInvoice
@@ -62,7 +91,7 @@ export function QuoteStatusPage() {
           {/* Phase 4 — remove the passive "waiting" dead-end feel: V2 shows a forward,
               reassuring line (payment comes next); legacy keeps the plain status. */}
           <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8 }}>
-            {payUrl ? S.payReady : ENABLE_QUOTE_V2 ? S.waitingActive : `⏳ ${S.waitingValidation}`}
+            {isBankTransfer ? S.bank.cardHint : payUrl ? S.payReady : ENABLE_QUOTE_V2 ? S.waitingActive : `⏳ ${S.waitingValidation}`}
           </div>
         </div>
       )}
@@ -74,8 +103,31 @@ export function QuoteStatusPage() {
 
       <QuoteProgress active={activeStep} />
 
-      {/* U1 — a payable quote skips the "an admin will confirm the amount" wait copy. */}
-      {payUrl ? (
+      {/* High-ticket → bank-transfer instructions; else the SMB pay/review copy. */}
+      {isBankTransfer ? (
+        <div style={{ margin: '0 auto 24px', maxWidth: 420, textAlign: 'left' }}>
+          <div style={{ padding: '18px 20px', borderRadius: 14, background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>{S.bank.heading}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>{S.bank.secureNote}</div>
+            {transfer ? (
+              <div style={{ display: 'grid', gap: 8, fontSize: 13.5 }}>
+                {bankRow(S.bank.amountLabel, money.format(transfer.amount ?? budgetUsd ?? 0), true)}
+                {bankRow(S.bank.referenceLabel, transfer.reference)}
+                {transfer.companyName ? bankRow(S.bank.companyLabel, transfer.companyName) : null}
+                {transfer.bankName ? bankRow(S.bank.bankLabel, transfer.bankName) : null}
+                {transfer.iban ? bankRow(S.bank.ibanLabel, transfer.iban) : null}
+                {transfer.swiftBic ? bankRow(S.bank.swiftLabel, transfer.swiftBic) : null}
+                {!transfer.available ? <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{transfer.bankText}</div> : null}
+                {transfer.deadlineIso ? bankRow(S.bank.deadlineLabel, transfer.deadlineIso.slice(0, 10)) : null}
+              </div>
+            ) : <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>…</div>}
+          </div>
+          {initiated
+            ? <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--green-soft-bg, #e1f5ee)', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>✅ {S.bank.awaitingConfirm}</div>
+            : <button type="button" disabled={initiating} onClick={() => void onInitiated()} style={{ ...primaryBtnStyle(), width: '100%', marginTop: 12, opacity: initiating ? 0.6 : 1, cursor: initiating ? 'wait' : 'pointer' }}>{initiating ? '…' : S.bank.initiateBtn}</button>}
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 10, textAlign: 'center' }}>{S.bank.invoiceNote}</div>
+        </div>
+      ) : payUrl ? (
         <div style={{ margin: '0 auto 24px', maxWidth: 400, padding: '12px 16px', borderRadius: 10, background: 'var(--green-soft-bg, #e1f5ee)', color: 'var(--text-secondary)', fontSize: 13.5, lineHeight: 1.55 }}>
           ✅ {S.payReady}
         </div>

@@ -18,6 +18,10 @@ export interface InvoiceItem {
   rangeMaxUsd:   number | null;
   status:        string;
   paymentUrl?:   string | null;
+  paymentMethod?: string;              // 'stripe' | 'bank_transfer'
+  transferInitiatedAt?: string | null;
+  transferDeadline?:    string | null;
+  paidAt?:       string | null;
   createdAt:     string;
 }
 
@@ -116,4 +120,16 @@ export async function resendInvoice(orgId: string, id: string): Promise<{ status
   if (!res.ok) throw new Error(`HTTP_${res.status}`);
   const j = await res.json().catch(() => null) as { status?: string; emailed?: boolean } | null;
   return { status: j?.status ?? 'pending', emailed: j?.emailed === true };
+}
+
+/** Admin: mark a BANK-TRANSFER invoice paid (owner/admin, org-scoped). The worker
+ *  refuses this for Stripe invoices (they reconcile via webhook). Idempotent. */
+export async function markInvoicePaid(orgId: string, invoiceId: string): Promise<{ status: string }> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/invoices/${encodeURIComponent(invoiceId)}/mark-paid?orgId=${encodeURIComponent(orgId)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` }, body: JSON.stringify({ orgId }),
+  });
+  if (!res.ok) throw new Error(`HTTP_${res.status}`);
+  const j = await res.json().catch(() => null) as { status?: string } | null;
+  return { status: j?.status ?? 'paid' };
 }

@@ -37,6 +37,7 @@ import { buildQuotePdf, type QuotePdfInput } from '../lib/quote-pdf';
 import { sendTransactional } from '../lib/sequenzy';
 import { sanitizeQuoteRoiVars, sanitizeEmailVar } from '../lib/quote-email-vars';
 import { finalizeQuoteInvoice } from './invoices';
+import { SMB_MAX_USD } from '../data/quote-config';
 import { checkCooldown, checkDailyCap } from '../lib/rateLimit';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { adminRecipients, isSuperAdmin } from '../lib/platformAdmin';
@@ -731,7 +732,7 @@ const QUOTE_ACTION_SHARE_VERSION = 2;
 async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
   orgId: string; quoteId: string; stored: Record<string, unknown>;
   customerEmail: string | undefined; appBase: string;
-}): Promise<{ locked: false; paymentUrl: string | null } | { locked: true; stage: string }> {
+}): Promise<{ locked: false; paymentUrl: string | null; paymentMethod: 'stripe' | 'bank_transfer' } | { locked: true; stage: string }> {
   const { orgId, quoteId, stored, customerEmail, appBase } = a;
 
   // Integrity guard (D1): a finalised/invoiced/paid quote is locked — never re-decide.
@@ -792,7 +793,10 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
     }
   }
 
-  return { locked: false, paymentUrl: autoPaymentUrl };
+  // Payment split for the frontend: > SMB_MAX_USD → bank transfer (paymentUrl is null),
+  // else Stripe self-serve. The amount itself is unchanged (the locked priceUsd).
+  const paymentMethod: 'stripe' | 'bank_transfer' = (price ?? 0) > SMB_MAX_USD ? 'bank_transfer' : 'stripe';
+  return { locked: false, paymentUrl: autoPaymentUrl, paymentMethod };
 }
 
 interface DecisionBody { orgId?: unknown; decision?: unknown }
@@ -825,7 +829,7 @@ quote.post('/api/quote/:quoteId/decision', requireAuth(), requireRole(EMAIL_ROLE
   // D1 — a finalised/invoiced/paid quote is locked; refuse the regression.
   if (res.locked) return c.json({ error: 'Quote cannot be modified after finalization.', code: 'QUOTE_LOCKED', stage: res.stage }, 409);
   // Accept auto-invoices at the locked price → surface the instant pay link.
-  return c.json({ ok: true, status: 'accepted', ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
+  return c.json({ ok: true, status: 'accepted', paymentMethod: res.paymentMethod, ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
 });
 
 /* ── POST /api/quote/decision/confirm — PUBLIC, token-gated email accept ────
@@ -893,7 +897,7 @@ quote.post('/api/quote/decision/confirm', async c => {
   // common case; this backstops a finalised quote whose decidedAt is unset.)
   if (res.locked) return c.json({ error: 'This quote can no longer be changed.', code: 'QUOTE_LOCKED', stage: res.stage }, 409);
   // Accept auto-invoices at the locked price → surface the instant pay link.
-  return c.json({ ok: true, status: 'accepted', ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
+  return c.json({ ok: true, status: 'accepted', paymentMethod: res.paymentMethod, ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
 });
 
 export default quote;
