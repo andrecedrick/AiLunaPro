@@ -103,7 +103,9 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
       // Bank-transfer vars for the single invoice-client template's conditional block:
       // reference = quote id (must appear on the wire), deadline = +14 days, flag = show bank.
       REFERENCE:    a.reference ?? a.invoiceId,
-      DEADLINE:     a.deadlineIso ? a.deadlineIso.slice(0, 10) : '',
+      // Full sentence (or empty for SMB) so the single template can print {{DEADLINE}}
+      // directly without an empty "pay by ___" line on Stripe invoices.
+      DEADLINE:     a.deadlineIso ? `Please complete your bank transfer by ${a.deadlineIso.slice(0, 10)}.` : '',
       BANK_TRANSFER: isBank ? '1' : '',
     },
   });
