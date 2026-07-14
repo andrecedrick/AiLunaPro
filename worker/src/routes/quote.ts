@@ -398,7 +398,12 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   // FIXED PUBLISHED PRICE — the amount is the offer's priceUsd (set at generation from
   // QUOTE_RANGES), locked on this send. No client budget, no floor, no range, no override.
   // Idempotent: a re-send keeps the same price. quotePrice = price ?? priceUsd ?? legacy.
-  const price = quotePrice(stored);
+  // Admin override (Phase 1): the price SENT is finalPriceUsd when set (base priceUsd
+  // stays immutable), else the base. Recomputed each send so a re-send after an edit
+  // re-locks at the new amount. quotePrice() reads `price` (last locked) authoritatively.
+  const overridePrice = typeof stored.finalPriceUsd === 'number' && Number.isFinite(stored.finalPriceUsd) && stored.finalPriceUsd > 0
+    ? Math.round(stored.finalPriceUsd) : null;
+  const price = overridePrice ?? quotePrice(stored);
   if (price === null) {
     return c.json({ error: 'This quote has no published price.', code: 'NO_PRICE' }, 500);
   }
@@ -473,6 +478,9 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
     ACCEPT_URL:   `${appBase}/#/quote/result?action=accept&src=email&t=${actionToken}&quoteId=${encodeURIComponent(quoteId)}${budgetSuffix}`,
     SOLUTION:     sanitizeEmailVar(render.solutionLabel),
     BUDGET:       sanitizeEmailVar(budgetDisplay),
+    // High-ticket (> SMB_MAX_USD) → bank transfer: the quote-{lang} template switches
+    // the CTA from "Accept & pay" to "Review proposal" + a secure-bank-transfer note.
+    BANK_TRANSFER: price > SMB_MAX_USD ? '1' : '',
     PDF_URL:      pdfUrl,
     // ROI + decision figures (client formats them exactly like the in-app blocks;
     // sanitized + always-present here → no raw {{VAR}} and no null in the email).
@@ -619,7 +627,10 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
         createdBy:         typeof f.createdBy === 'string' ? f.createdBy : '',   // client/sender uid
         orgId,
         source:            typeof f.source === 'string' ? f.source : '',
-        price:             quotePrice(f),                                        // single locked price (USD)
+        price:             quotePrice(f),                                        // effective price (override or base, or locked)
+        basePriceUsd:      typeof f.priceUsd === 'number' ? f.priceUsd : null,         // system suggested price (immutable base)
+        finalPriceUsd:     typeof f.finalPriceUsd === 'number' ? f.finalPriceUsd : null, // admin override (null = none)
+        priceReason:       typeof f.priceReason === 'string' ? f.priceReason : '',
         currency:          typeof f.currency === 'string' ? f.currency : 'usd',
         rangeMinUsd, rangeMaxUsd,
         stage:             typeof f.stage === 'string' ? f.stage : '',
@@ -672,7 +683,7 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
  * governance flag layered over the lifecycle stage. A blocked/suspended quote can no
  * longer be accepted (its auto-invoice is skipped) — the only admin control that stays.
  */
-interface PatchBody { orgId?: unknown; adminState?: unknown }
+interface PatchBody { orgId?: unknown; adminState?: unknown; finalPriceUsd?: unknown; priceReason?: unknown }
 const ADMIN_STATES = new Set(['blocked', 'suspended', 'active']);
 
 quote.patch('/api/quote/:quoteId', requireAuth(), requireRole(OVERRIDE_ROLES), async c => {
@@ -705,11 +716,35 @@ quote.patch('/api/quote/:quoteId', requireAuth(), requireRole(OVERRIDE_ROLES), a
     touched = true;
   }
 
+  // Phase 1 — ADMIN price override. finalPriceUsd is the amount SENT to the client;
+  // priceUsd stays the immutable base (basePriceUsd mirrors it for audit). Refused once
+  // the price is settled (finalized/invoiced/paid) so a client is never invoiced a
+  // different amount than they accepted. null clears the override (→ back to base).
+  if (body.finalPriceUsd !== undefined) {
+    const stage = typeof stored.stage === 'string' ? stored.stage : '';
+    if (['finalized', 'invoice_sent', 'paid'].includes(stage)) {
+      return c.json({ error: 'This price is settled and cannot be changed.', code: 'PRICE_SETTLED' }, 409);
+    }
+    if (body.finalPriceUsd === null) {
+      patch.finalPriceUsd = null;
+    } else {
+      const n = typeof body.finalPriceUsd === 'number' && Number.isFinite(body.finalPriceUsd) ? Math.round(body.finalPriceUsd) : NaN;
+      if (!Number.isFinite(n) || n <= 0 || n > 100_000_000) return c.json({ error: 'Invalid price.', code: 'INVALID_PRICE' }, 400);
+      patch.finalPriceUsd = n;
+      if (typeof stored.priceUsd === 'number') patch.basePriceUsd = stored.priceUsd;
+    }
+    touched = true;
+  }
+  if (typeof body.priceReason === 'string') {
+    patch.priceReason = body.priceReason.replace(/[<>]/g, '').trim().slice(0, 300);
+    touched = true;
+  }
+
   if (!touched) return c.json({ error: 'Nothing to update.', code: 'NO_FIELDS' }, 400);
 
   await firestoreSet(saJson, path, patch, { merge: true });
   const effState = patch.adminState === null ? '' : typeof patch.adminState === 'string' ? patch.adminState : (typeof stored.adminState === 'string' ? stored.adminState : '');
-  return c.json({ ok: true, quoteId, adminState: effState });
+  return c.json({ ok: true, quoteId, adminState: effState, ...(patch.finalPriceUsd !== undefined ? { finalPriceUsd: patch.finalPriceUsd } : {}) });
 });
 
 /* ── POST /api/quote/:quoteId/decision — client pricing decision ───────────

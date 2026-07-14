@@ -70,7 +70,7 @@ export async function listAllQuotes(orgId: string, opts?: { mine?: boolean }): P
  *  no price/budget/message edit. Owner/admin + org-scoped, server-enforced. */
 export async function patchQuote(
   orgId: string, quoteId: string,
-  input: { adminState: 'blocked' | 'suspended' | 'active' },
+  input: { adminState?: 'blocked' | 'suspended' | 'active'; finalPriceUsd?: number | null; priceReason?: string },
 ): Promise<void> {
   const idToken = await getIdToken();
   // orgId goes in the QUERY string: requireRole only clones the body for POST, so a

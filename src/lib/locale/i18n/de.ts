@@ -2786,6 +2786,11 @@ export const de: Dict = {
       },
       "decision": {
         "priceLabel": "Ihr Preis",
+        "suggestedLabel": "Vorgeschlagener Preis (System)",
+        "finalLabel": "Gesendeter Endpreis (USD)",
+        "reasonPlaceholder": "Grund der Anpassung (optional)",
+        "resetPrice": "Zurücksetzen",
+        "billedUsd": "Abrechnung in USD. Der Kunde sieht den Betrag in seine Währung umgerechnet.",
         "adjustHeading": "Schlagen Sie Ihr Budget vor",
         "messagePlaceholder": "Fügen Sie eine Nachricht hinzu — was möchten Sie anpassen?",
         "messageSend": "Anfrage senden",

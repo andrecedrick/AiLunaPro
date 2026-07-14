@@ -27,6 +27,7 @@ import {
 } from '../data/quote-config';
 import { computeQuotePreview, type QuotePreview } from '../lib/quote/score';
 import { generateQuote, downloadQuotePdf, emailQuote, QuoteGenError } from '../lib/quote/quoteClient';
+import { patchQuote } from '../lib/quote/invoicesClient';
 import { tokenCost } from '../lib/tokens/costs';
 import { ENABLE_QUOTE_V2 } from '../lib/flags';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
@@ -107,6 +108,13 @@ export function QuoteRequestPage() {
   // no double charge); reset() mints a fresh one for the next quote.
   const quoteIdRef = useRef<string>('');
 
+  // Admin price override (Phase 1): finalUsd overrides the system priceUsd for THIS send
+  // (owner/admin only). null = use the base. priceUsd itself is NEVER mutated; the client
+  // never sets the price. USD-canonical — edited in USD, converted client-side.
+  const isAdmin = session?.role === 'owner' || session?.role === 'admin';
+  const [finalUsd, setFinalUsd] = useState<number | null>(null);
+  const [priceReason, setPriceReason] = useState('');
+
   // Worksheet → Quote handoff: one-shot prefill (pre-select the service category +
   // seed the description from the user's recoverable tasks). Read once on mount.
   useEffect(() => {
@@ -185,6 +193,7 @@ export function QuoteRequestPage() {
     setModal({ open: false, balance: 0, required: 0 });
     setDownloading(false); setPdfError(null);
     setEmailState('idle'); setEmailError(null); setClientEmail('');
+    setFinalUsd(null); setPriceReason('');
     quoteIdRef.current = '';
     // D2 — new quote context: re-read the ROI under the freshness gate (drops it if
     // now stale) so the next quote never shows/sends a previous quote's numbers.
@@ -247,7 +256,7 @@ export function QuoteRequestPage() {
     const solDesc  = prop.solutionDesc as Record<string, string>;
     const timelineMap = prop.timeline as Record<string, string>;
 
-    const priceText = money.format(p.priceUsd);
+    const priceText = money.format(finalUsd ?? p.priceUsd);   // admin override reflected in the PDF/email render
     const solutionLabel = sols[p.solutionKey] ?? p.solutionKey;
     const tCat = p.category === 'website' ? 'website' : p.category === 'audit' ? 'audit' : 'agent';
 
@@ -322,6 +331,12 @@ export function QuoteRequestPage() {
     if (!emailOk) return;
     setEmailState('sending');
     try {
+      // Admin price override → persist finalPriceUsd (+ reason) BEFORE the send locks it.
+      // Non-fatal: a failure falls back to the base price.
+      if (isAdmin && finalUsd !== null && finalUsd !== preview.priceUsd) {
+        try { await patchQuote(orgId, quoteIdRef.current, { finalPriceUsd: finalUsd, ...(priceReason.trim() ? { priceReason: priceReason.trim() } : {}) }); }
+        catch { /* keep base price */ }
+      }
       // ROI + decision merge variables for the email — formatted EXACTLY like the in-app
       // blocks (useMoney, no leading ≈ since the template adds it; i18n time/payback/×).
       // D2 — RE-VALIDATE at send time: the ROI must still be FRESH (<30 min) AND bound
@@ -332,7 +347,7 @@ export function QuoteRequestPage() {
         const R = T.publicTools.roi.result;
         const QR = T.publicTools.quote.result;
         const dec = computeDecision({
-          investmentUsd:   investmentFromPrice(preview.priceUsd),
+          investmentUsd:   investmentFromPrice(finalUsd ?? preview.priceUsd),
           yearlySavedUsd:  boundRoi.estimatedYearlyCostSaved,
           monthlySavedUsd: boundRoi.estimatedMonthlyCostSaved,
         });
@@ -361,7 +376,8 @@ export function QuoteRequestPage() {
 
   // The single fixed published price for this offer — the same value shown here, in the
   // email, PDF, DB, confirmation page, and Stripe.
-  const priceText = preview ? money.format(preview.priceUsd) : '';
+  const effectiveUsd = preview ? (finalUsd ?? preview.priceUsd) : 0;
+  const priceText = preview ? money.format(effectiveUsd) : '';
 
   const tierOptions = category ? QUOTE_TIERS[category] : [];
 
@@ -520,11 +536,41 @@ export function QuoteRequestPage() {
                         style={{ ...inputStyle(), marginBottom: emailError ? 4 : 14, ...(emailError ? { borderColor: 'var(--red-text)' } : {}) }} />
                       {emailError && <div style={{ fontSize: 12.5, color: 'var(--red-text)', marginBottom: 12 }}>{emailError}</div>}
 
-                      {/* 2 — the fixed published price for this offer (identical everywhere) */}
-                      <div style={{ margin: '0 0 16px', padding: '16px 18px', borderRadius: 12, background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--violet)', textAlign: 'center' }}>
-                        <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text)', marginBottom: 6 }}>{Q.decision.priceLabel}</div>
-                        <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{priceText}</div>
-                      </div>
+                      {/* 2 — price. Owner/admin can override the system price (USD) before sending;
+                             everyone else sees the fixed published price. priceUsd stays the base. */}
+                      {isAdmin ? (
+                        <div style={{ margin: '0 0 16px', padding: '14px 16px', borderRadius: 12, background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--violet)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' }}>{Q.decision.suggestedLabel}</span>
+                            <strong style={{ fontSize: 14, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>${(preview?.priceUsd ?? 0).toLocaleString('en-US')}</strong>
+                          </div>
+                          <label htmlFor="quote-final-price" style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text)', marginBottom: 6 }}>{Q.decision.finalLabel}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>$</span>
+                            <input id="quote-final-price" type="number" inputMode="numeric" min={1} value={effectiveUsd}
+                              onChange={e => { const n = Math.round(Number(e.target.value)); setFinalUsd(Number.isFinite(n) && n > 0 ? n : null); }}
+                              style={{ ...inputStyle(), fontWeight: 800, fontSize: 22, fontVariantNumeric: 'tabular-nums' }} />
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0' }}>
+                            {[-10, -5, 5, 10].map(pct => (
+                              <button key={pct} type="button" onClick={() => preview && setFinalUsd(Math.max(1, Math.round(preview.priceUsd * (1 + pct / 100))))}
+                                style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{pct > 0 ? `+${pct}%` : `${pct}%`}</button>
+                            ))}
+                            {finalUsd !== null && preview && finalUsd !== preview.priceUsd && (
+                              <button type="button" onClick={() => { setFinalUsd(null); setPriceReason(''); }}
+                                style={{ padding: '5px 10px', border: 'none', background: 'transparent', color: 'var(--violet-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>{Q.decision.resetPrice}</button>
+                            )}
+                          </div>
+                          <input type="text" value={priceReason} onChange={e => setPriceReason(e.target.value.slice(0, 300))} placeholder={Q.decision.reasonPlaceholder} maxLength={300}
+                            style={{ ...inputStyle(), fontSize: 13 }} />
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>{Q.decision.billedUsd}</div>
+                        </div>
+                      ) : (
+                        <div style={{ margin: '0 0 16px', padding: '16px 18px', borderRadius: 12, background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--violet)', textAlign: 'center' }}>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text)', marginBottom: 6 }}>{Q.decision.priceLabel}</div>
+                          <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{priceText}</div>
+                        </div>
+                      )}
 
                       {/* 4 — single submit (PDF download is a de-emphasised secondary link) */}
                       <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>

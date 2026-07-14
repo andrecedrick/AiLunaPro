@@ -346,7 +346,7 @@ describe('multi-admin notifications', () => {
   });
 });
 
-describe('PATCH /api/quote/:id — governance only (no price/budget edit)', () => {
+describe('PATCH /api/quote/:id — governance + admin price override', () => {
   const patch = (id: string, body: unknown) =>
     quote.request(`/api/quote/${id}`, { method: 'PATCH', headers: H(), body: JSON.stringify(body) }, ENV);
 
@@ -357,7 +357,7 @@ describe('PATCH /api/quote/:id — governance only (no price/budget edit)', () =
     expect(store.writes.get(qDoc)!.adminState).toBeNull();
   });
 
-  it('a budget-only PATCH is rejected (no fields) — price cannot be edited', async () => {
+  it('a PATCH with no recognized field is rejected (NO_FIELDS)', async () => {
     const res = await patch('q1', { orgId: 'orgA', expectedBudgetUsd: 7000 });
     expect(res.status).toBe(400);
     expect((await res.json() as { code: string }).code).toBe('NO_FIELDS');
@@ -368,5 +368,54 @@ describe('PATCH /api/quote/:id — governance only (no price/budget edit)', () =
     const saved = store.stored; store.stored = null;
     expect((await patch('qX', { orgId: 'orgA', adminState: 'blocked' })).status).toBe(404);
     store.stored = saved;
+  });
+
+  it('sets an admin price override (finalPriceUsd) + stores the base for audit', async () => {
+    const res = await patch('q1', { orgId: 'orgA', finalPriceUsd: 72000, priceReason: 'Enterprise scope' });
+    expect(res.status).toBe(200);
+    expect((await res.json() as { finalPriceUsd: number }).finalPriceUsd).toBe(72000);
+    const w = store.writes.get(qDoc)!;
+    expect(w.finalPriceUsd).toBe(72000);
+    expect(w.basePriceUsd).toBe(15000);          // = stored.priceUsd (immutable base)
+    expect(w.priceReason).toBe('Enterprise scope');
+  });
+
+  it('rejects an invalid override amount (400 INVALID_PRICE)', async () => {
+    expect((await patch('q1', { orgId: 'orgA', finalPriceUsd: 0 })).status).toBe(400);
+    expect((await patch('q1', { orgId: 'orgA', finalPriceUsd: 999_999_999 })).status).toBe(400);
+  });
+
+  it('clearing the override (null) returns to the base price', async () => {
+    await patch('q1', { orgId: 'orgA', finalPriceUsd: 72000 });
+    const res = await patch('q1', { orgId: 'orgA', finalPriceUsd: null });
+    expect(res.status).toBe(200);
+    expect(store.writes.get(qDoc)!.finalPriceUsd).toBeNull();
+  });
+
+  it('refuses a price change once settled (409 PRICE_SETTLED)', async () => {
+    store.stored!.stage = 'invoice_sent';
+    const res = await patch('q1', { orgId: 'orgA', finalPriceUsd: 40000 });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('PRICE_SETTLED');
+  });
+});
+
+describe('Admin price override → send (finalPriceUsd, BANK_TRANSFER flag)', () => {
+  it('a send after override locks + emails the OVERRIDE price (base priceUsd untouched)', async () => {
+    store.stored!.finalPriceUsd = 72000;   // admin override; base priceUsd stays 15000
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' });
+    expect(res.status).toBe(200);
+    expect(store.writes.get(qDoc)!.price).toBe(72000);          // locked at the override
+    const v = seq.sends.find(s => s.slug === 'quote-en')!.variables as Record<string, string>;
+    expect(v.BUDGET).toBe('$72,000');
+    expect(v.BANK_TRANSFER).toBe('1');                          // 72k > 15k → bank transfer CTA
+  });
+
+  it('an SMB quote email carries BANK_TRANSFER empty (Stripe CTA kept)', async () => {
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' });
+    expect(res.status).toBe(200);
+    const v = seq.sends.find(s => s.slug === 'quote-en')!.variables as Record<string, string>;
+    expect(v.BUDGET).toBe('$15,000');
+    expect(v.BANK_TRANSFER).toBe('');
   });
 });

@@ -2802,6 +2802,11 @@ export const en = {
       },
       "decision": {
         "priceLabel": "Your price",
+        "suggestedLabel": "Suggested price (system)",
+        "finalLabel": "Final price sent (USD)",
+        "reasonPlaceholder": "Reason for adjustment (optional)",
+        "resetPrice": "Reset to suggested",
+        "billedUsd": "Billed in USD. The client sees this converted to their currency.",
         "adjustHeading": "Propose your budget",
         "budgetIntro": "This is the amount you propose. Your client validates it or requests an adjustment.",
         "rangeLabel": "Estimated range",

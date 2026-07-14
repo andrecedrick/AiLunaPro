@@ -2788,6 +2788,11 @@ export const zh: Dict = {
       },
       "decision": {
         "priceLabel": "您的价格",
+        "suggestedLabel": "建议价格（系统）",
+        "finalLabel": "发送的最终价格（USD）",
+        "reasonPlaceholder": "调整原因（可选）",
+        "resetPrice": "重置",
+        "billedUsd": "以美元计费。客户看到的是按其货币换算的金额。",
         "adjustHeading": "提出您的预算",
         "messagePlaceholder": "添加留言 — 您希望调整什么？",
         "messageSend": "发送请求",

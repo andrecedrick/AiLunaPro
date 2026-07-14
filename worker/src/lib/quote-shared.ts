@@ -163,7 +163,7 @@ export function scoreQuote(inputs: QuoteInputs): QuoteScored {
 export function quotePrice(q: Record<string, unknown>): number | null {
   const num = (v: unknown): number | null =>
     typeof v === 'number' && Number.isFinite(v) ? v : null;
-  return num(q.price) ?? num(q.priceUsd) ?? num(q.finalAmountUsd) ?? num(q.expectedBudgetUsd) ?? num(q.priceMinUsd);
+  return num(q.price) ?? num(q.finalPriceUsd) ?? num(q.priceUsd) ?? num(q.finalAmountUsd) ?? num(q.expectedBudgetUsd) ?? num(q.priceMinUsd);
 }
 
 /* ── ID helper (local, generic body) ─────────────────────────── */
