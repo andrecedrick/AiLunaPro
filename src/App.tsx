@@ -234,6 +234,18 @@ function AppShell() {
      rejects if blocked client-side). Runs only once the watchdog trips. */
   const [bootReason, setBootReason] = useState<'FIRESTORE_CHUNK_BLOCKED' | 'GOOGLEAPIS_BLOCKED' | 'TIMEOUT'>('TIMEOUT');
   const [retryCount, setRetryCount] = useState(0);
+  // Batch A — auto-retry the connection up to 3 times (spinner stays visible = non-blocking)
+  // before escalating to the actionable "Still connecting" card. Logs each attempt.
+  const [autoRetries, setAutoRetries] = useState(0);
+  useEffect(() => {
+    if (!isLoading || !bootSlow || autoRetries >= 3) return;
+    const t = setTimeout(() => {
+      console.warn('[boot] auto-retry', autoRetries + 1, 'of 3 — reason', bootReason);
+      retryAuth();
+      setAutoRetries(n => n + 1);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [isLoading, bootSlow, autoRetries, bootReason, retryAuth]);
   useEffect(() => {
     if (!bootSlow) return;
     const captured = (window as Window & { __BOOT_REASON__?: string }).__BOOT_REASON__;
@@ -426,7 +438,9 @@ function AppShell() {
     // resolved (esp. when the lazy firestore chunk is slow/blocked). Show a
     // visible spinner immediately; escalate to an actionable notice after the
     // watchdog timeout. Spinner classes live in index.html (CSS-independent).
-    if (!bootSlow) {
+    // Non-blocking loading: keep the spinner during the 3 auto-retries; only escalate to
+    // the actionable card once auto-retry is exhausted.
+    if (!bootSlow || autoRetries < 3) {
       return (
         <div className="app-boot-loader" role="status" aria-label="Loading">
           <div className="app-boot-spinner" />

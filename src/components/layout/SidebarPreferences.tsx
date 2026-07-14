@@ -12,16 +12,13 @@
 import { usePreferences } from '../../context/PreferencesContext';
 import { useLocale } from '../../context/LocaleContext';
 import {
-  CURRENCY_LABELS,
-  CURRENCY_VALUES,
   LANGUAGE_SHORT_LABELS,
   LANGUAGE_VALUES,
-  type DisplayCurrency,
   type Language,
 } from '../../lib/preferences';
 
 export function SidebarPreferences() {
-  const { language, setLanguage, displayCurrency, setDisplayCurrency } = usePreferences();
+  const { language, setLanguage } = usePreferences();
   const T = useLocale();
 
   return (
@@ -44,14 +41,6 @@ export function SidebarPreferences() {
         value={language}
         onChange={v => setLanguage(v as Language)}
         options={LANGUAGE_VALUES.map(v => ({ value: v, label: LANGUAGE_SHORT_LABELS[v] }))}
-      />
-      <Row
-        icon={<DollarIcon />}
-        label={T.shell.currency}
-        ariaLabel={T.shell.currency}
-        value={displayCurrency}
-        onChange={v => setDisplayCurrency(v as DisplayCurrency)}
-        options={CURRENCY_VALUES.map(v => ({ value: v, label: CURRENCY_LABELS[v] }))}
       />
     </div>
   );
@@ -161,15 +150,6 @@ function GlobeIcon() {
       <circle cx="12" cy="12" r="10" />
       <line x1="2" y1="12" x2="22" y2="12" />
       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-    </svg>
-  );
-}
-
-function DollarIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   );
 }

@@ -10,7 +10,6 @@
  * P0: provided but not yet wired into any surface — additive, no behavior change.
  */
 
-import { usePreferences } from '../../context/PreferencesContext';
 import { formatMoney, type FormatMoneyOptions } from './format';
 import type { Currency } from '../billing/currencyConstants';
 
@@ -22,7 +21,9 @@ export interface MoneyFormatter {
 }
 
 export function useMoney(): MoneyFormatter {
-  const { displayCurrency } = usePreferences();
+  // Batch A — USD is forced app-wide: no locale conversion, no "≈" marker. priceUsd /
+  // finalPriceUsd are the single source of truth; every surface shows the same USD value.
+  const displayCurrency: Currency = 'usd';
   return {
     format: (amountUsd, opts) => formatMoney(amountUsd, displayCurrency, opts),
     currency: displayCurrency,
