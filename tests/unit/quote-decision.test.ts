@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDecision, investmentFromRange } from '../../src/lib/quote/decision';
+import { computeDecision, investmentFromPrice } from '../../src/lib/quote/decision';
 
 describe('quote decision engine — pure, no fake numbers', () => {
   it('computes ROI multiples, break-even and framing for a normal case', () => {
@@ -39,8 +39,8 @@ describe('quote decision engine — pure, no fake numbers', () => {
     expect(d.roiYear1).toBeCloseTo(2.475, 3); // still computable from yearly
   });
 
-  it('investmentFromRange: midpoint for bounded, max (conservative) for open-ended', () => {
-    expect(investmentFromRange(30_000, 80_000, false)).toBe(55_000);
-    expect(investmentFromRange(120_000, 400_000, true)).toBe(400_000); // never overstates ROI
+  it('investmentFromPrice: the single fixed published price is the investment', () => {
+    expect(investmentFromPrice(60_000)).toBe(60_000);
+    expect(investmentFromPrice(3_000)).toBe(3_000);
   });
 });

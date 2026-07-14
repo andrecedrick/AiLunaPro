@@ -2797,6 +2797,7 @@ export const en = {
         "s4": "You complete the payment"
       },
       "decision": {
+        "priceLabel": "Your price",
         "adjustHeading": "Propose your budget",
         "budgetIntro": "This is the amount you propose. Your client validates it or requests an adjustment.",
         "rangeLabel": "Estimated range",

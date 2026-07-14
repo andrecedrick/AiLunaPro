@@ -25,8 +25,7 @@ import {
   isTierForCategory,
   type QuoteCategory, type QuoteTier, type BusinessSize, type Urgency, type BudgetBand,
 } from '../data/quote-config';
-import { computeQuotePreview, compareBudget, type QuotePreview } from '../lib/quote/score';
-import { convertToUsd, convertFromUsd } from '../lib/currency/fxSnapshot';
+import { computeQuotePreview, type QuotePreview } from '../lib/quote/score';
 import { generateQuote, downloadQuotePdf, emailQuote, QuoteGenError } from '../lib/quote/quoteClient';
 import { tokenCost } from '../lib/tokens/costs';
 import { ENABLE_QUOTE_V2 } from '../lib/flags';
@@ -40,7 +39,7 @@ import { EN, pdfLocale } from '../lib/locale/i18n';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress, readFreshRoi, bindRoiToQuote, clearPendingResult, type PendingRoiSummary } from '../lib/leads/pendingLead';
 import { RoiValueBlock } from '../components/quote/RoiValueBlock';
 import { DecisionBlock } from '../components/quote/DecisionBlock';
-import { computeDecision, investmentFromRange } from '../lib/quote/decision';
+import { computeDecision, investmentFromPrice } from '../lib/quote/decision';
 import { takeWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
 import { emit } from '../lib/analytics/events';
 import { captureSrc } from '../lib/analytics/srcParam';
@@ -95,12 +94,9 @@ export function QuoteRequestPage() {
   const [modal,      setModal]      = useState<{ open: boolean; balance: number; required: number }>({ open: false, balance: 0, required: 0 });
   const [downloading, setDownloading] = useState(false);
   const [pdfError,    setPdfError]    = useState<string | null>(null);
-  // U2 — proposed budget (MANDATORY). FIX 1/2/7 (2026-06-22): the page is a single
-  // "send the proposal to your client" form — client email + budget required, one
-  // submit that emails the proposal; the client accepts / requests changes from the
-  // email (no in-app self-accept here anymore).
-  const [budgetInput, setBudgetInput] = useState('');
-  const [budgetError, setBudgetError] = useState<string | null>(null);
+  // FIX 1/2/7: the page is a single "send the proposal to your client" form — only the
+  // client email is required; one submit emails the FIXED-price proposal. The client
+  // accepts / pays from the email. No budget input — the price is the offer's priceUsd.
   // Q4 — the client recipient is now REQUIRED (the submit sends the proposal email).
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [clientEmail, setClientEmail] = useState('');
@@ -188,7 +184,6 @@ export function QuoteRequestPage() {
     setGenerating(false); setGenError(null); setGenerated(false);
     setModal({ open: false, balance: 0, required: 0 });
     setDownloading(false); setPdfError(null);
-    setBudgetInput(''); setBudgetError(null);
     setEmailState('idle'); setEmailError(null); setClientEmail('');
     quoteIdRef.current = '';
     // D2 — new quote context: re-read the ROI under the freshness gate (drops it if
@@ -252,15 +247,12 @@ export function QuoteRequestPage() {
     const solDesc  = prop.solutionDesc as Record<string, string>;
     const timelineMap = prop.timeline as Record<string, string>;
 
-    const min = p.priceMinUsd;
-    const max = p.priceMaxUsd;
-    const openEnded = p.openEnded;
-    const rangeText = `${money.format(min)} – ${money.format(max)}${openEnded ? '+' : ''}`;
+    const priceText = money.format(p.priceUsd);
     const solutionLabel = sols[p.solutionKey] ?? p.solutionKey;
     const tCat = p.category === 'website' ? 'website' : p.category === 'audit' ? 'audit' : 'agent';
 
     const justification: string[] = [
-      format(prop.justification.market, { category: services[p.category] ?? p.category, tier: tiers[p.tier] ?? p.tier, range: rangeText }),
+      format(prop.justification.market, { category: services[p.category] ?? p.category, tier: tiers[p.tier] ?? p.tier, range: priceText }),
       format(prop.justification.complexity, { tier: tiers[p.tier] ?? p.tier }),
       format(prop.justification.scope, { count: String(p.scopeKeys.length) }),
     ];
@@ -287,7 +279,7 @@ export function QuoteRequestPage() {
       scopeHeading:         pq.result.scopeHeading,
       scope:                p.scopeKeys.map(k => scp[k] ?? k),
       pricingHeading:       pq.pdf.pricingHeading,
-      rangeText,
+      rangeText:            priceText,
       justificationHeading: prop.justification.heading,
       justification,
       paymentHeading:       prop.paymentHeading,
@@ -323,19 +315,11 @@ export function QuoteRequestPage() {
     if (!orgId || !quoteIdRef.current) return;
     const email = clientEmail.trim();
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    const budgetNum = Number(budgetInput);
-    const validBudget = budgetInput.trim() !== '' && Number.isFinite(budgetNum) && budgetNum > 0;
-    // Fixed-price model: this budget IS the final locked price, FLOORED at the estimate
-    // minimum. Any positive budget is ACCEPTED — a below-min entry is silently raised to
-    // the minimum (never rejected). The max() locks the USD price at >= the true estimate
-    // min (and absorbs the display-currency rounding gap at the exact displayed min), so
-    // the worker's own >= priceMinUsd check is always satisfied.
-    const expectedBudgetUsd = validBudget
-      ? Math.max(Math.round(convertToUsd(budgetNum, money.currency)), preview.priceMinUsd)
-      : 0;
+    // Fixed published price: the amount is the offer's priceUsd, locked by the worker at
+    // send. No budget input, no floor, no client-driven amount — only the client email is
+    // required to send the proposal.
     setEmailError(emailOk ? null : Q.send.emailRequired);
-    setBudgetError(validBudget ? null : Q.decision.budgetRequired);
-    if (!emailOk || !validBudget) return;
+    if (!emailOk) return;
     setEmailState('sending');
     try {
       // ROI + decision merge variables for the email — formatted EXACTLY like the in-app
@@ -348,7 +332,7 @@ export function QuoteRequestPage() {
         const R = T.publicTools.roi.result;
         const QR = T.publicTools.quote.result;
         const dec = computeDecision({
-          investmentUsd:   investmentFromRange(preview.priceMinUsd, preview.priceMaxUsd, preview.openEnded),
+          investmentUsd:   investmentFromPrice(preview.priceUsd),
           yearlySavedUsd:  boundRoi.estimatedYearlyCostSaved,
           monthlySavedUsd: boundRoi.estimatedMonthlyCostSaved,
         });
@@ -363,7 +347,7 @@ export function QuoteRequestPage() {
           THREE_YEAR:    dec ? format(QR.decisionMultiple, { mult: dec.roi3yr.toFixed(1) }) : dash,
         } as Record<string, string>;
       })() : undefined;
-      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, email, expectedBudgetUsd, roiVars);
+      const r = await emailQuote(orgId, quoteIdRef.current, language, buildRender(), false, email, roiVars);
       emit('quote_emailed', { flow: 'quote', emailed: r.emailed, src: src ?? undefined });
       // D2 — clear the ROI after it has been consumed by a send so it can never be
       // reused on a later, unrelated quote.
@@ -375,22 +359,9 @@ export function QuoteRequestPage() {
     }
   };
 
-  // U2 — budget comparison, done in the DISPLAY currency at the SAME rounding shown to the
-  // user (money.format uses round(usd × rate)). Keeps the live below/within/above hint
-  // consistent with the displayed range, so the exact shown minimum reads as "within".
-  const budgetDisplayInput = budgetInput.trim() !== '' && Number.isFinite(Number(budgetInput))
-    ? Number(budgetInput) : null;
-  const budgetVerdict = (preview && budgetDisplayInput !== null && budgetDisplayInput >= 0)
-    ? compareBudget(
-        budgetDisplayInput,
-        Math.round(convertFromUsd(preview.priceMinUsd, money.currency)),
-        Math.round(convertFromUsd(preview.priceMaxUsd, money.currency)),
-        preview.openEnded,
-      )
-    : null;
-
-  // Estimated range (secondary line shown above the primary budget input).
-  const rangeText = preview ? `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? '+' : ''}` : '';
+  // The single fixed published price for this offer — the same value shown here, in the
+  // email, PDF, DB, confirmation page, and Stripe.
+  const priceText = preview ? money.format(preview.priceUsd) : '';
 
   const tierOptions = category ? QUOTE_TIERS[category] : [];
 
@@ -533,9 +504,8 @@ export function QuoteRequestPage() {
                       <button type="button" onClick={() => navigate({ name: 'admin' })} style={secondaryBtnStyle()}>{Q.send.track}</button>
                     </div>
                   ) : (
-                    /* PRIMARY (FIX 1/2/7) — the single "send the proposal to your client"
-                       form: 1) client email (required, top) · 2) proposed budget (required)
-                       · 3) estimated range (secondary) · 4) one submit. */
+                    /* PRIMARY — the single "send the proposal to your client" form:
+                       1) client email (required) · 2) the fixed published price · 3) one submit. */
                     <div style={{ marginBottom: 8, maxWidth: 420, marginLeft: 'auto', marginRight: 'auto' }}>
                       <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', textAlign: 'center', marginBottom: 4 }}>{Q.send.heading}</div>
                       <div style={{ fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 16, lineHeight: 1.5 }}>{Q.send.intro}</div>
@@ -550,25 +520,10 @@ export function QuoteRequestPage() {
                         style={{ ...inputStyle(), marginBottom: emailError ? 4 : 14, ...(emailError ? { borderColor: 'var(--red-text)' } : {}) }} />
                       {emailError && <div style={{ fontSize: 12.5, color: 'var(--red-text)', marginBottom: 12 }}>{emailError}</div>}
 
-                      {/* 2 — proposed budget (REQUIRED) */}
-                      <label htmlFor="quote-budget" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                        {Q.decision.budgetLabel} <span style={{ color: 'var(--red-text)' }}>{Q.requiredMark}</span>
-                      </label>
-                      <input id="quote-budget" type="number" inputMode="numeric" min={1} value={budgetInput}
-                        onChange={e => { setBudgetInput(e.target.value); if (budgetError) setBudgetError(null); }}
-                        onBlur={() => { if (budgetVerdict) emit('quote_budget_entered', { flow: 'quote', verdict: budgetVerdict, src: src ?? undefined }); }}
-                        placeholder={Q.decision.budgetPlaceholder} aria-invalid={!!budgetError}
-                        style={{ ...inputStyle(), fontWeight: 700, marginBottom: budgetError ? 4 : 8, ...(budgetError ? { borderColor: 'var(--red-text)' } : {}) }} />
-                      {budgetError && <div style={{ fontSize: 12.5, color: 'var(--red-text)', marginBottom: 8 }}>{budgetError}</div>}
-                      {budgetVerdict && (
-                        <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10 }}>
-                          {budgetVerdict === 'below' ? Q.decision.verdictBelow : budgetVerdict === 'above' ? Q.decision.verdictAbove : Q.decision.verdictWithin}
-                        </div>
-                      )}
-
-                      {/* 3 — estimated range (secondary reference) */}
-                      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 16 }}>
-                        {Q.decision.rangeLabel}: <strong style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{rangeText}</strong>
+                      {/* 2 — the fixed published price for this offer (identical everywhere) */}
+                      <div style={{ margin: '0 0 16px', padding: '16px 18px', borderRadius: 12, background: 'var(--brand-soft-bg, #f5f3ff)', border: '1px solid var(--violet)', textAlign: 'center' }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text)', marginBottom: 6 }}>{Q.decision.priceLabel}</div>
+                        <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{priceText}</div>
                       </div>
 
                       {/* 4 — single submit (PDF download is a de-emphasised secondary link) */}
@@ -678,14 +633,14 @@ function EstimateView({ preview, roi = null }: { preview: QuotePreview; roi?: Pe
   const scopeMap = Q.scope as Record<string, string>;
   const nextSteps = Q.nextSteps as Record<string, string>;
 
-  const rangeText = `${money.format(preview.priceMinUsd)} – ${money.format(preview.priceMaxUsd)}${preview.openEnded ? Q.result.openEndedSuffix : ''}`;
+  const priceText = money.format(preview.priceUsd);
   const solutionTitle = solutions[preview.solutionKey] ?? preview.solutionKey;
 
   // Decision summary — derived purely from the quote investment + ROI savings. Null when
   // there is no meaningful decision (no ROI carried / no savings) → block simply omitted.
   const decision = roi
     ? computeDecision({
-        investmentUsd:   investmentFromRange(preview.priceMinUsd, preview.priceMaxUsd, preview.openEnded),
+        investmentUsd:   investmentFromPrice(preview.priceUsd),
         yearlySavedUsd:  roi.estimatedYearlyCostSaved,
         monthlySavedUsd: roi.estimatedMonthlyCostSaved,
       })
@@ -695,10 +650,10 @@ function EstimateView({ preview, roi = null }: { preview: QuotePreview; roi?: Pe
   const priceCard = (
     <div style={{ marginTop: 14, padding: '16px 20px', borderRadius: 14, background: 'var(--surface-1)', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
       <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)' }}>
-        {Q.result.rangeLabel}
+        {Q.decision.priceLabel}
       </div>
       <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
-        {rangeText}
+        {priceText}
       </div>
     </div>
   );

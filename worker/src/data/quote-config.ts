@@ -49,30 +49,29 @@ export function isTierForCategory(category: QuoteCategory, tier: unknown): tier 
  */
 
 export interface PriceRange {
-  minUsd:    number;
-  maxUsd:    number;
-  openEnded: boolean;
+  /** The single fixed published price for the offer (USD, integer). */
+  priceUsd: number;
 }
 
-/** AI agent & automation scale (shared — decision 4). */
+/** AI agent & automation scale (shared — decision 4). One published price per tier. */
 const AGENT_SCALE: Record<string, PriceRange> = {
-  simple:      { minUsd: 15_000,  maxUsd: 40_000,  openEnded: false },
-  contextual:  { minUsd: 30_000,  maxUsd: 80_000,  openEnded: false },
-  autonomous:  { minUsd: 60_000,  maxUsd: 150_000, openEnded: false },
-  multi_agent: { minUsd: 120_000, maxUsd: 400_000, openEnded: true  },
+  simple:      { priceUsd: 15_000  },
+  contextual:  { priceUsd: 30_000  },
+  autonomous:  { priceUsd: 60_000  },
+  multi_agent: { priceUsd: 120_000 },
 };
 
 export const QUOTE_RANGES: Record<QuoteCategory, Record<string, PriceRange>> = {
   ai_agent:   AGENT_SCALE,
-  automation: AGENT_SCALE, // decision 4 — automation = same ranges as AI agents
+  automation: AGENT_SCALE, // decision 4 — automation = same prices as AI agents
   website: {
-    simple:       { minUsd: 3_000,  maxUsd: 10_000,  openEnded: false },
-    intermediate: { minUsd: 10_000, maxUsd: 30_000,  openEnded: false },
-    complex:      { minUsd: 30_000, maxUsd: 100_000, openEnded: true  },
-    custom:       { minUsd: 50_000, maxUsd: 250_000, openEnded: true  },
+    simple:       { priceUsd: 3_000  },
+    intermediate: { priceUsd: 10_000 },
+    complex:      { priceUsd: 30_000 },
+    custom:       { priceUsd: 50_000 },
   },
   audit: {
-    feasibility:  { minUsd: 2_000,  maxUsd: 5_000,   openEnded: false },
+    feasibility:  { priceUsd: 2_000 },
   },
 };
 

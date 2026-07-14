@@ -3060,6 +3060,14 @@ B6.6 Arabic + basic RTL; regulatory/`narrative.ts`
 copy deferred (human-review-gated). **Still 🔴:** B2(e) re-engagement (blocked on the T1
 outbound-channel decision, §0bis.3 #4).
 
+**✅ Quote — modèle fixed-price + accept exact-min + cleanup négociation (Scope A)** — SHIPPED/CLÔTURÉ 2026-07-13 (prod vérifié opérateur).
+- **`7462e6e`** — modèle fixed-price : prix unique verrouillé `quote.price` (= budget saisi, planché au min d'estimation), plus de pricing/négociation admin, accept→auto-facture→pay, panneau visibilité superadmin. Reader back-compat `quotePrice()` (pas de migration Firestore).
+- **`811af18`** — accept exact-min : validation en **devise d'affichage** vs le min arrondi affiché (`round(convertFromUsd(priceMinUsd))`), fini le round-trip USD `<` qui pouvait rejeter le min exact ; prix USD planché à `max(convertToUsd(budget), priceMinUsd)` (satisfait le check worker). Test `tests/unit/quote-budget-boundary.test.ts` (sweep tier×devise).
+- **`9787f41` (Scope A)** — retrait end-to-end du récapitulatif de négociation mort du PDF : champs `neg*` sur `QuotePdfInput` (worker + front), bloc §5b `buildQuotePdf`, parsing `parseRender`, emit `buildRender`, objet i18n `publicTools.quote.negotiation` ×8. Back-compat : `renderJson` legacy toléré (has()-guards, aucun crash) ; fixture test legacy conservée exprès. **Scope B (`override*`) + Scope C (badges/stages lifecycle `negotiation`) NON touchés** (tâches séparées).
+- **Gates** : worker `tsc` 0 · front `tsc -b` 0 (Dict parity ×8) · `i18n:check` OK · vitest **752 pass / 60 skip / 0 fail**. Déploiement : worker `b495b485` · Pages `1d6da23e` (`index-CEPLudXy.js`). **0 must-fix.**
+- **Note** : dépôt encore **local-only (aucun remote git)** — `811af18` + `9787f41` non poussés. `worker/dist/` = JS compilé périmé (pré-refactor), sans impact (wrangler bundle depuis `src`).
+- **Do-next** : décision comportement champ budget (rejet strict vs planché silencieux) ; Scope B/C si souhaité ; connecter remote git + push ; reprise WP landing Step 0.
+
 ### 18.2 Diagramme
 
 ```mermaid

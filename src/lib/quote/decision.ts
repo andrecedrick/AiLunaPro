@@ -53,10 +53,8 @@ export function computeDecision(inputs: DecisionInputs): Decision | null {
 }
 
 /**
- * Investment figure for the decision math from a price range. Bounded range → midpoint
- * (both ends known). Open-ended range (max is a floor, real cost can be higher) → use
- * the max, so ROI is never OVERstated. Pure.
+ * Investment figure for the decision math = the single fixed published price. Pure.
  */
-export function investmentFromRange(minUsd: number, maxUsd: number, openEnded: boolean): number {
-  return openEnded ? maxUsd : (minUsd + maxUsd) / 2;
+export function investmentFromPrice(priceUsd: number): number {
+  return priceUsd;
 }

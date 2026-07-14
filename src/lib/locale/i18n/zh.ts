@@ -2783,6 +2783,7 @@ export const zh: Dict = {
         "s4": "您完成付款"
       },
       "decision": {
+        "priceLabel": "您的价格",
         "adjustHeading": "提出您的预算",
         "messagePlaceholder": "添加留言 — 您希望调整什么？",
         "messageSend": "发送请求",

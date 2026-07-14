@@ -45,11 +45,9 @@ describe('Quote — determinism', () => {
   it('ignores optional qualifiers in the price (no dynamic pricing)', () => {
     const a = scoreQuote(VALID_INPUTS);
     const b = scoreQuote({ category: 'ai_agent', tier: 'contextual' });
-    expect(b.estimate.priceMinUsd).toBe(a.estimate.priceMinUsd);
-    expect(b.estimate.priceMaxUsd).toBe(a.estimate.priceMaxUsd);
+    expect(b.estimate.priceUsd).toBe(a.estimate.priceUsd);
     const c = scoreQuote({ ...VALID_INPUTS, businessSize: 'solo', urgency: 'high', budgetBand: 'under_10k' });
-    expect(c.estimate.priceMinUsd).toBe(a.estimate.priceMinUsd);
-    expect(c.estimate.priceMaxUsd).toBe(a.estimate.priceMaxUsd);
+    expect(c.estimate.priceUsd).toBe(a.estimate.priceUsd);
   });
 
   it('stamps engineVersion + rulesetVersion', () => {
@@ -60,7 +58,7 @@ describe('Quote — determinism', () => {
 
   it('attaches a reason reference to every produced field (traceability)', () => {
     const r = scoreQuote(VALID_INPUTS);
-    const fields = ['priceMinUsd', 'priceMaxUsd', 'openEnded', 'solutionKey', 'scopeKeys', 'nextStepKeys', 'opsCostUpliftPct'];
+    const fields = ['priceUsd', 'solutionKey', 'scopeKeys', 'nextStepKeys', 'opsCostUpliftPct'];
     for (const field of fields) {
       expect(Array.isArray(r.trace[field])).toBe(true);
       expect(r.trace[field].length).toBeGreaterThan(0);
@@ -88,21 +86,19 @@ describe('Quote — determinism', () => {
 });
 
 describe('Quote — pricing table integrity', () => {
-  it('looks up the exact 2026 reference ranges', () => {
-    expect(computeQuote({ category: 'ai_agent', tier: 'simple' })).toMatchObject({ priceMinUsd: 15_000, priceMaxUsd: 40_000, openEnded: false });
-    expect(computeQuote({ category: 'ai_agent', tier: 'multi_agent' })).toMatchObject({ priceMinUsd: 120_000, priceMaxUsd: 400_000, openEnded: true });
-    expect(computeQuote({ category: 'website', tier: 'simple' })).toMatchObject({ priceMinUsd: 3_000, priceMaxUsd: 10_000, openEnded: false });
-    expect(computeQuote({ category: 'website', tier: 'custom' })).toMatchObject({ priceMinUsd: 50_000, priceMaxUsd: 250_000, openEnded: true });
-    expect(computeQuote({ category: 'audit', tier: 'feasibility' })).toMatchObject({ priceMinUsd: 2_000, priceMaxUsd: 5_000, openEnded: false });
+  it('looks up the exact 2026 published prices', () => {
+    expect(computeQuote({ category: 'ai_agent', tier: 'simple' })).toMatchObject({ priceUsd: 15_000 });
+    expect(computeQuote({ category: 'ai_agent', tier: 'multi_agent' })).toMatchObject({ priceUsd: 120_000 });
+    expect(computeQuote({ category: 'website', tier: 'simple' })).toMatchObject({ priceUsd: 3_000 });
+    expect(computeQuote({ category: 'website', tier: 'custom' })).toMatchObject({ priceUsd: 50_000 });
+    expect(computeQuote({ category: 'audit', tier: 'feasibility' })).toMatchObject({ priceUsd: 2_000 });
   });
 
   it('prices automation identically to AI agents (decision 4)', () => {
     for (const tier of QUOTE_TIERS.ai_agent) {
       const agent = computeQuote({ category: 'ai_agent', tier });
       const auto = computeQuote({ category: 'automation', tier });
-      expect(auto.priceMinUsd).toBe(agent.priceMinUsd);
-      expect(auto.priceMaxUsd).toBe(agent.priceMaxUsd);
-      expect(auto.openEnded).toBe(agent.openEnded);
+      expect(auto.priceUsd).toBe(agent.priceUsd);
     }
   });
 
@@ -113,13 +109,12 @@ describe('Quote — pricing table integrity', () => {
     expect(computeQuote({ category: 'audit', tier: 'feasibility' }).opsCostUpliftPct).toBeNull();
   });
 
-  it('has a range + scope set for every declared category/tier', () => {
+  it('has a published price + scope set for every declared category/tier', () => {
     for (const category of QUOTE_CATEGORIES) {
       for (const tier of QUOTE_TIERS[category]) {
         const range = QUOTE_RANGES[category][tier];
         expect(range, `${category}:${tier}`).toBeDefined();
-        expect(range.minUsd).toBeLessThanOrEqual(range.maxUsd);
-        expect(range.minUsd).toBeGreaterThan(0);
+        expect(range.priceUsd).toBeGreaterThan(0);
       }
     }
   });

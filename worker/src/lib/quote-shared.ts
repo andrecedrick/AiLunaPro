@@ -43,7 +43,7 @@ export type { QuoteCategory, QuoteTier, BusinessSize, Urgency, BudgetBand };
  * BUMP whenever any pricing rule or content set changes, so historical quotes
  * remain reproducible against the rules in force when they were issued.
  */
-export const QUOTE_RULESET_VERSION = '2026.1';
+export const QUOTE_RULESET_VERSION = '2026.2';
 
 export interface QuoteInputs {
   category: QuoteCategory;
@@ -57,10 +57,8 @@ export interface QuoteInputs {
 export interface QuoteEstimate {
   category:    QuoteCategory;
   tier:        QuoteTier;
-  priceMinUsd: number;
-  priceMaxUsd: number;
-  /** true => render as "min–max+" (range is a floor, not a ceiling). */
-  openEnded:   boolean;
+  /** The single fixed published price for the offer (USD, integer). */
+  priceUsd:    number;
   /** i18n key suffix, e.g. 'ai_agent.contextual'. */
   solutionKey: string;
   /** i18n key suffixes for the implementation-scope bullets. */
@@ -126,9 +124,7 @@ export function computeQuote(inputs: QuoteInputs): QuoteEstimate {
   return {
     category:    inputs.category,
     tier:        inputs.tier,
-    priceMinUsd: range.minUsd,
-    priceMaxUsd: range.maxUsd,
-    openEnded:   range.openEnded,
+    priceUsd:    range.priceUsd,
     solutionKey: `${inputs.category}.${inputs.tier}`,
     scopeKeys:   [...SCOPE_KEYS[inputs.category]],
     nextStepKeys: [...NEXT_STEP_KEYS],
@@ -146,9 +142,7 @@ export function scoreQuote(inputs: QuoteInputs): QuoteScored {
   const estimate = computeQuote(inputs);
   const rangeRef = ruleRef(`quote.range.${inputs.category}.${inputs.tier}`);
   const trace: Trace = {
-    priceMinUsd:      [rangeRef],
-    priceMaxUsd:      [rangeRef],
-    openEnded:        [rangeRef],
+    priceUsd:         [rangeRef],
     solutionKey:      [ruleRef(`quote.solution.${inputs.category}.${inputs.tier}`)],
     scopeKeys:        [ruleRef(`quote.scope.${inputs.category}`)],
     nextStepKeys:     [ruleRef('quote.nextSteps')],
@@ -161,16 +155,15 @@ export function scoreQuote(inputs: QuoteInputs): QuoteScored {
 
 /* ── Canonical price (fixed-price model) ─────────────────────────
  *
- * The single locked quote price (USD, integer). `price` is authoritative; legacy
- * quotes issued before the fixed-price model fall back to finalAmountUsd →
- * expectedBudgetUsd → the estimate minimum so historical docs never read as null.
- * The estimate-minimum FLOOR is enforced once, at write time (when the price is
- * locked on send); this reader returns the stored canonical value as-is.
+ * The single fixed published price (USD, integer). `price` is the locked value on
+ * the quote doc (= the offer's priceUsd, set at send). Legacy quotes fall back to
+ * priceUsd → finalAmountUsd → expectedBudgetUsd → priceMinUsd so historical docs
+ * (issued before this model) never read as null. No floor, no range, no override.
  */
 export function quotePrice(q: Record<string, unknown>): number | null {
   const num = (v: unknown): number | null =>
     typeof v === 'number' && Number.isFinite(v) ? v : null;
-  return num(q.price) ?? num(q.finalAmountUsd) ?? num(q.expectedBudgetUsd) ?? num(q.priceMinUsd);
+  return num(q.price) ?? num(q.priceUsd) ?? num(q.finalAmountUsd) ?? num(q.expectedBudgetUsd) ?? num(q.priceMinUsd);
 }
 
 /* ── ID helper (local, generic body) ─────────────────────────── */

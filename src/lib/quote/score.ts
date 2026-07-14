@@ -27,26 +27,12 @@ export interface QuotePreviewInputs {
 export interface QuotePreview {
   category:    QuoteCategory;
   tier:        QuoteTier;
-  priceMinUsd: number;
-  priceMaxUsd: number;
-  openEnded:   boolean;
+  /** The single fixed published price for the offer (USD, integer). */
+  priceUsd:    number;
   solutionKey: string;
   scopeKeys:    string[];
   nextStepKeys: string[];
   opsCostUpliftPct: { minPct: number; maxPct: number } | null;
-}
-
-export type BudgetVerdict = 'below' | 'within' | 'above';
-
-/**
- * Compare a USD budget against the estimated range. Pure + deterministic. For an
- * open-ended range (max is a floor, not a ceiling) anything at/above min is
- * "within". Display-only — never affects the estimate (no new pricing logic).
- */
-export function compareBudget(budgetUsd: number, minUsd: number, maxUsd: number, openEnded: boolean): BudgetVerdict {
-  if (budgetUsd < minUsd) return 'below';
-  if (!openEnded && budgetUsd > maxUsd) return 'above';
-  return 'within';
 }
 
 export function computeQuotePreview(inputs: QuotePreviewInputs): QuotePreview {
@@ -59,9 +45,7 @@ export function computeQuotePreview(inputs: QuotePreviewInputs): QuotePreview {
   return {
     category:    inputs.category,
     tier:        inputs.tier,
-    priceMinUsd: range.minUsd,
-    priceMaxUsd: range.maxUsd,
-    openEnded:   range.openEnded,
+    priceUsd:    range.priceUsd,
     solutionKey: `${inputs.category}.${inputs.tier}`,
     scopeKeys:   [...SCOPE_KEYS[inputs.category]],
     nextStepKeys: [...NEXT_STEP_KEYS],

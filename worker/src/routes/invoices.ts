@@ -131,8 +131,9 @@ export async function finalizeQuoteInvoice(
     };
   }
 
-  const rangeMinUsd = typeof quote.overrideMinUsd === 'number' ? quote.overrideMinUsd : typeof quote.priceMinUsd === 'number' ? quote.priceMinUsd : null;
-  const rangeMaxUsd = typeof quote.overrideMaxUsd === 'number' ? quote.overrideMaxUsd : typeof quote.priceMaxUsd === 'number' ? quote.priceMaxUsd : null;
+  // Fixed price: no range, no override — the invoice carries the single amount only.
+  const rangeMinUsd = null;
+  const rangeMaxUsd = null;
   let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
   if (typeof quote.renderJson === 'string') {
     try { const r = JSON.parse(quote.renderJson) as Record<string, unknown>; if (typeof r.docTitle === 'string' && r.docTitle) quoteTitle = r.docTitle; } catch { /* keep default */ }

@@ -2781,6 +2781,7 @@ export const es: Dict = {
         "s4": "Realizas el pago"
       },
       "decision": {
+        "priceLabel": "Tu precio",
         "adjustHeading": "Propón tu presupuesto",
         "messagePlaceholder": "Añade un mensaje — ¿qué te gustaría ajustar?",
         "messageSend": "Enviar solicitud",

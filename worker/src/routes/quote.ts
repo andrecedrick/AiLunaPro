@@ -33,7 +33,7 @@ import {
 } from '../lib/quote-shared';
 import { consumeTokens } from '../lib/tokens';
 import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '../lib/firestoreAdmin';
-import { buildQuotePdf, formatUsdRange, type QuotePdfInput } from '../lib/quote-pdf';
+import { buildQuotePdf, type QuotePdfInput } from '../lib/quote-pdf';
 import { sendTransactional } from '../lib/sequenzy';
 import { sanitizeQuoteRoiVars, sanitizeEmailVar } from '../lib/quote-email-vars';
 import { finalizeQuoteInvoice } from './invoices';
@@ -181,9 +181,7 @@ quote.post('/api/quote/generate', requireAuth(), requireRole(GEN_ROLES), async c
     urgency:        typeof body.urgency === 'string' ? body.urgency : null,
     budgetBand:     typeof body.budgetBand === 'string' ? body.budgetBand : null,
     description,
-    priceMinUsd:    scored.estimate.priceMinUsd,
-    priceMaxUsd:    scored.estimate.priceMaxUsd,
-    openEnded:      scored.estimate.openEnded,
+    priceUsd:       scored.estimate.priceUsd,
     solutionKey:    scored.estimate.solutionKey,
     estimateJson:   JSON.stringify(scored.estimate),
     traceJson:      JSON.stringify(scored.trace),
@@ -320,7 +318,6 @@ quote.post('/api/quote/pdf', requireAuth(), requireRole(GEN_ROLES), async c => {
 // Shared admin roles + the max price bound (used by send + PATCH governance).
 // Fixed-price model: there is NO admin price override — the price is locked at send.
 const OVERRIDE_ROLES: RoleList = ['owner', 'admin'];
-const PRICE_MAX = 100_000_000;
 
 /* ── POST /api/quote/email — send the quote as a tokenized PDF link ─────────
  *
@@ -362,7 +359,7 @@ function countryToLang(cc: string | undefined): string {
   return cc ? (COUNTRY_LANG[cc.toUpperCase()] ?? 'en') : 'en';
 }
 
-interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown; clientEmail?: unknown; expectedBudgetUsd?: unknown; roi?: unknown }
+interface EmailBody { orgId?: unknown; quoteId?: unknown; locale?: unknown; render?: unknown; sendAdminCopy?: unknown; clientEmail?: unknown; roi?: unknown }
 
 quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c => {
   c.header('Cache-Control', 'no-store');
@@ -397,27 +394,12 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const stored = await firestoreGet(saJson, path);
   if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
 
-  // FIXED-PRICE MODEL — this send LOCKS the single price. The entered budget becomes
-  // the final price, floored at the estimate minimum (a below-min budget is rejected,
-  // not silently raised). Once locked, the price is immutable: a re-send with a
-  // different budget is refused (409). USD is the charge currency (Stripe/invoice).
-  const priceMin = typeof stored.priceMinUsd === 'number' ? stored.priceMinUsd : 0;
-  const providedBudget = typeof body.expectedBudgetUsd === 'number' && Number.isFinite(body.expectedBudgetUsd)
-    ? Math.round(body.expectedBudgetUsd) : null;
-  const lockedAlready = typeof stored.price === 'number' && Number.isFinite(stored.price);
-  let price: number;
-  if (lockedAlready) {
-    price = stored.price as number;
-    if (providedBudget !== null && providedBudget !== price) {
-      return c.json({ error: 'This quote price is locked and cannot be changed.', code: 'PRICE_LOCKED', priceUsd: price }, 409);
-    }
-  } else {
-    // Legacy mid-flight quotes may carry only expectedBudgetUsd; accept it as the base.
-    const base = providedBudget ?? (typeof stored.expectedBudgetUsd === 'number' && Number.isFinite(stored.expectedBudgetUsd) ? Math.round(stored.expectedBudgetUsd) : null);
-    if (base === null) return c.json({ error: 'A budget is required to send this proposal.', code: 'NO_BUDGET' }, 400);
-    if (base > PRICE_MAX) return c.json({ error: 'Budget is too large.', code: 'BUDGET_TOO_LARGE' }, 400);
-    if (base < priceMin) return c.json({ error: 'Budget is below the estimated minimum.', code: 'BUDGET_BELOW_MIN', minUsd: priceMin }, 400);
-    price = base;
+  // FIXED PUBLISHED PRICE — the amount is the offer's priceUsd (set at generation from
+  // QUOTE_RANGES), locked on this send. No client budget, no floor, no range, no override.
+  // Idempotent: a re-send keeps the same price. quotePrice = price ?? priceUsd ?? legacy.
+  const price = quotePrice(stored);
+  if (price === null) {
+    return c.json({ error: 'This quote has no published price.', code: 'NO_PRICE' }, 500);
   }
 
   // Persist the recipient so a later token-gated email accept addresses the draft
@@ -429,9 +411,9 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
   const REACHED = ['client_responded', 'finalized', 'invoice_sent'];
   const curStage = typeof stored.stage === 'string' ? stored.stage : '';
   const nextStage = REACHED.includes(curStage) ? curStage : 'sent';
-  // Lock the single price (+ currency) here. expectedBudgetUsd is written to the same
-  // value for backward-compat reads of older clients only.
-  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: nextStage, price, currency: 'usd', expectedBudgetUsd: price, ...(typeof stored.sentAt === 'string' && stored.sentAt ? {} : { sentAt: new Date().toISOString() }) }, { merge: true }); }
+  // Lock the single fixed price (+ currency) here. priceUsd mirrors price as the canonical
+  // published-price field; quotePrice reads price first, so both stay consistent.
+  try { await firestoreSet(saJson, path, { customerEmail: recipient, stage: nextStage, price, priceUsd: price, currency: 'usd', ...(typeof stored.sentAt === 'string' && stored.sentAt ? {} : { sentAt: new Date().toISOString() }) }, { merge: true }); }
   catch (err) { console.error('[quote] recipient persist failed:', err instanceof Error ? err.message : ''); }
 
   // Persist the render payload if supplied (so the shared link can regenerate it).
@@ -440,9 +422,6 @@ quote.post('/api/quote/email', requireAuth(), requireRole(EMAIL_ROLES), async c 
     const r = body.render as Record<string, unknown>;
     const createdAt = typeof stored.createdAt === 'string' ? stored.createdAt : new Date().toISOString();
     render = parseRender(r, createdAt, quoteId);
-    if (typeof stored.overrideMinUsd === 'number' && typeof stored.overrideMaxUsd === 'number') {
-      render.rangeText = formatUsdRange(stored.overrideMinUsd, stored.overrideMaxUsd);
-    }
     try { await firestoreSet(saJson, path, { renderJson: JSON.stringify(render), pdfAt: new Date().toISOString() }, { merge: true }); }
     catch (err) { console.error('[quote] email render persist failed:', err instanceof Error ? err.message : ''); }
   } else if (typeof stored.renderJson === 'string') {
@@ -558,9 +537,6 @@ quote.get('/api/quote/shared/:token', async c => {
   let render: QuotePdfInput;
   try { render = JSON.parse(stored.renderJson) as QuotePdfInput; }
   catch { return c.json({ error: 'Quote unavailable.', code: 'RENDER_UNAVAILABLE' }, 500); }
-  if (typeof stored.overrideMinUsd === 'number' && typeof stored.overrideMaxUsd === 'number') {
-    render.rangeText = formatUsdRange(stored.overrideMinUsd, stored.overrideMaxUsd);
-  }
 
   let bytes: Uint8Array;
   try { bytes = buildQuotePdf(render); }

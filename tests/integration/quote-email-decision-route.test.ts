@@ -77,78 +77,75 @@ beforeEach(() => {
   seq.sends.length = 0; store.writes.clear(); store.invoices.clear();
   rl.cooldown.mockResolvedValue({ ok: true }); rl.cap.mockResolvedValue({ ok: true });
   store.stored = {
-    createdAt: '2026-06-20T00:00:00.000Z', priceMinUsd: 10000, priceMaxUsd: 20000,
+    createdAt: '2026-06-20T00:00:00.000Z', priceUsd: 15000,
     customerEmail: 'client@co.com',
-    renderJson: JSON.stringify({ docTitle: 'Quote for Acme', solutionLabel: 'AI Agent', rangeText: '$10k–$20k', negInitial: '$15k', negBudget: '', negAdjusted: '' }),
+    renderJson: JSON.stringify({ docTitle: 'Quote for Acme', solutionLabel: 'AI Agent', rangeText: '$15,000' }),
   };
   vi.clearAllMocks();
   share.verify.mockReset();
   rl.cooldown.mockResolvedValue({ ok: true }); rl.cap.mockResolvedValue({ ok: true });
 });
 
-describe('POST /api/quote/email — locks the single price', () => {
-  it('sends the quote + LOCKS the price (= budget) at USD, with the token email as reply-to', async () => {
-    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'Client@Co.com', expectedBudgetUsd: 15000 });
+describe('POST /api/quote/email — sends at the fixed published price', () => {
+  it('sends the quote + LOCKS the published price (= priceUsd) at USD, token email as reply-to', async () => {
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'Client@Co.com' });
     expect(res.status).toBe(200);
     const send = seq.sends.find(s => s.slug === 'quote-en')!;
     expect(send.to).toBe('client@co.com');
     expect(send.replyTo).toBe('owner@acme.com');
     const w = store.writes.get(qDoc)!;
-    expect(w.price).toBe(15000);
+    expect(w.price).toBe(15000);        // = stored.priceUsd (the published price)
+    expect(w.priceUsd).toBe(15000);
     expect(w.currency).toBe('usd');
-    // the email BUDGET var is the single locked price (USD), no range / negotiation vars
+    // the email BUDGET var is the single published price (USD), no range / negotiation vars
     const v = send.variables as Record<string, string>;
     expect(v.BUDGET).toBe('$15,000');
     expect(v.ACCEPT_URL).toContain('action=accept');
+    expect(v.ACCEPT_URL).toContain('budgetUsd=15000');   // confirm page shows the same price
     expect(v.DISCUSS_URL).toBeUndefined();
     expect(v.RANGE).toBeUndefined();
   });
 
-  it('rejects a budget BELOW the estimate minimum (BUDGET_BELOW_MIN, no send)', async () => {
-    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 5000 });
-    expect(res.status).toBe(400);
-    expect((await res.json() as { code: string }).code).toBe('BUDGET_BELOW_MIN');
-    expect(seq.sends.length).toBe(0);
-  });
-
-  it('rejects a send with NO budget when the quote has no price yet (NO_BUDGET)', async () => {
-    const res = await quote.request('/api/quote/email', { method: 'POST', headers: H(), body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' }) }, ENV);
-    expect(res.status).toBe(400);
-    expect((await res.json() as { code: string }).code).toBe('NO_BUDGET');
-  });
-
-  it('once locked, a re-send with a DIFFERENT budget is refused (PRICE_LOCKED)', async () => {
-    store.stored!.price = 15000;
-    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 18000 });
-    expect(res.status).toBe(409);
-    expect((await res.json() as { code: string }).code).toBe('PRICE_LOCKED');
-  });
-
-  it('a re-send with NO budget on a locked quote keeps the price and sends', async () => {
-    store.stored!.price = 15000;
-    const res = await quote.request('/api/quote/email', { method: 'POST', headers: H(), body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' }) }, ENV);
+  it('ignores any client-sent budget — the amount is always the published price', async () => {
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 999999 });
     expect(res.status).toBe(200);
+    expect(store.writes.get(qDoc)!.price).toBe(15000);   // client budget IGNORED (no budget-based pricing)
+  });
+
+  it('a re-send keeps the same published price (idempotent, no lock conflict)', async () => {
+    store.stored!.price = 15000;
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' });
+    expect(res.status).toBe(200);
+    expect(store.writes.get(qDoc)!.price).toBe(15000);
     expect(seq.sends.some(s => s.slug === 'quote-en')).toBe(true);
+  });
+
+  it('rejects a quote with no published price (NO_PRICE, no send)', async () => {
+    store.stored = { createdAt: '2026-06-20T00:00:00.000Z', customerEmail: 'client@co.com' };
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' });
+    expect(res.status).toBe(500);
+    expect((await res.json() as { code: string }).code).toBe('NO_PRICE');
+    expect(seq.sends.length).toBe(0);
   });
 
   it('rate-limits the sender (cooldown → 429, no send)', async () => {
     rl.cooldown.mockResolvedValueOnce({ ok: false, retryAfterSec: 12 });
-    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 15000 });
+    const res = await emailReq({ orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com' });
     expect(res.status).toBe(429);
     expect(seq.sends.length).toBe(0);
   });
 
   it('falls back to the CF edge country language when no locale is supplied', async () => {
     const res = await quote.request('/api/quote/email',
-      { method: 'POST', headers: { ...H(), 'CF-IPCountry': 'FR' }, body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1', expectedBudgetUsd: 15000 }) }, ENV);
+      { method: 'POST', headers: { ...H(), 'CF-IPCountry': 'FR' }, body: JSON.stringify({ orgId: 'orgA', quoteId: 'q1' }) }, ENV);
     expect(res.status).toBe(200);
     expect(seq.sends.some(s => s.slug === 'quote-fr')).toBe(true);
   });
 
   it('S1 — sanitizes client render vars: no HTML / {{merge}} reaches the template; URLs preserved', async () => {
     const res = await emailReq({
-      orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com', expectedBudgetUsd: 15000,
-      render: { docTitle: '<script>alert(1)</script>Acme', solutionLabel: '<b>AI</b> Agent', rangeText: '{{X}}', negBudget: '' },
+      orgId: 'orgA', quoteId: 'q1', locale: 'en', clientEmail: 'client@co.com',
+      render: { docTitle: '<script>alert(1)</script>Acme', solutionLabel: '<b>AI</b> Agent', rangeText: '{{X}}' },
     });
     expect(res.status).toBe(200);
     const v = seq.sends.find(s => s.slug === 'quote-en')!.variables as Record<string, string>;
@@ -172,10 +169,10 @@ describe('Accept → auto-invoice at the locked price (Quote → Accept → Pay)
     expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeFalsy();
   });
 
-  it('with no explicit price, accept invoices at the estimate minimum (quotePrice fallback)', async () => {
+  it('with no explicit price yet, accept invoices at the published price (quotePrice ← priceUsd)', async () => {
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
     expect(res.status).toBe(200);
-    expect((store.invoices.get('invoices/quote_q1') as Record<string, unknown>).amount).toBe(10000);
+    expect((store.invoices.get('invoices/quote_q1') as Record<string, unknown>).amount).toBe(15000);
   });
 
   it('negotiation is DISABLED — discussion → 400 NEGOTIATION_DISABLED, no write', async () => {

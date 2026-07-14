@@ -2781,6 +2781,7 @@ export const de: Dict = {
         "s4": "Sie führen die Zahlung aus"
       },
       "decision": {
+        "priceLabel": "Ihr Preis",
         "adjustHeading": "Schlagen Sie Ihr Budget vor",
         "messagePlaceholder": "Fügen Sie eine Nachricht hinzu — was möchten Sie anpassen?",
         "messageSend": "Anfrage senden",

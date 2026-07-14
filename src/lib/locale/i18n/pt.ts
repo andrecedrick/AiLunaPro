@@ -2781,6 +2781,7 @@ export const pt: Dict = {
         "s4": "Efetua o pagamento"
       },
       "decision": {
+        "priceLabel": "O seu preço",
         "adjustHeading": "Proponha o seu orçamento",
         "budgetIntro": "Este é o valor que propõe. O seu cliente valida-o ou solicita um ajuste.",
         "rangeLabel": "Faixa estimada",
