@@ -12,6 +12,7 @@ import { SessionValueProvider } from './context/SessionValueContext';
 import { RouteProvider, useRoute } from './context/RouteContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConsentBanner } from './components/ConsentBanner';
+import { ConnectionBanner } from './components/ConnectionBanner';
 import { AnalyticsBlockedNotice } from './components/AnalyticsBlockedNotice';
 import { BackToTop } from './components/ui/BackToTop';
 
@@ -176,7 +177,7 @@ function useMediaQuery(query: string): boolean {
 
 function AppShell() {
   const { route, navigate } = useRoute();
-  const { isAuthenticated, isLoading, session, retryAuth, connectionPhase } = useAuth();
+  const { isAuthenticated, isLoading, session, retryAuth } = useAuth();
 
   /* Sidebar collapse/expand state.
      - Desktop (>=768px): collapsible rail (240px ↔ 72px), persisted.
@@ -228,34 +229,21 @@ function AppShell() {
     }
   }, [isLoading, bootSlow]);
 
-  /* Diagnostics for the "Still connecting" card — a deterministic, non-PII
-     reason code. Prefer a captured lazy-firestore-chunk failure; otherwise
-     probe Google/Firebase reachability (no-cors: resolves opaque if reachable,
-     rejects if blocked client-side). Runs only once the watchdog trips. */
-  const [bootReason, setBootReason] = useState<'FIRESTORE_CHUNK_BLOCKED' | 'GOOGLEAPIS_BLOCKED' | 'TIMEOUT'>('TIMEOUT');
-  const [retryCount, setRetryCount] = useState(0);
-  // Batch A — auto-retry the connection up to 3 times (spinner stays visible = non-blocking)
-  // before escalating to the actionable "Still connecting" card. Logs each attempt.
+  /* Auto-retry while the (deadline-bounded) spinner shows. On a signed-in session
+     drop this rebuilds it; on a cold boot it is a logged no-op (the auth subscription
+     resolves by itself). The gate can no longer dead-end: AuthContext force-exits
+     isLoading after its 12s deadline and the app continues in degraded mode with the
+     non-blocking ConnectionBanner (which owns diagnostics + background reconnects). */
   const [autoRetries, setAutoRetries] = useState(0);
   useEffect(() => {
     if (!isLoading || !bootSlow || autoRetries >= 3) return;
     const t = setTimeout(() => {
-      console.warn('[boot] auto-retry', autoRetries + 1, 'of 3 — reason', bootReason);
+      console.warn('[boot] auto-retry', autoRetries + 1, 'of 3');
       retryAuth();
       setAutoRetries(n => n + 1);
     }, 2500);
     return () => clearTimeout(t);
-  }, [isLoading, bootSlow, autoRetries, bootReason, retryAuth]);
-  useEffect(() => {
-    if (!bootSlow) return;
-    const captured = (window as Window & { __BOOT_REASON__?: string }).__BOOT_REASON__;
-    if (captured === 'FIRESTORE_CHUNK_BLOCKED') { setBootReason('FIRESTORE_CHUNK_BLOCKED'); return; }
-    let cancelled = false;
-    fetch('https://firestore.googleapis.com/v1/projects/-/databases/(default)/documents', { mode: 'no-cors' })
-      .then(() => { if (!cancelled) setBootReason('TIMEOUT'); })
-      .catch(() => { if (!cancelled) setBootReason('GOOGLEAPIS_BLOCKED'); });
-    return () => { cancelled = true; };
-  }, [bootSlow, retryCount]);
+  }, [isLoading, bootSlow, autoRetries, retryAuth]);
 
   /* J13 Batch 2: analytics page_view on route change. route.name is the
      id-free template (ids live in separate fields) → no PII. track() is a
@@ -434,84 +422,14 @@ function AppShell() {
 
   /* ── Firebase: wait for onAuthStateChanged before rendering ── */
   if (isLoading) {
-    // NEVER render null here — that produced a white screen while the session
-    // resolved (esp. when the lazy firestore chunk is slow/blocked). Show a
-    // visible spinner immediately; escalate to an actionable notice after the
-    // watchdog timeout. Spinner classes live in index.html (CSS-independent).
-    // Non-blocking loading: keep the spinner during the 3 auto-retries; only escalate to
-    // the actionable card once auto-retry is exhausted.
-    if (!bootSlow || autoRetries < 3) {
-      return (
-        <div className="app-boot-loader" role="status" aria-label="Loading">
-          <div className="app-boot-spinner" />
-        </div>
-      );
-    }
-    const reasonText: Record<typeof bootReason, string> = {
-      FIRESTORE_CHUNK_BLOCKED: 'A required app module was blocked from loading.',
-      GOOGLEAPIS_BLOCKED:      'Google / Firebase endpoints appear to be blocked.',
-      TIMEOUT:                 'The connection is taking longer than expected.',
-    };
-    // STEP 3 — distinct, honest connection states.
-    const phaseTitle = connectionPhase === 'retrying' ? 'Reconnecting…'
-      : connectionPhase === 'failed' ? 'Connection failed'
-      : 'Still connecting…';
-    const phaseLead = connectionPhase === 'retrying'
-      ? 'The connection dropped — retrying automatically…'
-      : connectionPhase === 'failed'
-      ? "We couldn't reach the server after several attempts. Check your connection, then retry."
-      : `${reasonText[bootReason]} The app will continue automatically once it connects.`;
-    const secondaryBtn: React.CSSProperties = { width: '100%', padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border-strong, #CBD5E1)', background: 'transparent', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)', marginTop: 8 };
+    // NEVER render null here (white screen), and NEVER a dead-end card: isLoading is
+    // now deadline-bounded in AuthContext (≤12s), so this spinner ALWAYS gives way to
+    // the app — authenticated, or degraded/unauthenticated with the non-blocking
+    // ConnectionBanner handling diagnostics, manual retry, and background reconnects.
+    // Spinner classes live in index.html (CSS-independent).
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--page-bg)' }}>
-        <div style={{ maxWidth: 460, width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--card-radius)', boxShadow: 'var(--card-shadow)', padding: 24, textAlign: 'center' }}>
-          <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: 'var(--font-heading)' }}>
-            {phaseTitle}
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55, margin: '0 0 10px' }}>
-            {phaseLead}
-          </p>
-          <div style={{ fontSize: 11, fontFamily: 'ui-monospace, Consolas, monospace', color: 'var(--text-muted)', background: 'var(--surface-2)', borderRadius: 8, padding: '6px 10px', margin: '0 0 14px' }}>
-            Reason: {bootReason}
-          </div>
-          <button
-            type="button"
-            onClick={() => { setRetryCount(c => c + 1); retryAuth(); }}
-            style={{ width: '100%', padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--brand-gradient, var(--violet))', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
-          >
-            Retry now
-          </button>
-          <button type="button" onClick={() => window.location.reload()} style={secondaryBtn}>
-            Reload
-          </button>
-          {retryCount >= 2 && (
-            <>
-              <a href="/audit-express" style={{ ...secondaryBtn, display: 'block', textDecoration: 'none', borderColor: 'var(--violet)', color: 'var(--violet-text, var(--violet))' }}>
-                Open Audit Express (no sign-in needed)
-              </a>
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5, margin: '8px 0 0' }}>
-                Account &amp; data features require connectivity to Google / Firebase.
-              </p>
-            </>
-          )}
-          <details style={{ marginTop: 12, textAlign: 'left' }}>
-            <summary style={{ cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--violet-text, var(--violet))' }}>
-              Network requirements
-            </summary>
-            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, margin: '8px 0 0' }}>
-              On a corporate network, VPN, or with a privacy/ad-block extension, please allow:
-              Google / Firebase endpoints, our API domain (<strong>api.ailunapro.com</strong>),
-              and Cloudflare Turnstile. The app loads normally once these are reachable.
-            </p>
-          </details>
-          <button
-            type="button"
-            onClick={() => { window.location.hash = '#/help?section=troubleshooting'; window.location.reload(); }}
-            style={secondaryBtn}
-          >
-            Troubleshooting help
-          </button>
-        </div>
+      <div className="app-boot-loader" role="status" aria-label="Loading">
+        <div className="app-boot-spinner" />
       </div>
     );
   }
@@ -653,6 +571,7 @@ function App() {
                   authenticated content (see AuthedProviders) so Firestore stays
                   off the eager boot/login path. */}
               <AppShell />
+              <ConnectionBanner />
               <ConsentBanner />
               <AnalyticsBlockedNotice />
             </AuthProvider>

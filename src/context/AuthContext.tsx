@@ -143,6 +143,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsub;
   }, []); // runs once on mount
 
+  /* P0 — the loading gate is GUARANTEED to end. If auth hasn't resolved within the
+     deadline (googleapis blocked by an ad-blocker / corporate filter, SDK retrying for
+     minutes, dropped network), the app CONTINUES in degraded mode: unauthenticated view
+     (or the last-known session on a retry), a non-blocking connection banner, and the
+     auth subscription still live — the session hydrates in place the moment
+     Google/Firebase becomes reachable. Re-arms on every isLoading=true stretch, so a
+     failed retryAuth can never hold the UI hostage either. */
+  useEffect(() => {
+    if (LAYER !== 'firebase' || !isLoading) return;
+    const t = window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      console.warn('[auth] loading deadline exceeded — continuing in degraded mode (auth keeps resolving in the background)');
+      setIsLoading(false);
+      setConnectionPhase(p => (p === 'ok' ? p : 'failed'));
+    }, 12_000);
+    return () => window.clearTimeout(t);
+  }, [isLoading]);
+
   // ── Mock mode: mirror to localStorage ────────────────────────────────────
   useEffect(() => {
     if (LAYER === 'mock') saveSession(session);
@@ -513,7 +531,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const retryAuth = useCallback(() => {
     if (LAYER !== 'firebase') return;
     const fbUser = getCurrentFirebaseUser();
-    if (!fbUser) return; // no signed-in user → onAuthStateChanged owns the state
+    if (!fbUser) {
+      // Cold boot: there is no user to rebuild yet — onAuthStateChanged owns the state
+      // and fires by itself once Google/Firebase is reachable. Log it so a "retry did
+      // nothing" is visible in diagnostics instead of silent.
+      console.warn('[auth] retry requested before sign-in resolved — waiting on the auth subscription');
+      return;
+    }
     setIsLoading(true);
     setConnectionPhase('retrying');
     firebaseRebuildSession(fbUser)
@@ -532,7 +556,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mountedRef.current) return;
         console.warn('[auth] retry failed code:', (err as Error)?.message ?? 'UNKNOWN');
         setConnectionPhase('failed');
-        // Keep isLoading true → the actionable card stays; no sign-out.
+        // P0 — NEVER hold the app in the loading gate on a failed retry: continue with
+        // the last-known session (degraded); the banner + background retry take over.
+        setIsLoading(false);
       });
   }, []);
 
