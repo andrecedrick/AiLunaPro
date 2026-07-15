@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { fetchPlatformMe } from '../lib/platform/platformService';
-import { listInvoices, listAllQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, type InvoiceItem, type QuoteListItem } from '../lib/quote/invoicesClient';
+import { listInvoices, listAllQuotes, listPlatformQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, type InvoiceItem, type QuoteListItem } from '../lib/quote/invoicesClient';
 import { sendQuoteToClient } from '../lib/quote/quoteClient';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
@@ -42,15 +42,27 @@ export function AdminCenterPage() {
   const [done, setDone]       = useState<{ id: string; emailed: boolean; code?: string } | null>(null);
   const [resendId, setResendId] = useState<string | null>(null);
   const [govBusy, setGovBusy] = useState<string | null>(null);
+  // FIX 3 — TRUE cross-org platform visibility (operators only).
+  const [platformAdmin, setPlatformAdmin] = useState(false);
+  const [platformQuotes, setPlatformQuotes] = useState<QuoteListItem[] | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const orgAdmin = session?.role === 'owner' || session?.role === 'admin';
   useEffect(() => {
     let alive = true;
     fetchPlatformMe()
-      .then(m => { if (alive) setAllowed(m.isSuperAdmin || orgAdmin); })
+      .then(m => { if (alive) { setAllowed(m.isSuperAdmin || orgAdmin); setPlatformAdmin(m.isPlatformAdmin); } })
       .catch(() => { if (alive) setAllowed(orgAdmin); });
     return () => { alive = false; };
   }, [orgAdmin]);
+
+  // Operators additionally get the cross-org list (collectionGroup, read-only).
+  useEffect(() => {
+    if (!platformAdmin) return;
+    let alive = true;
+    listPlatformQuotes().then(q => { if (alive) setPlatformQuotes(q); }).catch(() => { if (alive) setPlatformQuotes([]); });
+    return () => { alive = false; };
+  }, [platformAdmin]);
 
   const reload = () => {
     if (!orgId) return;
@@ -196,6 +208,45 @@ export function AdminCenterPage() {
     </div>
   );
 
+  // FIX 3 — cross-org platform card: READ-ONLY (operators never govern a tenant quote).
+  // Collapsed = title · client · org · payment · price; expand → the full record + payment.
+  const platformCard = (q: QuoteListItem) => {
+    const key = `${q.orgId}:${q.quoteId}`;
+    const open = expanded === key;
+    return (
+      <div key={key} style={card}>
+        <button type="button" onClick={() => setExpanded(open ? null : key)}
+          style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, width: '100%', flexWrap: 'wrap', boxSizing: 'border-box' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-primary)' }}>{qTitle(q.quoteTitle, q.quoteId)}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{q.customerEmail || '—'} · <span style={{ color: 'var(--violet-text)', fontWeight: 700 }}>{q.orgId}</span></div>
+          </div>
+          <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <span style={pill(payColor(q.paymentStatus))}>{payLabel(q.paymentStatus)}</span>
+            <div style={{ textAlign: 'right' }}>
+              <div style={fieldLabel}>{A.priceLabel}</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--violet-text)', fontVariantNumeric: 'tabular-nums' }}>{usd(q.price)}</div>
+            </div>
+            <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: 11 }}>{open ? '▲' : '▼'}</span>
+          </div>
+        </button>
+        {open && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+            {field(A.orgLabel, q.orgId || '—')}
+            {field(A.quoteIdLabel, q.quoteId)}
+            {field(A.uidLabel, q.createdBy || '—')}
+            {field(A.sourceLabel, q.source || '—')}
+            {field(A.currencyLabel, (q.currency || 'usd').toUpperCase())}
+            {field(A.stripeIdLabel, q.stripePaymentId || '—')}
+            {field(A.tlCreated, q.createdAt ? q.createdAt.slice(0, 10) : '—')}
+            {field(A.tlAccepted, q.decidedAt ? q.decidedAt.slice(0, 10) : '—')}
+            {field(A.paidLabel, q.paidAt ? q.paidAt.slice(0, 10) : '—')}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 20px' }}>
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>{A.title}</h1>
@@ -222,10 +273,18 @@ export function AdminCenterPage() {
               </div>
           )}
 
-          {/* 2 — Superadmin visibility: every quote with full client + payment data */}
-          {section(A.superadminHeading, (allQuotes ?? []).length === 0
+          {/* 2 — This org: every quote with full client + payment data (owner/admin scope) */}
+          {section(A.orgQuotesHeading, (allQuotes ?? []).length === 0
             ? <div style={{ ...card, borderStyle: 'dashed', color: 'var(--text-muted)', fontSize: 13.5 }}>{A.allQuotesEmpty}</div>
             : <div style={{ display: 'grid', gap: 10 }}>{(allQuotes ?? []).map(quoteCard)}</div>
+          )}
+
+          {/* 2b — TRUE cross-org platform visibility (platform operators only, read-only) */}
+          {platformAdmin && section(A.platformHeading, platformQuotes === null
+            ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13.5 }}>{I.loading}</div>
+            : platformQuotes.length === 0
+              ? <div style={{ ...card, borderStyle: 'dashed', color: 'var(--text-muted)', fontSize: 13.5 }}>{A.platformEmpty}</div>
+              : <div style={{ display: 'grid', gap: 10 }}>{platformQuotes.map(platformCard)}</div>
           )}
 
           {/* 3 — Invoices (re-send + payment link) */}

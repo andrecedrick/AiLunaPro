@@ -66,6 +66,18 @@ export async function listAllQuotes(orgId: string, opts?: { mine?: boolean }): P
   return j?.quotes ?? [];
 }
 
+/** Platform operator ONLY: TRUE cross-org quote visibility (collectionGroup, all orgs).
+ *  Read-only. 403 for non-operators (requirePlatformAdmin, server-enforced). */
+export async function listPlatformQuotes(): Promise<QuoteListItem[]> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/platform/quotes`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!res.ok) throw new Error(`HTTP_${res.status}`);
+  const j = await res.json().catch(() => null) as { quotes?: QuoteListItem[] } | null;
+  return j?.quotes ?? [];
+}
+
 /** Admin GOVERNANCE only: block / suspend / re-activate a quote. Fixed-price — there is
  *  no price/budget/message edit. Owner/admin + org-scoped, server-enforced. */
 export async function patchQuote(
