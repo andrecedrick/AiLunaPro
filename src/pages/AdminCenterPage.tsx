@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { fetchPlatformMe } from '../lib/platform/platformService';
-import { listInvoices, listAllQuotes, patchQuote, resendInvoice, createInvoicePaymentLink, markInvoicePaid, type InvoiceItem, type QuoteListItem } from '../lib/quote/invoicesClient';
+import { listInvoices, listAllQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, type InvoiceItem, type QuoteListItem } from '../lib/quote/invoicesClient';
 import { sendQuoteToClient } from '../lib/quote/quoteClient';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
@@ -71,6 +71,15 @@ export function AdminCenterPage() {
     if (!q.customerEmail) return;
     setGovBusy(q.quoteId);
     try { await sendQuoteToClient(orgId, q.quoteId, q.customerEmail, language); reload(); }
+    catch { setError(true); } finally { setGovBusy(null); }
+  };
+  // P4.1 recovery — an ACCEPTED quote whose auto-invoice never landed (accepted, no
+  // payment-status joined) has no invoice: create it now (idempotent server-side).
+  const acceptedNoInvoice = (q: QuoteListItem) =>
+    !!q.decidedAt && !q.paymentStatus && q.adminState !== 'blocked' && q.adminState !== 'suspended';
+  const recoverInvoice = async (q: QuoteListItem) => {
+    setGovBusy(q.quoteId);
+    try { await finalizeQuote(orgId, q.quoteId); reload(); }
     catch { setError(true); } finally { setGovBusy(null); }
   };
   const genPaymentLink = async (inv: InvoiceItem) => {
@@ -142,6 +151,7 @@ export function AdminCenterPage() {
         <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {q.adminState === 'blocked' && <span style={pill('var(--red-text)')}>{A.blocked}</span>}
           {q.adminState === 'suspended' && <span style={pill('#b45309')}>{A.suspended}</span>}
+          {acceptedNoInvoice(q) && <span style={pill('#b45309')}>{A.invoicePending}</span>}
           <span style={pill(payColor(q.paymentStatus))}>{payLabel(q.paymentStatus)}</span>
           <div style={{ textAlign: 'right' }}>
             <div style={fieldLabel}>{A.priceLabel}</div>
@@ -175,6 +185,9 @@ export function AdminCenterPage() {
         )}
         {q.customerEmail && !q.decidedAt && q.stage !== 'invoice_sent' && q.stage !== 'finalized' && q.adminState !== 'blocked' && q.adminState !== 'suspended' && (
           <button type="button" disabled={govBusy === q.quoteId} onClick={() => void sendQuote(q)} style={govBtn('var(--violet)', '#fff')}>{govBusy === q.quoteId ? '…' : A.sendQuote}</button>
+        )}
+        {acceptedNoInvoice(q) && (
+          <button type="button" disabled={govBusy === q.quoteId} onClick={() => void recoverInvoice(q)} style={govBtn('var(--violet)', '#fff')}>{govBusy === q.quoteId ? '…' : A.createInvoice}</button>
         )}
       </div>
     </div>

@@ -83,6 +83,21 @@ export async function patchQuote(
   if (!res.ok) throw new Error(`HTTP_${res.status}`);
 }
 
+/** Admin RECOVERY (P4.1): create the missing invoice for an ACCEPTED quote whose
+ *  auto-invoice failed on accept. Idempotent server-side (create-if-not-exists → no
+ *  duplicate invoice / charge). Owner/admin, org-scoped. Throws on a non-OK response. */
+export async function finalizeQuote(orgId: string, quoteId: string): Promise<{ finalized: boolean; paymentUrl?: string | null; paymentMethod?: string }> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/quote/${encodeURIComponent(quoteId)}/finalize?orgId=${encodeURIComponent(orgId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId }),
+  });
+  const j = await res.json().catch(() => null) as { finalized?: boolean; paymentUrl?: string | null; paymentMethod?: string; code?: string } | null;
+  if (!res.ok) throw new Error(j?.code ?? `HTTP_${res.status}`);
+  return { finalized: j?.finalized === true, paymentUrl: j?.paymentUrl ?? null, paymentMethod: j?.paymentMethod };
+}
+
 /** Admin: get/create the Stripe payment link for an invoice. Throws
  *  QuoteGenError('PAYMENT_UNAVAILABLE') when Stripe is not configured (→ bank transfer). */
 export async function createInvoicePaymentLink(orgId: string, invoiceId: string): Promise<{ paymentUrl: string | null; status?: string }> {

@@ -135,6 +135,8 @@ export const en = {
     suspend: 'Suspend',
     reactivate: 'Re-activate',
     sendQuote: 'Send Quote',
+    createInvoice: 'Create invoice',
+    invoicePending: 'Invoice pending',
     sendAndPay: 'Send & Pay',
     markPaidBtn: 'Mark as paid',
     awaitingTransfer: 'Awaiting transfer',

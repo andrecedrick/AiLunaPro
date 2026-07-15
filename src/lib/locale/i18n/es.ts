@@ -117,6 +117,8 @@ export const es: Dict = {
     suspend: 'Suspender',
     reactivate: 'Reactivar',
     sendQuote: 'Enviar presupuesto',
+    createInvoice: 'Crear factura',
+    invoicePending: 'Factura pendiente',
     sendAndPay: 'Enviar y pagar',
     markPaidBtn: 'Marcar como pagado',
     awaitingTransfer: 'Transferencia pendiente',

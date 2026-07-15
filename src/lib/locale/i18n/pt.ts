@@ -120,6 +120,8 @@ export const pt: Dict = {
     suspend: 'Suspender',
     reactivate: 'Reativar',
     sendQuote: 'Enviar orçamento',
+    createInvoice: 'Criar fatura',
+    invoicePending: 'Fatura pendente',
     sendAndPay: 'Enviar e pagar',
     markPaidBtn: 'Marcar como pago',
     awaitingTransfer: 'Transferência pendente',

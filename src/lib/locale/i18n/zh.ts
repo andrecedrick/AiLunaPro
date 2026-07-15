@@ -122,6 +122,8 @@ export const zh: Dict = {
     suspend: '暂停',
     reactivate: '重新启用',
     sendQuote: '发送报价',
+    createInvoice: '创建发票',
+    invoicePending: '发票待处理',
     sendAndPay: '发送并付款',
     markPaidBtn: '标记为已付款',
     awaitingTransfer: '等待转账',

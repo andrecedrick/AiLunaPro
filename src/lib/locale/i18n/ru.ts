@@ -121,6 +121,8 @@ export const ru: Dict = {
     suspend: 'Приостановить',
     reactivate: 'Возобновить',
     sendQuote: 'Отправить смету',
+    createInvoice: 'Создать счёт',
+    invoicePending: 'Счёт ожидается',
     sendAndPay: 'Отправить и оплатить',
     markPaidBtn: 'Отметить как оплачено',
     awaitingTransfer: 'Ожидание перевода',

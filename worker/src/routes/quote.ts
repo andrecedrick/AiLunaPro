@@ -780,27 +780,49 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
     decidedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   }, { merge: true });
 
-  // Fixed-price auto-invoice: charge the LOCKED price NOW (no admin review). Skipped
-  // only when the quote is governance-blocked/suspended or has no price. Reuses the
-  // exact invoice-birth path (idempotent: one invoice per quote → no duplicate payment).
+  // Auto-invoice at the LOCKED price (idempotent — create-if-not-exists). Extracted into
+  // ensureAcceptInvoice so the token-confirm replay heal AND the admin recovery route
+  // (POST /api/quote/:quoteId/finalize) reuse the exact same invoice-birth logic — a
+  // client accept can therefore never leave a quote accepted-but-un-invoiced.
+  const inv = await ensureAcceptInvoice(env, saJson, { orgId, quoteId, stored, customerEmail, appBase, notifyOnFailure: true });
+  return { locked: false, paymentUrl: inv.paymentUrl, paymentMethod: inv.paymentMethod };
+}
+
+/**
+ * P4.1 — ensure an ACCEPTED quote has its invoice. The single invoice-birth path on
+ * accept, reused by (1) applyQuoteDecision (first accept), (2) the public token-confirm
+ * replay heal, and (3) POST /api/quote/:quoteId/finalize (admin recovery). IDEMPOTENT:
+ * finalizeQuoteInvoice is create-if-not-exists → never a duplicate invoice or duplicate
+ * charge, however many times this runs. Skipped only for a blocked/suspended or price-
+ * less quote. On skip/failure it (optionally) notifies the admins so a human can recover.
+ */
+async function ensureAcceptInvoice(env: AppEnv['Bindings'], saJson: string, a: {
+  orgId: string; quoteId: string; stored: Record<string, unknown>;
+  customerEmail: string | undefined; appBase: string; notifyOnFailure?: boolean;
+}): Promise<{ finalized: boolean; paymentUrl: string | null; paymentMethod: 'stripe' | 'bank_transfer' }> {
+  const { orgId, quoteId, stored, customerEmail, appBase, notifyOnFailure = true } = a;
   const price = quotePrice(stored);
   const blocked = stored.adminState === 'blocked' || stored.adminState === 'suspended';
-  let autoPaymentUrl: string | null = null;
-  let autoFinalized = false;
+  // Payment split: > SMB_MAX_USD → bank transfer (paymentUrl null), else Stripe self-serve.
+  const paymentMethod: 'stripe' | 'bank_transfer' = (price ?? 0) > SMB_MAX_USD ? 'bank_transfer' : 'stripe';
+
+  let paymentUrl: string | null = null;
+  let finalized = false;
   if (price !== null && price > 0 && !blocked) {
     try {
       const fin = await finalizeQuoteInvoice(env, saJson, { orgId, quoteId, quote: stored, amount: price, appBase });
-      autoPaymentUrl = fin.paymentUrl;
-      autoFinalized = true;
+      paymentUrl = fin.paymentUrl;
+      finalized = true;   // includes the idempotent 'already exists' fast-path (no re-charge)
     } catch (e) {
-      console.warn('[quote] auto-invoice on accept failed (admin can re-send from the panel):', e instanceof Error ? e.message : '');
+      console.warn('[quote] auto-invoice on accept failed (recover via POST /api/quote/:quoteId/finalize):', e instanceof Error ? e.message : '');
     }
   }
 
-  // Only notify admins when NO invoice was created (blocked/suspended, missing price, or
-  // a transient finalise error) so a human can follow up. When auto-finalised the admin
-  // sees the pending invoice in the panel and the client already has the invoice email.
-  if (!autoFinalized) {
+  // Notify admins ONLY when no invoice exists yet (blocked/suspended, no price, or a
+  // transient finalise error) AND this is the first-accept call. The heal + recovery
+  // paths pass notifyOnFailure:false, so a client retry (or the admin acting from the
+  // panel) can never flood the admins with duplicate 'pending' notifications.
+  if (!finalized && notifyOnFailure) {
     const admins = adminRecipients(env);
     let quoteTitle = `Quote ${quoteId.slice(0, 8)}`;
     let solutionLabel = '';
@@ -828,10 +850,7 @@ async function applyQuoteDecision(env: AppEnv['Bindings'], saJson: string, a: {
     }
   }
 
-  // Payment split for the frontend: > SMB_MAX_USD → bank transfer (paymentUrl is null),
-  // else Stripe self-serve. The amount itself is unchanged (the locked priceUsd).
-  const paymentMethod: 'stripe' | 'bank_transfer' = (price ?? 0) > SMB_MAX_USD ? 'bank_transfer' : 'stripe';
-  return { locked: false, paymentUrl: autoPaymentUrl, paymentMethod };
+  return { finalized, paymentUrl, paymentMethod };
 }
 
 interface DecisionBody { orgId?: unknown; decision?: unknown }
@@ -920,7 +939,14 @@ quote.post('/api/quote/decision/confirm', async c => {
   // later ones are idempotent no-ops (closes admin-email flooding + decision tampering
   // via a leaked/forwarded link). The authed in-app path is unaffected.
   if (typeof stored.decidedAt === 'string' && stored.decidedAt) {
-    return c.json({ ok: true, status: typeof stored.decision === 'string' ? stored.decision : 'accepted', alreadyRecorded: true });
+    // Already decided — do NOT re-write the decision or re-notify. But HEAL a missing
+    // invoice: if the accept's auto-invoice never landed (transient failure), create it
+    // now (idempotent, no duplicate) so a client retry can never leave an accepted quote
+    // un-invoiced. notifyOnFailure:false — the admins were already notified on first accept.
+    const healEmail = typeof stored.customerEmail === 'string' && stored.customerEmail ? stored.customerEmail : undefined;
+    const healBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+    const heal = await ensureAcceptInvoice(env, saJson, { orgId, quoteId, stored, customerEmail: healEmail, appBase: healBase, notifyOnFailure: false });
+    return c.json({ ok: true, status: typeof stored.decision === 'string' ? stored.decision : 'accepted', alreadyRecorded: true, paymentMethod: heal.paymentMethod, ...(heal.paymentUrl ? { paymentUrl: heal.paymentUrl } : {}) });
   }
 
   // Address the invoice + client email to the recipient persisted when the quote
@@ -933,6 +959,44 @@ quote.post('/api/quote/decision/confirm', async c => {
   if (res.locked) return c.json({ error: 'This quote can no longer be changed.', code: 'QUOTE_LOCKED', stage: res.stage }, 409);
   // Accept auto-invoices at the locked price → surface the instant pay link.
   return c.json({ ok: true, status: 'accepted', paymentMethod: res.paymentMethod, ...(res.paymentUrl ? { paymentUrl: res.paymentUrl } : {}) });
+});
+
+/* ── POST /api/quote/:quoteId/finalize — admin invoice RECOVERY (P4.1) ───────
+ *
+ * The official recovery path for an ACCEPTED quote whose auto-invoice never landed (a
+ * transient finalise failure on accept). Owner/admin, org-scoped (membership-verified).
+ * IDEMPOTENT: reuses ensureAcceptInvoice → finalizeQuoteInvoice (create-if-not-exists),
+ * so a double-click never makes a second invoice or a second charge. Recovery ONLY — it
+ * refuses an un-accepted, blocked/suspended, or price-less quote (never invents an
+ * invoice for a quote the client didn't accept). */
+quote.post('/api/quote/:quoteId/finalize', requireAuth(), requireRole(OVERRIDE_ROLES), async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+
+  const orgId = c.get('orgId') as string; // membership-verified by requireRole
+  const quoteId = safeId(c.req.param('quoteId'));
+  if (!quoteId) return c.json({ error: 'quoteId required.', code: 'INVALID_QUOTE_ID' }, 400);
+
+  const stored = await firestoreGet(saJson, `${COLLECTION(orgId)}/${quoteId}`);
+  if (!stored) return c.json({ error: 'Quote not found.', code: 'NOT_FOUND' }, 404);
+
+  // Recovery ONLY — the quote must have been accepted (decidedAt set).
+  if (!(typeof stored.decidedAt === 'string' && stored.decidedAt)) {
+    return c.json({ error: 'Quote has not been accepted.', code: 'NOT_ACCEPTED' }, 409);
+  }
+  if (stored.adminState === 'blocked' || stored.adminState === 'suspended') {
+    return c.json({ error: 'Quote is blocked or suspended.', code: 'QUOTE_BLOCKED' }, 409);
+  }
+  const price = quotePrice(stored);
+  if (price === null || price <= 0) return c.json({ error: 'Quote has no published price.', code: 'NO_PRICE' }, 409);
+
+  const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+  const customerEmail = typeof stored.customerEmail === 'string' && stored.customerEmail ? stored.customerEmail : undefined;
+  const r = await ensureAcceptInvoice(env, saJson, { orgId, quoteId, stored, customerEmail, appBase, notifyOnFailure: false });
+  if (!r.finalized) return c.json({ error: 'Invoice could not be created — please retry.', code: 'FINALIZE_FAILED' }, 502);
+  return c.json({ ok: true, finalized: true, paymentMethod: r.paymentMethod, ...(r.paymentUrl ? { paymentUrl: r.paymentUrl } : {}) });
 });
 
 export default quote;

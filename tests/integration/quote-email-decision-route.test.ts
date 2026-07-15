@@ -269,14 +269,19 @@ describe('POST /api/quote/decision/confirm — token gating + single-effect', ()
     expect((await confirmReq({ token: 'old', decision: 'accepted' })).status).toBe(410);
   });
 
-  it('is single-effect: a replay on an already-decided quote is an idempotent no-op', async () => {
+  it('is single-effect on the DECISION, but HEALS a missing invoice on replay (P4.1)', async () => {
     store.stored!.decidedAt = '2026-06-21T00:00:00.000Z';
     store.stored!.decision = 'accepted';
+    store.stored!.price = 15000;
     share.verify.mockResolvedValue(okV2);
     const res = await confirmReq({ token: 'tok', decision: 'accepted' });
     expect(res.status).toBe(200);
     expect((await res.json() as { alreadyRecorded?: boolean }).alreadyRecorded).toBe(true);
-    expect(store.invoices.size).toBe(0);
+    // Decision NOT re-written and admins NOT re-notified (single-effect preserved)…
+    expect(seq.sends.find(s => s.slug === 'invoice-admin-pending')).toBeFalsy();
+    // …but a previously-missing invoice IS healed — a client retry can never leave an
+    // accepted quote un-invoiced (P4.1). A re-invoiced quote heals to a no-op (idempotent).
+    expect(store.invoices.has('invoices/quote_q1')).toBe(true);
   });
 
   it('rate-limits replay bursts (per-quote cooldown → 429)', async () => {

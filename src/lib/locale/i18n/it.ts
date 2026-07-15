@@ -117,6 +117,8 @@ export const it: Dict = {
     suspend: 'Sospendi',
     reactivate: 'Riattiva',
     sendQuote: 'Invia preventivo',
+    createInvoice: 'Crea fattura',
+    invoicePending: 'Fattura in sospeso',
     sendAndPay: 'Invia e paga',
     markPaidBtn: 'Segna come pagato',
     awaitingTransfer: 'Bonifico in attesa',
