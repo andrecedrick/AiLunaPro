@@ -113,6 +113,27 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
   return { emailed: res.ok, emailError: res.error };
 }
 
+/** BUG 1 — payment-confirmation email (paid receipt). Sent when an invoice becomes paid
+ *  (Stripe webhook exact-amount reconcile + admin bank-transfer mark-paid) and re-sent by
+ *  /confirm on an already-paid invoice. Best-effort, non-fatal; exported for stripe.ts. */
+export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; reference?: string }): Promise<{ emailed: boolean; emailError?: string }> {
+  if (!a.customer) return { emailed: false };
+  const res = await sendTransactional(env.SEQUENZY_API_KEY, {
+    to:      a.customer,
+    slug:    'payment-confirmation',
+    replyTo: env.ADMIN_EMAIL,
+    variables: {
+      PROJECT:     a.project,
+      AMOUNT:      `$${a.amount.toLocaleString('en-US')}`,
+      REFERENCE:   a.reference ?? a.invoiceId,
+      INVOICE_URL: `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`,
+    },
+  });
+  if (!res.ok) console.warn('[invoices] payment-confirmation NOT sent (check SEQUENZY_API_KEY / payment-confirmation):', res.error ?? 'unknown');
+  else await firestoreSet(saJson, `invoices/${a.invoiceId}`, { confirmationEmailedAt: new Date().toISOString() }, { merge: true }).catch(() => { /* audit best-effort */ });
+  return { emailed: res.ok, emailError: res.error };
+}
+
 /**
  * U1 — the invoice-birth core, shared by the admin finalise route AND the within-range
  * auto-finalise on client accept (quote.ts). Creates the invoice ONCE (create-if-not-
@@ -262,7 +283,18 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   if (!inv) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
   // Cross-org guard: an admin of org A must not touch org B's invoice.
   if (inv.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
-  if (inv.status === 'paid') return c.json({ ok: true, status: 'paid', alreadyConfirmed: true });
+  // BUG 1 — a PAID invoice re-sends the PAYMENT CONFIRMATION (receipt), never the
+  // pay-request email (the amount is settled; there is nothing left to pay).
+  if (inv.status === 'paid') {
+    const paidCustomer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
+    if (!paidCustomer) return c.json({ error: 'This invoice has no client email on file.', code: 'NO_RECIPIENT' }, 409);
+    const paidAmount = typeof inv.amount === 'number' ? inv.amount : 0;
+    const paidBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+    const paidProject = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
+      : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
+    const conf = await sendPaymentConfirmation(env, saJson, { orgId, invoiceId: id, project: paidProject, customer: paidCustomer, amount: paidAmount, appBase: paidBase, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id });
+    return c.json({ ok: true, status: 'paid', alreadyConfirmed: true, emailed: conf.emailed, ...(conf.emailed ? {} : { code: 'EMAIL_FAILED' }), ...(conf.emailError ? { emailError: conf.emailError } : {}) });
+  }
 
   const amount = typeof inv.amount === 'number' ? inv.amount : NaN;
   if (!Number.isFinite(amount) || amount <= 0) return c.json({ error: 'Invoice has no amount.', code: 'NO_AMOUNT' }, 409);
@@ -423,8 +455,17 @@ invoices.post('/api/invoices/:id/mark-paid', requireAuth(), requireRole(CONFIRM_
   if (typeof inv.quoteId === 'string' && inv.quoteId) {
     try { await firestoreSet(saJson, QUOTE_DOC(orgId, inv.quoteId), { stage: 'paid', paidAt: nowIso }, { merge: true }); } catch { /* best-effort */ }
   }
-  dlog(env, '[invoices] mark-paid', id, 'by', uid);
-  return c.json({ ok: true, status: 'paid' });
+  // BUG 1 — the client gets a payment confirmation the moment the transfer is confirmed.
+  const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
+  const project = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
+    : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
+  const { emailed } = await sendPaymentConfirmation(env, saJson, {
+    orgId, invoiceId: id, project,
+    customer: typeof inv.customerEmail === 'string' ? inv.customerEmail : '',
+    amount, appBase, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id,
+  });
+  dlog(env, '[invoices] mark-paid', id, 'by', uid, 'confirmationEmailed=', emailed);
+  return c.json({ ok: true, status: 'paid', emailed });
 });
 
 export default invoices;

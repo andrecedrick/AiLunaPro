@@ -193,6 +193,16 @@ describe('Accept → auto-invoice at the locked price (Quote → Accept → Pay)
     expect((store.invoices.get('invoices/quote_q1') as Record<string, unknown>).amount).toBe(15000);
   });
 
+  it('BUG 3 — accept invoices at the ADMIN OVERRIDE (finalPriceUsd, e.g. -10%) when no price is locked yet', async () => {
+    store.stored!.finalPriceUsd = 13500;   // 15000 - 10% via the % buttons → PATCH persisted
+    const res = await decisionReq('q1', { orgId: 'orgA', decision: 'accepted' });
+    expect(res.status).toBe(200);
+    const inv = store.invoices.get('invoices/quote_q1') as Record<string, unknown>;
+    expect(inv.amount).toBe(13500);        // invoice charges the adjusted value, not the base
+    const v = seq.sends.find(s => s.slug === 'invoice-client')!.variables as Record<string, string>;
+    expect(v.AMOUNT).toBe('$13,500');      // the client email carries the adjusted value too
+  });
+
   it('negotiation is DISABLED — discussion → 400 NEGOTIATION_DISABLED, no write', async () => {
     const res = await decisionReq('q1', { orgId: 'orgA', decision: 'discussion', message: 'lower it' });
     expect(res.status).toBe(400);

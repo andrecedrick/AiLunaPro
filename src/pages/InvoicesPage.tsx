@@ -101,12 +101,13 @@ export function InvoicesPage() {
         <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
       )}
 
-      {/* FIX 2 — resend for ANY non-paid invoice (incl. bank-transfer 'awaiting_transfer');
-             the button stays after a send so a failed resend can be retried. */}
-      {isAdmin && inv.status !== 'paid' && (
+      {/* FIX 2/BUG 1 — resend for EVERY invoice: unpaid re-sends the pay request
+             (incl. bank-transfer 'awaiting_transfer'); PAID re-sends the payment
+             confirmation (receipt). Button stays after a send (retryable). */}
+      {isAdmin && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
           <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)}
-            style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : I.resendBtn}</button>
+            style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : inv.status === 'paid' ? I.resendConfirmationBtn : I.resendBtn}</button>
         </div>
       )}
     </div>

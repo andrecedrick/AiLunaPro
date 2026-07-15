@@ -655,7 +655,9 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
   // have an invoice (accepted / finalised). Best-effort — a failed join leaves blanks.
   if (adminAll) {
     await Promise.all(quotes.map(async q => {
-      if (!q.decidedAt && q.stage !== 'finalized' && q.stage !== 'invoice_sent') return;
+      // BUG 5 — 'paid' included: a webhook/mark-paid quote (stage 'paid') must surface
+      // its invoice + payment status even if decidedAt was never set (legacy docs).
+      if (!q.decidedAt && q.stage !== 'finalized' && q.stage !== 'invoice_sent' && q.stage !== 'paid') return;
       try {
         const inv = await firestoreGet(saJson, `invoices/quote_${q.quoteId}`) as Record<string, unknown> | null;
         if (!inv || inv.orgId !== orgId) return;

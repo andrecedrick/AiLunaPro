@@ -25,6 +25,7 @@ import { incrementBalance, syncBalanceAllocation } from '../lib/tokens';
 import { TOKEN_PACKS, isValidPack } from '../lib/token-costs';
 import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
 import { recordWebhookEvent } from './billing-config';
+import { sendPaymentConfirmation } from './invoices';
 import type { AppEnv } from '../index';
 import type Stripe from 'stripe';
 
@@ -76,7 +77,7 @@ stripe.post('/api/stripe/webhook', async c => {
   }
 
   try {
-    await handleEvent(event, env.FIREBASE_SERVICE_ACCOUNT_JSON, stripeClient);
+    await handleEvent(event, env.FIREBASE_SERVICE_ACCOUNT_JSON, stripeClient, env as AppEnv['Bindings']);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Event handling failed';
     console.error('[webhook] handler error:', msg);
@@ -92,6 +93,7 @@ async function handleEvent(
   event: Stripe.Event,
   saJson: string,
   stripeClient: Stripe,
+  env?: AppEnv['Bindings'],
 ): Promise<void> {
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -197,9 +199,32 @@ async function handleEvent(
         const expectedCents = Math.round(Number(inv.amount) || 0) * 100;
         const paidCents = typeof session.amount_total === 'number' ? session.amount_total : -1;
         if (expectedCents > 0 && paidCents === expectedCents) {
+          const paidIso = new Date().toISOString();
           await firestoreSet(saJson, `invoices/${invoiceId}`, {
-            status: 'paid', paidAt: new Date().toISOString(), paidAmount: paidCents, stripeSessionId: session.id, updatedAt: new Date().toISOString(),
+            status: 'paid', paidAt: paidIso, paidAmount: paidCents, stripeSessionId: session.id, updatedAt: paidIso,
           }, { merge: true });
+          // BUG 5 — mirror the quote lifecycle to 'paid' (parity with admin mark-paid)
+          // so admin/platform panels and activity feeds see the settled state.
+          if (typeof inv.quoteId === 'string' && inv.quoteId) {
+            try { await firestoreSet(saJson, `organizations/${payOrg}/quotes/${inv.quoteId}`, { stage: 'paid', paidAt: paidIso }, { merge: true }); }
+            catch { /* best-effort mirror */ }
+          }
+          // BUG 1 — the customer gets a payment confirmation (receipt) on successful
+          // Stripe payment. Best-effort: a mail hiccup never fails the webhook ack.
+          if (env) {
+            try {
+              const appBase = ((env as { APP_BASE_URL?: string }).APP_BASE_URL ?? 'https://audit.ailunapro.com').replace(/\/+$/, '');
+              const project = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
+                : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : invoiceId;
+              const { emailed } = await sendPaymentConfirmation(env, saJson, {
+                orgId: payOrg, invoiceId, project,
+                customer: typeof inv.customerEmail === 'string' ? inv.customerEmail : '',
+                amount: Math.round(paidCents / 100), appBase,
+                reference: typeof inv.quoteId === 'string' ? inv.quoteId : invoiceId,
+              });
+              console.log('[webhook] payment confirmation emailed:', emailed, 'invoice:', invoiceId);
+            } catch (e) { console.warn('[webhook] payment confirmation send failed:', e instanceof Error ? e.message : ''); }
+          }
           console.log('[webhook] invoice marked paid:', invoiceId, 'org:', payOrg);
         } else {
           await firestoreSet(saJson, `invoices/${invoiceId}`, {

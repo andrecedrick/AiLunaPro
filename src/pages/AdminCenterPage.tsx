@@ -128,10 +128,22 @@ export function AdminCenterPage() {
   for (const inv of items ?? []) {
     if (inv.status === 'draft') continue;
     events.push(inv.status === 'paid'
-      ? { icon: '💰', label: A.evtPaid, title: qTitle(inv.quoteTitle, inv.quoteId), date: inv.createdAt, sub: usd(inv.amount) }
+      // BUG 5 — a payment event is dated when it was PAID, not when the invoice was born.
+      ? { icon: '💰', label: A.evtPaid, title: qTitle(inv.quoteTitle, inv.quoteId), date: inv.paidAt || inv.createdAt, sub: usd(inv.amount) }
       : { icon: '📧', label: A.evtInvoiceSent, title: qTitle(inv.quoteTitle, inv.quoteId), date: inv.createdAt, sub: usd(inv.amount) });
   }
   events.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  // BUG 5 — cross-org activity for platform operators (accepted / invoiced / paid),
+  // derived from the platform list + its joined payment data; org shown per row.
+  const platformEvents: Evt[] = [];
+  for (const q of platformQuotes ?? []) {
+    const title = `${qTitle(q.quoteTitle, q.quoteId)} · ${q.orgId}`;
+    if (q.decidedAt) platformEvents.push({ icon: '✅', label: A.evtAccepted, title, date: q.decidedAt, sub: q.price != null ? usd(q.price) : undefined });
+    if (q.paidAt) platformEvents.push({ icon: '💰', label: A.evtPaid, title, date: q.paidAt, sub: usd(q.invoiceAmount ?? q.price) });
+    else if (q.paymentStatus) platformEvents.push({ icon: '📧', label: A.evtInvoiceSent, title, date: q.decidedAt || q.sentAt || q.createdAt, sub: usd(q.invoiceAmount ?? q.price) });
+  }
+  platformEvents.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
   const invoiceList = (items ?? []).filter(i => i.status !== 'draft');
 
@@ -279,12 +291,27 @@ export function AdminCenterPage() {
             : <div style={{ display: 'grid', gap: 10 }}>{(allQuotes ?? []).map(quoteCard)}</div>
           )}
 
-          {/* 2b — TRUE cross-org platform visibility (platform operators only, read-only) */}
+          {/* 2b — TRUE cross-org platform visibility (platform operators only, read-only):
+                 cross-org activity feed first, then every quote with payment data */}
           {platformAdmin && section(A.platformHeading, platformQuotes === null
             ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13.5 }}>{I.loading}</div>
             : platformQuotes.length === 0
               ? <div style={{ ...card, borderStyle: 'dashed', color: 'var(--text-muted)', fontSize: 13.5 }}>{A.platformEmpty}</div>
-              : <div style={{ display: 'grid', gap: 10 }}>{platformQuotes.map(platformCard)}</div>
+              : <div style={{ display: 'grid', gap: 10 }}>
+                  {platformEvents.length > 0 && (
+                    <div style={{ ...card, display: 'grid', gap: 0 }}>
+                      {platformEvents.slice(0, 10).map((e, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: i ? '1px solid var(--border)' : undefined }}>
+                          <span aria-hidden style={{ flex: '0 0 auto' }}>{e.icon}</span>
+                          <span style={{ fontSize: 13.5, color: 'var(--text-primary)', fontWeight: 600 }}>{e.label}</span>
+                          <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {e.title}{e.sub ? ` · ${e.sub}` : ''}</span>
+                          <span style={{ marginLeft: 'auto', flex: '0 0 auto', fontSize: 11.5, color: 'var(--text-muted)' }}>{(e.date || '').slice(0, 10)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {platformQuotes.map(platformCard)}
+                </div>
           )}
 
           {/* 3 — Invoices (re-send + payment link) */}
@@ -306,16 +333,16 @@ export function AdminCenterPage() {
                   {done?.id === inv.id && (
                     <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
                   )}
-                  {inv.status !== 'paid' && (
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : I.resendBtn}</button>
-                      {inv.paymentMethod === 'bank_transfer'
-                        ? <button type="button" disabled={govBusy === inv.id} onClick={() => void markPaid(inv)} style={govBtn('var(--green-text, #059669)', '#fff')}>{govBusy === inv.id ? '…' : A.markPaidBtn}</button>
-                        : inv.paymentUrl
-                          ? <button type="button" onClick={() => window.open(inv.paymentUrl as string, '_blank', 'noopener')} style={govBtn('var(--violet)', '#fff')}>{A.openPaymentLink}</button>
-                          : <button type="button" disabled={govBusy === inv.id} onClick={() => void genPaymentLink(inv)} style={govBtnOutline}>{govBusy === inv.id ? '…' : A.genPaymentLink}</button>}
-                    </div>
-                  )}
+                  {/* BUG 1 — a PAID invoice re-sends the payment CONFIRMATION (receipt);
+                         unpaid keeps the pay-request resend + payment actions. */}
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : inv.status === 'paid' ? I.resendConfirmationBtn : I.resendBtn}</button>
+                    {inv.status !== 'paid' && (inv.paymentMethod === 'bank_transfer'
+                      ? <button type="button" disabled={govBusy === inv.id} onClick={() => void markPaid(inv)} style={govBtn('var(--green-text, #059669)', '#fff')}>{govBusy === inv.id ? '…' : A.markPaidBtn}</button>
+                      : inv.paymentUrl
+                        ? <button type="button" onClick={() => window.open(inv.paymentUrl as string, '_blank', 'noopener')} style={govBtn('var(--violet)', '#fff')}>{A.openPaymentLink}</button>
+                        : <button type="button" disabled={govBusy === inv.id} onClick={() => void genPaymentLink(inv)} style={govBtnOutline}>{govBusy === inv.id ? '…' : A.genPaymentLink}</button>)}
+                  </div>
                 </div>
               ))}</div>
           )}

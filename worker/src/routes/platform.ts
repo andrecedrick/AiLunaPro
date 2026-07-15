@@ -93,7 +93,8 @@ platform.get('/api/platform/quotes', requireAuth(), requirePlatformAdmin(), asyn
   // Cross-org invoice join (payment visibility) — invoices are root-level `invoices/quote_
   // {quoteId}`; the orgId guard rejects a (theoretical) cross-org quoteId collision.
   await Promise.all(quotes.map(async q => {
-    if (!q.decidedAt && q.stage !== 'finalized' && q.stage !== 'invoice_sent') return;
+    // BUG 5 — 'paid' included (parity with the org-scoped /list join).
+    if (!q.decidedAt && q.stage !== 'finalized' && q.stage !== 'invoice_sent' && q.stage !== 'paid') return;
     try {
       const inv = await firestoreGet(saJson, `invoices/quote_${q.quoteId}`) as Record<string, unknown> | null;
       if (!inv || inv.orgId !== q.orgId) return;

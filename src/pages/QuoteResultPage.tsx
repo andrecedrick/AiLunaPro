@@ -57,13 +57,13 @@ export function QuoteResultPage() {
   const isBankTransfer = budgetUsd !== null && budgetUsd > SMB_MAX_USD;
   const canViewInvoice = !!session && INVOICE_ROLES.includes(session.role ?? '');
   const [phase, setPhase] = useState<'idle' | 'confirming' | 'done' | 'error'>('idle');
-  // U1 — set once the accept auto-finalised within range (a pay link was returned +
-  // stashed): the status page then shows an instant "Pay now" instead of the wait.
-  const [payReady, setPayReady] = useState(false);
+  // U1/BUG 4 — the instant Stripe pay link returned by the accept: the success view
+  // surfaces a DIRECT "Pay now" CTA (no dead-end "track your request" hunt).
+  const [payUrl, setPayUrl] = useState<string | null>(null);
   const goQuote = () => navigate({ name: 'quote' });
-  // Carry the proposed budget to the status page so it shows the exact amount; when a
-  // pay link is ready, land in the 'invoice' state so "Pay now" is surfaced.
-  const goStatus = () => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}), ...(budgetUsd !== null && budgetUsd > 0 ? { budgetUsd } : {}), ...(payReady || isBankTransfer ? { state: 'invoice' } : {}) });
+  // Carry the proposed amount to the status page so it shows the exact figure; when a
+  // pay link is ready (or bank transfer), land in the 'invoice' state (invoice surfaced).
+  const goStatus = () => navigate({ name: 'quote/status', ...(quoteId ? { quoteId } : {}), ...(budgetUsd !== null && budgetUsd > 0 ? { budgetUsd } : {}), ...(payUrl || isBankTransfer ? { state: 'invoice' } : {}) });
 
   // Waiting/confirmation state (in-app submit, or a successful email confirm):
   // progress stepper at "Review", what-happens-next checklist, track CTA.
@@ -85,11 +85,18 @@ export function QuoteResultPage() {
           </li>
         ))}
       </ul>
+      {/* BUG 4 — DIRECT conversion path: "Pay now" the moment a pay link exists, else
+             "View your invoice" (authed → invoices panel; client → the invoice/status
+             view). No "track your request" hunt — the client never has to search. */}
       <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
-        {canViewInvoice
-          ? <button type="button" onClick={() => navigate({ name: 'invoices', ...(quoteId ? { quoteId } : {}) })} style={primaryBtnStyle()}>{A.viewInvoice}</button>
-          : <button type="button" onClick={goStatus} style={primaryBtnStyle()}>{A.trackCta}</button>}
-        {canViewInvoice && <button type="button" onClick={goStatus} style={linkBtn}>{A.trackCta}</button>}
+        {payUrl
+          ? <a href={payUrl} style={{ ...primaryBtnStyle(), textDecoration: 'none' }}>{Q.status.payNow}</a>
+          : canViewInvoice
+            ? <button type="button" onClick={() => navigate({ name: 'invoices', ...(quoteId ? { quoteId } : {}) })} style={primaryBtnStyle()}>{A.viewInvoice}</button>
+            : <button type="button" onClick={goStatus} style={primaryBtnStyle()}>{A.viewInvoice}</button>}
+        {payUrl && (canViewInvoice
+          ? <button type="button" onClick={() => navigate({ name: 'invoices', ...(quoteId ? { quoteId } : {}) })} style={linkBtn}>{A.viewInvoice}</button>
+          : <button type="button" onClick={goStatus} style={linkBtn}>{A.viewInvoice}</button>)}
         <button type="button" onClick={goQuote} style={linkBtn}>{A.back}</button>
       </div>
     </div>
@@ -114,7 +121,7 @@ export function QuoteResultPage() {
         const r = await confirmQuoteDecisionByToken(token, isAccept ? 'accepted' : 'discussion', budgetUsd !== null && budgetUsd > 0 ? { expectedBudgetUsd: budgetUsd } : undefined);
         // U1 — within-range accept auto-finalised → stash the instant pay link so the
         // status page shows "Pay now" (no admin-wait dead-end).
-        if (isAccept && r.paymentUrl && quoteId) { stashQuotePayLink(quoteId, r.paymentUrl); setPayReady(true); }
+        if (isAccept && r.paymentUrl) { if (quoteId) stashQuotePayLink(quoteId, r.paymentUrl); setPayUrl(r.paymentUrl); }
         setPhase('done');
       } catch { setPhase('error'); }
     };

@@ -105,11 +105,26 @@ describe('POST /api/invoices/:id/confirm — re-send only (no re-amount)', () =>
     expect(seq.sends.length).toBe(0);
   });
 
-  it('does not re-send a PAID invoice (final)', async () => {
-    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 9000 });
+  it('a PAID invoice re-sends the PAYMENT CONFIRMATION (receipt) — never the pay request (BUG 1)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', status: 'paid', amount: 9000 });
     const res = await confirm('quote_a');
     expect(res.status).toBe(200);
-    expect((await res.json() as { alreadyConfirmed?: boolean }).alreadyConfirmed).toBe(true);
+    const j = await res.json() as { alreadyConfirmed?: boolean; emailed?: boolean };
+    expect(j.alreadyConfirmed).toBe(true);
+    expect(j.emailed).toBe(true);
+    const send = seq.sends.find(s => s.slug === 'payment-confirmation')!;   // receipt, NOT invoice-client
+    expect(send).toBeTruthy();
+    expect(send.to).toBe('c@x.com');
+    expect((send.variables as Record<string, string>).AMOUNT).toBe('$9,000');
+    expect(seq.sends.find(s => s.slug === 'invoice-client')).toBeFalsy();   // no pay-request re-send
+    expect(state.docs.get('invoices/quote_a')!.status).toBe('paid');        // state preserved
+  });
+
+  it('a PAID invoice with no client email → 409 NO_RECIPIENT (no silent skip)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 9000 });
+    const res = await confirm('quote_a');
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('NO_RECIPIENT');
     expect(seq.sends.length).toBe(0);
   });
 
@@ -273,16 +288,24 @@ describe('POST /api/invoices/:id/mark-paid (ADMIN, bank-transfer only)', () => {
   const markPaid = (id: string, org = 'orgA') =>
     invoices.request(`/api/invoices/${id}/mark-paid?orgId=${org}`, { method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: org }) }, ENV);
 
-  it('marks a bank-transfer invoice paid + records paidBy + mirrors the quote stage', async () => {
-    state.docs.set('invoices/quote_h', { id: 'quote_h', quoteId: 'h', orgId: 'orgA', status: 'awaiting_transfer', amount: 60000, paymentMethod: 'bank_transfer' });
+  it('marks a bank-transfer invoice paid + records paidBy + mirrors the quote stage + emails the CONFIRMATION (BUG 1)', async () => {
+    state.docs.set('invoices/quote_h', { id: 'quote_h', quoteId: 'h', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', orgId: 'orgA', status: 'awaiting_transfer', amount: 60000, paymentMethod: 'bank_transfer' });
     const res = await markPaid('quote_h');
     expect(res.status).toBe(200);
-    expect((await res.json() as { status: string }).status).toBe('paid');
+    const j = await res.json() as { status: string; emailed?: boolean };
+    expect(j.status).toBe('paid');
+    expect(j.emailed).toBe(true);
     const inv = state.docs.get('invoices/quote_h')!;
     expect(inv.status).toBe('paid');
     expect(inv.paidBy).toBe('u1');
     expect(typeof inv.paidAt).toBe('string');
     expect(state.docs.get('organizations/orgA/quotes/h')!.stage).toBe('paid');
+    // BUG 1 — the client receives the payment confirmation the moment payment is confirmed.
+    const send = seq.sends.find(s => s.slug === 'payment-confirmation')!;
+    expect(send).toBeTruthy();
+    expect(send.to).toBe('c@x.com');
+    expect((send.variables as Record<string, string>).AMOUNT).toBe('$60,000');
+    expect((send.variables as Record<string, string>).REFERENCE).toBe('h');
   });
 
   it('refuses to mark a Stripe invoice paid (NOT_BANK_TRANSFER — no Stripe bypass)', async () => {
