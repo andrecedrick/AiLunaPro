@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
   rows: [] as Array<{ name: string; fields: Record<string, unknown> }>,
   docs: new Map<string, Record<string, unknown>>(),
 }));
-const seq = vi.hoisted(() => ({ sends: [] as Array<Record<string, unknown>> }));
+const seq = vi.hoisted(() => ({ sends: [] as Array<Record<string, unknown>>, ok: true }));
 
 vi.mock('../../worker/src/middleware/auth', () => ({
   requireAuth: () => async (c: { set: (k: string, v: unknown) => void }, next: () => Promise<void>) => { c.set('uid', 'u1'); await next(); },
@@ -33,7 +33,7 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
   }),
 }));
 vi.mock('../../worker/src/lib/sequenzy', () => ({
-  sendTransactional: vi.fn(async (_k: string, p: Record<string, unknown>) => { seq.sends.push(p); return { ok: true }; }),
+  sendTransactional: vi.fn(async (_k: string, p: Record<string, unknown>) => { seq.sends.push(p); return seq.ok ? { ok: true } : { ok: false, error: 'SEQUENZY_API_KEY not configured' }; }),
 }));
 
 import invoices from '../../worker/src/routes/invoices';
@@ -48,7 +48,7 @@ const confirm = (id: string, org = 'orgA') =>
   }, ENV);
 
 beforeEach(() => {
-  runQuery.mockClear(); seq.sends.length = 0; state.docs.clear();
+  runQuery.mockClear(); seq.sends.length = 0; seq.ok = true; state.docs.clear();
   state.rows = [
     { name: 'documents/invoices/quote_a', fields: { id: 'quote_a', quoteId: 'a', orgId: 'orgA', customerEmail: 'c@x.com', amount: null, currency: 'usd', rangeMinUsd: 10000, rangeMaxUsd: 20000, status: 'draft', createdAt: '2026-06-19T00:00:00.000Z' } },
     { name: 'documents/invoices/quote_b', fields: { id: 'quote_b', quoteId: 'b', orgId: 'orgA', amount: 5000, currency: 'usd', status: 'pending', createdAt: '2026-06-20T00:00:00.000Z' } },
@@ -118,6 +118,52 @@ describe('POST /api/invoices/:id/confirm — re-send only (no re-amount)', () =>
     const res = await confirm('quote_a');
     expect(res.status).toBe(409);
     expect((await res.json() as { code: string }).code).toBe('NO_AMOUNT');
+  });
+});
+
+describe('POST /api/invoices/:id/confirm — FIX 2 resend reliability + reporting', () => {
+  it('NO_RECIPIENT (409) when the invoice has no client email — no send, LOUD not silent', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', status: 'pending', amount: 15000 });   // no customerEmail
+    const res = await confirm('quote_a');
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code: string }).code).toBe('NO_RECIPIENT');
+    expect(seq.sends.length).toBe(0);
+  });
+
+  it('audits a successful resend (lastResentAt + lastResentBy)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', customerEmail: 'c@x.com', status: 'pending', amount: 15000 });
+    const res = await confirm('quote_a');
+    expect(res.status).toBe(200);
+    expect((await res.json() as { emailed: boolean }).emailed).toBe(true);
+    const inv = state.docs.get('invoices/quote_a')!;
+    expect(typeof inv.lastResentAt).toBe('string');
+    expect(inv.lastResentBy).toBe('u1');
+  });
+
+  it('reports EMAIL_FAILED (200, emailed:false) when the provider send fails — invoice state preserved', async () => {
+    seq.ok = false;   // sendTransactional returns { ok:false }
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', customerEmail: 'c@x.com', status: 'pending', amount: 15000 });
+    const res = await confirm('quote_a');
+    expect(res.status).toBe(200);
+    const j = await res.json() as { emailed: boolean; code?: string };
+    expect(j.emailed).toBe(false);
+    expect(j.code).toBe('EMAIL_FAILED');
+    expect(state.docs.get('invoices/quote_a')!.status).toBe('pending');   // unchanged
+    expect(state.docs.get('invoices/quote_a')!.lastResentAt).toBeUndefined();   // not audited on failure
+  });
+
+  it('re-sends a BANK-TRANSFER invoice (awaiting_transfer) — instructions, no Stripe link, no re-amount', async () => {
+    state.docs.set('invoices/quote_h', { orgId: 'orgA', quoteId: 'h', customerEmail: 'c@x.com', status: 'awaiting_transfer', amount: 60000, paymentMethod: 'bank_transfer', transferDeadline: '2026-07-28T00:00:00.000Z' });
+    const res = await confirm('quote_h');
+    expect(res.status).toBe(200);
+    const j = await res.json() as { emailed: boolean; paymentUrl: string | null; amount: number; status: string };
+    expect(j.emailed).toBe(true);
+    expect(j.paymentUrl).toBeNull();                     // bank transfer → never a Stripe link
+    expect(j.amount).toBe(60000);                        // NOT re-amounted
+    expect(j.status).toBe('awaiting_transfer');          // state preserved (not regressed)
+    const v = seq.sends.find(s => s.slug === 'invoice-client')!.variables as Record<string, string>;
+    expect(v.BANK_TRANSFER).toBe('1');
+    expect(v.BANK_DETAILS).toBeTruthy();
   });
 });
 

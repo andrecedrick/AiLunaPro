@@ -86,6 +86,8 @@ export const en = {
     cancel: 'Cancel',
     sent: 'Invoice sent successfully',
     sentNoEmail: 'Invoice created, but the email could not be sent.',
+    resendNoRecipient: 'This invoice has no client email address.',
+    statusAwaitingTransfer: 'Awaiting transfer',
     confirmError: 'Could not send. Please try again.',
     pendingHeading: 'Pending confirmation',
     // Pricing queue (accepted / negotiating quotes awaiting the admin's final amount).

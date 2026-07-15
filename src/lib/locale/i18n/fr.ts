@@ -72,6 +72,8 @@ export const fr: Dict = {
     cancel: 'Annuler',
     sent: 'Facture envoyée avec succès',
     sentNoEmail: 'Facture créée, mais l’email n’a pas pu être envoyé.',
+    resendNoRecipient: 'Cette facture n’a pas d’adresse e-mail client.',
+    statusAwaitingTransfer: 'Virement en attente',
     confirmError: 'Envoi impossible. Veuillez réessayer.',
     pendingHeading: 'En attente de confirmation',
     queueHeading: 'En attente de votre tarification',

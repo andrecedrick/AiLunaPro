@@ -72,6 +72,8 @@ export const de: Dict = {
     cancel: 'Abbrechen',
     sent: 'Rechnung erfolgreich gesendet',
     sentNoEmail: 'Rechnung erstellt, aber die E-Mail konnte nicht gesendet werden.',
+    resendNoRecipient: 'Diese Rechnung hat keine Kunden-E-Mail-Adresse.',
+    statusAwaitingTransfer: 'Überweisung ausstehend',
     confirmError: 'Senden fehlgeschlagen. Bitte erneut versuchen.',
     pendingHeading: 'Bestätigung ausstehend',
     queueHeading: 'Wartet auf Ihre Preisfestlegung',

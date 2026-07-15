@@ -39,7 +39,7 @@ export function AdminCenterPage() {
   const [items, setItems]     = useState<InvoiceItem[] | null>(null);
   const [allQuotes, setAllQuotes] = useState<QuoteListItem[] | null>(null);
   const [error, setError]     = useState(false);
-  const [done, setDone]       = useState<{ id: string; emailed: boolean } | null>(null);
+  const [done, setDone]       = useState<{ id: string; emailed: boolean; code?: string } | null>(null);
   const [resendId, setResendId] = useState<string | null>(null);
   const [govBusy, setGovBusy] = useState<string | null>(null);
 
@@ -95,9 +95,12 @@ export function AdminCenterPage() {
   };
   const resend = async (inv: InvoiceItem) => {
     setResendId(inv.id);
-    try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed }); }
-    catch { setDone({ id: inv.id, emailed: false }); } finally { setResendId(null); }
+    try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed, code: r.code }); }
+    catch { setDone({ id: inv.id, emailed: false, code: 'ERROR' }); } finally { setResendId(null); }
   };
+  // FIX 2 — precise resend feedback: sent ✅ / no client email / send failed.
+  const resendMsg = (d: { emailed: boolean; code?: string }): string =>
+    d.emailed ? I.sent : d.code === 'NO_RECIPIENT' ? I.resendNoRecipient : I.sentNoEmail;
 
   const qTitle = (t: string | undefined, id: string) => t && t.trim() ? t : `${I.quoteLabel} · ${id.slice(0, 8)}`;
   const statusLabel = (s: string) => s === 'pending' ? I.statusPending : s === 'paid' ? I.statusPaid : s === 'awaiting_transfer' ? A.awaitingTransfer : s;
@@ -241,10 +244,10 @@ export function AdminCenterPage() {
                       <span style={pill(inv.status === 'paid' ? 'var(--green-text, #059669)' : '#b45309')}>{statusLabel(inv.status)}</span>
                     </div>
                   </div>
-                  {done?.id === inv.id && (done.emailed
-                    ? <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>✅ {I.sent}</div>
-                    : <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: '#b45309' }}>⚠ {I.sentNoEmail}</div>)}
-                  {inv.status !== 'paid' && done?.id !== inv.id && (
+                  {done?.id === inv.id && (
+                    <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
+                  )}
+                  {inv.status !== 'paid' && (
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : I.resendBtn}</button>
                       {inv.paymentMethod === 'bank_transfer'

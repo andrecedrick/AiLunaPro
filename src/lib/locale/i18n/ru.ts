@@ -73,6 +73,8 @@ export const ru: Dict = {
     cancel: 'Отмена',
     sent: 'Счёт успешно отправлен',
     sentNoEmail: 'Счёт создан, но письмо не удалось отправить.',
+    resendNoRecipient: 'У этого счёта нет эл. почты клиента.',
+    statusAwaitingTransfer: 'Ожидается перевод',
     confirmError: 'Не удалось отправить. Повторите попытку.',
     pendingHeading: 'Ожидает подтверждения',
     queueHeading: 'Ожидают вашей оценки',

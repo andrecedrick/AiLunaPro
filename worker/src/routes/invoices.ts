@@ -272,14 +272,27 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   const project  = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
     : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
   const customer = typeof inv.customerEmail === 'string' ? inv.customerEmail : '';
+  // FIX 2 — customerEmail validation: a resend with no recipient can never email. Fail
+  // LOUD (409) instead of the silent 200/emailed:false the admin reads as "nothing happened".
+  if (!customer) return c.json({ error: 'This invoice has no client email on file.', code: 'NO_RECIPIENT' }, 409);
+
+  // FIX 2 — bank-transfer invoices resend too: reuse the stored method (bank_transfer keeps
+  // no Stripe link), so a bank-transfer / awaiting_transfer invoice re-sends its instructions.
   const method: 'stripe' | 'bank_transfer' = (inv.paymentMethod === 'bank_transfer' || amount > SMB_MAX_USD) ? 'bank_transfer' : 'stripe';
   const paymentUrl = method === 'stripe'
     ? await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined })
     : null;
   const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, appBase, paymentUrl, method, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id, deadlineIso: typeof inv.transferDeadline === 'string' ? inv.transferDeadline : null });
+  // FIX 2 — audit the resend (durable trail; requested "log resend action").
+  if (emailed) {
+    const uid = c.get('uid') as string | undefined;
+    await firestoreSet(saJson, invPath, { lastResentAt: new Date().toISOString(), ...(uid ? { lastResentBy: uid } : {}) }, { merge: true });
+  }
   dlog(env, '[invoices] re-sent', id, 'emailed=', emailed, 'method=', method, 'payLink=', !!paymentUrl);
 
-  return c.json({ ok: true, status: typeof inv.status === 'string' ? inv.status : 'pending', amount, emailed, paymentUrl: paymentUrl ?? null, ...(emailError ? { emailError } : {}) });
+  // FIX 2 — proper error reporting: emailed:false carries EMAIL_FAILED (+ emailError) so the
+  // UI shows a real reason instead of a faint amber note. Invoice state is never mutated.
+  return c.json({ ok: true, status: typeof inv.status === 'string' ? inv.status : 'pending', amount, emailed, paymentUrl: paymentUrl ?? null, ...(emailed ? {} : { code: 'EMAIL_FAILED' }), ...(emailError ? { emailError } : {}) });
 });
 
 /* ── POST /api/invoices/:id/payment-link — get/create the Stripe payment link ──

@@ -125,16 +125,18 @@ export async function listInvoices(orgId: string): Promise<InvoiceItem[]> {
 
 /** Admin: RE-SEND an invoice to the client (fixed amount = quote.price, immutable).
  *  No amount input, no re-amount. Throws on a non-OK response. */
-export async function resendInvoice(orgId: string, id: string): Promise<{ status: string; emailed: boolean }> {
+export async function resendInvoice(orgId: string, id: string): Promise<{ status: string; emailed: boolean; code?: string; emailError?: string }> {
   const idToken = await getIdToken();
-  const res = await fetch(`${WORKER_BASE}/api/invoices/${encodeURIComponent(id)}/confirm`, {
+  const res = await fetch(`${WORKER_BASE}/api/invoices/${encodeURIComponent(id)}/confirm?orgId=${encodeURIComponent(orgId)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ orgId }),
   });
-  if (!res.ok) throw new Error(`HTTP_${res.status}`);
-  const j = await res.json().catch(() => null) as { status?: string; emailed?: boolean } | null;
-  return { status: j?.status ?? 'pending', emailed: j?.emailed === true };
+  const j = await res.json().catch(() => null) as { status?: string; emailed?: boolean; code?: string; emailError?: string } | null;
+  // NO_RECIPIENT is a known, actionable outcome (missing client email) — surface its code
+  // to the UI rather than throwing a generic error. Other non-OK statuses still throw.
+  if (!res.ok && j?.code !== 'NO_RECIPIENT') throw new Error(j?.code ?? `HTTP_${res.status}`);
+  return { status: j?.status ?? 'pending', emailed: j?.emailed === true, code: j?.code, emailError: j?.emailError };
 }
 
 /** Admin: mark a BANK-TRANSFER invoice paid (owner/admin, org-scoped). The worker

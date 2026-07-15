@@ -33,7 +33,7 @@ export function InvoicesPage() {
 
   const [items, setItems]     = useState<InvoiceItem[] | null>(null);
   const [error, setError]     = useState(false);
-  const [done, setDone]       = useState<{ id: string; emailed: boolean } | null>(null);
+  const [done, setDone]       = useState<{ id: string; emailed: boolean; code?: string } | null>(null);
   const [resendId, setResendId] = useState<string | null>(null);
   const [focus] = useState(hashFocus);   // deep-link target from the email CTA (captured at mount)
   const focused = useRef(false);          // one-shot: don't re-scroll on reload()
@@ -51,7 +51,7 @@ export function InvoicesPage() {
   };
   useEffect(reload, [orgId]);
 
-  const statusLabel = (s: string): string => s === 'pending' ? I.statusPending : s === 'paid' ? I.statusPaid : s;
+  const statusLabel = (s: string): string => s === 'pending' ? I.statusPending : s === 'paid' ? I.statusPaid : s === 'awaiting_transfer' ? I.statusAwaitingTransfer : s;
   const statusColor = (s: string): string => s === 'paid' ? 'var(--green-text, #059669)' : '#b45309';
 
   // Deep-link focus: scroll to the targeted invoice once, after paint.
@@ -71,10 +71,13 @@ export function InvoicesPage() {
 
   const resend = async (inv: InvoiceItem) => {
     setResendId(inv.id);
-    try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed }); }
-    catch { setDone({ id: inv.id, emailed: false }); }
+    try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed, code: r.code }); }
+    catch { setDone({ id: inv.id, emailed: false, code: 'ERROR' }); }
     finally { setResendId(null); }
   };
+  // FIX 2 — precise resend feedback: sent ✅ / no client email / send failed.
+  const resendMsg = (d: { emailed: boolean; code?: string }): string =>
+    d.emailed ? I.sent : d.code === 'NO_RECIPIENT' ? I.resendNoRecipient : I.sentNoEmail;
 
   /* ── Invoice card ── */
   const invoiceCard = (inv: InvoiceItem) => {
@@ -95,12 +98,12 @@ export function InvoicesPage() {
       </div>
 
       {done?.id === inv.id && (
-        done.emailed
-          ? <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: 'var(--green-text, #059669)' }}>✅ {I.sent}</div>
-          : <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: '#b45309' }}>⚠ {I.sentNoEmail}</div>
+        <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
       )}
 
-      {isAdmin && inv.status === 'pending' && done?.id !== inv.id && (
+      {/* FIX 2 — resend for ANY non-paid invoice (incl. bank-transfer 'awaiting_transfer');
+             the button stays after a send so a failed resend can be retried. */}
+      {isAdmin && inv.status !== 'paid' && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
           <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)}
             style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : I.resendBtn}</button>

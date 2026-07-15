@@ -74,6 +74,8 @@ export const zh: Dict = {
     cancel: '取消',
     sent: '发票已成功发送',
     sentNoEmail: '发票已创建，但邮件发送失败。',
+    resendNoRecipient: '此发票没有客户邮箱地址。',
+    statusAwaitingTransfer: '等待转账',
     confirmError: '发送失败，请重试。',
     pendingHeading: '待确认',
     queueHeading: '等待您定价',

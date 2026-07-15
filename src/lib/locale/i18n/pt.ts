@@ -72,6 +72,8 @@ export const pt: Dict = {
     cancel: 'Cancelar',
     sent: 'Fatura enviada com sucesso',
     sentNoEmail: 'Fatura criada, mas não foi possível enviar o email.',
+    resendNoRecipient: 'Esta fatura não tem email do cliente.',
+    statusAwaitingTransfer: 'Transferência pendente',
     confirmError: 'Não foi possível enviar. Tente novamente.',
     pendingHeading: 'A aguardar confirmação',
     queueHeading: 'A aguardar a sua definição de preço',
