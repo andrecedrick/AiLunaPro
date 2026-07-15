@@ -114,6 +114,14 @@ export function QuoteRequestPage() {
   const isAdmin = session?.role === 'owner' || session?.role === 'admin';
   const [finalUsd, setFinalUsd] = useState<number | null>(null);
   const [priceReason, setPriceReason] = useState('');
+  // F3 — raw text the admin sees in the price field. null = untouched (show the base);
+  // a string (incl. '') = the admin's own input, so clearing the field no longer snaps
+  // back to base. finalUsd stays the parsed source of truth for render/email/effective.
+  const [priceInput, setPriceInput] = useState<string | null>(null);
+  // F2 — did a prior send in THIS session persist a finalPriceUsd override? If so, a
+  // later reset-to-base must PATCH finalPriceUsd:null to clear it (else the worker
+  // re-locks the stale override). Fresh quotes start with nothing stored.
+  const overridePersistedRef = useRef(false);
 
   // Worksheet → Quote handoff: one-shot prefill (pre-select the service category +
   // seed the description from the user's recoverable tasks). Read once on mount.
@@ -331,11 +339,26 @@ export function QuoteRequestPage() {
     if (!emailOk) return;
     setEmailState('sending');
     try {
-      // Admin price override → persist finalPriceUsd (+ reason) BEFORE the send locks it.
-      // Non-fatal: a failure falls back to the base price.
-      if (isAdmin && finalUsd !== null && finalUsd !== preview.priceUsd) {
-        try { await patchQuote(orgId, quoteIdRef.current, { finalPriceUsd: finalUsd, ...(priceReason.trim() ? { priceReason: priceReason.trim() } : {}) }); }
-        catch { /* keep base price */ }
+      // F1/F2 — reconcile the admin price override into Firestore BEFORE the send locks it.
+      // The worker /email locks price = stored.finalPriceUsd ?? base, so this PATCH MUST
+      // land first, or the client would be sent/invoiced the base while the render shows
+      // the override. BLOCKING: on failure we abort the send (no silent base fallback).
+      //   overrideUsd != null → set it; == null with a prior persisted override → clear it
+      //   (finalPriceUsd:null) so a reset-to-base can't re-lock the stale amount.
+      if (isAdmin) {
+        const overrideUsd = finalUsd !== null && finalUsd !== preview.priceUsd ? finalUsd : null;
+        if (overrideUsd !== null || overridePersistedRef.current) {
+          try {
+            await patchQuote(orgId, quoteIdRef.current, {
+              finalPriceUsd: overrideUsd,
+              priceReason: overrideUsd !== null ? priceReason.trim() : '',
+            });
+            overridePersistedRef.current = overrideUsd !== null;
+          } catch {
+            setEmailState('error');   // F1 — do NOT send at the wrong price
+            return;
+          }
+        }
       }
       // ROI + decision merge variables for the email — formatted EXACTLY like the in-app
       // blocks (useMoney, no leading ≈ since the template adds it; i18n time/payback/×).
@@ -547,17 +570,18 @@ export function QuoteRequestPage() {
                           <label htmlFor="quote-final-price" style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--violet-text)', marginBottom: 6 }}>{Q.decision.finalLabel}</label>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>$</span>
-                            <input id="quote-final-price" type="number" inputMode="numeric" min={1} value={effectiveUsd}
-                              onChange={e => { const n = Math.round(Number(e.target.value)); setFinalUsd(Number.isFinite(n) && n > 0 ? n : null); }}
+                            <input id="quote-final-price" type="number" inputMode="numeric" min={1}
+                              value={priceInput === null ? String(effectiveUsd) : priceInput}
+                              onChange={e => { const raw = e.target.value; setPriceInput(raw); const n = Math.round(Number(raw)); setFinalUsd(raw.trim() !== '' && Number.isFinite(n) && n > 0 ? n : null); }}
                               style={{ ...inputStyle(), fontWeight: 800, fontSize: 22, fontVariantNumeric: 'tabular-nums' }} />
                           </div>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0' }}>
                             {[-10, -5, 5, 10].map(pct => (
-                              <button key={pct} type="button" onClick={() => preview && setFinalUsd(Math.max(1, Math.round(preview.priceUsd * (1 + pct / 100))))}
+                              <button key={pct} type="button" onClick={() => { if (!preview) return; const v = Math.max(1, Math.round(preview.priceUsd * (1 + pct / 100))); setFinalUsd(v); setPriceInput(String(v)); }}
                                 style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{pct > 0 ? `+${pct}%` : `${pct}%`}</button>
                             ))}
                             {finalUsd !== null && preview && finalUsd !== preview.priceUsd && (
-                              <button type="button" onClick={() => { setFinalUsd(null); setPriceReason(''); }}
+                              <button type="button" onClick={() => { setFinalUsd(null); setPriceReason(''); setPriceInput(null); }}
                                 style={{ padding: '5px 10px', border: 'none', background: 'transparent', color: 'var(--violet-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>{Q.decision.resetPrice}</button>
                             )}
                           </div>
