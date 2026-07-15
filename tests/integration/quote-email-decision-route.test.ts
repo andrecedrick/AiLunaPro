@@ -303,9 +303,11 @@ describe('POST /api/quote/decision/confirm — token gating + single-effect', ()
 
 describe('GET /api/quote/list — superadmin visibility', () => {
   it('returns createdBy / source / price / currency + joined payment status + Stripe id', async () => {
-    store.invoices.set('invoices/quote_qPaid', { orgId: 'orgA', status: 'paid', paidAt: '2026-06-25T00:00:00.000Z', paymentSessionId: 'cs_123', paymentUrl: 'https://pay', amount: 15000 });
+    // The admin join is now ONE org-invoices query (N+1 removed) — mock both calls.
     runQuery.mockResolvedValueOnce([
       { name: 'organizations/orgA/quotes/qPaid', fields: { stage: 'invoice_sent', decision: 'accepted', customerEmail: 'b@x.com', createdBy: 'uid-9', source: 'audit', price: 15000, currency: 'usd', createdAt: '2026-06-19T00:00:00.000Z', decidedAt: '2026-06-22T00:00:00.000Z' } },
+    ]).mockResolvedValueOnce([
+      { name: 'projects/p/databases/(default)/documents/invoices/quote_qPaid', fields: { id: 'quote_qPaid', orgId: 'orgA', status: 'paid', paidAt: '2026-06-25T00:00:00.000Z', paymentSessionId: 'cs_123', paymentUrl: 'https://pay', amount: 15000 } },
     ]);
     const res = await quote.request('/api/quote/list?orgId=orgA', { headers: H() }, ENV);
     expect(res.status).toBe(200);

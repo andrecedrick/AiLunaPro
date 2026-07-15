@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { fetchPlatformMe } from '../lib/platform/platformService';
-import { listInvoices, listAllQuotes, listPlatformQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, type InvoiceItem, type QuoteListItem } from '../lib/quote/invoicesClient';
+import { listInvoices, listAllQuotes, listPlatformQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, type InvoiceItem, type QuoteListItem, type PlatformInvoiceItem } from '../lib/quote/invoicesClient';
 import { sendQuoteToClient } from '../lib/quote/quoteClient';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
@@ -45,6 +45,7 @@ export function AdminCenterPage() {
   // FIX 3 — TRUE cross-org platform visibility (operators only).
   const [platformAdmin, setPlatformAdmin] = useState(false);
   const [platformQuotes, setPlatformQuotes] = useState<QuoteListItem[] | null>(null);
+  const [platformInvoices, setPlatformInvoices] = useState<PlatformInvoiceItem[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const orgAdmin = session?.role === 'owner' || session?.role === 'admin';
@@ -56,33 +57,36 @@ export function AdminCenterPage() {
     return () => { alive = false; };
   }, [orgAdmin]);
 
-  // Operators additionally get the cross-org list (collectionGroup, read-only).
+  // Operators additionally get the cross-org lists (quotes + ALL invoices, read-only).
   useEffect(() => {
     if (!platformAdmin) return;
     let alive = true;
-    listPlatformQuotes().then(q => { if (alive) setPlatformQuotes(q); }).catch(() => { if (alive) setPlatformQuotes([]); });
+    listPlatformQuotes()
+      .then(d => { if (alive) { setPlatformQuotes(d.quotes); setPlatformInvoices(d.invoices); } })
+      .catch(() => { if (alive) setPlatformQuotes([]); });
     return () => { alive = false; };
   }, [platformAdmin]);
 
-  const reload = () => {
+  // PERF — targeted reloads: an action refetches only the list(s) it changed, not both.
+  const reload = (which: 'quotes' | 'invoices' | 'all' = 'all') => {
     if (!orgId) return;
     setError(false);
-    listInvoices(orgId).then(setItems).catch(() => { setItems([]); setError(true); });
-    listAllQuotes(orgId).then(setAllQuotes).catch(() => { setAllQuotes([]); setError(true); });
+    if (which !== 'quotes')   listInvoices(orgId).then(setItems).catch(() => { setItems([]); setError(true); });
+    if (which !== 'invoices') listAllQuotes(orgId).then(setAllQuotes).catch(() => { setAllQuotes([]); setError(true); });
   };
   useEffect(() => { if (allowed) reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [allowed, orgId]);
 
   // Governance: block / suspend / re-activate (the ONLY admin control in the fixed-price model).
   const setGovState = async (quoteId: string, adminState: 'blocked' | 'suspended' | 'active') => {
     setGovBusy(quoteId);
-    try { await patchQuote(orgId, quoteId, { adminState }); reload(); }
+    try { await patchQuote(orgId, quoteId, { adminState }); reload('quotes'); }
     catch { setError(true); } finally { setGovBusy(null); }
   };
   // Re-send the PROPOSAL email to the client (stage → sent). Only before they respond.
   const sendQuote = async (q: QuoteListItem) => {
     if (!q.customerEmail) return;
     setGovBusy(q.quoteId);
-    try { await sendQuoteToClient(orgId, q.quoteId, q.customerEmail, language); reload(); }
+    try { await sendQuoteToClient(orgId, q.quoteId, q.customerEmail, language); reload('quotes'); }
     catch { setError(true); } finally { setGovBusy(null); }
   };
   // P4.1 recovery — an ACCEPTED quote whose auto-invoice never landed (accepted, no
@@ -96,13 +100,13 @@ export function AdminCenterPage() {
   };
   const genPaymentLink = async (inv: InvoiceItem) => {
     setGovBusy(inv.id);
-    try { const r = await createInvoicePaymentLink(orgId, inv.id); if (r.paymentUrl) window.open(r.paymentUrl, '_blank', 'noopener'); reload(); }
+    try { const r = await createInvoicePaymentLink(orgId, inv.id); if (r.paymentUrl) window.open(r.paymentUrl, '_blank', 'noopener'); reload('invoices'); }
     catch { setError(true); } finally { setGovBusy(null); }
   };
   // Bank-transfer only: admin confirms receipt (there is no Stripe webhook for these).
   const markPaid = async (inv: InvoiceItem) => {
     setGovBusy(inv.id);
-    try { await markInvoicePaid(orgId, inv.id); reload(); }
+    try { await markInvoicePaid(orgId, inv.id); reload(); }   // paid mirrors the quote stage → both lists
     catch { setError(true); } finally { setGovBusy(null); }
   };
   const resend = async (inv: InvoiceItem) => {
@@ -134,14 +138,20 @@ export function AdminCenterPage() {
   }
   events.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
-  // BUG 5 — cross-org activity for platform operators (accepted / invoiced / paid),
-  // derived from the platform list + its joined payment data; org shown per row.
+  // Cross-org activity for platform operators: accepted events from the quotes +
+  // invoice/paid events from the FULL root invoice list (every org, every payment
+  // state — an invoice whose quote fell outside the quote list still appears).
   const platformEvents: Evt[] = [];
   for (const q of platformQuotes ?? []) {
-    const title = `${qTitle(q.quoteTitle, q.quoteId)} · ${q.orgId}`;
-    if (q.decidedAt) platformEvents.push({ icon: '✅', label: A.evtAccepted, title, date: q.decidedAt, sub: q.price != null ? usd(q.price) : undefined });
-    if (q.paidAt) platformEvents.push({ icon: '💰', label: A.evtPaid, title, date: q.paidAt, sub: usd(q.invoiceAmount ?? q.price) });
-    else if (q.paymentStatus) platformEvents.push({ icon: '📧', label: A.evtInvoiceSent, title, date: q.decidedAt || q.sentAt || q.createdAt, sub: usd(q.invoiceAmount ?? q.price) });
+    if (!q.decidedAt) continue;
+    platformEvents.push({ icon: '✅', label: A.evtAccepted, title: `${qTitle(q.quoteTitle, q.quoteId)} · ${q.orgId}`, date: q.decidedAt, sub: q.price != null ? usd(q.price) : undefined });
+  }
+  for (const inv of platformInvoices) {
+    if (inv.status === 'draft') continue;
+    const title = `${qTitle(inv.quoteTitle, inv.quoteId || inv.id)} · ${inv.orgId}`;
+    platformEvents.push(inv.status === 'paid'
+      ? { icon: '💰', label: A.evtPaid, title, date: inv.paidAt || inv.createdAt, sub: usd(inv.amount) }
+      : { icon: '📧', label: A.evtInvoiceSent, title, date: inv.createdAt, sub: usd(inv.amount) });
   }
   platformEvents.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
@@ -264,14 +274,16 @@ export function AdminCenterPage() {
       <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>{A.title}</h1>
       <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 22px' }}>{A.subtitle}</p>
 
-      {items === null || allQuotes === null ? (
-        <div style={{ padding: 18, color: 'var(--text-muted)', fontSize: 14 }}>{I.loading}</div>
-      ) : (
+      {(
+        // PERF — no whole-page gate: the shell paints immediately and each section
+        // hydrates independently (activity/quotes/invoices show their own loading).
         <div style={{ display: 'grid', gap: 28 }}>
           {error && <div style={{ ...card, color: 'var(--red-text)', fontSize: 13.5 }}>{I.error}</div>}
 
           {/* 1 — Activity feed */}
-          {section(A.activityHeading, events.length === 0
+          {section(A.activityHeading, items === null || allQuotes === null
+            ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13.5 }}>{I.loading}</div>
+            : events.length === 0
             ? <div style={{ ...card, borderStyle: 'dashed', color: 'var(--text-muted)', fontSize: 13.5 }}>{A.activityEmpty}</div>
             : <div style={{ ...card, display: 'grid', gap: 0 }}>
                 {events.slice(0, 10).map((e, i) => (
@@ -286,9 +298,11 @@ export function AdminCenterPage() {
           )}
 
           {/* 2 — This org: every quote with full client + payment data (owner/admin scope) */}
-          {section(A.orgQuotesHeading, (allQuotes ?? []).length === 0
+          {section(A.orgQuotesHeading, allQuotes === null
+            ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13.5 }}>{I.loading}</div>
+            : allQuotes.length === 0
             ? <div style={{ ...card, borderStyle: 'dashed', color: 'var(--text-muted)', fontSize: 13.5 }}>{A.allQuotesEmpty}</div>
-            : <div style={{ display: 'grid', gap: 10 }}>{(allQuotes ?? []).map(quoteCard)}</div>
+            : <div style={{ display: 'grid', gap: 10 }}>{allQuotes.map(quoteCard)}</div>
           )}
 
           {/* 2b — TRUE cross-org platform visibility (platform operators only, read-only):
@@ -315,7 +329,9 @@ export function AdminCenterPage() {
           )}
 
           {/* 3 — Invoices (re-send + payment link) */}
-          {section(I.invoicesHeading, invoiceList.length === 0
+          {section(I.invoicesHeading, items === null
+            ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13.5 }}>{I.loading}</div>
+            : invoiceList.length === 0
             ? <div style={{ ...card, borderStyle: 'dashed', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{I.empty}</div>
             : <div style={{ display: 'grid', gap: 10 }}>{invoiceList.map(inv => (
                 <div key={inv.id} style={card}>

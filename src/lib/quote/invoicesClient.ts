@@ -66,16 +66,31 @@ export async function listAllQuotes(orgId: string, opts?: { mine?: boolean }): P
   return j?.quotes ?? [];
 }
 
-/** Platform operator ONLY: TRUE cross-org quote visibility (collectionGroup, all orgs).
- *  Read-only. 403 for non-operators (requirePlatformAdmin, server-enforced). */
-export async function listPlatformQuotes(): Promise<QuoteListItem[]> {
+/** A cross-org invoice row (platform operators only) — every org, every payment state. */
+export interface PlatformInvoiceItem {
+  id:            string;
+  orgId:         string;
+  quoteId:       string;
+  quoteTitle:    string;
+  customerEmail: string;
+  amount:        number | null;
+  currency:      string;
+  status:        string;   // 'pending' | 'awaiting_transfer' | 'paid' | …
+  paymentMethod: string;
+  paidAt:        string;
+  createdAt:     string;
+}
+
+/** Platform operator ONLY: TRUE cross-org visibility (collectionGroup quotes + the full
+ *  root invoice list). Read-only. 403 for non-operators (requirePlatformAdmin). */
+export async function listPlatformQuotes(): Promise<{ quotes: QuoteListItem[]; invoices: PlatformInvoiceItem[] }> {
   const idToken = await getIdToken();
   const res = await fetch(`${WORKER_BASE}/api/platform/quotes`, {
     headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) throw new Error(`HTTP_${res.status}`);
-  const j = await res.json().catch(() => null) as { quotes?: QuoteListItem[] } | null;
-  return j?.quotes ?? [];
+  const j = await res.json().catch(() => null) as { quotes?: QuoteListItem[]; invoices?: PlatformInvoiceItem[] } | null;
+  return { quotes: j?.quotes ?? [], invoices: j?.invoices ?? [] };
 }
 
 /** Admin GOVERNANCE only: block / suspend / re-activate a quote. Fixed-price — there is

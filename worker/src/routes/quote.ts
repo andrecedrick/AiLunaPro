@@ -651,23 +651,32 @@ quote.get('/api/quote/list', requireAuth(), requireRole(EMAIL_ROLES), async c =>
     });
 
   // PART 3 — join the invoice per quote so the superadmin panel shows payment status /
-  // Stripe id / paid-at. Bounded: admin scope only, and only for quotes that could
-  // have an invoice (accepted / finalised). Best-effort — a failed join leaves blanks.
+  // Stripe id / paid-at. PERF/COMPLETENESS rewrite: ONE org-invoices query replaces up
+  // to 500 per-quote invoice reads (N+1 eliminated), and EVERY invoice joins
+  // unconditionally — no stage precondition, so no quote can ever hide its payment
+  // state (paid/legacy/edge stages included). Best-effort — a failed join leaves blanks.
   if (adminAll) {
-    await Promise.all(quotes.map(async q => {
-      // BUG 5 — 'paid' included: a webhook/mark-paid quote (stage 'paid') must surface
-      // its invoice + payment status even if decidedAt was never set (legacy docs).
-      if (!q.decidedAt && q.stage !== 'finalized' && q.stage !== 'invoice_sent' && q.stage !== 'paid') return;
-      try {
-        const inv = await firestoreGet(saJson, `invoices/quote_${q.quoteId}`) as Record<string, unknown> | null;
-        if (!inv || inv.orgId !== orgId) return;
+    try {
+      const invRows = await firestoreRunQuery(saJson, {
+        from:  [{ collectionId: 'invoices' }],
+        where: { fieldFilter: { field: { fieldPath: 'orgId' }, op: 'EQUAL', value: { stringValue: orgId } } },
+        limit: 1000,
+      });
+      const invById = new Map<string, Record<string, unknown>>();
+      for (const r of invRows) {
+        const f = r.fields as Record<string, unknown>;
+        invById.set(typeof f.id === 'string' && f.id ? f.id : (r.name.split('/').pop() ?? ''), f);
+      }
+      for (const q of quotes) {
+        const inv = invById.get(`quote_${q.quoteId}`);
+        if (!inv) continue;
         q.paymentStatus   = typeof inv.status === 'string' ? inv.status : '';
         q.paidAt          = typeof inv.paidAt === 'string' ? inv.paidAt : '';
         q.stripePaymentId = typeof inv.paymentSessionId === 'string' ? inv.paymentSessionId : '';
         q.paymentUrl      = typeof inv.paymentUrl === 'string' ? inv.paymentUrl : '';
         q.invoiceAmount   = typeof inv.amount === 'number' ? inv.amount : null;
-      } catch { /* best-effort join */ }
-    }));
+      }
+    } catch { /* best-effort join */ }
   }
 
   // Newest activity first (decidedAt → sentAt → createdAt).

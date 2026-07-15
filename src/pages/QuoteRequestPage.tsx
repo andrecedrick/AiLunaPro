@@ -716,14 +716,29 @@ function EstimateView({ preview, roi = null }: { preview: QuotePreview; roi?: Pe
       })
     : null;
 
-  // Price = calm, secondary "estimated investment" card (value + decision lead above it).
+  // ISSUE 3 — conversion-first investment card: the number never stands alone. What the
+  // investment BUYS (deliverables) sits with it, and the "no payment today" reassurance
+  // defuses sticker shock — the CTA below stays a zero-commitment step.
   const priceCard = (
-    <div style={{ marginTop: 14, padding: '16px 20px', borderRadius: 14, background: 'var(--surface-1)', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)' }}>
-        {Q.decision.priceLabel}
+    <div style={{ marginTop: 14, padding: '18px 20px', borderRadius: 14, background: 'var(--surface-1)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)' }}>
+          {Q.decision.priceLabel}
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+          {priceText}
+        </div>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
-        {priceText}
+      <ul style={{ listStyle: 'none', margin: '12px 0 0', padding: '12px 0 0', borderTop: '1px dashed var(--border)', display: 'grid', gap: 7 }}>
+        {[Q.decision.valueItem1, Q.decision.valueItem2, Q.decision.valueItem3].map((v, i) => (
+          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <span aria-hidden style={{ flex: '0 0 auto', color: 'var(--green-text, #059669)', fontWeight: 800 }}>✓</span>
+            <span>{v}</span>
+          </li>
+        ))}
+      </ul>
+      <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--brand-tint-bg, rgba(124,58,237,0.08))', fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+        🔒 {Q.decision.priceNote}
       </div>
     </div>
   );

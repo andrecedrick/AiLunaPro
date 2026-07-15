@@ -13,7 +13,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { isPlatformAdmin, isSuperAdmin, requirePlatformAdmin } from '../lib/platformAdmin';
-import { firestoreRunQuery, firestoreGet } from '../lib/firestoreAdmin';
+import { firestoreRunQuery } from '../lib/firestoreAdmin';
 import { quotePrice } from '../lib/quote-shared';
 import type { AppEnv } from '../index';
 
@@ -90,26 +90,54 @@ platform.get('/api/platform/quotes', requireAuth(), requirePlatformAdmin(), asyn
     };
   });
 
-  // Cross-org invoice join (payment visibility) — invoices are root-level `invoices/quote_
-  // {quoteId}`; the orgId guard rejects a (theoretical) cross-org quoteId collision.
-  await Promise.all(quotes.map(async q => {
-    // BUG 5 — 'paid' included (parity with the org-scoped /list join).
-    if (!q.decidedAt && q.stage !== 'finalized' && q.stage !== 'invoice_sent' && q.stage !== 'paid') return;
-    try {
-      const inv = await firestoreGet(saJson, `invoices/quote_${q.quoteId}`) as Record<string, unknown> | null;
-      if (!inv || inv.orgId !== q.orgId) return;
-      q.paymentStatus   = str(inv.status);
-      q.paidAt          = str(inv.paidAt);
-      q.stripePaymentId = str(inv.paymentSessionId);
-      q.paymentUrl      = str(inv.paymentUrl);
-      q.invoiceAmount   = typeof inv.amount === 'number' ? inv.amount : null;
-    } catch { /* best-effort join */ }
-  }));
+  // Cross-org invoice visibility — invoices live in ONE root collection, so a single
+  // query covers every org (PERF: replaces up to 1000 per-quote reads; COMPLETENESS:
+  // every invoice is returned, even one whose quote fell outside the quote list).
+  let invRows: Awaited<ReturnType<typeof firestoreRunQuery>> = [];
+  try {
+    invRows = await firestoreRunQuery(saJson, { from: [{ collectionId: 'invoices' }], limit: 1000 }, '');
+  } catch (err) {
+    console.warn('[platform] cross-org invoice query failed:', err instanceof Error ? err.message : '');
+  }
+  const invById = new Map<string, Record<string, unknown>>();
+  for (const r of invRows) {
+    const f = r.fields as Record<string, unknown>;
+    invById.set(str(f.id) || (r.name.split('/').pop() ?? ''), f);
+  }
+  // Join payment state onto every quote (no stage precondition; orgId guard rejects a
+  // theoretical cross-org quoteId collision).
+  for (const q of quotes) {
+    const inv = invById.get(`quote_${q.quoteId}`);
+    if (!inv || inv.orgId !== q.orgId) continue;
+    q.paymentStatus   = str(inv.status);
+    q.paidAt          = str(inv.paidAt);
+    q.stripePaymentId = str(inv.paymentSessionId);
+    q.paymentUrl      = str(inv.paymentUrl);
+    q.invoiceAmount   = typeof inv.amount === 'number' ? inv.amount : null;
+  }
 
   const ts = (q: { decidedAt: string; sentAt: string; createdAt: string }) => q.decidedAt || q.sentAt || q.createdAt || '';
   quotes.sort((a, b) => (ts(a) < ts(b) ? 1 : ts(a) > ts(b) ? -1 : 0));
 
-  return c.json({ ok: true, quotes });
+  // Full cross-org invoice list (all payment states) for the platform panel.
+  const invoices = invRows.map(r => {
+    const f = r.fields as Record<string, unknown>;
+    return {
+      id:            str(f.id) || (r.name.split('/').pop() ?? ''),
+      orgId:         str(f.orgId),
+      quoteId:       str(f.quoteId),
+      quoteTitle:    str(f.quoteTitle),
+      customerEmail: str(f.customerEmail),
+      amount:        typeof f.amount === 'number' ? f.amount : null,
+      currency:      str(f.currency) || 'usd',
+      status:        str(f.status) || 'pending',
+      paymentMethod: str(f.paymentMethod) || 'stripe',
+      paidAt:        str(f.paidAt),
+      createdAt:     str(f.createdAt),
+    };
+  }).sort((a, b) => ((a.paidAt || a.createdAt) < (b.paidAt || b.createdAt) ? 1 : -1));
+
+  return c.json({ ok: true, quotes, invoices });
 });
 
 export default platform;
