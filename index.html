@@ -151,6 +151,18 @@
           // its in-app card handles "loaded but can't connect" — this avoids a
           // false-positive on a legitimately slow 3G download.
           if (window.__APP_INTERACTIVE__ || window.__APP_BOOTED__) return;
+          // P0 — self-heal FIRST: the most common cause of "bundle never executed" is a
+          // stale cached index.html referencing a purged hashed asset after a deploy.
+          // One automatic reload (session-guarded) fetches fresh HTML + assets and
+          // recovers without the user ever seeing the card. If the reload attempt
+          // already happened (or storage is blocked), fall through to the card.
+          try {
+            if (!sessionStorage.getItem('__boot_retry__')) {
+              sessionStorage.setItem('__boot_retry__', '1');
+              window.location.reload();
+              return;
+            }
+          } catch (e) { /* storage blocked → show the card */ }
           var root = document.getElementById('root');
           if (!root) return;
           root.innerHTML =
