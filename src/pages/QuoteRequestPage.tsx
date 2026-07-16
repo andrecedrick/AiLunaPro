@@ -746,6 +746,22 @@ function EstimateView({ preview, roi = null }: { preview: QuotePreview; roi?: Pe
   // Sections read as soft, borderless tiles inside the one premium card.
   const softSection: CSSProperties = { borderRadius: 14, background: 'var(--surface-1)', border: 'none' };
 
+  // ISSUE 3 — business-impact section: ALWAYS present (not ROI-dependent), placed
+  // BEFORE scope/price so the visitor reads outcomes before any number.
+  const impactBlock = (
+    <div style={{ marginTop: 14, padding: '18px 20px', ...softSection }}>
+      <h2 style={sectionTitleStyle()}>{Q.decision.impactHeading}</h2>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+        {[Q.decision.impact1, Q.decision.impact2, Q.decision.impact3].map((v, i) => (
+          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+            <span aria-hidden style={{ flex: '0 0 auto' }}>{['⚡', '🛡️', '📈'][i]}</span>
+            <span>{v}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
   const scopeBlock = (
     <div style={{ marginTop: 14, padding: '18px 20px', ...softSection }}>
       <h2 style={sectionTitleStyle()}>{Q.result.scopeHeading}</h2>
@@ -793,6 +809,7 @@ function EstimateView({ preview, roi = null }: { preview: QuotePreview; roi?: Pe
           {solutionTitle}
         </div>
       </div>
+      {impactBlock}
       {scopeBlock}
       {nextStepsBlock}
       {priceCard}

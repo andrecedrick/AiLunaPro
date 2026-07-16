@@ -51,6 +51,11 @@ export function AdminCenterPage() {
   const orgAdmin = session?.role === 'owner' || session?.role === 'admin';
   useEffect(() => {
     let alive = true;
+    // PERF — an org owner/admin is authorized SYNCHRONOUSLY from the session: grant
+    // access + start the data fetches immediately instead of blocking a full
+    // /api/platform/me round-trip (which now only elevates non-admin superadmins
+    // and detects platform operators, in parallel).
+    if (orgAdmin) setAllowed(true);
     fetchPlatformMe()
       .then(m => { if (alive) { setAllowed(m.isSuperAdmin || orgAdmin); setPlatformAdmin(m.isPlatformAdmin); } })
       .catch(() => { if (alive) setAllowed(orgAdmin); });
@@ -119,13 +124,14 @@ export function AdminCenterPage() {
     d.emailed ? I.sent : d.code === 'NO_RECIPIENT' ? I.resendNoRecipient : I.sentNoEmail;
 
   const qTitle = (t: string | undefined, id: string) => t && t.trim() ? t : `${I.quoteLabel} · ${id.slice(0, 8)}`;
-  const statusLabel = (s: string) => s === 'pending' ? I.statusPending : s === 'paid' ? I.statusPaid : s === 'awaiting_transfer' ? A.awaitingTransfer : s;
+  const statusLabel = (s: string) => s === 'pending' ? I.statusPending : s === 'paid' ? I.statusPaid : s === 'awaiting_transfer' ? A.awaitingTransfer : s === 'draft' ? I.statusDraft : s;
   const payLabel = (s: string) => s === 'paid' ? A.paymentPaid : s === 'pending' ? A.paymentPending : A.paymentNone;
   const payColor = (s: string) => s === 'paid' ? 'var(--green-text, #059669)' : s === 'pending' ? '#b45309' : 'var(--text-muted)';
 
-  // Activity feed (built from accepted quotes + invoices — no negotiation/pending).
+  // Activity feed — the FULL lifecycle: proposal sent → accepted → invoiced → paid.
   const events: Evt[] = [];
   for (const q of allQuotes ?? []) {
+    if (q.sentAt) events.push({ icon: '📤', label: A.evtSent, title: qTitle(q.quoteTitle, q.quoteId), date: q.sentAt, sub: q.price != null ? usd(q.price) : undefined });
     if (!q.decidedAt) continue;
     events.push({ icon: '✅', label: A.evtAccepted, title: qTitle(q.quoteTitle, q.quoteId), date: q.decidedAt, sub: q.price != null ? usd(q.price) : undefined });
   }
@@ -155,7 +161,9 @@ export function AdminCenterPage() {
   }
   platformEvents.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
-  const invoiceList = (items ?? []).filter(i => i.status !== 'draft');
+  // ADMIN sees EVERY invoice, drafts included (muted label) — nothing hidden. The
+  // client-facing InvoicesPage keeps filtering legacy drafts.
+  const invoiceList = items ?? [];
 
   if (allowed === null) return <div style={{ maxWidth: 880, margin: '0 auto', padding: '40px 20px', color: 'var(--text-muted)' }}>{I.loading}</div>;
   if (!allowed) return (

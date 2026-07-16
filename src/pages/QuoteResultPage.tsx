@@ -140,7 +140,18 @@ export function QuoteResultPage() {
             🏦 {A.bankMessage}
           </div>
         )}
-        <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 26px' }}>{isAccept ? A.confirmBody : A.discussConfirmBody}</p>
+        <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 18px' }}>{isAccept ? A.confirmBody : A.discussConfirmBody}</p>
+        {/* ISSUE 4 — zero uncertainty: exactly what happens, in order, BEFORE the click. */}
+        {isAccept && (
+          <ol style={{ listStyle: 'none', margin: '0 auto 24px', padding: 0, display: 'grid', gap: 8, maxWidth: 340, textAlign: 'left' }}>
+            {[A.step1, A.step2, A.step3, A.step4].map((s, i) => (
+              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                <span aria-hidden style={{ flex: '0 0 auto', width: 20, height: 20, borderRadius: 999, background: 'var(--violet)', color: '#fff', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ol>
+        )}
         <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
           <button type="button" disabled={phase === 'confirming'} onClick={() => void onConfirm()} style={{ ...primaryBtnStyle(), opacity: phase === 'confirming' ? 0.6 : 1, cursor: phase === 'confirming' ? 'wait' : 'pointer' }}>
             {phase === 'confirming' ? A.confirming : isAccept ? (isBankTransfer ? A.bankProceedCta : A.confirmCta) : A.discussCta}
