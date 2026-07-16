@@ -227,12 +227,18 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
 
   let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
   try {
-    // Equality filter only (no orderBy) → no composite index needed; sort in JS.
+    // Equality filter only (no orderBy → no composite index); sorted in JS below.
+    // DATA-LOSS BUG: without orderBy, `limit` takes an ARBITRARY window in document-key
+    // (uuid) order — NOT the newest. At 200 an org's most recent invoice could be
+    // silently dropped from the list/feed while still existing in Firestore. Raised to
+    // 1000 (parity with the platform query) so the window covers any near-term volume;
+    // the JS sort then puts newest first. Logged if we ever hit the cap.
     rows = await firestoreRunQuery(saJson, {
       from:  [{ collectionId: 'invoices' }],
       where: { fieldFilter: { field: { fieldPath: 'orgId' }, op: 'EQUAL', value: { stringValue: orgId } } },
-      limit: 200,
+      limit: 1000,
     });
+    if (rows.length >= 1000) console.warn('[invoices] org hit the 1000-invoice window — newest-first completeness at risk:', orgId);
   } catch (err) {
     console.error('[invoices] query failed:', err instanceof Error ? err.message : '');
     return c.json({ error: 'Could not load invoices.', code: 'QUERY_FAILED' }, 500);
@@ -243,6 +249,12 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
     return {
       id:            typeof f.id === 'string' ? f.id : (r.name.split('/').pop() ?? ''),
       quoteId:       typeof f.quoteId === 'string' ? f.quoteId : '',
+      // DATA-CONSISTENCY BUG: quoteTitle IS persisted on the invoice at birth
+      // (finalizeQuoteInvoice) but was never mapped here — so every invoice-sourced
+      // row/event rendered a raw uuid ("Quote · 4332d263-…", "Devis · f337693e")
+      // while quote-sourced events showed the real project name. Same invoice, two
+      // identities across surfaces. Now returned → one identity everywhere.
+      quoteTitle:    typeof f.quoteTitle === 'string' ? f.quoteTitle : '',
       customerEmail: typeof f.customerEmail === 'string' ? f.customerEmail : '',
       amount:        typeof f.amount === 'number' ? f.amount : null,
       currency:      typeof f.currency === 'string' ? f.currency : 'usd',

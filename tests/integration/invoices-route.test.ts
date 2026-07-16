@@ -182,6 +182,40 @@ describe('POST /api/invoices/:id/confirm — FIX 2 resend reliability + reportin
   });
 });
 
+describe('GET /api/invoices — data consistency (the invoice must have ONE identity everywhere)', () => {
+  it('returns quoteTitle so invoice rows/events render the project name, not a raw uuid', async () => {
+    state.rows = [
+      { name: 'documents/invoices/quote_z', fields: { id: 'quote_z', quoteId: '4332d263-bfb2-4ed7-b0d0-cd08fecef1c6', orgId: 'orgA', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', amount: 6500, status: 'paid', paidAt: '2026-07-15T00:00:00.000Z', createdAt: '2026-07-14T00:00:00.000Z' } },
+    ];
+    const { invoices: list } = await (await get()).json() as { invoices: Array<Record<string, unknown>> };
+    // Regression: quoteTitle was persisted at invoice birth but never mapped by this
+    // route → the UI fell back to "Quote · <uuid>" while quote-sourced rows showed the
+    // real name. Same invoice, two identities across surfaces.
+    expect(list[0].quoteTitle).toBe('Acme bot');
+    expect(list[0].status).toBe('paid');
+    expect(list[0].paidAt).toBe('2026-07-15T00:00:00.000Z');
+    expect(list[0].amount).toBe(6500);
+  });
+
+  it('requests a window large enough that a recent invoice is never silently dropped', async () => {
+    await get();
+    // firestoreRunQuery(saJson, structuredQuery) → the query is arg[1].
+    const sq = runQuery.mock.calls[0][1] as unknown as { limit: number; where: unknown };
+    expect(sq.limit).toBeGreaterThanOrEqual(1000);   // was 200 in arbitrary key order
+    expect(sq.where).toBeTruthy();                   // still org-scoped
+  });
+
+  it('a PAID invoice is returned with every field the admin feed needs', async () => {
+    state.rows = [
+      { name: 'documents/invoices/quote_p', fields: { id: 'quote_p', quoteId: 'p', orgId: 'orgA', quoteTitle: 'Paid project', amount: 6500, status: 'paid', paidAt: '2026-07-15T00:00:00.000Z', createdAt: '2026-07-10T00:00:00.000Z', paymentMethod: 'stripe' } },
+    ];
+    const { invoices: list } = await (await get()).json() as { invoices: Array<Record<string, unknown>> };
+    const inv = list[0];
+    // Everything buildOrgActivity needs for a 💰 paid event dated by paidAt:
+    expect([inv.status, inv.paidAt, inv.amount, inv.quoteTitle]).toEqual(['paid', '2026-07-15T00:00:00.000Z', 6500, 'Paid project']);
+  });
+});
+
 describe('GET /api/invoices/:id/pdf — downloadable invoice document (BUG 2)', () => {
   const pdf = (id: string, org = 'orgA') =>
     invoices.request(`/api/invoices/${id}/pdf?orgId=${org}`, { headers: { Authorization: 'Bearer t' } }, ENV);
