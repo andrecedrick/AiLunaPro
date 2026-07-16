@@ -15,6 +15,7 @@ import { usePreferences } from '../context/PreferencesContext';
 import { fetchPlatformMe } from '../lib/platform/platformService';
 import { listInvoices, listAllQuotes, listPlatformQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, downloadInvoicePdf, type InvoiceItem, type QuoteListItem, type PlatformInvoiceItem } from '../lib/quote/invoicesClient';
 import { sendQuoteToClient } from '../lib/quote/quoteClient';
+import { buildOrgActivity, buildPlatformActivity } from '../lib/quote/activityFeed';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
 const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' } as const;
@@ -128,38 +129,13 @@ export function AdminCenterPage() {
   const payLabel = (s: string) => s === 'paid' ? A.paymentPaid : s === 'pending' ? A.paymentPending : A.paymentNone;
   const payColor = (s: string) => s === 'paid' ? 'var(--green-text, #059669)' : s === 'pending' ? '#b45309' : 'var(--text-muted)';
 
-  // Activity feed — the FULL lifecycle: proposal sent → accepted → invoiced → paid.
-  const events: Evt[] = [];
-  for (const q of allQuotes ?? []) {
-    if (q.sentAt) events.push({ icon: '📤', label: A.evtSent, title: qTitle(q.quoteTitle, q.quoteId), date: q.sentAt, sub: q.price != null ? usd(q.price) : undefined });
-    if (!q.decidedAt) continue;
-    events.push({ icon: '✅', label: A.evtAccepted, title: qTitle(q.quoteTitle, q.quoteId), date: q.decidedAt, sub: q.price != null ? usd(q.price) : undefined });
-  }
-  for (const inv of items ?? []) {
-    if (inv.status === 'draft') continue;
-    events.push(inv.status === 'paid'
-      // BUG 5 — a payment event is dated when it was PAID, not when the invoice was born.
-      ? { icon: '💰', label: A.evtPaid, title: qTitle(inv.quoteTitle, inv.quoteId), date: inv.paidAt || inv.createdAt, sub: usd(inv.amount) }
-      : { icon: '📧', label: A.evtInvoiceSent, title: qTitle(inv.quoteTitle, inv.quoteId), date: inv.createdAt, sub: usd(inv.amount) });
-  }
-  events.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  // Activity feeds — derived by the PURE, TESTED activityFeed module (single source of
+  // truth for both feeds; see src/lib/quote/activityFeed.ts + tests/unit/activityFeed).
+  const feedDeps = { evtSent: A.evtSent, evtAccepted: A.evtAccepted, evtInvoiceSent: A.evtInvoiceSent, evtPaid: A.evtPaid, title: qTitle, usd };
+  const events: Evt[] = buildOrgActivity(allQuotes, items, feedDeps);
 
-  // Cross-org activity for platform operators: accepted events from the quotes +
-  // invoice/paid events from the FULL root invoice list (every org, every payment
-  // state — an invoice whose quote fell outside the quote list still appears).
-  const platformEvents: Evt[] = [];
-  for (const q of platformQuotes ?? []) {
-    if (!q.decidedAt) continue;
-    platformEvents.push({ icon: '✅', label: A.evtAccepted, title: `${qTitle(q.quoteTitle, q.quoteId)} · ${q.orgId}`, date: q.decidedAt, sub: q.price != null ? usd(q.price) : undefined });
-  }
-  for (const inv of platformInvoices) {
-    if (inv.status === 'draft') continue;
-    const title = `${qTitle(inv.quoteTitle, inv.quoteId || inv.id)} · ${inv.orgId}`;
-    platformEvents.push(inv.status === 'paid'
-      ? { icon: '💰', label: A.evtPaid, title, date: inv.paidAt || inv.createdAt, sub: usd(inv.amount) }
-      : { icon: '📧', label: A.evtInvoiceSent, title, date: inv.createdAt, sub: usd(inv.amount) });
-  }
-  platformEvents.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  // Cross-org operator feed — same pure module (org shown per row).
+  const platformEvents: Evt[] = buildPlatformActivity(platformQuotes, platformInvoices, feedDeps);
 
   // ADMIN sees EVERY invoice, drafts included (muted label) — nothing hidden. The
   // client-facing InvoicesPage keeps filtering legacy drafts.
