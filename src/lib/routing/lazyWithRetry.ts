@@ -70,6 +70,20 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
       if (await recoverIfStaleBundle()) {
         return new Promise<never>(() => { /* page is reloading */ });
       }
+      // Staleness UNPROVEN ≠ not stale: the same network flake / extension that broke
+      // the chunk fetch usually breaks the /version.json probe too, so the stale check
+      // returns false exactly when recovery is most needed. Before surfacing the
+      // dead-end error screen, try ONE plain reload (fresh index.html + assets fixes
+      // stale-HTML and transient failures alike). Session-guarded: a persistent
+      // failure (real ad-blocker) reloads once, then shows the truthful error UI for
+      // the rest of the session — provably no reload loop.
+      try {
+        if (sessionStorage.getItem('ailunapro-chunk-reload') !== '1') {
+          sessionStorage.setItem('ailunapro-chunk-reload', '1');
+          window.location.reload();
+          return new Promise<never>(() => { /* page is reloading */ });
+        }
+      } catch { /* storage blocked — fall through to the error UI */ }
       void import('../analytics/track').then(m => m.track('chunk_retry_failed')).catch(() => {});
       throw lastErr;
     }

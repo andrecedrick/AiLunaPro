@@ -1,8 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Suspense } from 'react';
 import { render, screen } from '@testing-library/react';
 import { lazyWithRetry } from '../../src/lib/routing/lazyWithRetry';
 import { ErrorBoundary } from '../../src/components/ErrorBoundary';
+
+// jsdom's location.reload is non-functional — swap in a spy (staleBundle pattern).
+const reloadSpy = vi.fn();
+Object.defineProperty(window, 'location', {
+  value: { ...window.location, reload: reloadSpy },
+  writable: true,
+});
+
+beforeEach(() => {
+  reloadSpy.mockClear();
+  try { sessionStorage.clear(); } catch { /* noop */ }
+});
 
 /* Regression for the prod crash "Cannot read properties of undefined (reading
  * 'default')": a swallowed vite:preloadError makes a dynamic import RESOLVE
@@ -14,6 +26,9 @@ function Ok() { return <div>loaded-ok</div>; }
 
 describe('lazyWithRetry — undefined-module guard', () => {
   it('factory resolving undefined twice → chunk-aware error card, not a TypeError crash', async () => {
+    // The one-shot auto-reload was already consumed this session → the truthful
+    // error card must surface (the reload can only ever fire once per session).
+    sessionStorage.setItem('ailunapro-chunk-reload', '1');
     const factory = vi.fn(async () => undefined as never);
     const Bad = lazyWithRetry(factory);
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -32,6 +47,27 @@ describe('lazyWithRetry — undefined-module guard', () => {
     // "retry" can never recover React.lazy's permanently-cached rejection.
     expect(screen.getByRole('button', { name: /Reload page/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Retry loading|Try again/i })).toBeNull();
+    spy.mockRestore();
+  }, 10000);
+
+  it('exhausted retries + staleness unproven → ONE auto-reload (no error card flash)', async () => {
+    // Fresh session (no marker): instead of dead-ending on the error screen, the
+    // loader must self-heal with a single plain reload — the /version.json probe
+    // fails in jsdom (fetch unavailable), exactly the prod flake being fixed.
+    const factory = vi.fn(async () => undefined as never);
+    const Bad = lazyWithRetry(factory);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <ErrorBoundary>
+        <Suspense fallback={<div>loading…</div>}>
+          <Bad />
+        </Suspense>
+      </ErrorBoundary>,
+    );
+    await vi.waitFor(() => expect(reloadSpy).toHaveBeenCalledTimes(1), { timeout: 8000 });
+    // Suspended while reloading — the error card never flashes.
+    expect(screen.queryByRole('heading', { name: /load the page/i })).toBeNull();
+    expect(sessionStorage.getItem('ailunapro-chunk-reload')).toBe('1');   // guarded: once per session
     spy.mockRestore();
   }, 10000);
 
