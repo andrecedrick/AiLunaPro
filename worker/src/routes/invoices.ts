@@ -16,6 +16,7 @@ import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { firestoreRunQuery, firestoreGet, firestoreSet, firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
+import { buildInvoicePdf } from '../lib/quote-pdf';
 import { sendTransactional } from '../lib/sequenzy';
 import { formatBankDetails, bankDetailsFields } from '../lib/bank-details';
 import { getStripe } from '../lib/stripe';
@@ -54,7 +55,9 @@ async function ensureInvoicePaymentLink(
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: [{ price_data: { currency: 'usd', product_data: { name: a.project || 'Invoice' }, unit_amount: Math.round(a.amount) * 100 }, quantity: 1 }],
-      success_url: `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}&paid=1`,
+      // BUG 1 — the payer is usually the CLIENT (not an org member): land on the PUBLIC
+      // quote-status page (paid confirmation view), never the auth-walled /invoices.
+      success_url: `${a.appBase}/#/quote/status?quoteId=${encodeURIComponent(a.invoiceId.startsWith('quote_') ? a.invoiceId.slice(6) : a.invoiceId)}&state=invoice&paid=1`,
       cancel_url:  `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`,
       client_reference_id: a.orgId,
       metadata: { type: 'invoice_payment', invoiceId: a.invoiceId, orgId: a.orgId },
@@ -466,6 +469,42 @@ invoices.post('/api/invoices/:id/mark-paid', requireAuth(), requireRole(CONFIRM_
   });
   dlog(env, '[invoices] mark-paid', id, 'by', uid, 'confirmationEmailed=', emailed);
   return c.json({ ok: true, status: 'paid', emailed });
+});
+
+/* ── GET /api/invoices/:id/pdf — downloadable invoice document (BUG 2) ───────
+ * Auth + org-scoped (INVOICE_ROLES + orgId guard). Deterministic PDF built from
+ * the invoice doc; a PAID invoice doubles as the payment receipt. */
+invoices.get('/api/invoices/:id/pdf', requireAuth(), requireRole(INVOICE_ROLES), async c => {
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+  const orgId = c.get('orgId') as string; // membership-verified
+  const id = (c.req.param('id') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+  if (!id) return c.json({ error: 'Invalid invoice id.', code: 'INVALID_ID' }, 400);
+
+  const inv = await firestoreGet(saJson, `invoices/${id}`) as Record<string, unknown> | null;
+  if (!inv || inv.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
+  const amount = typeof inv.amount === 'number' ? inv.amount : 0;
+  if (amount <= 0) return c.json({ error: 'Invoice has no amount.', code: 'NO_AMOUNT' }, 409);
+
+  const bytes = buildInvoicePdf({
+    invoiceId:     id,
+    reference:     typeof inv.quoteId === 'string' && inv.quoteId ? inv.quoteId : id,
+    quoteTitle:    typeof inv.quoteTitle === 'string' ? inv.quoteTitle : '',
+    customerEmail: typeof inv.customerEmail === 'string' ? inv.customerEmail : '',
+    amountUsd:     amount,
+    status:        typeof inv.status === 'string' ? inv.status : 'pending',
+    paymentMethod: typeof inv.paymentMethod === 'string' ? inv.paymentMethod : 'stripe',
+    createdAt:     typeof inv.createdAt === 'string' ? inv.createdAt : new Date().toISOString(),
+    paidAt:        typeof inv.paidAt === 'string' ? inv.paidAt : null,
+  });
+  return new Response(bytes.slice().buffer as ArrayBuffer, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="invoice-${id}.pdf"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 });
 
 export default invoices;

@@ -197,3 +197,56 @@ export function buildQuotePdf(input: QuotePdfInput): Uint8Array {
     footerVersion: fold(`${input.docTitle} - ${QUOTE_PDF_VERSION}`),
   });
 }
+
+/* ── Invoice PDF (BUG 2) — the downloadable document for every invoice ──────
+ * Same deterministic engine + brand cover as the quote PDF. English-only (the
+ * ASCII engine; matches the quote PDF behavior for RU/ZH). Status-aware: a paid
+ * invoice doubles as the payment receipt. */
+
+export interface InvoicePdfInput {
+  invoiceId:     string;
+  reference:     string;        // quote id
+  quoteTitle:    string;
+  customerEmail: string;
+  amountUsd:     number;
+  status:        string;        // 'paid' | 'pending' | 'awaiting_transfer' | …
+  paymentMethod: string;        // 'stripe' | 'bank_transfer'
+  createdAt:     string;
+  paidAt:        string | null;
+}
+
+export function buildInvoicePdf(i: InvoicePdfInput): Uint8Array {
+  const doc = new PdfBuilder();
+  const paid = i.status === 'paid';
+
+  const metaRows: Array<[string, string]> = [['Invoice no.', i.invoiceId], ['Reference', i.reference]];
+  if (has(i.customerEmail)) metaRows.push(['Billed to', fold(i.customerEmail)]);
+  metaRows.push(['Issued', isoDate(i.createdAt)]);
+  if (paid && i.paidAt) metaRows.push(['Paid on', isoDate(i.paidAt)]);
+  quoteCover(doc, {
+    title:    paid ? 'Invoice - PAID' : 'Invoice',
+    subtitle: fold(i.quoteTitle || `Quote ${i.reference.slice(0, 8)}`),
+    metaRows,
+  });
+
+  doc.h2('Amount');
+  doc.h1(`$${Math.round(i.amountUsd).toLocaleString('en-US')} USD`);
+
+  doc.h2('Status');
+  doc.callout(
+    paid
+      ? `PAID - payment received on ${isoDate(i.paidAt ?? i.createdAt)}. This document also serves as your payment receipt.`
+      : i.status === 'awaiting_transfer'
+        ? 'AWAITING BANK TRANSFER - this invoice is settled by bank transfer; it becomes a receipt once the transfer is confirmed.'
+        : 'PENDING - payment is due. Pay online or by bank transfer using the reference above.',
+    paid ? 'tint' : 'amber',
+  );
+
+  doc.h2('Payment method');
+  doc.para(i.paymentMethod === 'bank_transfer' ? 'Bank transfer (reference above).' : 'Online payment (secure card checkout).');
+
+  return doc.serialize({
+    createdAt:     i.createdAt,
+    footerVersion: fold(`Invoice ${i.invoiceId} - ${QUOTE_PDF_VERSION}`),
+  });
+}

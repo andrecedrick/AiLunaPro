@@ -18,6 +18,11 @@ import { ENABLE_QUOTE_V2 } from '../lib/flags';
 import { SMB_MAX_USD } from '../data/quote-config';
 import { readQuotePayLink, getTransferDetails, markTransferInitiated, type TransferDetails } from '../lib/quote/quoteClient';
 
+function hashPaid(): boolean {
+  const h = typeof window !== 'undefined' ? window.location.hash : '';
+  return /[?&]paid=1/.test(h);
+}
+
 function hashState(): { quoteId: string; state: 'review' | 'negotiation' | 'waiting' | 'invoice'; budgetUsd: number | null } {
   const h = typeof window !== 'undefined' ? window.location.hash : '';
   const dec = (s: string): string => { try { return decodeURIComponent(s); } catch { return ''; } };
@@ -127,6 +132,12 @@ export function QuoteStatusPage() {
             : <button type="button" disabled={initiating} onClick={() => void onInitiated()} style={{ ...primaryBtnStyle(), width: '100%', marginTop: 12, opacity: initiating ? 0.6 : 1, cursor: initiating ? 'wait' : 'pointer' }}>{initiating ? '…' : S.bank.initiateBtn}</button>}
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 10, textAlign: 'center' }}>{S.bank.invoiceNote}</div>
         </div>
+      ) : hashPaid() ? (
+        // BUG 1 — Stripe success_url lands HERE (public, no sign-in): a clear paid
+        // confirmation instead of the old auth-walled /invoices dead-end.
+        <div style={{ margin: '0 auto 24px', maxWidth: 400, padding: '14px 18px', borderRadius: 10, background: 'var(--green-soft-bg, #e1f5ee)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, lineHeight: 1.55 }}>
+          ✅ {S.paidThanks}
+        </div>
       ) : payUrl ? (
         <div style={{ margin: '0 auto 24px', maxWidth: 400, padding: '12px 16px', borderRadius: 10, background: 'var(--green-soft-bg, #e1f5ee)', color: 'var(--text-secondary)', fontSize: 13.5, lineHeight: 1.55 }}>
           ✅ {S.payReady}
@@ -151,7 +162,7 @@ export function QuoteStatusPage() {
 
       <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
         {/* U1 — instant "Pay now" (external Stripe Checkout) when the quote auto-finalised. */}
-        {payUrl && <a href={payUrl} style={{ ...primaryBtnStyle(), textDecoration: 'none' }}>{S.payNow}</a>}
+        {payUrl && !hashPaid() && <a href={payUrl} style={{ ...primaryBtnStyle(), textDecoration: 'none' }}>{S.payNow}</a>}
         <button type="button" onClick={() => navigate({ name: 'invoices', ...(quoteId ? { quoteId } : {}) })} style={payUrl ? mutedLink : primaryBtnStyle()}>{S.openPanel}</button>
         <button type="button" onClick={() => navigate({ name: 'quote' })} style={mutedLink}>{S.back}</button>
       </div>

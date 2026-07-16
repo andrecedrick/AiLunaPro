@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { usePreferences } from '../context/PreferencesContext';
 import { fetchPlatformMe } from '../lib/platform/platformService';
-import { listInvoices, listAllQuotes, listPlatformQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, type InvoiceItem, type QuoteListItem, type PlatformInvoiceItem } from '../lib/quote/invoicesClient';
+import { listInvoices, listAllQuotes, listPlatformQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, downloadInvoicePdf, type InvoiceItem, type QuoteListItem, type PlatformInvoiceItem } from '../lib/quote/invoicesClient';
 import { sendQuoteToClient } from '../lib/quote/quoteClient';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
@@ -361,6 +361,7 @@ export function AdminCenterPage() {
                          unpaid keeps the pay-request resend + payment actions. */}
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : inv.status === 'paid' ? I.resendConfirmationBtn : I.resendBtn}</button>
+                    <button type="button" onClick={() => downloadInvoicePdf(orgId, inv.id).catch(() => setError(true))} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>{I.downloadPdf}</button>
                     {inv.status !== 'paid' && (inv.paymentMethod === 'bank_transfer'
                       ? <button type="button" disabled={govBusy === inv.id} onClick={() => void markPaid(inv)} style={govBtn('var(--green-text, #059669)', '#fff')}>{govBusy === inv.id ? '…' : A.markPaidBtn}</button>
                       : inv.paymentUrl

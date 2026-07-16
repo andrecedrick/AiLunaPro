@@ -166,6 +166,21 @@ export async function resendInvoice(orgId: string, id: string): Promise<{ status
   return { status: j?.status ?? 'pending', emailed: j?.emailed === true, code: j?.code, emailError: j?.emailError };
 }
 
+/** Download the invoice PDF (paid = payment receipt). Org-scoped, auth-gated. */
+export async function downloadInvoicePdf(orgId: string, id: string): Promise<void> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/invoices/${encodeURIComponent(id)}/pdf?orgId=${encodeURIComponent(orgId)}`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!res.ok) throw new Error(`HTTP_${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `invoice-${id}.pdf`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** Admin: mark a BANK-TRANSFER invoice paid (owner/admin, org-scoped). The worker
  *  refuses this for Stripe invoices (they reconcile via webhook). Idempotent. */
 export async function markInvoicePaid(orgId: string, invoiceId: string): Promise<{ status: string }> {

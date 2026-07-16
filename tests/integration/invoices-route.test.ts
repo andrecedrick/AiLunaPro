@@ -182,6 +182,52 @@ describe('POST /api/invoices/:id/confirm — FIX 2 resend reliability + reportin
   });
 });
 
+describe('GET /api/invoices/:id/pdf — downloadable invoice document (BUG 2)', () => {
+  const pdf = (id: string, org = 'orgA') =>
+    invoices.request(`/api/invoices/${id}/pdf?orgId=${org}`, { headers: { Authorization: 'Bearer t' } }, ENV);
+
+  it('a PAID invoice downloads as a real PDF receipt (magic bytes + headers)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', status: 'paid', amount: 6500, paidAt: '2026-07-15T00:00:00.000Z', createdAt: '2026-07-14T00:00:00.000Z', paymentMethod: 'stripe' });
+    const res = await pdf('quote_a');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('application/pdf');
+    expect(res.headers.get('Content-Disposition')).toContain('invoice-quote_a.pdf');
+    const buf = new Uint8Array(await res.arrayBuffer());
+    expect(String.fromCharCode(...buf.slice(0, 5))).toBe('%PDF-');   // real PDF, not JSON/HTML
+    expect(buf.length).toBeGreaterThan(1000);
+  });
+
+  it('a PENDING invoice is downloadable too (amount due document)', async () => {
+    state.docs.set('invoices/quote_b2', { orgId: 'orgA', quoteId: 'b2', customerEmail: 'c@x.com', status: 'pending', amount: 15000, createdAt: '2026-07-14T00:00:00.000Z', paymentMethod: 'bank_transfer' });
+    const res = await pdf('quote_b2');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('application/pdf');
+  });
+
+  it('cross-org guard: another org cannot download (404)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 6500 });
+    expect((await pdf('quote_a', 'orgB')).status).toBe(404);
+  });
+
+  it('409 NO_AMOUNT for an amount-less legacy draft', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'draft', amount: null });
+    expect((await pdf('quote_a')).status).toBe(409);
+  });
+});
+
+describe('BUG 4 — paid chain end state: paid invoice → confirmation resend + PDF receipt', () => {
+  it('after a payment (status paid), /confirm re-sends the confirmation AND /pdf serves the receipt', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', status: 'paid', amount: 6500, paidAt: '2026-07-15T00:00:00.000Z', createdAt: '2026-07-14T00:00:00.000Z' });
+    const conf = await confirm('quote_a');
+    expect(conf.status).toBe(200);
+    expect((await conf.json() as { emailed: boolean }).emailed).toBe(true);
+    expect(seq.sends.find(s => s.slug === 'payment-confirmation')).toBeTruthy();     // customer receipt email
+    const res = await invoices.request('/api/invoices/quote_a/pdf?orgId=orgA', { headers: { Authorization: 'Bearer t' } }, ENV);
+    expect(res.status).toBe(200);                                                    // downloadable receipt
+    expect(res.headers.get('Content-Type')).toBe('application/pdf');
+  });
+});
+
 describe('POST /api/invoices/finalize — REMOVED (no admin pricing in the fixed-price model)', () => {
   it('the finalize route no longer exists (404)', async () => {
     const res = await invoices.request('/api/invoices/finalize?orgId=orgA', {

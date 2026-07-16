@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
-import { listInvoices, resendInvoice, type InvoiceItem } from '../lib/quote/invoicesClient';
+import { listInvoices, resendInvoice, downloadInvoicePdf, type InvoiceItem } from '../lib/quote/invoicesClient';
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 
@@ -105,9 +105,12 @@ export function InvoicesPage() {
              (incl. bank-transfer 'awaiting_transfer'); PAID re-sends the payment
              confirmation (receipt). Button stays after a send (retryable). */}
       {isAdmin && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" disabled={resendId === inv.id} onClick={() => void resend(inv)}
             style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: resendId === inv.id ? 'wait' : 'pointer' }}>{resendId === inv.id ? '…' : inv.status === 'paid' ? I.resendConfirmationBtn : I.resendBtn}</button>
+          {/* BUG 2 — every invoice (esp. PAID = receipt) is downloadable as a PDF. */}
+          <button type="button" onClick={() => downloadInvoicePdf(orgId, inv.id).catch(() => setDone({ id: inv.id, emailed: false, code: 'ERROR' }))}
+            style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--violet-text)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>{I.downloadPdf}</button>
         </div>
       )}
     </div>
