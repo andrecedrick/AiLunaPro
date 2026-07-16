@@ -635,10 +635,11 @@ export function QuoteRequestPage() {
                     onClick={() => void onGenerate()}
                     style={{ ...primaryBtnStyle(), opacity: generating ? 0.6 : 1, cursor: generating ? 'wait' : 'pointer' }}
                   >
-                    {generating ? Q.generate.loading : (recoverCta ?? `${Q.generate.button} · ${format(Q.generate.cost, { n: tokenCost('quote.generation') })}`)}
+                    {generating ? Q.generate.loading : (recoverCta ?? Q.generate.button)}
                   </button>
-                  {/* Keep the token cost visible when the value CTA replaces the "· N tokens" label (honesty). */}
-                  {recoverCta && !generating && (
+                  {/* CRO — the primary CTA reads pure outcome; the token cost stays visible
+                         (honesty) but demoted to this muted subline, never inside the button. */}
+                  {!generating && (
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
                       {format(Q.generate.cost, { n: tokenCost('quote.generation') })}
                     </div>
