@@ -236,6 +236,16 @@ describe('GET /api/invoices — data consistency (the invoice must have ONE iden
     // Everything buildOrgActivity needs for a 💰 paid event dated by paidAt:
     expect([inv.status, inv.paidAt, inv.amount, inv.quoteTitle]).toEqual(['paid', '2026-07-15T00:00:00.000Z', 6500, 'Paid project']);
   });
+
+  it('BUG 1 — surfaces the DB email state so a paid invoice never shows a stale "email failed"', async () => {
+    state.rows = [
+      { name: 'documents/invoices/quote_p', fields: { id: 'quote_p', quoteId: 'p', orgId: 'orgA', status: 'paid', amount: 6500, createdAt: '2026-07-10T00:00:00.000Z', confirmationEmailedAt: '2026-07-17T15:46:52.025Z', lastResentAt: '2026-07-16T00:00:00.000Z' } },
+    ];
+    const { invoices: list } = await (await get()).json() as { invoices: Array<Record<string, unknown>> };
+    // The list is the source of truth for the UI's "confirmation sent on <date>" line.
+    expect(list[0].confirmationEmailedAt).toBe('2026-07-17T15:46:52.025Z');
+    expect(list[0].lastResentAt).toBe('2026-07-16T00:00:00.000Z');
+  });
 });
 
 describe('GET /api/invoices/:id/pdf — downloadable invoice document (BUG 2)', () => {
@@ -290,6 +300,8 @@ describe('CUSTOMER invoice access — no account, no sign-in (GET /api/invoices/
     expect(html).toContain('2026-07-15');                // payment date
     expect(html).toContain('Card (online payment)');     // payment method
     expect(html).toContain('AiLunaPro');                 // company identity
+    expect(html).toContain('res.cloudinary.com');        // BUG 2 — real production logo, not the "AL" box
+    expect(html).not.toContain('>AL<');                  // the placeholder box is gone
     expect(html).toContain('Download invoice PDF');      // the PDF is one click away
     expect(html).toContain('No account needed');
   });

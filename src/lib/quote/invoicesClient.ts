@@ -23,6 +23,8 @@ export interface InvoiceItem {
   transferDeadline?:    string | null;
   paidAt?:       string | null;
   createdAt:     string;
+  confirmationEmailedAt?: string | null;  // set when the paid-confirmation send returned OK
+  lastResentAt?:          string | null;  // set when an invoice re-send returned OK
 }
 
 /** A quote at any lifecycle stage — full-visibility tracking (sender + superadmin). */

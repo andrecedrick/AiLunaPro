@@ -76,12 +76,23 @@ export function InvoicesPage() {
     finally { setResendId(null); }
   };
   // FIX 2 — precise resend feedback: sent ✅ / no client email / send failed.
-  const resendMsg = (d: { emailed: boolean; code?: string }): string =>
-    d.emailed ? I.sent : d.code === 'NO_RECIPIENT' ? I.resendNoRecipient : I.sentNoEmail;
+  // Paid resend = payment confirmation (receipt), not "invoice sent".
+  const resendMsg = (d: { emailed: boolean; code?: string }, paid: boolean): string =>
+    d.emailed ? (paid ? I.confirmationResent : I.sent) : d.code === 'NO_RECIPIENT' ? I.resendNoRecipient : I.sentNoEmail;
+
+  // BUG 1 — the DB is the source of truth for email state. A paid invoice whose
+  // confirmation send returned OK shows a persistent "confirmation sent on <date>";
+  // never a stale one-click failure. Returns null when no successful send is recorded.
+  const emailState = (inv: InvoiceItem): { label: string; date: string } | null => {
+    if (inv.status === 'paid' && inv.confirmationEmailedAt) return { label: I.confirmationSentOn, date: inv.confirmationEmailedAt.slice(0, 10) };
+    if (inv.status !== 'paid' && inv.lastResentAt)          return { label: I.invoiceSentOn,       date: inv.lastResentAt.slice(0, 10) };
+    return null;
+  };
 
   /* ── Invoice card ── */
   const invoiceCard = (inv: InvoiceItem) => {
     const isFocused = isInvoiceFocused(inv);
+    const emailStateOf = emailState(inv);
     return (
     <div key={inv.id} data-focus-invoice={inv.id} data-focus-quoteof={inv.quoteId} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: isFocused ? focusRing : undefined }}>
       {isFocused && <div style={{ marginBottom: 10, fontSize: 12, fontWeight: 700, color: 'var(--violet-text)' }}>📧 {I.fromEmail}</div>}
@@ -97,9 +108,15 @@ export function InvoicesPage() {
         </div>
       </div>
 
+      {/* Persistent, DB-backed email state — shown until the admin takes an action.
+          Suppressed while a fresh resend result for THIS invoice is on screen. */}
+      {done?.id !== inv.id && emailStateOf && (
+        <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: 'var(--green-text, #059669)' }}>✅ {emailStateOf.label} · {emailStateOf.date}</div>
+      )}
+
       {done?.id === inv.id && (
         <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done, inv.status === 'paid')}</div>
           {/* The exact provider reason (e.g. "Sequenzy send failed (HTTP 404)") — the
               route always returned it; hiding it made live failures undiagnosable. */}
           {!done.emailed && done.detail && (

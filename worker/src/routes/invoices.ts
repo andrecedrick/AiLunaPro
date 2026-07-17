@@ -52,6 +52,11 @@ async function customerInvoiceLink(env: AppEnv['Bindings'], invoiceId: string, o
 
 const esc = (s: string) => s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] as string));
 
+// BUG 2 — the real AiLunaPro production logo (the same asset the app shell/auth card use),
+// cropped to a clean horizontal lockup for HTML surfaces. Hosted → renders in the receipt
+// page AND in email clients. Keep in sync with the app LOGO_URL + the email templates.
+const BRAND_LOGO_URL = 'https://res.cloudinary.com/dhtnegf9d/image/upload/c_crop,g_center,w_492,h_150,y_6/v1777320369/6_xldhxr.png';
+
 /** The customer's receipt page — served on the signed link, no account required. Shows the
  *  payment status and every detail a client needs to file it, with the PDF one click away. */
 function customerReceiptPage(d: InvoicePdfInput): string {
@@ -73,8 +78,7 @@ function customerReceiptPage(d: InvoicePdfInput): string {
 <style>
  body{margin:0;background:#f4f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#2a2a3c;padding:24px 12px}
  .card{max-width:600px;margin:0 auto;background:#fff;border:1px solid #ececf2;border-radius:14px;padding:28px 32px}
- .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;color:#1a1a2e}
- .logo{background:#4F46E5;color:#fff;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px}
+ .brand{height:40px;width:auto;display:block}
  h1{font-size:20px;margin:18px 0 4px;color:#1a1a2e}
  .sub{color:#6b7280;font-size:13px;margin:0 0 18px}
  .amt{background:${paid ? '#ecfdf5' : '#f8f9fc'};border:1px solid ${paid ? '#a7f3d0' : '#e6e6f0'};border-radius:10px;padding:16px 18px;margin:18px 0}
@@ -86,7 +90,7 @@ function customerReceiptPage(d: InvoicePdfInput): string {
  .btn{display:block;text-align:center;background:#4F46E5;color:#fff;text-decoration:none;padding:14px;border-radius:10px;font-weight:700;margin:22px 0 8px}
  .note{text-align:center;color:#9ca3af;font-size:12px}
 </style></head><body><div class="card">
-<div class="brand"><span class="logo">AL</span>AiLunaPro</div>
+<img class="brand" src="${BRAND_LOGO_URL}" alt="AiLunaPro" width="164" height="50" />
 <h1>${paid ? '✅ Payment received — thank you!' : 'Invoice'}</h1>
 <p class="sub">${paid ? 'This page is your receipt. No account needed — keep this link to retrieve it any time.' : 'This invoice is awaiting payment.'}</p>
 <div class="amt"><div class="k">${paid ? 'Amount paid' : 'Amount due'}</div><div class="v">$${d.amountUsd.toLocaleString('en-US')} USD</div></div>
@@ -349,6 +353,12 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
       transferDeadline:    typeof f.transferDeadline === 'string' ? f.transferDeadline : null,
       paidAt:        typeof f.paidAt === 'string' ? f.paidAt : null,
       createdAt:     typeof f.createdAt === 'string' ? f.createdAt : '',
+      // Email state (BUG 1 — false "email failed" warning): the DB is the source of
+      // truth. confirmationEmailedAt is set ONLY when a payment-confirmation send
+      // returned OK; lastResentAt when an invoice re-send returned OK. Surfacing them
+      // lets the admin see "email delivered" instead of a stale one-click failure.
+      confirmationEmailedAt: typeof f.confirmationEmailedAt === 'string' ? f.confirmationEmailedAt : null,
+      lastResentAt:          typeof f.lastResentAt === 'string' ? f.lastResentAt : null,
     };
   });
   // Newest first.
