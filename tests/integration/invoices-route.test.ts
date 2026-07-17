@@ -11,6 +11,13 @@ const state = vi.hoisted(() => ({
   docs: new Map<string, Record<string, unknown>>(),
 }));
 const seq = vi.hoisted(() => ({ sends: [] as Array<Record<string, unknown>>, ok: true }));
+// Customer invoice links are HMAC-signed; the signature itself is covered by the
+// audit-express-share suite, so here we drive the route's verification branches.
+const share = vi.hoisted(() => ({ verify: vi.fn(), sign: vi.fn(async () => ({ token: 'signed-tok', exp: 9_999_999_999 })) }));
+vi.mock('../../worker/src/lib/audit-express-share', () => ({
+  signShareToken: (...a: unknown[]) => share.sign(...(a as [])),
+  verifyShareToken: (...a: unknown[]) => share.verify(...(a as [])),
+}));
 
 vi.mock('../../worker/src/middleware/auth', () => ({
   requireAuth: () => async (c: { set: (k: string, v: unknown) => void }, next: () => Promise<void>) => { c.set('uid', 'u1'); await next(); },
@@ -38,7 +45,7 @@ vi.mock('../../worker/src/lib/sequenzy', () => ({
 
 import invoices from '../../worker/src/routes/invoices';
 
-const ENV = { FIREBASE_SERVICE_ACCOUNT_JSON: '{}', SEQUENZY_API_KEY: 'k', ADMIN_EMAIL: 'admin@x.com', APP_BASE_URL: 'https://audit.ailunapro.com' } as unknown as Record<string, unknown>;
+const ENV = { FIREBASE_SERVICE_ACCOUNT_JSON: '{}', SEQUENZY_API_KEY: 'k', ADMIN_EMAIL: 'admin@x.com', APP_BASE_URL: 'https://audit.ailunapro.com', AUDIT_SHARE_SECRET: 'sec' } as unknown as Record<string, unknown>;
 const get = (org = 'orgA') => invoices.request(`/api/invoices?orgId=${org}`, { headers: { Authorization: 'Bearer t' } }, ENV);
 // Fixed-price: confirm is RE-SEND only (no amount input — the amount is immutable).
 const confirm = (id: string, org = 'orgA') =>
@@ -49,6 +56,7 @@ const confirm = (id: string, org = 'orgA') =>
 
 beforeEach(() => {
   runQuery.mockClear(); seq.sends.length = 0; seq.ok = true; state.docs.clear();
+  share.verify.mockReset(); share.sign.mockClear();
   state.rows = [
     { name: 'documents/invoices/quote_a', fields: { id: 'quote_a', quoteId: 'a', orgId: 'orgA', customerEmail: 'c@x.com', amount: null, currency: 'usd', rangeMinUsd: 10000, rangeMaxUsd: 20000, status: 'draft', createdAt: '2026-06-19T00:00:00.000Z' } },
     { name: 'documents/invoices/quote_b', fields: { id: 'quote_b', quoteId: 'b', orgId: 'orgA', amount: 5000, currency: 'usd', status: 'pending', createdAt: '2026-06-20T00:00:00.000Z' } },
@@ -85,7 +93,11 @@ describe('POST /api/invoices/:id/confirm — re-send only (no re-amount)', () =>
     expect(send.to).toBe('c@x.com');
     const v = send.variables as Record<string, string>;
     expect(v.AMOUNT).toBe('$15,000');
-    expect(v.INVOICE_URL).toContain('/#/invoices');
+    // The client is NOT an org member: their link must be the signed no-login invoice,
+    // never /#/invoices (the member panel = sign-in wall). This assertion previously
+    // pinned that exact customer-facing defect.
+    expect(v.INVOICE_URL).toContain('/api/invoices/shared/');
+    expect(v.INVOICE_URL).not.toContain('/#/invoices');
     expect(v.BANK_DETAILS).toContain('available on request');   // graceful fallback, never blank
   });
 
@@ -246,6 +258,50 @@ describe('GET /api/invoices/:id/pdf — downloadable invoice document (BUG 2)', 
   it('409 NO_AMOUNT for an amount-less legacy draft', async () => {
     state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'draft', amount: null });
     expect((await pdf('quote_a')).status).toBe(409);
+  });
+});
+
+describe('CUSTOMER invoice access — no account, no sign-in (GET /api/invoices/shared/:token)', () => {
+  const shared = (token: string, dl = false) =>
+    invoices.request(`/api/invoices/shared/${token}${dl ? '?dl=1' : ''}`, {}, ENV);   // NOTE: no Authorization header
+
+  it('a paying customer opens their PAID invoice with NO auth header at all', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', status: 'paid', amount: 6500, paidAt: '2026-07-15T00:00:00.000Z', createdAt: '2026-07-14T00:00:00.000Z' });
+    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'quote_a', exp: 9_999_999_999, shareVersion: 3 } });
+    const res = await shared('tok');
+    expect(res.status).toBe(200);                       // NOT 401 — the token is the gate
+    expect(res.headers.get('Content-Type')).toBe('application/pdf');
+    expect(res.headers.get('Content-Disposition')).toContain('inline');   // opens in the browser
+    const buf = new Uint8Array(await res.arrayBuffer());
+    expect(String.fromCharCode(...buf.slice(0, 5))).toBe('%PDF-');
+  });
+
+  it('?dl=1 downloads the receipt as an attachment', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 6500, quoteId: 'a', createdAt: '2026-07-14T00:00:00.000Z' });
+    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'quote_a', exp: 9_999_999_999, shareVersion: 3 } });
+    const res = await shared('tok', true);
+    expect(res.headers.get('Content-Disposition')).toContain('attachment');
+  });
+
+  it('a quote-PDF (v1) or accept (v2) token can NEVER open an invoice', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 6500 });
+    for (const v of [1, 2]) {
+      share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'quote_a', exp: 9_999_999_999, shareVersion: v } });
+      expect((await shared('tok')).status).toBe(401);
+    }
+  });
+
+  it('a token for org A cannot read org B\'s invoice (cross-tenant)', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgB', status: 'paid', amount: 6500 });
+    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'quote_a', exp: 9_999_999_999, shareVersion: 3 } });
+    expect((await shared('tok')).status).toBe(404);
+  });
+
+  it('an expired link is 410 and an invalid one is 401', async () => {
+    share.verify.mockResolvedValueOnce({ ok: false, code: 'SHARE_EXPIRED' });
+    expect((await shared('old')).status).toBe(410);
+    share.verify.mockResolvedValueOnce({ ok: false, code: 'SHARE_INVALID' });
+    expect((await shared('bad')).status).toBe(401);
   });
 });
 

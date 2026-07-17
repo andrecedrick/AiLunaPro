@@ -221,6 +221,7 @@ async function handleEvent(
                 customer: typeof inv.customerEmail === 'string' ? inv.customerEmail : '',
                 amount: Math.round(paidCents / 100), appBase,
                 reference: typeof inv.quoteId === 'string' ? inv.quoteId : invoiceId,
+                paidAt: paidIso, paymentMethod: 'stripe',
               });
               console.log('[webhook] payment confirmation emailed:', emailed, 'invoice:', invoiceId);
             } catch (e) { console.warn('[webhook] payment confirmation send failed:', e instanceof Error ? e.message : ''); }

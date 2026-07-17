@@ -17,6 +17,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { firestoreRunQuery, firestoreGet, firestoreSet, firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { buildInvoicePdf } from '../lib/quote-pdf';
+import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { sendTransactional } from '../lib/sequenzy';
 import { formatBankDetails, bankDetailsFields } from '../lib/bank-details';
 import { getStripe } from '../lib/stripe';
@@ -31,6 +32,23 @@ const INVOICE_ROLES: RoleList = ['owner', 'admin', 'billing', 'member'];
 const CONFIRM_ROLES: RoleList = ['owner', 'admin']; // re-sending is admin-only
 
 const QUOTE_DOC = (orgId: string, quoteId: string) => `organizations/${orgId}/quotes/${quoteId}`;
+
+/* Customer invoice links: a dedicated share version so a quote-PDF (v1) or quote-accept
+ * (v2) token can never be replayed against an invoice. 1 year — a paid receipt must stay
+ * reachable for accounting long after the payment. */
+const INVOICE_SHARE_VERSION = 3;
+const INVOICE_LINK_TTL_SEC = 365 * 24 * 60 * 60;
+
+/** The customer's own no-login invoice/receipt link. Null when links are disabled. */
+async function customerInvoiceLink(env: AppEnv['Bindings'], invoiceId: string, orgId: string): Promise<string | null> {
+  const secret = env.AUDIT_SHARE_SECRET;
+  if (!secret) return null;
+  try {
+    const { token } = await signShareToken(secret, orgId, invoiceId, INVOICE_SHARE_VERSION, INVOICE_LINK_TTL_SEC, Math.floor(Date.now() / 1000));
+    const base = ((env as { WORKER_PUBLIC_BASE?: string }).WORKER_PUBLIC_BASE ?? 'https://api.ailunapro.com').replace(/\/+$/, '');
+    return `${base}/api/invoices/shared/${token}`;
+  } catch { return null; }
+}
 
 /** ISSUE 6 — GRACEFUL Stripe payment link. Create a one-time Checkout Session for the
  *  invoice amount (USD) when Stripe is configured; persist the url on the invoice; the
@@ -87,7 +105,10 @@ async function resolveBankDetails(saJson: string, orgId: string): Promise<string
 async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; paymentUrl?: string | null; method?: 'stripe' | 'bank_transfer'; reference?: string; deadlineIso?: string | null }): Promise<{ emailed: boolean; emailError?: string }> {
   if (!a.customer) return { emailed: false };
   const bankDetails = await resolveBankDetails(saJson, a.orgId);
-  const appInvoiceUrl = `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`;
+  // CUSTOMER-FACING: the client is not an org member — never send them /#/invoices (the
+  // member panel = sign-in wall). Their invoice link is the signed no-login document.
+  const customerLink = await customerInvoiceLink(env, a.invoiceId, a.orgId);
+  const appInvoiceUrl = customerLink ?? `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`;
   const isBank = a.method === 'bank_transfer';
   const res = await sendTransactional(env.SEQUENZY_API_KEY, {
     to:      a.customer,
@@ -119,8 +140,12 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
 /** BUG 1 — payment-confirmation email (paid receipt). Sent when an invoice becomes paid
  *  (Stripe webhook exact-amount reconcile + admin bank-transfer mark-paid) and re-sent by
  *  /confirm on an already-paid invoice. Best-effort, non-fatal; exported for stripe.ts. */
-export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; reference?: string }): Promise<{ emailed: boolean; emailError?: string }> {
+export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; reference?: string; paidAt?: string | null; paymentMethod?: string }): Promise<{ emailed: boolean; emailError?: string }> {
   if (!a.customer) return { emailed: false };
+  // The receipt link is the CUSTOMER's: a signed no-login PDF (never /#/invoices, which
+  // is the org-member panel and would ask a paying client to sign in). Falls back to the
+  // app URL only if share links are disabled server-side.
+  const link = await customerInvoiceLink(env, a.invoiceId, a.orgId);
   const res = await sendTransactional(env.SEQUENZY_API_KEY, {
     to:      a.customer,
     slug:    'payment-confirmation',
@@ -129,7 +154,11 @@ export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: s
       PROJECT:     a.project,
       AMOUNT:      `$${a.amount.toLocaleString('en-US')}`,
       REFERENCE:   a.reference ?? a.invoiceId,
-      INVOICE_URL: `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`,
+      // A real receipt: invoice number, payment date and method — not just an amount.
+      INVOICE_NO:  a.invoiceId,
+      PAID_ON:     (a.paidAt ?? new Date().toISOString()).slice(0, 10),
+      METHOD:      a.paymentMethod === 'bank_transfer' ? 'Bank transfer' : 'Card (online payment)',
+      INVOICE_URL: link ? `${link}?dl=1` : `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`,
     },
   });
   if (!res.ok) console.warn('[invoices] payment-confirmation NOT sent (check SEQUENZY_API_KEY / payment-confirmation):', res.error ?? 'unknown');
@@ -307,7 +336,7 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
     const paidBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
     const paidProject = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle
       : typeof inv.quoteId === 'string' ? `Quote ${inv.quoteId.slice(0, 8)}` : id;
-    const conf = await sendPaymentConfirmation(env, saJson, { orgId, invoiceId: id, project: paidProject, customer: paidCustomer, amount: paidAmount, appBase: paidBase, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id });
+    const conf = await sendPaymentConfirmation(env, saJson, { orgId, invoiceId: id, project: paidProject, customer: paidCustomer, amount: paidAmount, appBase: paidBase, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id, paidAt: typeof inv.paidAt === 'string' ? inv.paidAt : null, paymentMethod: typeof inv.paymentMethod === 'string' ? inv.paymentMethod : 'stripe' });
     return c.json({ ok: true, status: 'paid', alreadyConfirmed: true, emailed: conf.emailed, ...(conf.emailed ? {} : { code: 'EMAIL_FAILED' }), ...(conf.emailError ? { emailError: conf.emailError } : {}) });
   }
 
@@ -478,9 +507,66 @@ invoices.post('/api/invoices/:id/mark-paid', requireAuth(), requireRole(CONFIRM_
     orgId, invoiceId: id, project,
     customer: typeof inv.customerEmail === 'string' ? inv.customerEmail : '',
     amount, appBase, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id,
+    paidAt: nowIso, paymentMethod: 'bank_transfer',
   });
   dlog(env, '[invoices] mark-paid', id, 'by', uid, 'confirmationEmailed=', emailed);
   return c.json({ ok: true, status: 'paid', emailed });
+});
+
+/* ── GET /api/invoices/shared/:token — PUBLIC customer invoice/receipt ───────
+ *
+ * CUSTOMER-FACING BILLING FIX: a paying client is NOT an org member, so the old
+ * emailed link (/#/invoices) hit the auth wall — the customer could never open the
+ * invoice they had just paid for. This route is the customer's copy: the HMAC token
+ * IS the gate (same mechanism as the public quote PDF), so it needs no account, no
+ * sign-in and grants no admin access. READ-ONLY: it renders the invoice document and
+ * nothing else — the token carries orgId+invoiceId, and only that invoice is served.
+ * `?dl=1` downloads; otherwise it opens inline in the browser. */
+invoices.get('/api/invoices/shared/:token', async c => {
+  c.header('Cache-Control', 'no-store');
+  const env = c.env as AppEnv['Bindings'];
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
+  const secret = env.AUDIT_SHARE_SECRET;
+  if (!secret) return c.json({ error: 'Links are not enabled.', code: 'SHARE_DISABLED' }, 503);
+
+  const v = await verifyShareToken(secret, c.req.param('token'), Math.floor(Date.now() / 1000));
+  if (!v.ok) {
+    return c.json(
+      { error: v.code === 'SHARE_EXPIRED' ? 'This link has expired.' : 'This link is invalid.', code: v.code },
+      v.code === 'SHARE_EXPIRED' ? 410 : 401,
+    );
+  }
+  // Dedicated version: a quote-PDF (v1) or accept (v2) token can never open an invoice.
+  if (v.payload.shareVersion !== INVOICE_SHARE_VERSION) {
+    return c.json({ error: 'This link is invalid.', code: 'SHARE_INVALID' }, 401);
+  }
+
+  const { orgId, auditId: invoiceId } = v.payload;
+  const inv = await firestoreGet(saJson, `invoices/${invoiceId}`) as Record<string, unknown> | null;
+  if (!inv || inv.orgId !== orgId) return c.json({ error: 'Invoice not found.', code: 'NOT_FOUND' }, 404);
+  const amount = typeof inv.amount === 'number' ? inv.amount : 0;
+  if (amount <= 0) return c.json({ error: 'Invoice has no amount.', code: 'NO_AMOUNT' }, 409);
+
+  const bytes = buildInvoicePdf({
+    invoiceId,
+    reference:     typeof inv.quoteId === 'string' && inv.quoteId ? inv.quoteId : invoiceId,
+    quoteTitle:    typeof inv.quoteTitle === 'string' ? inv.quoteTitle : '',
+    customerEmail: typeof inv.customerEmail === 'string' ? inv.customerEmail : '',
+    amountUsd:     amount,
+    status:        typeof inv.status === 'string' ? inv.status : 'pending',
+    paymentMethod: typeof inv.paymentMethod === 'string' ? inv.paymentMethod : 'stripe',
+    createdAt:     typeof inv.createdAt === 'string' ? inv.createdAt : new Date().toISOString(),
+    paidAt:        typeof inv.paidAt === 'string' ? inv.paidAt : null,
+  });
+  const dl = c.req.query('dl') === '1';
+  return new Response(bytes.slice().buffer as ArrayBuffer, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `${dl ? 'attachment' : 'inline'}; filename="invoice-${invoiceId}.pdf"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 });
 
 /* ── GET /api/invoices/:id/pdf — downloadable invoice document (BUG 2) ───────
