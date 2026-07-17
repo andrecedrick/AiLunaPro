@@ -48,11 +48,11 @@ import invoices from '../../worker/src/routes/invoices';
 const ENV = { FIREBASE_SERVICE_ACCOUNT_JSON: '{}', SEQUENZY_API_KEY: 'k', ADMIN_EMAIL: 'admin@x.com', APP_BASE_URL: 'https://audit.ailunapro.com', AUDIT_SHARE_SECRET: 'sec' } as unknown as Record<string, unknown>;
 const get = (org = 'orgA') => invoices.request(`/api/invoices?orgId=${org}`, { headers: { Authorization: 'Bearer t' } }, ENV);
 // Fixed-price: confirm is RE-SEND only (no amount input — the amount is immutable).
-const confirm = (id: string, org = 'orgA') =>
+const confirm = (id: string, envOverride?: Record<string, unknown>, org = 'orgA') =>
   invoices.request(`/api/invoices/${id}/confirm?orgId=${org}`, {
     method: 'POST', headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
     body: JSON.stringify({ orgId: org }),
-  }, ENV);
+  }, envOverride ?? ENV);
 
 beforeEach(() => {
   runQuery.mockClear(); seq.sends.length = 0; seq.ok = true; state.docs.clear();
@@ -101,6 +101,16 @@ describe('POST /api/invoices/:id/confirm — re-send only (no re-amount)', () =>
     expect(v.BANK_DETAILS).toContain('available on request');   // graceful fallback, never blank
   });
 
+  it('never falls back to the sign-in wall when share links are disabled', async () => {
+    // A missing AUDIT_SHARE_SECRET used to silently downgrade the customer's link back to
+    // /#/invoices — a paying client sent to a login page. No config state may do that.
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', customerEmail: 'c@x.com', status: 'pending', amount: 15000 });
+    await confirm('quote_a', { ...ENV, AUDIT_SHARE_SECRET: undefined });
+    const v = seq.sends.find(s => s.slug === 'invoice-client')!.variables as Record<string, string>;
+    expect(v.INVOICE_URL).not.toContain('/#/invoices');
+    expect(v.INVOICE_URL).toBe('');
+  });
+
   it('includes the configured region bank details in the email', async () => {
     state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', customerEmail: 'c@x.com', status: 'pending', amount: 15000 });
     state.docs.set('organizations/orgA/settings/billing', { region: 'eu', accountName: 'Acme SARL', iban: 'FR7630006000011234567890189', bic: 'BNPAFRPP' });
@@ -112,7 +122,7 @@ describe('POST /api/invoices/:id/confirm — re-send only (no re-amount)', () =>
 
   it('rejects re-sending an invoice from another org (cross-org guard)', async () => {
     state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'pending', amount: 15000 });
-    const res = await confirm('quote_a', 'orgB');
+    const res = await confirm('quote_a', undefined, 'orgB');
     expect(res.status).toBe(404);
     expect(seq.sends.length).toBe(0);
   });
@@ -265,22 +275,42 @@ describe('CUSTOMER invoice access — no account, no sign-in (GET /api/invoices/
   const shared = (token: string, dl = false) =>
     invoices.request(`/api/invoices/shared/${token}${dl ? '?dl=1' : ''}`, {}, ENV);   // NOTE: no Authorization header
 
-  it('a paying customer opens their PAID invoice with NO auth header at all', async () => {
-    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', status: 'paid', amount: 6500, paidAt: '2026-07-15T00:00:00.000Z', createdAt: '2026-07-14T00:00:00.000Z' });
+  it('a paying customer opens the receipt page with NO auth header, and it shows every payment detail', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', quoteId: 'a', quoteTitle: 'Acme bot', customerEmail: 'c@x.com', status: 'paid', amount: 6500, paymentMethod: 'stripe', paidAt: '2026-07-15T00:00:00.000Z', createdAt: '2026-07-14T00:00:00.000Z' });
     share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'quote_a', exp: 9_999_999_999, shareVersion: 3 } });
     const res = await shared('tok');
-    expect(res.status).toBe(200);                       // NOT 401 — the token is the gate
+    expect(res.status).toBe(200);                       // NOT 401 — the token IS the gate
+    expect(res.headers.get('Content-Type')).toContain('text/html');
+    const html = await res.text();
+    // Everything the customer must see, without an account:
+    expect(html).toContain('Payment received');          // status: PAID
+    expect(html).toContain('$6,500');                    // amount paid
+    expect(html).toContain('quote_a');                   // invoice number
+    expect(html).toContain('Acme bot');                  // project
+    expect(html).toContain('2026-07-15');                // payment date
+    expect(html).toContain('Card (online payment)');     // payment method
+    expect(html).toContain('AiLunaPro');                 // company identity
+    expect(html).toContain('Download invoice PDF');      // the PDF is one click away
+    expect(html).toContain('No account needed');
+  });
+
+  it('the page\'s Download button (?dl=1) returns the real PDF as an attachment', async () => {
+    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 6500, quoteId: 'a', createdAt: '2026-07-14T00:00:00.000Z' });
+    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'quote_a', exp: 9_999_999_999, shareVersion: 3 } });
+    const res = await shared('tok', true);
+    expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('application/pdf');
-    expect(res.headers.get('Content-Disposition')).toContain('inline');   // opens in the browser
+    expect(res.headers.get('Content-Disposition')).toContain('attachment');
     const buf = new Uint8Array(await res.arrayBuffer());
     expect(String.fromCharCode(...buf.slice(0, 5))).toBe('%PDF-');
   });
 
-  it('?dl=1 downloads the receipt as an attachment', async () => {
-    state.docs.set('invoices/quote_a', { orgId: 'orgA', status: 'paid', amount: 6500, quoteId: 'a', createdAt: '2026-07-14T00:00:00.000Z' });
-    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'quote_a', exp: 9_999_999_999, shareVersion: 3 } });
-    const res = await shared('tok', true);
-    expect(res.headers.get('Content-Disposition')).toContain('attachment');
+  it('an unpaid invoice renders as an invoice (amount due), not a receipt', async () => {
+    state.docs.set('invoices/quote_b', { orgId: 'orgA', quoteId: 'b', status: 'pending', amount: 900, createdAt: '2026-07-14T00:00:00.000Z' });
+    share.verify.mockResolvedValue({ ok: true, payload: { orgId: 'orgA', auditId: 'quote_b', exp: 9_999_999_999, shareVersion: 3 } });
+    const html = await (await shared('tok')).text();
+    expect(html).toContain('Amount due');
+    expect(html).not.toContain('Payment received');
   });
 
   it('a quote-PDF (v1) or accept (v2) token can NEVER open an invoice', async () => {

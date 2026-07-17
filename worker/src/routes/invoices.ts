@@ -16,7 +16,7 @@ import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { firestoreRunQuery, firestoreGet, firestoreSet, firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
-import { buildInvoicePdf } from '../lib/quote-pdf';
+import { buildInvoicePdf, type InvoicePdfInput } from '../lib/quote-pdf';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { sendTransactional } from '../lib/sequenzy';
 import { formatBankDetails, bankDetailsFields } from '../lib/bank-details';
@@ -48,6 +48,52 @@ async function customerInvoiceLink(env: AppEnv['Bindings'], invoiceId: string, o
     const base = ((env as { WORKER_PUBLIC_BASE?: string }).WORKER_PUBLIC_BASE ?? 'https://api.ailunapro.com').replace(/\/+$/, '');
     return `${base}/api/invoices/shared/${token}`;
   } catch { return null; }
+}
+
+const esc = (s: string) => s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] as string));
+
+/** The customer's receipt page — served on the signed link, no account required. Shows the
+ *  payment status and every detail a client needs to file it, with the PDF one click away. */
+function customerReceiptPage(d: InvoicePdfInput): string {
+  const paid = d.status === 'paid';
+  const method = d.paymentMethod === 'bank_transfer' ? 'Bank transfer' : 'Card (online payment)';
+  const rows: Array<[string, string]> = [
+    ['Invoice number', d.invoiceId],
+    ['Project', d.quoteTitle || 'Project quote'],
+    ['Billed to', d.customerEmail || '—'],
+    ['Issued on', d.createdAt.slice(0, 10)],
+    ...(paid ? ([['Payment date', (d.paidAt ?? '').slice(0, 10) || '—'], ['Payment method', method]] as Array<[string, string]>) : []),
+    ['Payment reference', d.reference],
+    ['Billed by', 'AiLunaPro'],
+  ];
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>${paid ? 'Receipt' : 'Invoice'} ${esc(d.invoiceId)} — AiLunaPro</title>
+<style>
+ body{margin:0;background:#f4f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#2a2a3c;padding:24px 12px}
+ .card{max-width:600px;margin:0 auto;background:#fff;border:1px solid #ececf2;border-radius:14px;padding:28px 32px}
+ .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;color:#1a1a2e}
+ .logo{background:#4F46E5;color:#fff;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px}
+ h1{font-size:20px;margin:18px 0 4px;color:#1a1a2e}
+ .sub{color:#6b7280;font-size:13px;margin:0 0 18px}
+ .amt{background:${paid ? '#ecfdf5' : '#f8f9fc'};border:1px solid ${paid ? '#a7f3d0' : '#e6e6f0'};border-radius:10px;padding:16px 18px;margin:18px 0}
+ .amt .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${paid ? '#047857' : '#6b7280'}}
+ .amt .v{font-size:24px;font-weight:800;color:${paid ? '#059669' : '#1a1a2e'};margin-top:4px}
+ table{width:100%;border-collapse:collapse;font-size:13px}
+ td{padding:9px 0;border-top:1px solid #f0f0f5}
+ td.k{color:#6b7280;width:45%}td.v{font-weight:700;word-break:break-all}
+ .btn{display:block;text-align:center;background:#4F46E5;color:#fff;text-decoration:none;padding:14px;border-radius:10px;font-weight:700;margin:22px 0 8px}
+ .note{text-align:center;color:#9ca3af;font-size:12px}
+</style></head><body><div class="card">
+<div class="brand"><span class="logo">AL</span>AiLunaPro</div>
+<h1>${paid ? '✅ Payment received — thank you!' : 'Invoice'}</h1>
+<p class="sub">${paid ? 'This page is your receipt. No account needed — keep this link to retrieve it any time.' : 'This invoice is awaiting payment.'}</p>
+<div class="amt"><div class="k">${paid ? 'Amount paid' : 'Amount due'}</div><div class="v">$${d.amountUsd.toLocaleString('en-US')} USD</div></div>
+<table>${rows.map(([k, v]) => `<tr><td class="k">${esc(k)}</td><td class="v">${esc(v)}</td></tr>`).join('')}</table>
+<a class="btn" href="?dl=1">Download invoice PDF</a>
+<p class="note">Questions? Just reply to the email that brought you here.</p>
+</div></body></html>`;
 }
 
 /** ISSUE 6 — GRACEFUL Stripe payment link. Create a one-time Checkout Session for the
@@ -108,7 +154,11 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
   // CUSTOMER-FACING: the client is not an org member — never send them /#/invoices (the
   // member panel = sign-in wall). Their invoice link is the signed no-login document.
   const customerLink = await customerInvoiceLink(env, a.invoiceId, a.orgId);
-  const appInvoiceUrl = customerLink ?? `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`;
+  // NO fallback to /#/invoices: that is the member panel = sign-in wall, and a paying client
+  // has no account. If the link cannot be minted the email still carries the full invoice
+  // detail (it IS the document) and the reply-to; a dead button beats an auth wall.
+  if (!customerLink) console.error('[invoices] AUDIT_SHARE_SECRET missing — invoice-client sent WITHOUT a customer link');
+  const appInvoiceUrl = customerLink ?? '';
   const isBank = a.method === 'bank_transfer';
   const res = await sendTransactional(env.SEQUENZY_API_KEY, {
     to:      a.customer,
@@ -158,7 +208,9 @@ export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: s
       INVOICE_NO:  a.invoiceId,
       PAID_ON:     (a.paidAt ?? new Date().toISOString()).slice(0, 10),
       METHOD:      a.paymentMethod === 'bank_transfer' ? 'Bank transfer' : 'Card (online payment)',
-      INVOICE_URL: link ? `${link}?dl=1` : `${a.appBase}/#/invoices?invoiceId=${encodeURIComponent(a.invoiceId)}`,
+      // The receipt page (no ?dl=1): opens in the browser with the payment detail visible
+      // and a Download-PDF button. Never /#/invoices — see sendClientInvoice.
+      INVOICE_URL: link ?? '',
     },
   });
   if (!res.ok) console.warn('[invoices] payment-confirmation NOT sent (check SEQUENZY_API_KEY / payment-confirmation):', res.error ?? 'unknown');
@@ -548,7 +600,7 @@ invoices.get('/api/invoices/shared/:token', async c => {
   const amount = typeof inv.amount === 'number' ? inv.amount : 0;
   if (amount <= 0) return c.json({ error: 'Invoice has no amount.', code: 'NO_AMOUNT' }, 409);
 
-  const bytes = buildInvoicePdf({
+  const doc = {
     invoiceId,
     reference:     typeof inv.quoteId === 'string' && inv.quoteId ? inv.quoteId : invoiceId,
     quoteTitle:    typeof inv.quoteTitle === 'string' ? inv.quoteTitle : '',
@@ -558,15 +610,22 @@ invoices.get('/api/invoices/shared/:token', async c => {
     paymentMethod: typeof inv.paymentMethod === 'string' ? inv.paymentMethod : 'stripe',
     createdAt:     typeof inv.createdAt === 'string' ? inv.createdAt : new Date().toISOString(),
     paidAt:        typeof inv.paidAt === 'string' ? inv.paidAt : null,
-  });
-  const dl = c.req.query('dl') === '1';
-  return new Response(bytes.slice().buffer as ArrayBuffer, {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `${dl ? 'attachment' : 'inline'}; filename="invoice-${invoiceId}.pdf"`,
-      'Cache-Control': 'no-store',
-    },
-  });
+  };
+
+  // ?dl=1 → the PDF itself (the button on the page below, and any direct link).
+  if (c.req.query('dl') === '1') {
+    const bytes = buildInvoicePdf(doc);
+    return new Response(bytes.slice().buffer as ArrayBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="invoice-${invoiceId}.pdf"`,
+        'Cache-Control': 'no-store',
+      },
+    });
+  }
+  // Otherwise the customer's receipt page: payment status + full detail in the browser,
+  // with the PDF one click away. No account, no sign-in.
+  return c.html(customerReceiptPage(doc));
 });
 
 /* ── GET /api/invoices/:id/pdf — downloadable invoice document (BUG 2) ───────
