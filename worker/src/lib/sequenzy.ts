@@ -46,9 +46,22 @@ export async function sendTransactional(
   }
 
   if (!res.ok) {
-    // Do NOT echo the response body — it can contain the invitee email or
-    // other sensitive payload. Surface status only (lands in worker logs).
-    return { ok: false, error: `Sequenzy send failed (HTTP ${res.status})` };
+    // Surface the provider's REASON, not just the status. Status-only made live send
+    // failures undiagnosable (a 401 bad key and a 404 unknown slug looked identical).
+    // The body is PII-scrubbed before it can reach a log or the admin UI: only the
+    // provider's error/message/code is taken, any email address is redacted, and the
+    // result is truncated — so a recipient address can never leak.
+    let detail = '';
+    try {
+      const body = await res.text();
+      let raw = body;
+      try {
+        const j = JSON.parse(body) as Record<string, unknown>;
+        raw = String(j.error ?? j.message ?? j.code ?? body);
+      } catch { /* non-JSON body → use the raw text */ }
+      detail = raw.replace(/[\w.+-]+@[\w.-]+\.\w+/g, '<email>').replace(/\s+/g, ' ').trim().slice(0, 140);
+    } catch { /* body unreadable → status only */ }
+    return { ok: false, error: `Sequenzy send failed (HTTP ${res.status})${detail ? `: ${detail}` : ''}` };
   }
   return { ok: true };
 }
