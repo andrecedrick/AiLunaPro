@@ -40,7 +40,7 @@ export function AdminCenterPage() {
   const [items, setItems]     = useState<InvoiceItem[] | null>(null);
   const [allQuotes, setAllQuotes] = useState<QuoteListItem[] | null>(null);
   const [error, setError]     = useState(false);
-  const [done, setDone]       = useState<{ id: string; emailed: boolean; code?: string } | null>(null);
+  const [done, setDone]       = useState<{ id: string; emailed: boolean; code?: string; detail?: string } | null>(null);
   const [resendId, setResendId] = useState<string | null>(null);
   const [govBusy, setGovBusy] = useState<string | null>(null);
   // FIX 3 — TRUE cross-org platform visibility (operators only).
@@ -117,8 +117,8 @@ export function AdminCenterPage() {
   };
   const resend = async (inv: InvoiceItem) => {
     setResendId(inv.id);
-    try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed, code: r.code }); }
-    catch { setDone({ id: inv.id, emailed: false, code: 'ERROR' }); } finally { setResendId(null); }
+    try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed, code: r.code, detail: r.emailError }); }
+    catch (e) { setDone({ id: inv.id, emailed: false, code: 'ERROR', detail: (e as Error)?.message }); } finally { setResendId(null); }
   };
   // FIX 2 — precise resend feedback: sent ✅ / no client email / send failed.
   const resendMsg = (d: { emailed: boolean; code?: string }): string =>
@@ -331,7 +331,12 @@ export function AdminCenterPage() {
                     </div>
                   </div>
                   {done?.id === inv.id && (
-                    <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
+                      {!done.emailed && done.detail && (
+                        <div style={{ marginTop: 4, fontSize: 11, fontFamily: 'ui-monospace, Consolas, monospace', color: 'var(--text-muted)', wordBreak: 'break-all' }}>{done.detail}</div>
+                      )}
+                    </div>
                   )}
                   {/* BUG 1 — a PAID invoice re-sends the payment CONFIRMATION (receipt);
                          unpaid keeps the pay-request resend + payment actions. */}

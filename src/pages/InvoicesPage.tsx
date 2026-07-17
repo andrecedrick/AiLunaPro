@@ -33,7 +33,7 @@ export function InvoicesPage() {
 
   const [items, setItems]     = useState<InvoiceItem[] | null>(null);
   const [error, setError]     = useState(false);
-  const [done, setDone]       = useState<{ id: string; emailed: boolean; code?: string } | null>(null);
+  const [done, setDone]       = useState<{ id: string; emailed: boolean; code?: string; detail?: string } | null>(null);
   const [resendId, setResendId] = useState<string | null>(null);
   const [focus] = useState(hashFocus);   // deep-link target from the email CTA (captured at mount)
   const focused = useRef(false);          // one-shot: don't re-scroll on reload()
@@ -71,8 +71,8 @@ export function InvoicesPage() {
 
   const resend = async (inv: InvoiceItem) => {
     setResendId(inv.id);
-    try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed, code: r.code }); }
-    catch { setDone({ id: inv.id, emailed: false, code: 'ERROR' }); }
+    try { const r = await resendInvoice(orgId, inv.id); setDone({ id: inv.id, emailed: r.emailed, code: r.code, detail: r.emailError }); }
+    catch (e) { setDone({ id: inv.id, emailed: false, code: 'ERROR', detail: (e as Error)?.message }); }
     finally { setResendId(null); }
   };
   // FIX 2 — precise resend feedback: sent ✅ / no client email / send failed.
@@ -98,7 +98,14 @@ export function InvoicesPage() {
       </div>
 
       {done?.id === inv.id && (
-        <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: done.emailed ? 'var(--green-text, #059669)' : '#b45309' }}>{done.emailed ? '✅' : '⚠'} {resendMsg(done)}</div>
+          {/* The exact provider reason (e.g. "Sequenzy send failed (HTTP 404)") — the
+              route always returned it; hiding it made live failures undiagnosable. */}
+          {!done.emailed && done.detail && (
+            <div style={{ marginTop: 4, fontSize: 11, fontFamily: 'ui-monospace, Consolas, monospace', color: 'var(--text-muted)', wordBreak: 'break-all' }}>{done.detail}</div>
+          )}
+        </div>
       )}
 
       {/* FIX 2/BUG 1 — resend for EVERY invoice: unpaid re-sends the pay request
