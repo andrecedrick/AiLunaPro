@@ -212,6 +212,25 @@ function AppShell() {
     return () => window.clearTimeout(t);
   }, [isLoading]);
 
+  /* Stale-tab self-heal (deploy integrity). recoverIfStaleBundle previously fired
+     ONLY on a chunk-load error — but a tab that already loaded a page (e.g. the
+     invoices list) never errors, so after a redeploy it kept rendering the OLD
+     bundle (stale i18n strings, old UI) until a manual hard refresh. Now: whenever
+     the tab regains focus, compare the running build id with /version.json and, if
+     provably stale, do the same one-shot convergent reload. Safe moment (user is
+     re-entering the tab, not mid-keystroke); the sessionStorage marker prevents any
+     reload loop. This is what makes a deployed fix actually reach an open tab. */
+  useEffect(() => {
+    const check = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      void import('./lib/routing/staleBundle').then(m => m.recoverIfStaleBundle()).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    check();   // also on mount, so a tab reopened from history heals immediately
+    return () => { document.removeEventListener('visibilitychange', check); window.removeEventListener('focus', check); };
+  }, []);
+
   /* Startup API health probe (non-blocking): logs whether the worker API is
      reachable early, so a backend outage is visible in diagnostics without
      blocking the app. Fire-and-forget; has its own timeout. */
