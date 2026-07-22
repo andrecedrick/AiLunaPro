@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 import type { AuditResult } from '../../src/types/scoring';
 
 /* Full-audit Insight Cards: explain each finding (what/why/flow/example), show

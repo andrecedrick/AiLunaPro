@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { screen, fireEvent, act } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* B8.3 — guided journey progress indicator + continuous guidance: shows the
  * 4-stage funnel on journey surfaces only, advances with the step, is reversible

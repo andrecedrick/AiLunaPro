@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 // B6.7: AuditResultView now reads the display currency via useMoney →
 // usePreferences. Provide a stable USD currency (these tests assert hours/labels,

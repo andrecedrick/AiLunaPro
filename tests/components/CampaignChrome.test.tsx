@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* B1 — the campaign chrome must adapt to auth state:
  *   anonymous → Log in / Sign up (no app return path)

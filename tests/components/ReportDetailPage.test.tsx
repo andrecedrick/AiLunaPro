@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* Render smoke test for the Report detail page. Mocks the three contexts + the
  * reports API client, then renders the REAL page (and its real result children)

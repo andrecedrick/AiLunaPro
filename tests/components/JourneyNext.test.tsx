@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* B8.2 — guided "Understanding & value → Next action" panel: deterministic
  * summary + 3 adoption options + reversible dashboard escape; advances the

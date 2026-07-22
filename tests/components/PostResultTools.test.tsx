@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* "Smart in-product access" Change B — a subtle post-audit strip that re-engages
  * users with the public Diagnostic / ROI tools. Each action navigates to the

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* S3 Phase 2 — Luna chat UI. Each turn calls askLunaAI(); on success it renders
  * the AI reply + allowlisted action, and on { fallback: true } it uses the

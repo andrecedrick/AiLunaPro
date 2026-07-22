@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* B4 — Luna AI Copilot (Option A, rule-based): named route-aware slide-over
  * with deterministic guidance, journey position, deep-link actions, Help link.

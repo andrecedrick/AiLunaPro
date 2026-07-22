@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 import { SystemBuilderPage } from '../../src/pages/SystemBuilderPage';
 import { ThemeProvider } from '../../src/context/ThemeContext';
 import { PreferencesProvider } from '../../src/context/PreferencesContext';

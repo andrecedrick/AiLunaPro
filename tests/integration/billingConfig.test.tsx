@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 import { BillingSettingsPage } from '../../src/pages/settings/BillingSettingsPage';
 import * as configService from '../../src/lib/billing/configService';
 import * as platformService from '../../src/lib/platform/platformService';

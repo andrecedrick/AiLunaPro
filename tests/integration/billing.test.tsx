@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 import { BillingProvider, useBilling } from '../../src/context/BillingContext';
 import { MOCK_SUBSCRIPTION, MOCK_INVOICES, MOCK_USAGE } from '../../src/data/mockBilling';
 import { PLAN_CONFIGS } from '../../src/types/billing';

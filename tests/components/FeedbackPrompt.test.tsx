@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* S1 — FeedbackPrompt: inline, progressive, anonymous feedback under a result.
  * It shows only the satisfaction row until rated, then reveals difficulty + the

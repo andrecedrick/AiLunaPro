@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 import { validateDocFile, looksLikeBinaryText, isPdfFile } from '../../src/lib/auditExpress/docValidation';
 
 /* B5 / B5.1 UX — clean inputs: PDFs extracted in-browser (lazy pdfjs, here

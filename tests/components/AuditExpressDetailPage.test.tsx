@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* Reproduction + regression guard: the detail page must tolerate a worker
  * /detail response that OMITS optional arrays (e.g. recommendedAgents) without

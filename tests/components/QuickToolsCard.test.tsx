@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithLocale as render } from "../utils/renderWithLocale";
 
 /* "Smart in-product access" Change A — a subtle dashboard card that lets
  * authenticated users re-run the public Diagnostic / ROI acquisition tools
