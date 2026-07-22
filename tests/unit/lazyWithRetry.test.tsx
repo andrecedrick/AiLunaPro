@@ -26,9 +26,9 @@ function Ok() { return <div>loaded-ok</div>; }
 
 describe('lazyWithRetry — undefined-module guard', () => {
   it('factory resolving undefined twice → chunk-aware error card, not a TypeError crash', async () => {
-    // The one-shot auto-reload was already consumed this session → the truthful
-    // error card must surface (the reload can only ever fire once per session).
-    sessionStorage.setItem('ailunapro-chunk-reload', '1');
+    // A recovery reload just happened (inside the cooldown) → the truthful error
+    // card must surface instead of reloading again. This is the anti-loop guard.
+    sessionStorage.setItem('ailunapro-chunk-reload', String(Date.now()));
     const factory = vi.fn(async () => undefined as never);
     const Bad = lazyWithRetry(factory);
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -67,7 +67,44 @@ describe('lazyWithRetry — undefined-module guard', () => {
     await vi.waitFor(() => expect(reloadSpy).toHaveBeenCalledTimes(1), { timeout: 8000 });
     // Suspended while reloading — the error card never flashes.
     expect(screen.queryByRole('heading', { name: /load the page/i })).toBeNull();
-    expect(sessionStorage.getItem('ailunapro-chunk-reload')).toBe('1');   // guarded: once per session
+    // Guard is a timestamp: bounds a reload loop, but expires so a later
+    // unrelated failure can still self-heal.
+    const stamp = Number(sessionStorage.getItem('ailunapro-chunk-reload'));
+    expect(Number.isFinite(stamp)).toBe(true);
+    expect(stamp).toBeGreaterThan(0);
+    spy.mockRestore();
+  }, 10000);
+
+  it('reload guard expires — a failure after the cooldown self-heals again', async () => {
+    // A reload from 11 minutes ago must NOT block recovery (old build wrote a
+    // permanent flag here, dead-ending the rest of the session).
+    sessionStorage.setItem('ailunapro-chunk-reload', String(Date.now() - 11 * 60 * 1000));
+    const Bad = lazyWithRetry(vi.fn(async () => undefined as never));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <ErrorBoundary>
+        <Suspense fallback={<div>loading…</div>}>
+          <Bad />
+        </Suspense>
+      </ErrorBoundary>,
+    );
+    await vi.waitFor(() => expect(reloadSpy).toHaveBeenCalledTimes(1), { timeout: 8000 });
+    expect(screen.queryByRole('heading', { name: /load the page/i })).toBeNull();
+    spy.mockRestore();
+  }, 10000);
+
+  it('legacy "1" marker from an older build does not lock recovery out', async () => {
+    sessionStorage.setItem('ailunapro-chunk-reload', '1');
+    const Bad = lazyWithRetry(vi.fn(async () => undefined as never));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <ErrorBoundary>
+        <Suspense fallback={<div>loading…</div>}>
+          <Bad />
+        </Suspense>
+      </ErrorBoundary>,
+    );
+    await vi.waitFor(() => expect(reloadSpy).toHaveBeenCalledTimes(1), { timeout: 8000 });
     spy.mockRestore();
   }, 10000);
 

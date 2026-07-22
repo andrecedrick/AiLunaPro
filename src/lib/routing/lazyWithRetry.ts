@@ -19,6 +19,41 @@ import { recoverIfStaleBundle } from './staleBundle';
 
 const RETRY_DELAYS_MS = [600, 1800];
 
+/** Recovery-reload key + cooldown (see attemptRecoveryReload). */
+const RELOAD_KEY = 'ailunapro-chunk-reload';
+const RELOAD_COOLDOWN_MS = 10 * 60 * 1000;
+
+/**
+ * One-shot recovery reload, rate-limited by TIME rather than once-per-session.
+ *
+ * The previous guard wrote a permanent '1' flag: after a single recovery, EVERY
+ * later chunk failure in that tab skipped the reload and went straight to the
+ * dead-end error screen — a user who hit one transient blip at 09:00 got no
+ * recovery for the rest of the day. Storing the last reload TIMESTAMP keeps the
+ * anti-loop guarantee (a failure that recurs immediately after a reload is
+ * inside the cooldown → error UI, so at most one reload per window) while
+ * letting an unrelated failure later in the session recover normally.
+ *
+ * Returns true when a reload was triggered (caller must suspend).
+ */
+function attemptRecoveryReload(): boolean {
+  try {
+    const raw  = sessionStorage.getItem(RELOAD_KEY);
+    // Legacy '1' marker from an older build: treat as "cooldown expired" so an
+    // upgrading tab is not stuck with the old permanent lockout.
+    const last = raw === '1' ? 0 : Number(raw ?? '0');
+    const age  = Date.now() - (Number.isFinite(last) ? last : 0);
+    if (age < RELOAD_COOLDOWN_MS) return false;
+    sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+  } catch {
+    // Storage blocked (private mode / strict extension). Without a marker we
+    // cannot bound a reload loop, so do NOT reload — show the truthful error UI.
+    return false;
+  }
+  window.location.reload();
+  return true;
+}
+
 function isChunkError(err: unknown): boolean {
   const msg = (err as Error | undefined)?.message ?? '';
   return /dynamically imported module|Loading chunk .* failed|Importing a module script failed|Failed to fetch/i.test(
@@ -77,13 +112,9 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
       // stale-HTML and transient failures alike). Session-guarded: a persistent
       // failure (real ad-blocker) reloads once, then shows the truthful error UI for
       // the rest of the session — provably no reload loop.
-      try {
-        if (sessionStorage.getItem('ailunapro-chunk-reload') !== '1') {
-          sessionStorage.setItem('ailunapro-chunk-reload', '1');
-          window.location.reload();
-          return new Promise<never>(() => { /* page is reloading */ });
-        }
-      } catch { /* storage blocked — fall through to the error UI */ }
+      if (attemptRecoveryReload()) {
+        return new Promise<never>(() => { /* page is reloading */ });
+      }
       void import('../analytics/track').then(m => m.track('chunk_retry_failed')).catch(() => {});
       throw lastErr;
     }
