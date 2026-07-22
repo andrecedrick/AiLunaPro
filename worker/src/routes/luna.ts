@@ -44,6 +44,16 @@ const FREE_PER_DAY = 3;
 const LUNA_COST = TOKEN_COSTS['luna.message'];
 const LUNA_ROLES = ['owner', 'admin', 'member', 'billing', 'client'] as const;
 
+/**
+ * Deterministic event id for a FREE Luna message when the client sends none.
+ * Keyed by (uid, UTC day, index within the day's free allowance) — stable across
+ * retries of the same message, distinct for the next one. Content is never part
+ * of the key, so nothing about the message is derivable from the id.
+ */
+export function freeEventId(uid: string, freeIndex: number, now: Date = new Date()): string {
+  return `luna_free_${uid}_${now.toISOString().slice(0, 10)}_${freeIndex}`;
+}
+
 luna.post('/api/luna/chat', requireAuth(), requireRole(LUNA_ROLES), async c => {
   const env = c.env as AppEnv['Bindings'] & { ANTHROPIC_API_KEY?: string; FIREBASE_SERVICE_ACCOUNT_JSON?: string };
   const uid   = c.get('uid')   as string;
@@ -85,8 +95,13 @@ luna.post('/api/luna/chat', requireAuth(), requireRole(LUNA_ROLES), async c => {
   // We only PEEK here; the free count is incremented (or tokens consumed) only
   // after a successful reply, so failed/fallback calls never consume quota.
   let freePath = true;
+  // Index of THIS free message within the user's daily allowance (0-based),
+  // captured BEFORE the post-success increment. Used to build a deterministic
+  // event id when the client sends none — see the free branch below.
+  let freeIndex = 0;
   if (sa) {
     const used = await getDailyCount(sa, 'luna_free', uid);
+    freeIndex = used;
     freePath = used < FREE_PER_DAY;
     if (!freePath) {
       if (!eventId) return c.json({ error: 'missing eventId', code: 'INVALID_BODY' }, 400);
@@ -123,9 +138,18 @@ luna.post('/api/luna/chat', requireAuth(), requireRole(LUNA_ROLES), async c => {
       await incrDailyCount(sa, 'luna_free', uid);
       // Observability: free messages used to leave NO ledger trace, so Luna usage
       // was unmeasurable. Zero-cost record — balance untouched, pricing unchanged.
+      //
+      // Idempotency: the client always sends an eventId, but the free path does
+      // not REQUIRE one (only the paid path 400s without it), so a client that
+      // omits it must still get exactly one event per request. A random id made
+      // every retry write a NEW free event, inflating usage counts. The fallback
+      // id is now deterministic — (user, UTC day, nth free message of that day).
+      // A retry of the SAME message reuses it (the counter only increments after
+      // success, so freeIndex is unchanged) and dedupes via createIfNotExists;
+      // a genuinely NEXT message has a higher freeIndex and gets its own event.
       try {
         await recordFreeUsage(sa, orgId, 'luna.message', uid,
-          eventId ?? `luna_free_${crypto.randomUUID()}`, { source: 'luna' });
+          eventId ?? freeEventId(uid, freeIndex), { source: 'luna' });
       } catch (err) {
         dlog(env, '[luna] free-usage record failed:', err instanceof Error ? err.message : 'error');
       }
