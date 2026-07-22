@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { en } from '../../src/lib/locale/i18n/en';
-import { EN, loadDict, format, pdfLocale, localeDir } from '../../src/lib/locale/i18n';
+import { loadDict, format, pdfLocale, localeDir } from '../../src/lib/locale/i18n';
 import { detectNavigatorLanguage, initialLanguage, LANGUAGE_VALUES, type Language } from '../../src/lib/preferences';
 
 /** Recursively collect dotted key paths for deep parity comparison. */
@@ -62,8 +62,11 @@ describe('i18n — format() interpolation', () => {
 });
 
 describe('i18n — loadDict()', () => {
-  it('returns English synchronously as EN and via loadDict("en")', async () => {
-    expect(EN).toBe(en);
+  it('resolves the English catalog via loadDict("en")', async () => {
+    // English is a LAZY chunk like every other locale — there is no synchronous
+    // `EN` export any more (it used to drag the 156 KB catalog into the entry
+    // bundle). loadDict is the single way in, and it must hand back the real
+    // catalog, not a partial seed.
     expect(await loadDict('en')).toBe(en);
   });
   it('lazy-loads non-English locales as complete catalogs', async () => {

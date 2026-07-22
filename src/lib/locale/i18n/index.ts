@@ -7,13 +7,16 @@
  *   the public surface and the `format()` interpolation helper.
  * - Zero dependencies: plain TS + React context, no i18n SDK.
  */
-import { en, type Dict } from './en';
-
 export type { Dict } from './en';
 export { loadDict, localeDir, pdfLocale, LOCALE_REGISTRY, type Dir, type LocaleMeta } from './registry';
 
-/** Synchronous English catalog — the default and fallback. */
-export const EN: Dict = en;
+/*
+ * There is deliberately no synchronous `EN` export. Re-exporting the 156 KB
+ * catalog here pulled it into the ENTRY chunk for every visitor. English is now
+ * a lazy chunk reached via `loadDict('en')`, primed before React renders
+ * (main.tsx) so nothing ever renders without a catalog. Modules that need the
+ * catalog at module scope import `./en` directly — they are themselves lazy.
+ */
 
 /**
  * Minimal `{name}` interpolation — no dependency, deterministic. Unknown

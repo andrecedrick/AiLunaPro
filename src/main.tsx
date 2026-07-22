@@ -9,6 +9,9 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { captureSrc } from './lib/analytics/srcParam'
+import { initialLanguage } from './lib/preferences'
+import { loadDict } from './lib/locale/i18n'
+import { primeDict } from './context/LocaleContext'
 
 // Signal that the JS bundle executed — lets the index.html boot watchdog tell
 // "bundle blocked / never loaded" apart from "loaded but slow" (so it does not
@@ -25,8 +28,33 @@ try { sessionStorage.removeItem('__boot_retry__') } catch { /* storage may be bl
 // query). srcParam persists it for the session; the public tool pages read it back.
 captureSrc()
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+/**
+ * Resolve the translation catalog BEFORE the first render.
+ *
+ * Every catalog (English included) is now a lazy chunk, so it is no longer
+ * available synchronously. Priming it here means the provider's first render is
+ * already translated: no untranslated flash, no blank frame, no locale-driven
+ * layout shift. The index.html boot splash covers this fetch — it is the same
+ * splash that already covered bundle download and React mount.
+ *
+ * Only ONE catalog is fetched: the detected language. A French visitor no longer
+ * pays for English + French, which is what the entry-chunk arrangement forced.
+ *
+ * Fail-open: if the catalog cannot be fetched, render anyway. LocaleProvider
+ * then waits for its own load and the ErrorBoundary (which uses hardcoded inline
+ * copy) still works — a failed dictionary must never mean a blank product.
+ */
+async function boot() {
+  try {
+    primeDict(await loadDict(initialLanguage()))
+  } catch {
+    /* fall through — provider loads it, ErrorBoundary copy is locale-free */
+  }
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+}
+
+void boot()

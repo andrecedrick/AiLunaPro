@@ -29,6 +29,22 @@ import { Fragment, type ComponentType, type ReactElement, type ReactNode } from 
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
 import * as PreferencesModule from '../../src/context/PreferencesContext';
 import * as LocaleModule from '../../src/context/LocaleContext';
+import { en } from '../../src/lib/locale/i18n/en';
+
+/**
+ * The app primes the catalog in `main.tsx` before its first render; tests do not
+ * run main.tsx, so prime it here instead. Importing the full catalog statically
+ * is free in a test bundle — there is no boot budget — and it keeps every render
+ * synchronous, so no test file needs to await a dictionary.
+ *
+ * Guarded: a suite that vi.mocks LocaleContext exposes no primeDict.
+ */
+function primeCatalog(): void {
+  try {
+    const prime = (LocaleModule as { primeDict?: (d: typeof en) => void }).primeDict;
+    if (typeof prime === 'function') prime(en);
+  } catch { /* LocaleContext is mocked — the mock supplies useLocale itself */ }
+}
 
 /**
  * `LocaleProvider` reads its language through `usePreferences`. Several suites
@@ -69,6 +85,7 @@ export function renderWithLocale(
   ui: ReactElement,
   options?: RenderOptions,
 ): RenderResult {
+  primeCatalog();
   const { wrapper: Inner, ...rest } = (options ?? {}) as RenderOptions & { wrapper?: Wrapper };
 
   // A caller-supplied wrapper (auth/route harness) must be COMPOSED, not

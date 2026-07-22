@@ -35,7 +35,9 @@ import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
 import { fieldsetStyle, legendStyle, inputStyle, primaryBtnStyle, secondaryBtnStyle, sectionTitleStyle, listStyle, Field } from '../components/ui-tools';
 import { usePreferences } from '../context/PreferencesContext';
 import { useSessionValue } from '../context/SessionValueContext';
-import { EN, pdfLocale } from '../lib/locale/i18n';
+import { pdfLocale } from '../lib/locale/i18n';
+// Direct catalog import - this page is lazy, so English stays off the entry chunk.
+import { en as EN } from '../lib/locale/i18n/en';
 import { saveFlowProgress, readFlowProgress, clearFlowProgress, readFreshRoi, bindRoiToQuote, clearPendingResult, type PendingRoiSummary } from '../lib/leads/pendingLead';
 import { RoiValueBlock } from '../components/quote/RoiValueBlock';
 import { DecisionBlock } from '../components/quote/DecisionBlock';

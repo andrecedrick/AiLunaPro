@@ -11,7 +11,7 @@
  * English-default users download nothing extra.
  */
 import type { Language } from '../../preferences';
-import { en, type Dict } from './en';
+import type { Dict } from './en';
 
 export type Dir = 'ltr' | 'rtl';
 
@@ -23,7 +23,11 @@ export interface LocaleMeta {
 }
 
 export const LOCALE_REGISTRY: Record<Language, LocaleMeta> = {
-  en: { dir: 'ltr', load: async () => en },
+  // English is a lazy chunk too: at 156 KB it used to sit in the ENTRY bundle, so
+  // every visitor paid for it before first paint and non-English visitors paid
+  // twice. It remains the permanent fallback - just fetched, and primed before
+  // React renders (see main.tsx) so nothing ever renders without a catalog.
+  en: { dir: 'ltr', load: () => import('./en').then(m => m.en) },
   fr: { dir: 'ltr', load: () => import('./fr').then(m => m.fr) },
   es: { dir: 'ltr', load: () => import('./es').then(m => m.es) },
   de: { dir: 'ltr', load: () => import('./de').then(m => m.de) },
@@ -66,7 +70,10 @@ export async function loadDict(locale: Language): Promise<Dict> {
         }
       } catch { /* recovery unavailable — fall through to the English fallback */ }
     }
-    return en;
+    // Re-imported rather than statically bound, so the catalog stays out of the
+    // entry chunk. If even this fails there is no catalog to render with, so the
+    // rejection propagates to the caller's boundary rather than being masked.
+    return (await import('./en')).en;
   }
 }
 

@@ -12,7 +12,8 @@ import type {
   Severity,
 } from '../../types/scoring';
 import type { Dict } from '../locale/i18n/en';
-import { EN } from '../locale/i18n';
+// Direct catalog import (not the barrel): keeps English out of the entry chunk.
+import { en as EN } from '../locale/i18n/en';
 import { auditSections } from '../../data/mockAuditQuestions';
 import { SECTION_WEIGHTS } from './rules';
 
