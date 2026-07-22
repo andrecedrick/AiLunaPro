@@ -67,3 +67,44 @@ export async function fetchPlatformMe(): Promise<PlatformMe> {
 export async function fetchIsPlatformAdmin(): Promise<boolean> {
   return (await fetchPlatformMe()).isPlatformAdmin;
 }
+
+/* ── Platform token economy (Phase 4) ─────────────────── */
+
+/** Per-action cross-org rollup. Organizations are COUNTED, never listed. */
+export interface PlatformActionUsage {
+  action:   string;
+  count:    number;
+  tokens:   number;
+  free:     number;
+  included: number;
+  overflow: number;
+  unknown:  number;
+  orgs:     number;
+}
+
+export interface PlatformTokenUsage {
+  byAction:    PlatformActionUsage[];
+  totals:      { count: number; tokens: number; free: number; included: number; overflow: number; unknown: number; orgs: number };
+  scanned:     number;
+  capped:      boolean;
+  generatedAt: number;
+}
+
+/**
+ * Cross-org token aggregates for platform operators. Aggregates only — the
+ * response carries no emails, names or uids. Returns null on any failure so the
+ * operator surface degrades quietly instead of breaking the page.
+ */
+export async function fetchPlatformTokenUsage(): Promise<PlatformTokenUsage | null> {
+  const token = await getIdToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/platform/token-usage`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PlatformTokenUsage;
+  } catch {
+    return null;
+  }
+}
