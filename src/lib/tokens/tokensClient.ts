@@ -96,6 +96,35 @@ export interface UsageEvent {
   uid:     string;
   status:  string;
   at:      string;
+  /** 'free' | 'included' | 'overflow', or 'unknown' for pre-v2 legacy rows. */
+  mode?:   string;
+  /** Commercial terms frozen at charge time. null on legacy rows. */
+  priceSnapshot?: { costTokens: number; valueUsd: number; tokenPriceUsd: number } | null;
+  schemaV?: number;
+}
+
+/** Per-action rollup returned by the usage summary. */
+export interface UsageActionBucket {
+  action:   string;
+  count:    number;
+  tokens:   number;
+  free:     number;
+  included: number;
+  overflow: number;
+  unknown:  number;
+  valueUsd: number;
+}
+
+export interface UsageSummary {
+  balance:           number;
+  monthlyAllocation: number;
+  consumed:          number;
+  cycleEnd:          string;
+  byAction:          UsageActionBucket[];
+  totals:            { count: number; tokens: number; free: number; included: number; overflow: number; unknown: number };
+  /** Events aggregated; `capped` true when the scan cap was hit. */
+  scanned:           number;
+  capped:            boolean;
 }
 
 export type TokenPack = 'starter' | 'pro' | 'max';
@@ -105,10 +134,21 @@ export async function fetchBalance(orgId: string, idToken: string): Promise<Toke
   return jsonOrThrow<TokenBalance>(res);
 }
 
-export async function fetchUsage(orgId: string, idToken: string, limit = 50): Promise<UsageEvent[]> {
-  const res = await authedFetch(`/api/tokens/usage?orgId=${encodeURIComponent(orgId)}&limit=${limit}`, { method: 'GET' }, idToken);
+export async function fetchUsage(orgId: string, idToken: string, limit = 50, offset = 0): Promise<UsageEvent[]> {
+  const res = await authedFetch(
+    `/api/tokens/usage?orgId=${encodeURIComponent(orgId)}&limit=${limit}&offset=${offset}`,
+    { method: 'GET' }, idToken,
+  );
   const data = await jsonOrThrow<{ events: UsageEvent[] }>(res);
   return data.events;
+}
+
+/** Per-action usage rollup + balance/allocation for the org (observability MVP). */
+export async function fetchUsageSummary(orgId: string, idToken: string): Promise<UsageSummary> {
+  const res = await authedFetch(
+    `/api/tokens/usage/summary?orgId=${encodeURIComponent(orgId)}`, { method: 'GET' }, idToken,
+  );
+  return jsonOrThrow<UsageSummary>(res);
 }
 
 /** Phase 3 — this month's metered usage vs the plan's included allowance. */

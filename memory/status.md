@@ -9,26 +9,36 @@ type: project
 > Ce fichier est la **source autoritative** du statut projet et de la roadmap.
 > Toute mise à jour de phase ou de plan doit être consignée ici en premier.
 >
-> **Branche de travail :** `audit` — un seul thread de développement, pas de push sans demande explicite.
-> **Dernière révision :** 2026-04-29 (v4 — corrections techniques : E2 ajouté, D1–D4 explicités, dependency table, DoR/DoD par phase, feature-flag strategy, Backend Skeleton repositionné avant Billing)
+> **Branche de travail :** `main` (production) — remote `github.com/andrecedrick/AiLunaPro`. HEAD = `cf5f230`.
+> **Dernière révision :** 2026-07-20 (v5 — reconciliation post-recovery : état réel July, programme Quote-to-Cash, migration GitHub, roadmap A→J archivée comme livrée).
+>
+> ⚠️ **La roadmap A→J des §3/§4/§5 ci-dessous est HISTORIQUE** — toutes ses phases sont livrées et déployées. L'état courant fait foi = §1 ci-dessous. Le **Phase Workflow Contract anti-skip (§8/§9) reste actif** comme discipline permanente.
 
 ---
 
-## 1. État réel actuel du projet (Current true project state)
+## 1. État réel actuel du projet — CURRENT TRUTH (2026-07-20, HEAD `cf5f230`)
 
-- ✅ **Le prototype UI/produit frontend est très avancé** — 7 phases UI livrées, branche `audit`, type-check propre, theme light/dark, persistance `localStorage`.
-- 🟡 **Une fondation Firebase est préparée localement** — `src/lib/firebase.ts`, `src/lib/firebase-auth.ts`, `src/lib/firestore.ts` existent mais ne sont **importés nulle part** dans l'app qui tourne.
-- 🟡 **Les types Firestore sont préparés localement** — `src/types/firestore.ts` (≈ 500 lignes) couvre les collections cibles, mais aucun composant ne les consomme.
-- 🟡 **Les règles de sécurité Firestore sont préparées localement** — `firestore.rules` (≈ 377 lignes) existe à la racine, jamais déployées.
-- 🟦 **Les couches Auth / Organisation / Team / Registry / Audit / Reports sont en mode UI mocké** — elles fonctionnent contre `localStorage`, pas contre Firestore.
-- ❌ **L'intégration réelle Firebase Auth n'est pas en service** dans l'application.
-- ❌ **Les lectures/écritures réelles Firestore ne sont pas en service** dans l'application.
-- ❌ **Aucune route backend** (Cloudflare Workers + Hono) n'existe.
-- ❌ **Stripe** : aucune intégration réelle.
-- ❌ **Emails** (SendGrid/Resend) : aucune intégration.
-- ❌ **Tests** (Vitest, RTL, E2E) : aucun.
-- ❌ **Déploiement** : aucun environnement live.
-- 🚫 **Le projet n'est pas prêt pour la production.**
+> Reconstitué post-recovery (réinstall Windows) : git + `dist` + hashes de déploiement Cloudflare. Remplace l'état d'avril (obsolète) ci-dessus supprimé.
+
+**Live en production :**
+- ✅ **Frontend déployé** — Cloudflare Pages `ailunapro-app` → `audit.ailunapro.com`. Prod = commit **`cf5f230`** (deployment `56910706-c7b7-49a5-a43a-62722f813946`).
+- ✅ **Worker déployé** — `ailunapro-worker` → `api.ailunapro.com`. Version **`366460c2-394c-47e3-81aa-bab945100963`** (2026-07-17 16:24Z).
+- ✅ **Firebase Auth + Firestore RÉELS en service** — service-account worker + client SDK front ; `firestore.rules` déployées (RBAC multi-tenant).
+- ✅ **Stripe réel** (mode test) — checkout, subscriptions, portal, webhooks (seam testé `1bba3b0`), multi-devises→USD, token/overflow packs.
+- ✅ **Emails réels** — Sequenzy (`SEQUENZY_API_KEY`), templates transactionnels (invoice-client, payment-confirmation, quote).
+- ✅ **Tests** — Vitest + RTL + Firebase rules-unit-testing en place (`npm test`).
+
+**Programme Quote-to-Cash — ✅ PROD-VERIFIED 2026-07-20** *(preuve : Pages deploy `56910706` ⇐ commit `cf5f230` ; Worker version `366460c2` @ 2026-07-17 16:24Z. Worker non hash-mappé — `Source: Unknown` — corrélation temporelle + confirmation opérateur. Voir cahier §0bis.2) :*
+- ✅ **Système de devis** — layout value-first V2, prix publié fixe, bridge Recommendation→Quote, split paiement SMB Stripe / high-ticket virement à $15k.
+- ✅ **Factures + PDF** — invoice garantie à l'acceptation + route de récupération admin ; **PDF invoice/receipt téléchargeable**.
+- ✅ **Accès public aux factures** — lien signé sans compte (no-login).
+- ✅ **Page reçu client** — servie sur le lien signé, mur de login retiré.
+- ✅ **Branding** — logo AiLunaPro réel sur reçus + emails.
+- ✅ **Admin Center + platform visibility** — visibilité cross-org platform-superadmin réelle.
+
+**Reste (non bloquant) :** i18n B6.3 (PDF Latin-5) / B6.6 (Arabe-RTL), surfaces SEO (sitemap/schema/llms.txt), V1 fiche site, W1 cockpit, Analytics Phase B.
+
+- ✅ **Le projet EST en production.** Migration GitHub complète (13 branches + 468 commits sur `origin/main`).
 
 ---
 
@@ -636,16 +646,15 @@ Une phase est **approuvée** uniquement si l'utilisateur a écrit :
 
 ---
 
-## 10. Prochaine action recommandée
+## 10. Prochaine action recommandée (2026-07-20)
 
-**Étape A — Commit Phase 8 (Auth + Org + Team UI)**
+L'étape A d'avril (commit Phase 8) est **livrée depuis longtemps** — le projet est en prod. Prochaines actions de gouvernance/produit :
 
-- Branche : `audit`
-- 14 fichiers à `git add` + 3 modifications
-- Message recommandé : `feat: add auth, organization, and team ui with role-based access (mock layer)`
-- Pas de push.
-
-Aucune nouvelle ligne de code à écrire pour cette étape.
+1. **Hygiène secrets Cloudflare** — retirer `SEQUENZY_API` (orphelin, jamais lu ; le code lit `SEQUENZY_API_KEY`). Vérifier `ANTHROPIC_API_KEY` (déclaré, pas de read actif — guardrail no-LLM).
+2. **Nettoyer junk 0-byte trackés** — `git rm` de `toast`, `` `ailunapro.lead.v1.${k}.result` ``, `{,`, `{,+`, `worker/…paylink…`.
+3. **Décision identité** — compte Cloudflare (`patrickdurant1409@…`) ≠ owner GitHub (`andrecedrick@…`) : confirmer intentionnel.
+4. **Produit (backlog 🔴, gated no-LLM)** — voir §20 cahier : U1, X1, L3/L4, Y1, R1, S1, T1, Q1.
+5. **Monétisation** — token overflow billing : règles enregistrées (cahier §23), `ENABLE_RECOMMENDATION_CHARGE` scoped 1 org test, OFF global.
 
 ---
 

@@ -16,11 +16,14 @@ import Stripe from 'stripe';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
-import { firestoreGet } from '../lib/firestoreAdmin';
+import { firestoreGet, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { dlog } from '../lib/log';
 import { ensureTokenCycleFresh, consumeTokens } from '../lib/tokens';
 import { firestoreSet as firestoreSetWrite } from '../lib/firestoreAdmin';
-import { TOKEN_PACKS, isValidPack, isValidAction, allocationForPlan } from '../lib/token-costs';
+import {
+  TOKEN_PACKS, isValidPack, isValidAction, allocationForPlan,
+  TOKEN_VALUE_USD, isUsageMode, type TokenAction,
+} from '../lib/token-costs';
 import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
@@ -137,39 +140,140 @@ tokens.get('/api/tokens/usage', requireAuth(), requireRole(['owner', 'admin', 'b
   const viewerRole = c.get('role')  as string;
   const viewerUid  = c.get('uid')   as string;
   const limit      = Math.min(parseInt(c.req.query('limit') ?? '50', 10) || 50, 200);
+  const offset     = Math.max(0, parseInt(c.req.query('offset') ?? '0', 10) || 0);
 
   if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
   }
 
-  // List via REST listDocuments
-  const sa = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON) as { client_email: string; private_key: string; project_id: string };
-  const tokRes = await getAccessToken(sa);
-  const url = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents/organizations/${orgId}/tokens/current/usage?pageSize=${limit}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${tokRes}` } });
-  if (!res.ok) return c.json({ events: [] });
-  const data = await res.json() as { documents?: Array<{ name: string; fields?: Record<string, { stringValue?: string; integerValue?: string; booleanValue?: boolean }> }> };
+  // Ordered query (was listDocuments, which returns arbitrary document-NAME order —
+  // any org past one page saw a non-deterministic slice). `at` is ISO-8601, so a
+  // lexicographic DESC sort is chronological. offset+limit paginates past 200.
+  const rows = await firestoreRunQuery(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+    from:    [{ collectionId: 'usage' }],
+    orderBy: [{ field: { fieldPath: 'at' }, direction: 'DESCENDING' }],
+    offset,
+    limit,
+  }, `organizations/${orgId}/tokens/current`);
 
-  let events = (data.documents ?? []).map(doc => {
-    const id = doc.name.split('/').pop() ?? '';
-    const f  = doc.fields ?? {};
-    return {
-      eventId: id,
-      module:  f.module?.stringValue,
-      action:  f.action?.stringValue,
-      tokens:  f.tokens?.integerValue ? parseInt(f.tokens.integerValue, 10) : 0,
-      uid:     f.uid?.stringValue,
-      status:  f.status?.stringValue,
-      at:      f.at?.stringValue,
-    };
-  });
+  let events = rows.map(r => mapUsageRow(r.fields));
 
   // Privacy: member sees only own usage. Owner/admin/billing see all.
+  // (Filter is applied to the page, preserving the existing RBAC semantics.)
   if (viewerRole === 'member') {
     events = events.filter(e => e.uid === viewerUid);
   }
 
-  return c.json({ events, total: events.length });
+  return c.json({
+    events,
+    total:   events.length,
+    limit,
+    offset,
+    hasMore: rows.length === limit,
+  });
+});
+
+/* ── Usage row mapping (shared by usage + summary) ─────── */
+
+interface UsageRow {
+  eventId: string;
+  module?: string;
+  action?: string;
+  tokens: number;
+  uid?: string;
+  status?: string;
+  at?: string;
+  /** 'unknown' for legacy rows written before schema v2 — never inferred. */
+  mode: string;
+  priceSnapshot: { costTokens: number; valueUsd: number; tokenPriceUsd: number } | null;
+  schemaV: number;
+}
+
+function mapUsageRow(f: Record<string, unknown>): UsageRow {
+  const ps = f.priceSnapshot as Record<string, unknown> | undefined;
+  return {
+    eventId: String(f.eventId ?? ''),
+    module:  f.module  ? String(f.module)  : undefined,
+    action:  f.action  ? String(f.action)  : undefined,
+    tokens:  Number(f.tokens ?? 0) || 0,
+    uid:     f.uid     ? String(f.uid)     : undefined,
+    status:  f.status  ? String(f.status)  : undefined,
+    at:      f.at      ? String(f.at)      : undefined,
+    mode:    isUsageMode(f.mode) ? f.mode : 'unknown',
+    priceSnapshot: ps
+      ? {
+          costTokens:    Number(ps.costTokens ?? 0) || 0,
+          valueUsd:      Number(ps.valueUsd ?? 0) || 0,
+          tokenPriceUsd: Number(ps.tokenPriceUsd ?? 0) || 0,
+        }
+      : null,
+    schemaV: Number(f.schemaV ?? 1) || 1,
+  };
+}
+
+/* ── GET /api/tokens/usage/summary ────────────────────── */
+
+/** Hard cap on events aggregated in one summary call (bounded read). */
+const SUMMARY_SCAN_CAP = 1000;
+
+tokens.get('/api/tokens/usage/summary', requireAuth(), requireRole(['owner', 'admin', 'billing', 'member']), async c => {
+  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string };
+  const orgId      = c.get('orgId') as string;
+  const viewerRole = c.get('role')  as string;
+  const viewerUid  = c.get('uid')   as string;
+
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
+  }
+
+  const rows = await firestoreRunQuery(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+    from:    [{ collectionId: 'usage' }],
+    orderBy: [{ field: { fieldPath: 'at' }, direction: 'DESCENDING' }],
+    limit:   SUMMARY_SCAN_CAP,
+  }, `organizations/${orgId}/tokens/current`);
+
+  let events = rows.map(r => mapUsageRow(r.fields));
+  if (viewerRole === 'member') events = events.filter(e => e.uid === viewerUid);
+
+  interface Bucket {
+    action: string; count: number; tokens: number;
+    free: number; included: number; overflow: number; unknown: number;
+    valueUsd: number;
+  }
+  const byAction = new Map<string, Bucket>();
+  const totals   = { count: 0, tokens: 0, free: 0, included: 0, overflow: 0, unknown: 0 };
+
+  for (const e of events) {
+    const action = e.action ?? 'unknown';
+    let b = byAction.get(action);
+    if (!b) {
+      b = { action, count: 0, tokens: 0, free: 0, included: 0, overflow: 0, unknown: 0, valueUsd: 0 };
+      byAction.set(action, b);
+    }
+    b.count  += 1;
+    b.tokens += e.tokens;
+    // Prefer the snapshot (terms at charge time); fall back to today's table.
+    b.valueUsd += e.priceSnapshot?.valueUsd ?? TOKEN_VALUE_USD[action as TokenAction] ?? 0;
+
+    const mode = (e.mode === 'free' || e.mode === 'included' || e.mode === 'overflow') ? e.mode : 'unknown';
+    b[mode] += 1;
+    totals[mode] += 1;
+    totals.count  += 1;
+    totals.tokens += e.tokens;
+  }
+
+  const bal = await ensureTokenCycleFresh(env.FIREBASE_SERVICE_ACCOUNT_JSON, orgId);
+
+  return c.json({
+    balance:           bal.balance,
+    monthlyAllocation: bal.monthlyAllocation,
+    consumed:          bal.consumed,
+    cycleEnd:          bal.cycleEnd,
+    byAction: [...byAction.values()].sort((a, b2) => b2.tokens - a.tokens || b2.count - a.count),
+    totals,
+    scanned: events.length,
+    capped:  rows.length === SUMMARY_SCAN_CAP,
+  });
 });
 
 /* Inline JWT helper (mirror geo lib) */

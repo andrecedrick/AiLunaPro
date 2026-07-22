@@ -68,6 +68,18 @@
 | **Option B — B6.0 / B6.5** i18n foundation (static dictionaries, **no deps, deterministic, no LLM, English fallback**) — `Dict`/`DeepString` compile-time completeness, lazy per-locale chunks, `LocaleContext`/`useLocale` (mounted in the static tree), navigator-language detection (non-PII, **not persisted** until confirmed), offline `scaffold-locale`/`check` scripts + `i18n:check` gate; **B6.5** locale **registry** (manual-add, two compile-time guarantees) + **Russian & Chinese** added + `pdfLocale` Latin-only policy. Shell/nav/settings translated across **EN/FR/ES/IT/DE/PT/RU/ZH** | `8a82684` (B6.0) + `0f1462c` (B6.5) (prod-verified 2026-06-14) |
 | **Option B — B6.2 (a–d)** application-content translation across **all 8 languages** (static dictionaries, deterministic, English fallback; regulatory/`narrative.ts` prose **excluded by design**) — **(a) questions** = full New-Audit questionnaire (`mockAuditQuestions` kept byte-stable; keyed `qSection`/`qField`/`qOption` lookups, 134 keys) · **(b) results** UI scaffolding (Insight/Explained/Findings/Recommendations/ActionPlan, 66 keys) · **(c) Audit Express** flow (questions/options/CTAs/run + results page, 83 keys; `axLabel`/`axOption`) · **(d) dashboard** neutral chrome (30 keys; compliance-claims + mock numbers excluded) | `74d22bd` (B6.2) + `049851e` (B6.2b) + `ee489d6` (B6.2c) + `e3b625b` (B6.2d) (prod-verified 2026-06-14) |
 | **Option B — B6.2 (e–data)** **complete UI + data-driven content** translation across **all 8 languages**, **deployed to prod** (audit.ailunapro.com) & **real-UI-validated** — **(e) global chrome** (Topbar/Settings/journey/auth/common) · **(f) Help Center** (14 sections via locale-driven `buildHelpSections` + a `**bold**`/`*italic*`/`` `code` `` RichText renderer, 238 keys) · **(g) core authenticated pages** (Registry/System-Builder/Saved-Audit-Express/Reports/Tokens/Billing/Team/Org-create/Audit-result/Assistance/Agents + public Diagnostic/ROI chrome — 14 namespaces, 843 keys; data-driven arrays refactored to locale builder fns) · **FINAL** shared **`enums`** namespace (risk/approval/oversight/status/badge — **single source** for filters + table rows + badges, 39 keys) · **precision** Topbar date presets (now stores a **preset-id** so the label re-localizes; localized default) + agent catalog content (**`agentsContent`** tagline/description/problem + taxonomy by agentId, 70 keys) · **data** diagnostic questions + ROI workflow labels wired by id (**`diagnosticQuestions`**/**`roiWorkflows`**, 50 keys) — found only via real-prod browser render. **Reliability:** `loadDict` now self-heals stale tabs (former silent EN-fallback masked deployed translations → now runs `recoverIfStaleBundle` one-shot reload like route chunks). Agent **names**, regulatory citations, the legal **Disclaimer**, `narrative.ts` prose & mock-seed **data** stay English by design | `ad54780` (e) + `d8cbb9d` (f) + `4fe00d5` (g) + `d174a49` (FINAL) + `7db195b` (precision) + `6d4ac29` (data + self-heal) (**prod-deployed + real-UI-validated 2026-06-14**) |
+| **Quote-to-Cash — Quote system (value-first V2)** Recommendation→Quote bridge, value-first invoice-grade layout forced as sole layout (legacy EstimateView retired), single fixed **published price** per offer (budget/range/floor removed), decision engine invest→recover summary, superadmin visibility | `efbad88`·`903f961`·`268cf21`·`781a600`·`abfddbf`·`0706d80`·`3477c06`·`7462e6e`·`5eb14cd` (2026-07-01→07-14) |
+| **Quote-to-Cash — Payment split** SMB (Stripe checkout) vs high-ticket (bank transfer) routed at **$15k**; ROI + decision vars injected into the quote email (Sequenzy) | `2087b6a`·`7c71874`·`d421673` (2026-07-14) |
+| **Quote-to-Cash — Invoices + PDF** guaranteed invoice on quote-accept + admin recovery route; downloadable invoice/receipt **PDF** + public paid landing; `quoteTitle` return + widened query window (two data-consistency defects) | `870a15d`·`822ee34`·`654787a` (2026-07-15→07-17) |
+| **Quote-to-Cash — Stripe webhook** previously untested webhook seam now test-covered (root cause of recurring quote/invoice regressions) | `1bba3b0` (2026-07-16) |
+| **Quote-to-Cash — Public invoice access** customer invoice access **without an account** via signed no-login receipt link | `5e211e5` (2026-07-17) |
+| **Quote-to-Cash — Customer receipt page** receipt page served on the signed link; login-wall fallback removed | `d53d71e` (2026-07-17) |
+| **Quote-to-Cash — Branding** real AiLunaPro logo on receipt + emails; truthful email state | `295b9a8` (2026-07-17) |
+| **Quote-to-Cash — Email reliability (Sequenzy)** resend reliability + clear errors + bank-transfer support; provider failure reason surfaced (PII-scrubbed); failed-resend provider error surfaced | `c2b3858`·`7430512`·`61cb31d` (2026-07-17) |
+| **Admin Center + platform visibility** real cross-org platform-superadmin visibility; complete admin visibility + instant data load + conversion hierarchy + truthful step copy | `4617e4f`·`1ec73c2`·`dad99e9` (2026-07-15→07-16) |
+| **Quote-to-Cash — CRO / stability** outcome-first generation CTA (token cost demoted to subline); payment-confirmation email + direct-pay CTA; stale-tab self-heal on focus so a deployed fix reaches open tabs | `0e97678`·`6df793d`·`cf5f230` (2026-07-16→07-17) |
+
+> *(**Quote-to-Cash program reconciled 2026-07-20** from the git trail — 45 commits on `main` since 2026-06-30, HEAD `cf5f230`. **Status: ✅ PROD-VERIFIED 2026-07-20.** Deployment evidence: Cloudflare **Pages** production deployment `56910706-c7b7-49a5-a43a-62722f813946` built from commit **`cf5f230`** → `audit.ailunapro.com` (commit-mapped, exact); Cloudflare **Worker** `ailunapro-worker` version `366460c2-394c-47e3-81aa-bab945100963` deployed 2026-07-17 16:24Z → `api.ailunapro.com`. **Precision on the worker:** its deployment `Source` is `Unknown` (CLI deploy, not git-linked), so the worker↔commit mapping is **time-correlated, not hash-proven** — front-end chain is exact, worker-side routes (invoice/quote email, receipt endpoints) are attested by same-day deploy + operator confirmation. Ledger closed per §0bis.1.1.)*
 
 **🟡 PARTIAL — exists but incomplete (state what's missing)**
 | Task | What exists | What is missing |
@@ -3641,7 +3653,105 @@ Quote/Invoice (§L/§quote). Nouvelles : collection `organizations/{orgId}/works
 - **Aucune feature ne contourne le système de tokens** — y compris Workflow Automation (§22.3) : toute exécution automatisée passe par `enforceUsageLimit`, mêmes gates within/overflow/upgrade que l'UI.
 - **Cohérence Stripe** — le débit overflow consomme le **ledger token** (`organizations/{orgId}/tokens/current`), **pas Stripe en direct** ; Stripe ne bouge qu'à l'**achat de pack**. ⇒ Packs achetables (prix Stripe + clés live) **AVANT** toute activation de charge, sinon paid over-limit = `INSUFFICIENT_TOKENS` (402) sans recours.
 
-**Statut :** RÈGLES ENREGISTRÉES — **facturation (`ENABLE_RECOMMENDATION_CHARGE`) NON ACTIVÉE**. Aucun code, aucun déploiement dans cette étape.
+**Statut :** RÈGLES ENREGISTRÉES — **facturation OVERFLOW (`ENABLE_RECOMMENDATION_CHARGE`) NON ACTIVÉE** globalement (scoped à 1 org de test). Aucun code, aucun déploiement dans cette étape.
+
+> 🚨 **CORRECTION FACTUELLE (2026-07-21) — cette section ne décrivait PAS la réalité de production.**
+> Le §23.4 affirme « aucune facturation dans les limites du plan ». **C'est faux depuis 2026-06/07.**
+> **4 actions débitent le ledger token en direct, DANS les limites du plan, sans gate overflow ni feature-flag** :
+> `luna.message`, `quote.generation`, `report.export.pdf`, `audit_express.pdf`
+> (source de vérité : `src/lib/tokens/value.ts:45-47` `CHARGED_ACTIONS` ; sites d'appel `worker/src/routes/luna.ts:125`,
+> `worker/src/routes/quote.ts:148`, `worker/src/lib/audit-express-quota.ts:70`).
+> Seul `recommendation.run` suit le chemin overflow-gaté documenté (`worker/src/routes/recommend.ts:167`).
+> **Les règles de prix §23.1–§23.4 restent la cible souhaitée mais ne sont PAS le comportement courant.**
+> Détail complet + statut par item → **§24**. Arbitrage tarifaire requis (voir §24.4).
+
+---
+
+## 24. Réconciliation production ↔ code ↔ cahier *(2026-07-21 — production et code font foi)*
+
+> **Méthode.** Audit read-only. Preuves = fichiers/lignes du dépôt à HEAD `cf5f230` + hashes de
+> déploiement Cloudflare (Pages `56910706` ⇐ `cf5f230` ; Worker `366460c2` @ 2026-07-17 16:24Z).
+> Règle appliquée : **production > code > documentation > mémoire**. Les items ci-dessous
+> existaient en production **sans** être écrits ici — infraction au §0bis.1.2, corrigée par cette section.
+>
+> ⚠️ **« Deployed » ci-dessous = présent dans l'artefact déployé + secret/binding configuré.**
+> Ce n'est **pas** une vérification fonctionnelle : aucune requête n'a été envoyée en production
+> pendant l'audit. **Aucun chiffre d'usage réel n'est disponible** (voir §24.5).
+
+### 24.1 — Luna (chat IA) — ⚠️ CONTRADICTOIRE
+
+| Axe | État |
+|---|---|
+| **Implémenté** | ✅ `worker/src/routes/luna.ts` · `worker/src/lib/luna-llm.ts` · UI `src/components/luna/{LunaPanel,LunaChat}.tsx` · client `src/lib/luna/lunaChatClient.ts` · tests `tests/luna/` (3 fichiers) |
+| **Déployé** | ✅ Route montée **sans condition** (`worker/src/index.ts:212`). `ANTHROPIC_API_KEY` **présent** en prod ⇒ le fallback `luna.ts:104` ne se déclenche pas. Livré `f8f057e` (2026-06-20), antérieur au déploiement worker du 2026-07-17 |
+| **Facturation** | ✅ **ACTIVE** — 3 messages gratuits/utilisateur/jour puis **50 tokens/message** (`token-costs.ts:14`). Débit après succès, idempotent sur `eventId`, jamais sur fallback ni sur question tarifaire |
+| **Production** | ✅ **Accessible à TOUS les rôles authentifiés** (`owner`, `admin`, `member`, `billing`, `client` — `luna.ts:45`) sur **toutes** les pages authentifiées (bouton ✨ Topbar, `Topbar.tsx:307`). **Aucun feature-flag, aucun kill-switch** |
+| **Modèle** | Anthropic Messages API, `claude-haiku-4-5` (`luna-llm.ts:16-17`), réponses ancrées sur une KB curée |
+
+**Contradiction :** le §0bis.2 classe **K6 🔴 NON FAIT**, le §19.B4 décrit Luna comme « rule-based… **no AI chat** »,
+et le **guardrail no-LLM** (§0bis.3) est déclaré actif. **La production exécute un chat LLM facturé.**
+⚠️ Ce n'est **pas** K6 tel que spécifié (pas de SSE, pas d'état `audit_sessions`, pas de tool-use, pas de RAG) :
+c'est une **3ᵉ variante** — chat mono-tour ancré KB. **Décision opérateur requise** : lever, cadrer, ou re-gater le guardrail.
+
+### 24.2 — CRM / Contacts · Support · Feedback
+
+| Module | Implémenté | Déployé | Facturation | Production | Statut cahier |
+|---|---|---|---|---|---|
+| **Contacts / CRM** | ✅ `worker/src/routes/contacts.ts` + `contacts-platform` · `src/pages/ContactsPage.tsx` · commit `632949b` | ✅ monté `index.ts:214-215` — 5 endpoints (`create`/`list`/`all`/`PATCH`/`DELETE`) + lecture **cross-org superadmin** | ❌ aucun débit token | ✅ org-scopé, RBAC | ❌ **NON DOCUMENTÉ** — le cahier (L3300) dit « unified CRM store **deferred** » |
+| **Support (tickets)** | ✅ `worker/src/routes/support.ts` · `src/components/support/SupportModal.tsx` · `tests/support/` | ✅ `POST /api/support/ticket` ; notification via `ADMIN_EMAIL` | ❌ gratuit | ✅ | ❌ **NON DOCUMENTÉ** — zéro mention |
+| **Feedback utilisateur** | ✅ `worker/src/routes/feedback-public.ts` · `src/components/feedback/FeedbackPrompt.tsx` · `tests/feedback/` | ✅ `POST /api/public/feedback` | ❌ gratuit | ✅ public | ⚠️ **CONTRADICTOIRE** — L1416 « H1 feedback *différé* » et L1771 « ❌ User feedback » |
+
+### 24.3 — Coûts token réels (`worker/src/lib/token-costs.ts` — source de vérité serveur)
+
+| Action | Coût (tokens) | Débité aujourd'hui ? | Documenté avant ce §24 ? |
+|---|---|---|---|
+| `audit.full` | 50 | ❌ non | ❌ |
+| `audit.express` | 10 | ❌ non | ❌ |
+| `recommendation.run` | 30 | ⚠️ overflow uniquement, **scopé 1 org test** | ✅ §23.1 |
+| `roi.calculate` | 5 | ❌ non | ❌ |
+| `agent.call` | 20 | ❌ non | ❌ |
+| `report.export.pdf` | 5 | ✅ **OUI** | ❌ |
+| `audit_express.pdf` | 10 | ✅ **OUI** | ❌ |
+| `quote.generation` | 60 | ✅ **OUI** | ❌ |
+| `luna.message` | 50 | ✅ **OUI** | ❌ |
+
+**Débité aujourd'hui** = présent dans `CHARGED_ACTIONS` (`src/lib/tokens/value.ts:45-47`), miroir des
+sites `consumeTokens` câblés. Ces 4 débits sont **inconditionnels et dans les limites du plan** — ils ne
+passent **pas** par `enforceUsageLimit`/`decideOverflow`, contrairement à ce qu'affirme le §23.4.
+*(Note : commentaire périmé `quote.ts:146` — indique 50, la valeur réelle est 60.)*
+
+### 24.4 — `TOKEN_VALUE_USD` — valeur affichée (`src/lib/tokens/value.ts:16-26`)
+
+**Affichage uniquement** — ne pilote jamais un débit.
+
+| Action | Valeur affichée | Coût si débité | Coût en USD @ $0.10/token (cible §23.2) | Cohérence §23.3 (« ≥ ~$3 de valeur, sinon gratuit ») |
+|---|---|---|---|---|
+| `audit.full` | $8 | 50 | — (non débité) | n/a |
+| `audit.express` | $2 | 10 | — | n/a |
+| `recommendation.run` | $6 | 30 | $3.00 | ✅ conforme (règle d'origine) |
+| `roi.calculate` | $2 | 5 | — | ✅ gratuit, conforme |
+| `agent.call` | $1 | 20 | — | ✅ gratuit, conforme |
+| `report.export.pdf` | $2 | 5 | $0.50 | ⚠️ valeur < $3 ⇒ devrait être **gratuit** |
+| `audit_express.pdf` | $2 | 10 | $1.00 | ⚠️ valeur < $3 ⇒ devrait être **gratuit** |
+| `quote.generation` | $5 | 60 | $6.00 | ❌ facturé **au-dessus** de la valeur délivrée |
+| `luna.message` | **$1.50** | **50** | **$5.00** | ❌ **facturé ~3,3× la valeur affichée** ; valeur < $3 ⇒ devrait être gratuit |
+
+🚨 **Arbitrage tarifaire requis.** Le §23.2 pose le principe « $3 payé pour $6 délivré = ratio 2× ».
+Trois des quatre actions réellement débitées **inversent** ce ratio. `luna.message` est l'écart le plus fort.
+**Aucune décision n'est prise ici** — cette section constate ; la re-tarification est une décision opérateur.
+
+### 24.5 — Observabilité : lacune structurelle
+
+Le champ `source` est **écrit** dans `organizations/{orgId}/tokens/current/usage/{eventId}`
+(`luna.ts:125`) mais **jamais lu par aucun endpoint**. `GET /api/platform/metrics` ne retourne que
+MRR / abonnements / factures / `tokenActiveOrgsCount` ; `GET /api/usage/current` n'a aucune ventilation
+par action. **Conséquence : aucune action facturée n'est auditable depuis le produit.**
+De plus, les messages Luna **gratuits** (3/jour) n'écrivent qu'un compteur `public_rate_limits/luna_free__{hash(uid)}`
+— **invisibles** dans le ledger token. Spécification de correction → **§25 (à créer)**.
+
+**Statut §24 :** CONSTAT ENREGISTRÉ — aucune modification de code, aucun déploiement.
+Décisions ouvertes : (1) guardrail no-LLM vs Luna ; (2) re-tarification des 4 actions débitées ;
+(3) inscription définitive de Contacts/Support/Feedback au §0bis.2.
 
 ---
 

@@ -16,6 +16,7 @@ import { fetchPlatformMe } from '../lib/platform/platformService';
 import { listInvoices, listAllQuotes, listPlatformQuotes, patchQuote, resendInvoice, finalizeQuote, createInvoicePaymentLink, markInvoicePaid, downloadInvoicePdf, type InvoiceItem, type QuoteListItem, type PlatformInvoiceItem } from '../lib/quote/invoicesClient';
 import { sendQuoteToClient } from '../lib/quote/quoteClient';
 import { buildOrgActivity, buildPlatformActivity } from '../lib/quote/activityFeed';
+import { TokenUsagePanel } from '../components/tokens/TokenUsagePanel';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
 const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' } as const;
@@ -354,6 +355,9 @@ export function AdminCenterPage() {
           )}
         </div>
       )}
+
+      {/* Token Usage — org observability (balance, per-action rollup, event history). */}
+      {section('Token Usage', <TokenUsagePanel orgId={orgId} />)}
     </div>
   );
 }

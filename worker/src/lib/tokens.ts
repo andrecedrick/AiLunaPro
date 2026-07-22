@@ -22,7 +22,10 @@ import {
   TOKEN_COSTS,
   CYCLE_DAYS,
   allocationForPlan,
+  priceSnapshotFor,
+  USAGE_SCHEMA_V,
   type TokenAction,
+  type UsageMode,
 } from './token-costs';
 
 interface TokenBalance {
@@ -201,6 +204,7 @@ export async function consumeTokens(
   uid: string,
   eventId: string,
   metadata: Record<string, unknown> = {},
+  mode: UsageMode = 'included',
 ): Promise<ConsumeResult> {
   const required = TOKEN_COSTS[action];
   const usagePath = `${BALANCE_PATH(orgId)}/usage/${eventId}`;
@@ -214,6 +218,10 @@ export async function consumeTokens(
     status:   'consumed',
     metadata: JSON.stringify(metadata),
     at:       new Date().toISOString(),
+    // Traceability (schema v2) — settlement mode + terms frozen at charge time.
+    mode,
+    priceSnapshot: priceSnapshotFor(action, required),
+    schemaV:       USAGE_SCHEMA_V,
   });
 
   // Idempotency: create the usage marker first. A marker only proves a real prior
@@ -269,4 +277,45 @@ export async function consumeTokens(
   // it can never grant a free retry, then surface the failure to the caller.
   try { await firestoreDelete(saJson, usagePath); } catch { /* best-effort */ }
   throw new Error('consumeTokens: optimistic concurrency exhausted');
+}
+
+/* ── Free (zero-cost) metered event ─────────────────────── */
+
+/**
+ * Record a metered action delivered at ZERO token cost (e.g. Luna's free daily
+ * allowance). Writes the same usage shape with `tokens: 0` / `status: 'free'`
+ * so free usage becomes measurable, and **never touches the balance** — this is
+ * observability only, no pricing and no billing change.
+ *
+ * Idempotent on eventId. Callers should treat it as best-effort: a bookkeeping
+ * failure must never deny a reply the user already earned.
+ */
+export async function recordFreeUsage(
+  saJson: string,
+  orgId: string,
+  action: TokenAction,
+  uid: string,
+  eventId: string,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  const usagePath = `${BALANCE_PATH(orgId)}/usage/${eventId}`;
+  try {
+    await firestoreCreateIfNotExists(saJson, usagePath, {
+      eventId,
+      module:   action.split('.')[0] ?? 'unknown',
+      action,
+      tokens:   0,
+      uid,
+      status:   'free',
+      metadata: JSON.stringify(metadata),
+      at:       new Date().toISOString(),
+      mode:     'free',
+      priceSnapshot: priceSnapshotFor(action, 0),
+      schemaV:       USAGE_SCHEMA_V,
+    });
+  } catch (err) {
+    // A pre-existing marker for this eventId is a no-op, not an error.
+    if (err instanceof Error && err.message === 'ALREADY_EXISTS') return;
+    throw err;
+  }
 }

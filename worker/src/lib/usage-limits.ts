@@ -282,7 +282,7 @@ export async function enforceUsageLimit(
   // Paid overflow charge — charge FIRST (idempotent), bail on insufficient before counting.
   let charged = 0;
   if (cls.shouldCharge) {
-    const charge = await consumeTokens(saJson, orgId, action, uid, `overflow_${eventId}`, { overflow: true, month });
+    const charge = await consumeTokens(saJson, orgId, action, uid, `overflow_${eventId}`, { overflow: true, month }, 'overflow');
     if (!charge.ok) {
       return { enforced: true, allowed: false, mode: 'insufficient', charged: 0, used: count, limit: decision.included, plan, balance: charge.balance, required: charge.required };
     }

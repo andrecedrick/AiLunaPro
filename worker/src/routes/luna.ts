@@ -24,7 +24,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { checkCooldown, checkDailyCap, getDailyCount, incrDailyCount } from '../lib/rateLimit';
-import { consumeTokens, ensureTokenCycleFresh } from '../lib/tokens';
+import { consumeTokens, ensureTokenCycleFresh, recordFreeUsage } from '../lib/tokens';
 import { TOKEN_COSTS } from '../lib/token-costs';
 import { dlog } from '../lib/log';
 import {
@@ -121,6 +121,14 @@ luna.post('/api/luna/chat', requireAuth(), requireRole(LUNA_ROLES), async c => {
   if (sa) {
     if (freePath) {
       await incrDailyCount(sa, 'luna_free', uid);
+      // Observability: free messages used to leave NO ledger trace, so Luna usage
+      // was unmeasurable. Zero-cost record — balance untouched, pricing unchanged.
+      try {
+        await recordFreeUsage(sa, orgId, 'luna.message', uid,
+          eventId ?? `luna_free_${crypto.randomUUID()}`, { source: 'luna' });
+      } catch (err) {
+        dlog(env, '[luna] free-usage record failed:', err instanceof Error ? err.message : 'error');
+      }
     } else if (eventId) {
       const charge = await consumeTokens(sa, orgId, 'luna.message', uid, eventId, { source: 'luna' });
       if (!charge.ok) dlog(env, '[luna] charge race — reply returned unbilled');

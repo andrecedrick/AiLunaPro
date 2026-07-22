@@ -21,6 +21,64 @@ export function isValidAction(s: string): s is TokenAction {
   return s in TOKEN_COSTS;
 }
 
+/* ── Usage-record traceability (observability MVP) ───────── */
+
+/**
+ * Usage-record schema version. Rows written WITHOUT this marker are legacy
+ * (pre-traceability): they carry no `mode` and no `priceSnapshot`. Legacy rows
+ * stay visible and are NEVER backfilled — an inferred billing history would be
+ * worse than an honest gap. Readers must render them as mode 'unknown'.
+ */
+export const USAGE_SCHEMA_V = 2;
+
+/** How a metered event was settled. */
+export type UsageMode = 'free' | 'included' | 'overflow';
+
+export function isUsageMode(s: unknown): s is UsageMode {
+  return s === 'free' || s === 'included' || s === 'overflow';
+}
+
+/**
+ * Delivered value per action (USD base) — server-side mirror of
+ * `src/lib/tokens/value.ts`. DISPLAY / TRACEABILITY ONLY: never drives a debit.
+ * Kept here so a stored priceSnapshot is server-authoritative.
+ */
+export const TOKEN_VALUE_USD: Record<TokenAction, number> = {
+  'audit.full':         8,
+  'audit.express':      2,
+  'recommendation.run': 6,
+  'roi.calculate':      2,
+  'agent.call':         1,
+  'report.export.pdf':  2,
+  'audit_express.pdf':  2,
+  'quote.generation':   5,
+  'luna.message':       1.5,
+};
+
+/** Target top-up / overflow token price (USD). */
+export const TOKEN_PRICE_USD = 0.10;
+
+/** Commercial terms frozen at charge time — the dispute-defence record. */
+export interface PriceSnapshot {
+  costTokens:    number;
+  valueUsd:      number;
+  tokenPriceUsd: number;
+  /** Index signature: lets the snapshot be written directly as a Firestore map. */
+  [k: string]:   number;
+}
+
+/**
+ * Snapshot the terms for `action`. `tokensCharged` overrides the table cost so a
+ * free event (0 tokens) records what it would have cost.
+ */
+export function priceSnapshotFor(action: TokenAction, tokensCharged?: number): PriceSnapshot {
+  return {
+    costTokens:    tokensCharged ?? TOKEN_COSTS[action],
+    valueUsd:      TOKEN_VALUE_USD[action] ?? 0,
+    tokenPriceUsd: TOKEN_PRICE_USD,
+  };
+}
+
 /* ── SaaS plan monthly allocation ───────────────────────── */
 // Lowercase plan keys; normalize input plan to lowercase before lookup.
 export const PLAN_TOKEN_ALLOCATION: Record<string, number> = {
