@@ -18,7 +18,6 @@ import type { AgentCatalogEntry } from '../types/agents';
 import { AgentCard } from '../components/agents/AgentCard';
 import { RecommendPanel } from '../components/agents/RecommendPanel';
 import type { RecommendationResult } from '../types/recommendation';
-import { ENABLE_QUOTE_V2 } from '../lib/flags';
 import { saveWorksheetQuotePrefill } from '../lib/worksheet/quotePrefill';
 import { emit } from '../lib/analytics/events';
 
@@ -255,7 +254,7 @@ export function AgentsPage() {
               by pre-seeding the Quote (category + a description built from the top picks)
               and navigating there. Reuses the existing sessionStorage prefill carrier; no
               backend, no billing. Gated by V2 so the legacy dead-end is unchanged when OFF. */}
-          {ENABLE_QUOTE_V2 && topThree.length > 0 && (
+          {topThree.length > 0 && (
             <div style={{ margin: '18px 0', padding: '16px 18px', borderRadius: 12, border: '1px solid var(--violet)', background: 'rgba(124,58,237,0.06)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
                 {T.agentsPages.list.quoteBridgeTitle}

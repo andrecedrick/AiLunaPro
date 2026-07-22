@@ -14,11 +14,9 @@ function envFlag(v: unknown): boolean {
 /** Token value model v2 UI: per-action "value €" hints + session value tracker. Default OFF. */
 export const ENABLE_TOKEN_MODEL_V2 = envFlag(import.meta.env.VITE_ENABLE_TOKEN_MODEL_V2);
 
-/**
- * Quote V2 — value-first premium quote layout (ROI → decision → solution →
- * investment → CTA). FORCED ON: V2 is now the only quote layout. The legacy
- * price-first template has been removed from EstimateView, and forcing the flag
- * here means the layout no longer depends on the build env (so a rebuild without
- * VITE_ENABLE_QUOTE_V2 can never silently revert to legacy). UI-only.
+/*
+ * ENABLE_QUOTE_V2 was retired: it had been hardcoded to `true` since the legacy
+ * price-first quote template was removed, so every `false` branch was already
+ * unreachable. The flag and those branches are gone — the V2 layout is simply
+ * the quote layout now. Nothing read VITE_ENABLE_QUOTE_V2 any more.
  */
-export const ENABLE_QUOTE_V2 = true;

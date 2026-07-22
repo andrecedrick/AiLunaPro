@@ -29,7 +29,6 @@ import { computeQuotePreview, type QuotePreview } from '../lib/quote/score';
 import { generateQuote, downloadQuotePdf, emailQuote, QuoteGenError } from '../lib/quote/quoteClient';
 import { patchQuote } from '../lib/quote/invoicesClient';
 import { tokenCost } from '../lib/tokens/costs';
-import { ENABLE_QUOTE_V2 } from '../lib/flags';
 import { InsufficientTokensModal } from '../components/tokens/InsufficientTokensModal';
 import { ActionValueHint } from '../components/tokens/ActionValueHint';
 import { FeedbackPrompt } from '../components/feedback/FeedbackPrompt';
@@ -85,7 +84,7 @@ export function QuoteRequestPage() {
   // V2 only; stale/absent → graceful fallback (no ROI block, generic cost-of-delay),
   // never wrong values. Re-validated + bound to the quote before it ever reaches the
   // client email (see onGenerate/onSendProposal), and cleared once used.
-  const [roiCtx, setRoiCtx] = useState<PendingRoiSummary | null>(() => ENABLE_QUOTE_V2 ? readFreshRoi(Date.now()) : null);
+  const [roiCtx, setRoiCtx] = useState<PendingRoiSummary | null>(() => readFreshRoi(Date.now()));
 
   // Q2 — token-charged generation (authenticated only).
   const [generating, setGenerating] = useState(false);
@@ -142,7 +141,7 @@ export function QuoteRequestPage() {
   // in V2 when ROI figures are present; else null → the existing labels are used (graceful).
   // The label drives the SAME existing action (sign up / generate); the surrounding subtext
   // keeps the mechanical step honest.
-  const recoverCta = (ENABLE_QUOTE_V2 && roiCtx)
+  const recoverCta = roiCtx
     ? format(Q.result.ctaStartRecovering, { amount: money.format(roiCtx.estimatedMonthlyCostSaved) })
     : null;
   const suggestions = Q.guided.suggestions as Record<string, string>;
@@ -205,7 +204,7 @@ export function QuoteRequestPage() {
     quoteIdRef.current = '';
     // D2 — new quote context: re-read the ROI under the freshness gate (drops it if
     // now stale) so the next quote never shows/sends a previous quote's numbers.
-    setRoiCtx(ENABLE_QUOTE_V2 ? readFreshRoi(Date.now()) : null);
+    setRoiCtx(readFreshRoi(Date.now()));
     clearFlowProgress('quote');
   };
 
@@ -220,7 +219,7 @@ export function QuoteRequestPage() {
     }
     // D2 — attach the (fresh) ROI to THIS quote so it can never surface on a different
     // quote's client email. No-op when there is no ROI to bind.
-    if (ENABLE_QUOTE_V2 && roiCtx) bindRoiToQuote(quoteIdRef.current);
+    if (roiCtx) bindRoiToQuote(quoteIdRef.current);
     setGenerating(true); setGenError(null);
     try {
       await generateQuote(orgId, {
@@ -365,7 +364,7 @@ export function QuoteRequestPage() {
       // D2 — RE-VALIDATE at send time: the ROI must still be FRESH (<30 min) AND bound
       // to THIS quote; otherwise no ROI is sent and the worker/template hide the block.
       // Guarantees the client email never carries stale or another quote's ROI.
-      const boundRoi = ENABLE_QUOTE_V2 ? readFreshRoi(Date.now(), quoteIdRef.current) : null;
+      const boundRoi = readFreshRoi(Date.now(), quoteIdRef.current);
       const roiVars = boundRoi ? (() => {
         const R = T.publicTools.roi.result;
         const QR = T.publicTools.quote.result;
@@ -526,7 +525,7 @@ export function QuoteRequestPage() {
           <>
             {/* V2 — one centered, elevated premium card holds the whole value → decision →
                 investment → CTA stack (single card layout). Legacy: plain wrapper, no change. */}
-            <div style={ENABLE_QUOTE_V2 ? { maxWidth: 560, margin: '24px auto 0', background: 'var(--surface-2)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 14px 40px rgba(0,0,0,0.05)', padding: '28px 26px 30px' } : undefined}>
+            <div style={{ maxWidth: 560, margin: '24px auto 0', background: 'var(--surface-2)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 14px 40px rgba(0,0,0,0.05)', padding: '28px 26px 30px' }}>
             <EstimateView preview={preview} roi={roiCtx} />
 
             {isAuthenticated ? (
@@ -658,10 +657,10 @@ export function QuoteRequestPage() {
               </div>
             ))}
 
-            {ENABLE_QUOTE_V2 && (
-              /* Quote V2 trailer — rendered AFTER the CTA so the value → CTA chain is
-                 unbroken: a generic cost-of-delay nudge, then the disclaimer (demoted
-                 below the decision point), then the rerun link. UI-only, no numbers. */
+            {/* Quote trailer — rendered AFTER the CTA so the value → CTA chain is
+                unbroken: a generic cost-of-delay nudge, then the disclaimer (demoted
+                below the decision point), then the rerun link. UI-only, no numbers. */}
+            {(
               <>
                 <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 10, background: 'var(--amber-soft-bg, #fef3c7)', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55, textAlign: 'center' }}>
                   {roiCtx

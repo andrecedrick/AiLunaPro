@@ -14,7 +14,6 @@ import { useMoney } from '../lib/currency/useMoney';
 import { useEffect, useState } from 'react';
 import { primaryBtnStyle } from '../components/ui-tools';
 import { QuoteProgress } from '../components/QuoteProgress';
-import { ENABLE_QUOTE_V2 } from '../lib/flags';
 import { SMB_MAX_USD } from '../data/quote-config';
 import { readQuotePayLink, getTransferDetails, markTransferInitiated, type TransferDetails } from '../lib/quote/quoteClient';
 
@@ -96,7 +95,7 @@ export function QuoteStatusPage() {
           {/* Phase 4 — remove the passive "waiting" dead-end feel: V2 shows a forward,
               reassuring line (payment comes next); legacy keeps the plain status. */}
           <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8 }}>
-            {isBankTransfer ? S.bank.cardHint : payUrl ? S.payReady : ENABLE_QUOTE_V2 ? S.waitingActive : `⏳ ${S.waitingValidation}`}
+            {isBankTransfer ? S.bank.cardHint : payUrl ? S.payReady : S.waitingActive}
           </div>
         </div>
       )}
