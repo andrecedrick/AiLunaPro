@@ -1,0 +1,84 @@
+name: CI
+
+# Gates every push and PR. The deploy job (below) is HARD-GATED on this job:
+# a failing typecheck / build / test blocks production deploys.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: typecheck · build · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (frontend)
+        run: npm ci
+
+      - name: Install (worker)
+        working-directory: worker
+        run: npm ci
+
+      - name: Typecheck (frontend)
+        run: npm run typecheck
+
+      - name: Typecheck (worker)
+        working-directory: worker
+        run: npm run typecheck
+
+      - name: Build (tsc gate + vite)
+        run: npm run build
+
+      - name: Test
+        run: npm run test -- --run
+
+  deploy:
+    name: deploy (production)
+    needs: gate                                   # HARD GATE — no deploy unless gate passed
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (frontend)
+        run: npm ci
+
+      - name: Install (worker)
+        working-directory: worker
+        run: npm ci
+
+      # Rebuild in the deploy job so the deployed dist is exactly what the gate verified.
+      - name: Build
+        run: npm run build
+
+      - name: Deploy worker
+        working-directory: worker
+        run: npx wrangler deploy --env production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy pages
+        run: npx wrangler pages deploy dist --project-name=ailunapro-app --branch=ailunapro-app --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
