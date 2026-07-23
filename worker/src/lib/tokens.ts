@@ -27,6 +27,7 @@ import {
   type TokenAction,
   type UsageMode,
 } from './token-costs';
+import { bumpRollup } from './token-rollups';
 
 interface TokenBalance {
   balance:           number;
@@ -267,6 +268,10 @@ export async function consumeTokens(
         consumed:  newConsumed,
         updatedAt: new Date().toISOString(),
       }, meta.updateTime, { merge: true });
+      // Best-effort monthly rollup — a failure must never affect the charge that
+      // already committed (the raw usage doc remains the source of truth).
+      try { await bumpRollup(saJson, orgId, action, mode, required); }
+      catch (e) { console.warn('[tokens] rollup bump failed (charge unaffected):', e instanceof Error ? e.message : e); }
       return { ok: true, balanceAfter: newBalance, tokensConsumed: required };
     } catch (err) {
       if (err instanceof Error && err.message === 'PRECONDITION_FAILED') continue;
@@ -318,4 +323,7 @@ export async function recordFreeUsage(
     if (err instanceof Error && err.message === 'ALREADY_EXISTS') return;
     throw err;
   }
+  // Best-effort rollup for the free event (count only; tokens = 0).
+  try { await bumpRollup(saJson, orgId, action, 'free', 0); }
+  catch (e) { console.warn('[tokens] free rollup bump failed:', e instanceof Error ? e.message : e); }
 }

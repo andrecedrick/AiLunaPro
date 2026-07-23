@@ -17,6 +17,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet, firestoreRunQuery } from '../lib/firestoreAdmin';
+import { rollupMonthKey, rollupPath } from '../lib/token-rollups';
 import { dlog } from '../lib/log';
 import { ensureTokenCycleFresh, consumeTokens } from '../lib/tokens';
 import { firestoreSet as firestoreSetWrite } from '../lib/firestoreAdmin';
@@ -226,6 +227,38 @@ tokens.get('/api/tokens/usage/summary', requireAuth(), requireRole(['owner', 'ad
     return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
   }
 
+  // FAST PATH — current-month rollup (1 read, O(1) regardless of event volume).
+  // Only for org-wide viewers: a 'member' sees own usage only, which the
+  // org-aggregate rollup cannot express, so members fall through to the scan.
+  // Absent rollup (pre-rollup org / new month before the first event) also falls
+  // through, so no historical usage is ever lost.
+  if (viewerRole !== 'member') {
+    const month = rollupMonthKey();
+    const roll = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, rollupPath(orgId, month)) as { actions?: Record<string, { count?: number; tokens?: number; free?: number; included?: number; overflow?: number }> } | null;
+    if (roll && roll.actions) {
+      const byActionR = Object.entries(roll.actions).map(([action, a]) => ({
+        action,
+        count:    Number(a.count ?? 0) || 0,
+        tokens:   Number(a.tokens ?? 0) || 0,
+        free:     Number(a.free ?? 0) || 0,
+        included: Number(a.included ?? 0) || 0,
+        overflow: Number(a.overflow ?? 0) || 0,
+        unknown:  0,
+        valueUsd: (TOKEN_VALUE_USD[action as TokenAction] ?? 0) * (Number(a.count ?? 0) || 0),
+      }));
+      const totalsR = byActionR.reduce((t, b) => ({
+        count: t.count + b.count, tokens: t.tokens + b.tokens,
+        free: t.free + b.free, included: t.included + b.included, overflow: t.overflow + b.overflow, unknown: 0,
+      }), { count: 0, tokens: 0, free: 0, included: 0, overflow: 0, unknown: 0 });
+      const bal = await ensureTokenCycleFresh(env.FIREBASE_SERVICE_ACCOUNT_JSON, orgId);
+      return c.json({
+        balance: bal.balance, monthlyAllocation: bal.monthlyAllocation, consumed: bal.consumed, cycleEnd: bal.cycleEnd,
+        byAction: byActionR.sort((a, b) => b.tokens - a.tokens || b.count - a.count),
+        totals: totalsR, source: 'rollup', month, capped: false,
+      });
+    }
+  }
+
   const rows = await firestoreRunQuery(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
     from:    [{ collectionId: 'usage' }],
     orderBy: [{ field: { fieldPath: 'at' }, direction: 'DESCENDING' }],
@@ -271,6 +304,7 @@ tokens.get('/api/tokens/usage/summary', requireAuth(), requireRole(['owner', 'ad
     cycleEnd:          bal.cycleEnd,
     byAction: [...byAction.values()].sort((a, b2) => b2.tokens - a.tokens || b2.count - a.count),
     totals,
+    source:  'scan',
     scanned: events.length,
     capped:  rows.length === SUMMARY_SCAN_CAP,
   });

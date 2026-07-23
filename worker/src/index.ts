@@ -156,12 +156,11 @@ app.use('*', async (c, next) => {
         e.STRIPE_TOKEN_PRICE_PRO     ? 1 : 0,
         e.STRIPE_TOKEN_PRICE_MAX     ? 1 : 0,
       ].reduce((a, b) => a + b, 0);
-      // Billing-scope booleans help confirm the controlled-rollout gates at deploy.
-      const planLimits = e.ENABLE_PLAN_LIMITS === 'true' ? (e.ENABLE_PLAN_LIMITS_ORGS || 'none') : 'off';
-      const recoCharge = e.ENABLE_RECOMMENDATION_CHARGE === 'true' ? (e.ENABLE_RECOMMENDATION_CHARGE_ORGS || 'none') : 'off';
+      // Billing scope moved to Firestore (platform_config/billing) — no longer in
+      // env, so the boot log points to the authoritative source instead of a value.
       console.log(
         `[boot] env=${appEnv} keyMode=${keyMode} packs=${packs}/4 ` +
-        `planLimits=${planLimits} recoCharge=${recoCharge} ` +
+        `billingScope=firestore:platform_config/billing ` +
         `webhookSecret=${e.STRIPE_WEBHOOK_SECRET ? 'set' : 'unset'} ` +
         `firestoreSA=${e.FIREBASE_SERVICE_ACCOUNT_JSON ? 'set' : 'unset'} ` +
         `appBaseUrl=${e.APP_BASE_URL ? 'set' : 'unset(fallback)'}`
