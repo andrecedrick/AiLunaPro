@@ -108,3 +108,46 @@ export async function fetchPlatformTokenUsage(): Promise<PlatformTokenUsage | nu
     return null;
   }
 }
+
+/* ── Production alerts (read-only) ─────────────────────── */
+
+/** A persisted billing/production alert. Operational ids only — no PII. */
+export interface ProductionAlert {
+  id:        string;
+  kind:      string;
+  severity:  string;   // 'critical' | 'warning'
+  status:    string;   // 'open' | 'resolved'
+  orgId:     string;
+  sessionId: string;
+  invoiceId: string;
+  message:   string;
+  context:   Record<string, unknown>;
+  at:        string;
+}
+
+export interface ProductionAlerts {
+  alerts:       ProductionAlert[];
+  total:        number;
+  openCritical: number;
+  capped:       boolean;
+  generatedAt:  number;
+}
+
+/**
+ * Durable production alerts for platform operators (token-credit failures,
+ * invoice mismatches, and any future billing-alert kind). Read-only. Returns
+ * null on any failure so the operator surface degrades quietly.
+ */
+export async function fetchPlatformAlerts(): Promise<ProductionAlerts | null> {
+  const token = await getIdToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/platform/alerts`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ProductionAlerts;
+  } catch {
+    return null;
+  }
+}
