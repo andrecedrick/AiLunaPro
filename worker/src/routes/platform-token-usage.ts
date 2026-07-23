@@ -21,12 +21,15 @@ import { requireAuth } from '../middleware/auth';
 import { requirePlatformAdmin } from '../lib/platformAdmin';
 import { firestoreRunQuery } from '../lib/firestoreAdmin';
 import { isUsageMode } from '../lib/token-costs';
+import { rollupMonthKey } from '../lib/token-rollups';
 import type { AppEnv } from '../index';
 
 const platformTokenUsage = new Hono<AppEnv>();
 
-/** Hard cap on usage docs scanned per call (bounds Firestore read cost). */
+/** Raw-scan fallback cap (only hit for pre-rollup months). */
 const SCAN_CAP = 5000;
+/** Rollup docs = one per org per month; cap is an org-count backstop, not events. */
+const ROLLUP_SCAN_CAP = 10_000;
 const CACHE_TTL_MS = 60_000;
 
 type Mode = 'free' | 'included' | 'overflow' | 'unknown';
@@ -47,12 +50,14 @@ interface TokenUsagePayload {
   totals:      { count: number; tokens: number; free: number; included: number; overflow: number; unknown: number; orgs: number };
   scanned:     number;
   capped:      boolean;
+  source:      'rollup' | 'scan';
+  month?:      string;
   generatedAt: number;
 }
 
-let cache: { value: TokenUsagePayload; exp: number } | null = null;
+const cache = new Map<string, { value: TokenUsagePayload; exp: number }>();
 
-/** organizations/{orgId}/tokens/current/usage/{eventId} → orgId ('' if unparseable). */
+/** organizations/{orgId}/tokens/current/{usage|rollups}/{id} → orgId ('' if unparseable). */
 function orgIdFromDocName(name: string): string {
   const parts = name.split('/');
   const i = parts.lastIndexOf('organizations');
@@ -63,8 +68,72 @@ function modeOf(raw: unknown): Mode {
   return isUsageMode(raw) ? raw : 'unknown';
 }
 
-async function computeTokenUsage(saJson: string): Promise<TokenUsagePayload> {
-  // CollectionGroup over every organizations/*/tokens/current/usage subcollection.
+/**
+ * ROLLUP path — one doc per org for the month, so cost scales with ORG count,
+ * not event count. Reads organizations/*​/tokens/current/rollups/{month} via a
+ * collection-group query filtered by the `month` field. Returns null when no
+ * rollup exists for the month (pre-rollup data) so the caller can fall back to
+ * the raw scan and never lose history.
+ */
+async function computeFromRollups(saJson: string, month: string): Promise<TokenUsagePayload | null> {
+  const docs = await firestoreRunQuery(saJson, {
+    from:  [{ collectionId: 'rollups', allDescendants: true }],
+    where: { fieldFilter: { field: { fieldPath: 'month' }, op: 'EQUAL', value: { stringValue: month } } },
+    limit: ROLLUP_SCAN_CAP,
+  });
+
+  const relevant = docs.filter(d => d.name.includes('/tokens/current/rollups/'));
+  if (relevant.length === 0) return null;
+
+  const buckets = new Map<string, ActionBucket>();
+  const orgsPerAction = new Map<string, Set<string>>();
+  const allOrgs = new Set<string>();
+  const totals = { count: 0, tokens: 0, free: 0, included: 0, overflow: 0, unknown: 0, orgs: 0 };
+
+  for (const d of relevant) {
+    const orgId = orgIdFromDocName(d.name);
+    const actions = (d.fields.actions ?? {}) as Record<string, Record<string, unknown>>;
+    for (const [action, a] of Object.entries(actions)) {
+      const count    = Number(a.count ?? 0) || 0;
+      const tokens   = Number(a.tokens ?? 0) || 0;
+      const free     = Number(a.free ?? 0) || 0;
+      const included = Number(a.included ?? 0) || 0;
+      const overflow = Number(a.overflow ?? 0) || 0;
+
+      let b = buckets.get(action);
+      if (!b) {
+        b = { action, count: 0, tokens: 0, free: 0, included: 0, overflow: 0, unknown: 0, orgs: 0 };
+        buckets.set(action, b);
+        orgsPerAction.set(action, new Set<string>());
+      }
+      b.count += count; b.tokens += tokens; b.free += free; b.included += included; b.overflow += overflow;
+      if (orgId && count > 0) orgsPerAction.get(action)!.add(orgId);
+
+      totals.count += count; totals.tokens += tokens;
+      totals.free += free; totals.included += included; totals.overflow += overflow;
+    }
+    if (orgId) allOrgs.add(orgId);
+  }
+
+  for (const [action, set] of orgsPerAction) {
+    const b = buckets.get(action);
+    if (b) b.orgs = set.size;
+  }
+  totals.orgs = allOrgs.size;
+
+  return {
+    byAction: [...buckets.values()].sort((a, b) => b.tokens - a.tokens || b.count - a.count),
+    totals,
+    scanned:     relevant.length,      // docs read = org count, not event count
+    capped:      relevant.length === ROLLUP_SCAN_CAP,
+    source:      'rollup',
+    month,
+    generatedAt: Date.now(),
+  };
+}
+
+/** Legacy RAW-SCAN path — retained as the fallback for months with no rollups. */
+async function computeFromScan(saJson: string): Promise<TokenUsagePayload> {
   const docs = await firestoreRunQuery(saJson, {
     from:  [{ collectionId: 'usage', allDescendants: true }],
     limit: SCAN_CAP,
@@ -76,10 +145,7 @@ async function computeTokenUsage(saJson: string): Promise<TokenUsagePayload> {
   const totals = { count: 0, tokens: 0, free: 0, included: 0, overflow: 0, unknown: 0, orgs: 0 };
 
   for (const d of docs) {
-    // Defensive: the collection group could match a same-named subcollection
-    // elsewhere; only count docs on the canonical token-ledger path.
     if (!d.name.includes('/tokens/current/usage/')) continue;
-
     const f      = d.fields;
     const action = f.action ? String(f.action) : 'unknown';
     const tokens = Number(f.tokens ?? 0) || 0;
@@ -92,17 +158,10 @@ async function computeTokenUsage(saJson: string): Promise<TokenUsagePayload> {
       buckets.set(action, b);
       orgsPerAction.set(action, new Set<string>());
     }
-    b.count  += 1;
-    b.tokens += tokens;
-    b[mode]  += 1;
-    if (orgId) {
-      orgsPerAction.get(action)!.add(orgId);
-      allOrgs.add(orgId);
-    }
+    b.count += 1; b.tokens += tokens; b[mode] += 1;
+    if (orgId) { orgsPerAction.get(action)!.add(orgId); allOrgs.add(orgId); }
 
-    totals.count  += 1;
-    totals.tokens += tokens;
-    totals[mode]  += 1;
+    totals.count += 1; totals.tokens += tokens; totals[mode] += 1;
   }
 
   for (const [action, set] of orgsPerAction) {
@@ -112,13 +171,20 @@ async function computeTokenUsage(saJson: string): Promise<TokenUsagePayload> {
   totals.orgs = allOrgs.size;
 
   return {
-    // Sorted desc by tokens then events — the head of this list IS "top actions".
     byAction: [...buckets.values()].sort((a, b) => b.tokens - a.tokens || b.count - a.count),
     totals,
     scanned:     totals.count,
     capped:      docs.length === SCAN_CAP,
+    source:      'scan',
     generatedAt: Date.now(),
   };
+}
+
+async function computeTokenUsage(saJson: string, month: string): Promise<TokenUsagePayload> {
+  // Rollup-first (O(orgs), no event cap). Fall back to the raw scan only when the
+  // month has no rollups yet (pre-rollup history), so nothing is ever lost.
+  const rollup = await computeFromRollups(saJson, month);
+  return rollup ?? await computeFromScan(saJson);
 }
 
 platformTokenUsage.get('/api/platform/token-usage', requireAuth(), requirePlatformAdmin(), async c => {
@@ -128,12 +194,17 @@ platformTokenUsage.get('/api/platform/token-usage', requireAuth(), requirePlatfo
     return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
   }
 
+  // Default to the current UTC month; ?month=YYYY-MM for a specific month.
+  const monthParam = c.req.query('month');
+  const month = /^\d{4}-\d{2}$/.test(monthParam ?? '') ? monthParam! : rollupMonthKey();
+
   const now = Date.now();
-  if (cache && cache.exp > now) return c.json(cache.value);
+  const hit = cache.get(month);
+  if (hit && hit.exp > now) return c.json(hit.value);
 
   try {
-    const value = await computeTokenUsage(env.FIREBASE_SERVICE_ACCOUNT_JSON);
-    cache = { value, exp: now + CACHE_TTL_MS };
+    const value = await computeTokenUsage(env.FIREBASE_SERVICE_ACCOUNT_JSON, month);
+    cache.set(month, { value, exp: now + CACHE_TTL_MS });
     return c.json(value);
   } catch (err) {
     console.warn('[platform-token-usage] aggregation failed:', err);

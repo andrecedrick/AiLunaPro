@@ -48,9 +48,15 @@ const usageDoc = (orgId: string, eventId: string, action: string, tokens: number
 
 async function call() {
   const route = await loadRoute();
-  const res = await route.request('/api/platform/token-usage', {}, ENV);
+  const res = await route.request('/api/platform/token-usage?month=2026-07', {}, ENV);
   return { status: res.status, body: await res.json() as Record<string, never> };
 }
+
+// A monthly rollup doc: one per org, holding a per-action counter map.
+const rollupDoc = (orgId: string, month: string, actions: Record<string, { count: number; tokens: number; free?: number; included?: number; overflow?: number }>) => ({
+  name: `projects/p/databases/(default)/documents/organizations/${orgId}/tokens/current/rollups/${month}`,
+  fields: { month, actions },
+});
 
 beforeEach(() => {
   q.docs = [];
@@ -58,7 +64,43 @@ beforeEach(() => {
   vi.resetModules();
 });
 
-describe('GET /api/platform/token-usage', () => {
+describe('GET /api/platform/token-usage — ROLLUP path (bounded by orgs)', () => {
+  it('aggregates monthly rollup docs across orgs, one doc per org', async () => {
+    q.docs = [
+      rollupDoc('orgA', '2026-07', {
+        'luna.message':     { count: 3, tokens: 100, free: 1, included: 2, overflow: 0 },
+        'quote.generation': { count: 1, tokens: 60,  free: 0, included: 1, overflow: 0 },
+      }),
+      rollupDoc('orgB', '2026-07', {
+        'luna.message':     { count: 2, tokens: 100, free: 0, included: 2, overflow: 0 },
+      }),
+    ];
+    const { status, body } = await call();
+    expect(status).toBe(200);
+    expect(body.source as unknown as string).toBe('rollup');
+
+    const byAction = body.byAction as unknown as Array<Record<string, number | string>>;
+    const luna = byAction.find(b => b.action === 'luna.message')!;
+    expect(luna.count).toBe(5);       // 3 + 2 across orgs
+    expect(luna.tokens).toBe(200);
+    expect(luna.orgs).toBe(2);        // distinct orgs, counted not listed
+
+    const totals = body.totals as unknown as Record<string, number>;
+    expect(totals.count).toBe(6);     // 3 + 1 + 2
+    expect(totals.orgs).toBe(2);
+    // scanned == docs read == ORG count, NOT event count (the whole point).
+    expect(body.scanned as unknown as number).toBe(2);
+  });
+
+  it('emits no PII in the rollup path — orgs counted, never listed', async () => {
+    q.docs = [rollupDoc('orgSecret', '2026-07', { 'luna.message': { count: 1, tokens: 50 } })];
+    const serialized = JSON.stringify((await call()).body);
+    expect(serialized).not.toContain('orgSecret');
+    expect(serialized).not.toContain('@');
+  });
+});
+
+describe('GET /api/platform/token-usage — SCAN fallback', () => {
   it('groups by action with mode split and distinct org counts', async () => {
     q.docs = [
       usageDoc('orgA', 'e1', 'luna.message', 50, 'included'),
