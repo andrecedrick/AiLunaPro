@@ -104,4 +104,38 @@ platformAlerts.get('/api/platform/alerts', requireAuth(), requirePlatformAdmin()
   }
 });
 
+/**
+ * Lightweight notification signal — the count of OPEN CRITICAL alerts (plus the
+ * newest kind/timestamp for a headline). Cheap enough for any platform surface
+ * to call on load and badge, so operators are notified without opening the full
+ * panel. Durable (Firestore-backed), platform-admin gated, no PII (a count + a
+ * kind slug + a timestamp — never org/session data).
+ */
+const NOTIFY_SCAN = 200;
+
+platformAlerts.get('/api/platform/alerts/notify', requireAuth(), requirePlatformAdmin(), async c => {
+  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string };
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    return c.json({ openCritical: 0, latestKind: '', latestAt: '' });
+  }
+  try {
+    const rows = await firestoreRunQuery(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+      from:    [{ collectionId: 'platform_alerts' }],
+      orderBy: [{ field: { fieldPath: 'at' }, direction: 'DESCENDING' }],
+      limit:   NOTIFY_SCAN,
+    });
+    const open = rows
+      .map(r => mapAlert(r.name, r.fields))
+      .filter(a => a.status === 'open' && a.severity === 'critical');
+    return c.json({
+      openCritical: open.length,
+      latestKind:   open[0]?.kind ?? '',
+      latestAt:     open[0]?.at ?? '',
+    });
+  } catch {
+    // Missing collection / transient → no notification (fail-quiet).
+    return c.json({ openCritical: 0, latestKind: '', latestAt: '' });
+  }
+});
+
 export default platformAlerts;

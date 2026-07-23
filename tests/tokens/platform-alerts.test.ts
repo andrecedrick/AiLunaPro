@@ -42,6 +42,12 @@ async function call(qs = '') {
   return { status: res.status, body: await res.json() as Record<string, never> };
 }
 
+async function callNotify() {
+  const route = await loadRoute();
+  const res = await route.request('/api/platform/alerts/notify', {}, ENV);
+  return { status: res.status, body: await res.json() as Record<string, never> };
+}
+
 beforeEach(() => { q.docs = []; q.throwOnQuery = false; vi.resetModules(); });
 
 describe('GET /api/platform/alerts', () => {
@@ -98,5 +104,34 @@ describe('GET /api/platform/alerts', () => {
     const route = await loadRoute();
     const res = await route.request('/api/platform/alerts', {}, {});
     expect(res.status).toBe(503);
+  });
+});
+
+describe("GET /api/platform/alerts/notify", () => {
+  it("counts only OPEN CRITICAL alerts and reports the newest kind", async () => {
+    q.docs = [
+      alertDoc("a1", "topup_credit_failed", "critical", "2026-07-23T03:00:00Z"),
+      alertDoc("a2", "invoice_amount_mismatch", "critical", "2026-07-23T02:00:00Z", { resolved: true }),
+      alertDoc("a3", "some_warning", "warning", "2026-07-23T01:00:00Z"),
+    ];
+    const { status, body } = await callNotify();
+    expect(status).toBe(200);
+    expect(body.openCritical as unknown as number).toBe(1);       // a1 only (a2 resolved, a3 warning)
+    expect(body.latestKind as unknown as string).toBe("topup_credit_failed");
+  });
+
+  it("no PII in the notify signal (count + kind slug + timestamp only)", async () => {
+    q.docs = [alertDoc("a1", "topup_credit_failed", "critical", "2026-07-23T03:00:00Z", { orgId: "orgSecret", sessionId: "cs_x" })];
+    const s = JSON.stringify((await callNotify()).body);
+    expect(s).not.toContain("orgSecret");
+    expect(s).not.toContain("@");
+    expect(s).not.toContain("uid");
+  });
+
+  it("fail-quiet: zero on a missing collection", async () => {
+    q.throwOnQuery = true;
+    const { status, body } = await callNotify();
+    expect(status).toBe(200);
+    expect(body.openCritical as unknown as number).toBe(0);
   });
 });

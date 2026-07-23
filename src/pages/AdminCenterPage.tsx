@@ -19,6 +19,7 @@ import { buildOrgActivity, buildPlatformActivity } from '../lib/quote/activityFe
 import { TokenUsagePanel } from '../components/tokens/TokenUsagePanel';
 import { TokenEconomyPanel } from '../components/tokens/TokenEconomyPanel';
 import { ProductionAlertsPanel } from '../components/platform/ProductionAlertsPanel';
+import { fetchAlertNotify } from '../lib/platform/platformService';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
 const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' } as const;
@@ -51,6 +52,8 @@ export function AdminCenterPage() {
   const [platformQuotes, setPlatformQuotes] = useState<QuoteListItem[] | null>(null);
   const [platformInvoices, setPlatformInvoices] = useState<PlatformInvoiceItem[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Proactive alert signal — open critical count for the notification banner.
+  const [alertNotify, setAlertNotify] = useState<{ openCritical: number; latestKind: string } | null>(null);
 
   const orgAdmin = session?.role === 'owner' || session?.role === 'admin';
   useEffect(() => {
@@ -70,6 +73,8 @@ export function AdminCenterPage() {
   useEffect(() => {
     if (!platformAdmin) return;
     let alive = true;
+    // Notification signal — badge open critical alerts without opening the panel.
+    fetchAlertNotify().then(n => { if (alive && n) setAlertNotify({ openCritical: n.openCritical, latestKind: n.latestKind }); }).catch(() => {});
     listPlatformQuotes()
       .then(d => { if (alive) { setPlatformQuotes(d.quotes); setPlatformInvoices(d.invoices); } })
       .catch(() => { if (alive) setPlatformQuotes([]); });
@@ -363,6 +368,15 @@ export function AdminCenterPage() {
 
       {/* Token Economy — cross-org aggregates, platform operators only. No PII. */}
       {platformAdmin && section('Token Economy', <TokenEconomyPanel />)}
+
+      {/* Proactive notification — open critical alerts, always visible to operators. */}
+      {platformAdmin && alertNotify && alertNotify.openCritical > 0 && (
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 10, border: '1px solid #b91c1c', background: 'rgba(185,28,28,0.08)', color: '#b91c1c', fontWeight: 700, fontSize: 13.5 }}>
+          <span aria-hidden>⚠</span>
+          {alertNotify.openCritical} open critical production alert{alertNotify.openCritical === 1 ? '' : 's'}
+          {alertNotify.latestKind ? ` — latest: ${alertNotify.latestKind}` : ''}. See Production Alerts below.
+        </div>
+      )}
 
       {/* Production Alerts — durable billing/production alerts, operators only, read-only. */}
       {platformAdmin && section('Production Alerts', <ProductionAlertsPanel />)}

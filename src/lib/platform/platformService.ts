@@ -151,3 +151,28 @@ export async function fetchPlatformAlerts(): Promise<ProductionAlerts | null> {
     return null;
   }
 }
+
+/** Lightweight open-critical alert signal for a proactive badge. No PII. */
+export interface AlertNotify {
+  openCritical: number;
+  latestKind:   string;
+  latestAt:     string;
+}
+
+/**
+ * Cheap notification signal — the count of open critical alerts (+ newest kind).
+ * Returns null on failure so the badge simply doesn't show.
+ */
+export async function fetchAlertNotify(): Promise<AlertNotify | null> {
+  const token = await getIdToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/platform/alerts/notify`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as AlertNotify;
+  } catch {
+    return null;
+  }
+}
