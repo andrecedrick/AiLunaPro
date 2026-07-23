@@ -17,7 +17,8 @@ import {
   type AgentForRecommendation,
   type RecommendationResult,
 } from '../lib/recommendation';
-import { enforceUsageLimit, recommendationChargeEnabledFor, type RecommendationChargeEnv } from '../lib/usage-limits';
+import { enforceUsageLimit, recommendationChargeEnabledFor } from '../lib/usage-limits';
+import { resolveBillingConfig } from '../lib/billing-config-store';
 import type { AppEnv } from '../index';
 
 const recommend = new Hono<AppEnv>();
@@ -161,10 +162,14 @@ recommend.post('/api/recommend', requireAuth(), requireRole(READ_ROLES), async c
     ? supplied.replace(/[^a-zA-Z0-9_:-]/g, '').slice(0, 80)
     : `reco_${uid}_${hashProfile(check.profile)}`;
   // Phase 6 — overflow billing is CONTROLLED per-org: requires the flag AND this org
-  // in ENABLE_RECOMMENDATION_CHARGE_ORGS (or '*'). Empty allowlist = charge nobody
-  // (fail-safe). Even '*' only bills orgs that are also enforced (enforced ∩ charge).
-  const chargeOnOverflow = recommendationChargeEnabledFor(env as RecommendationChargeEnv, orgId);
-  const enforce = await enforceUsageLimit(env.FIREBASE_SERVICE_ACCOUNT_JSON!, env as { ENABLE_PLAN_LIMITS?: string; ENABLE_PLAN_LIMITS_ORGS?: string }, orgId, 'recommendation.run', uid, eventId, chargeOnOverflow);
+  // in the charge allowlist (or '*'). Empty allowlist = charge nobody (fail-safe).
+  // Even '*' only bills orgs that are also enforced (enforced ∩ charge).
+  //
+  // Scope now comes from the Firestore-authoritative billing config (survives worker
+  // rollbacks), NOT wrangler.toml. Self-seeds from committed defaults on first read.
+  const billingScope = await resolveBillingConfig(env.FIREBASE_SERVICE_ACCOUNT_JSON!);
+  const chargeOnOverflow = recommendationChargeEnabledFor(billingScope, orgId);
+  const enforce = await enforceUsageLimit(env.FIREBASE_SERVICE_ACCOUNT_JSON!, billingScope, orgId, 'recommendation.run', uid, eventId, chargeOnOverflow);
   if (!enforce.allowed) {
     const upgrade = enforce.mode === 'upgrade-required';
     return c.json({

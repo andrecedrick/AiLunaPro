@@ -30,24 +30,16 @@ ALLOWED_ORIGINS     = "https://audit.ailunapro.com"
 APP_BASE_URL        = "https://audit.ailunapro.com"
 APP_ENV             = "production"
 
-# Phase 5 — plan-limit enforcement, GLOBAL rollout ("*" = all organizations).
-# ENABLE_PLAN_LIMITS_ORGS is the allowlist; "*" enforces every org (was a single test org
-# in the scoped Phase-4 rollout). Within plan = free; over limit = enforced (Free → upgrade,
-# no charge). ENABLE_RECOMMENDATION_CHARGE stays unset (OFF) → overflow is detected/blocked-
-# for-Free but NEVER billed for paid plans (paid over-limit = overflow-free).
-# Rollback to scoped: set ORGS back to the test orgId; full off: remove both lines. Redeploy.
-ENABLE_PLAN_LIMITS      = "true"
-ENABLE_PLAN_LIMITS_ORGS = "*"
-
-# Phase 6 — SCOPED overflow BILLING: charge recommendation overflow for ONE test org only.
-# recommendationChargeEnabledFor requires the flag AND this org in the allowlist (its OWN var —
-# plan-limits "*" cannot leak in). This is a single orgId, NOT "*", so billing is SCOPED — NO
-# global billing. The org is also enforced (ORGS="*"), so it's in enforced ∩ charge-allowlist.
-# Overflow debits the token LEDGER (consumeTokens); Stripe stays TEST and only charges at pack
-# purchase — overflow itself moves no money. Idempotent per overflow_{eventId}.
-# Rollback: remove these 2 lines + `wrangler deploy --env production` → overflow returns overflow-free.
-ENABLE_RECOMMENDATION_CHARGE      = "true"
-ENABLE_RECOMMENDATION_CHARGE_ORGS = "org_ux6EH21A_1779743372219_71670faf"
+# ── Billing SCOPE moved out of this deploy file ──────────────────────────────
+# Plan-limit + overflow-charge scope (ENABLE_PLAN_LIMITS[_ORGS],
+# ENABLE_RECOMMENDATION_CHARGE[_ORGS]) is NO LONGER set here. A business rule in a
+# deploy artifact meant a worker rollback silently changed WHO gets billed.
+# The authoritative source is now the Firestore doc `platform_config/billing`
+# (see worker/src/lib/billing-config-store.ts): rollback-safe (survives worker
+# version changes), version-independent, auditable. It self-seeds from the
+# committed defaults (= the exact values previously here: plan-limits true/'*',
+# recommendation-charge true/single-test-org) on first read, so their removal is
+# behaviour-preserving. Change scope by editing that doc, not this file.
 
 [[env.production.r2_buckets]]
 binding = "AUDIT_PDFS"
