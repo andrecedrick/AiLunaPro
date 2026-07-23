@@ -12,6 +12,13 @@ import { captureSrc } from './lib/analytics/srcParam'
 import { initialLanguage } from './lib/preferences'
 import { loadDict } from './lib/locale/i18n'
 import { primeDict } from './context/LocaleContext'
+import { assertProductionLayers } from './lib/featureFlags'
+
+// Fail-closed: a production bundle that lost VITE_AUTH_LAYER/VITE_DATA_LAYER would
+// otherwise boot into localStorage mock mode silently. Throw here (before render)
+// so the index.html boot watchdog surfaces the actionable error card instead of a
+// fake logged-in session over throwaway data. No-op in dev/test builds.
+assertProductionLayers()
 
 // Signal that the JS bundle executed — lets the index.html boot watchdog tell
 // "bundle blocked / never loaded" apart from "loaded but slow" (so it does not

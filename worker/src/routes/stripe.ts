@@ -26,6 +26,7 @@ import { TOKEN_PACKS, isValidPack } from '../lib/token-costs';
 import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
 import { recordWebhookEvent } from './billing-config';
 import { sendPaymentConfirmation } from './invoices';
+import { recordBillingAlert, RetryableWebhookError } from '../lib/billing-alerts';
 import type { AppEnv } from '../index';
 import type Stripe from 'stripe';
 
@@ -82,7 +83,14 @@ stripe.post('/api/stripe/webhook', async c => {
     const msg = err instanceof Error ? err.message : 'Event handling failed';
     console.error('[webhook] handler error:', msg);
     recordWebhookEvent(event.id, false, msg);
-    // Return 200 to prevent Stripe retries for non-signature errors
+    // A RetryableWebhookError means work was claimed but not completed (e.g. a
+    // token credit failed after its claim, lock already released). Return 500 so
+    // Stripe REDELIVERS and the retry completes the credit — no silent loss.
+    if (err instanceof RetryableWebhookError) {
+      return c.json({ received: false, retry: true, error: msg }, 500);
+    }
+    // Any other handler error stays 2xx so Stripe does not retry a permanently
+    // bad event forever (unchanged behaviour).
     return c.json({ received: true, error: msg });
   }
 
@@ -157,28 +165,71 @@ async function handleEvent(
           break;
         }
 
-        // Claim pending → credited atomically. Loser/retry → PRECONDITION_FAILED.
+        // Recoverable credit — the ordering guarantees exactly-once WITHOUT a
+        // silent-loss window:
+        //   pending → crediting → (incrementBalance) → credited
+        // The claim only advances to 'crediting' (an in-flight lock), NOT to
+        // 'credited'. Tokens are marked credited ONLY after the balance write
+        // confirms. If the credit fails, the lock is RELEASED back to 'pending'
+        // and the handler throws RetryableWebhookError so Stripe redelivers and
+        // the next delivery re-credits. incrementBalance is atomic (optimistic
+        // concurrency), so a failed attempt never applies a partial credit — a
+        // reclaim after failure can never double-credit.
+        //
+        // Crash safety: if an isolate dies between 'crediting' and 'credited',
+        // the increment (which runs after the claim) never completed, so a
+        // 'crediting' doc older than STALE_MS is safely reclaimable.
+        const STALE_CREDITING_MS = 90_000;
+        const status    = String(topupMeta.data.status ?? 'pending');
+        const creditingAtRaw = topupMeta.data.creditingAt;
+        const creditingAge = typeof creditingAtRaw === 'string' ? Date.now() - Date.parse(creditingAtRaw) : Infinity;
+        const isStaleCrediting = status === 'crediting' && creditingAge > STALE_CREDITING_MS;
+
+        if (status !== 'pending' && !isStaleCrediting) {
+          // Another delivery holds a fresh 'crediting' lock — it will finish, or
+          // fail and release for the next retry. Do not race it.
+          console.log('[webhook] tokens_topup in-flight (status=', status, ') — skipping this delivery:', session.id);
+          break;
+        }
+
+        // Claim → 'crediting'. setIfMatch(updateTime) ⇒ exactly one delivery wins.
         try {
           await firestoreSetIfMatch(saJson, topupPath, {
-            status:     'credited',
-            creditedAt: new Date().toISOString(),
+            status:      'crediting',
+            creditingAt: new Date().toISOString(),
           }, topupMeta.updateTime, { merge: true });
         } catch (err) {
           if (err instanceof Error && err.message === 'PRECONDITION_FAILED') {
-            console.log('[webhook] tokens_topup claimed by another delivery — skipping:', session.id);
+            console.log('[webhook] tokens_topup claim lost to another delivery — skipping:', session.id);
             break;
           }
           throw err;
         }
 
-        // Won the claim — credit exactly once.
+        // Won the claim — credit, then confirm. On failure release + ask for retry.
         try {
           const result = await incrementBalance(saJson, orgId, tokensAdded);
+          await firestoreSet(saJson, topupPath, {
+            status:     'credited',
+            creditedAt: new Date().toISOString(),
+          }, { merge: true });
           console.log('[webhook] tokens_topup credited — orgId:', orgId, 'pack:', pack, 'tokens:', tokensAdded, 'newBalance:', result.balanceAfter);
         } catch (err) {
-          // Status is already 'credited' so no retry will re-credit. Tokens not
-          // added → manual reconciliation. Loud log (no silent double-credit).
-          console.error('[webhook] tokens_topup CREDIT FAILED after claim — manual reconciliation needed. session:', session.id, 'tokens:', tokensAdded, err);
+          // Release the lock so a Stripe redelivery re-credits (no permanent loss).
+          try {
+            await firestoreSet(saJson, topupPath, {
+              status:         'pending',
+              lastCreditError: err instanceof Error ? err.message : 'credit failed',
+              creditFailedAt:  new Date().toISOString(),
+            }, { merge: true });
+          } catch { /* best-effort release — Stripe retry + stale-reclaim still recover */ }
+          await recordBillingAlert(saJson, {
+            kind: 'topup_credit_failed', severity: 'critical', orgId, sessionId: session.id,
+            message: 'Token top-up paid but credit failed; lock released, awaiting Stripe redelivery.',
+            context: { tokensAdded, pack },
+          });
+          // Non-2xx to the webhook entrypoint → Stripe redelivers the event.
+          throw new RetryableWebhookError(`tokens_topup credit failed for session ${session.id}`);
         }
         break;
       }
@@ -232,6 +283,11 @@ async function handleEvent(
             amountMismatch: true, paidAmount: paidCents, stripeSessionId: session.id, updatedAt: new Date().toISOString(),
           }, { merge: true });
           console.warn('[webhook] invoice_payment AMOUNT MISMATCH — invoice:', invoiceId, 'expectedCents:', expectedCents, 'paidCents:', paidCents, '(left pending for review)');
+          await recordBillingAlert(saJson, {
+            kind: 'invoice_amount_mismatch', severity: 'critical', orgId: payOrg, invoiceId, sessionId: session.id,
+            message: 'Stripe settled an amount that does not equal the invoice total; invoice left pending for review.',
+            context: { expectedCents, paidCents },
+          });
         }
         break;
       }
