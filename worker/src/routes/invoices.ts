@@ -19,6 +19,7 @@ import { firestoreRunQuery, firestoreGet, firestoreSet, firestoreCreateIfNotExis
 import { buildInvoicePdf, type InvoicePdfInput } from '../lib/quote-pdf';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { sendTransactional } from '../lib/sequenzy';
+import { recordBillingAlert } from '../lib/billing-alerts';
 import { formatBankDetails, bankDetailsFields } from '../lib/bank-details';
 import { getStripe } from '../lib/stripe';
 import { SMB_MAX_USD } from '../data/quote-config';
@@ -187,7 +188,16 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
       BANK_TRANSFER: isBank ? '1' : '',
     },
   });
-  if (!res.ok) console.warn('[invoices] invoice-client NOT sent (check SEQUENZY_API_KEY / invoice-client):', res.error ?? 'unknown');
+  if (!res.ok) {
+    console.warn('[invoices] invoice-client NOT sent (check SEQUENZY_API_KEY / invoice-client):', res.error ?? 'unknown');
+    // Durable, observable: a failed invoice email is visible in Production Alerts
+    // + the bell instead of only a real-time log. Template + reason, no recipient.
+    await recordBillingAlert(saJson, {
+      kind: 'notification_email_failed', severity: 'warning', refId: `invoice-client_${a.invoiceId}`,
+      message: 'Invoice email failed to send: invoice-client',
+      context: { template: 'invoice-client', reason: res.error ?? 'unknown', invoiceId: a.invoiceId },
+    });
+  }
   return { emailed: res.ok, emailError: res.error };
 }
 
@@ -217,7 +227,14 @@ export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: s
       INVOICE_URL: link ?? '',
     },
   });
-  if (!res.ok) console.warn('[invoices] payment-confirmation NOT sent (check SEQUENZY_API_KEY / payment-confirmation):', res.error ?? 'unknown');
+  if (!res.ok) {
+    console.warn('[invoices] payment-confirmation NOT sent (check SEQUENZY_API_KEY / payment-confirmation):', res.error ?? 'unknown');
+    await recordBillingAlert(saJson, {
+      kind: 'notification_email_failed', severity: 'warning', refId: `payment-confirmation_${a.invoiceId}`,
+      message: 'Receipt email failed to send: payment-confirmation',
+      context: { template: 'payment-confirmation', reason: res.error ?? 'unknown', invoiceId: a.invoiceId },
+    });
+  }
   else await firestoreSet(saJson, `invoices/${a.invoiceId}`, { confirmationEmailedAt: new Date().toISOString() }, { merge: true }).catch(() => { /* audit best-effort */ });
   return { emailed: res.ok, emailError: res.error };
 }

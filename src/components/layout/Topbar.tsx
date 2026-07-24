@@ -12,7 +12,8 @@ import { useToast } from '../../hooks/useToast';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
 import { ROLE } from '../../types/auth';
-import { fetchPlatformNotifications, type NotificationItem } from '../../lib/platform/platformService';
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from '../../lib/platform/platformService';
+import type { Route } from '../../types/audit';
 
 interface TopbarProps {
   onToggleSidebar: () => void;
@@ -48,26 +49,38 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const [customFrom, setCustomFrom] = useState('');
   const [customTo,   setCustomTo]   = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
-  // Operator notification feed for the bell. Platform-admin gated at the endpoint,
-  // so a non-operator gets null and the bell stays empty (no per-user feed exists).
+  // Durable, actionable notifications (read/unread). Every authed user gets their
+  // own; platform admins additionally get operator ones.
   const [notifs, setNotifs] = useState<NotificationItem[] | null>(null);
   const [notifCount, setNotifCount] = useState(0);
+  const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
   const [lunaOpen,  setLunaOpen]  = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [lunaTokens, setLunaTokens] = useState<{ balance: number; required: number } | null>(null);
   const [search, setSearch] = useState('');
 
-  // Load the operator notification feed once on mount. Endpoint is platform-admin
-  // gated → non-operators resolve to null and the bell shows the empty state.
+  // Load notifications on mount + whenever the filter changes.
   useEffect(() => {
     let alive = true;
-    fetchPlatformNotifications().then(n => {
+    fetchNotifications(notifFilter).then(n => {
       if (!alive || !n) return;
       setNotifs(n.items);
-      setNotifCount(n.count);
+      setNotifCount(n.unreadCount);
     }).catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, [notifFilter]);
+
+  const refreshNotifs = () => {
+    fetchNotifications(notifFilter).then(n => { if (n) { setNotifs(n.items); setNotifCount(n.unreadCount); } }).catch(() => {});
+  };
+  // Click a notification → mark read + navigate to its target area.
+  const onNotifClick = async (n: NotificationItem) => {
+    if (!n.read) { await markNotificationRead(n.id); }
+    if (n.route) { try { navigate({ name: n.route } as Route); } catch { /* unknown route → no-op */ } }
+    setNotifOpen(false);
+    refreshNotifs();
+  };
+  const onMarkAll = async () => { await markAllNotificationsRead(); refreshNotifs(); };
 
   const dateRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -290,24 +303,41 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
           )}
         </button>
         {notifOpen && (
-          <div style={dropdownStyle({ width: 320 })}>
-            <div style={{ padding: '10px 14px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {T.topbar.notifications.title}
+          <div style={dropdownStyle({ width: 340 })}>
+            <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{T.topbar.notifications.title}</span>
+              <button type="button" onClick={() => void onMarkAll()} style={{ background: 'none', border: 'none', color: 'var(--violet-text)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>Mark all read</button>
+            </div>
+            <div style={{ display: 'flex', gap: 6, padding: '0 14px 8px' }}>
+              {(['all', 'unread'] as const).map(f => (
+                <button key={f} type="button" onClick={() => setNotifFilter(f)}
+                  style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 999, cursor: 'pointer',
+                    border: notifFilter === f ? '1px solid var(--violet)' : '1px solid var(--border)',
+                    background: notifFilter === f ? 'rgba(124,58,237,0.08)' : 'transparent',
+                    color: notifFilter === f ? 'var(--violet-text)' : 'var(--text-secondary)' }}>
+                  {f === 'all' ? 'All' : 'Unread'}
+                </button>
+              ))}
             </div>
             {(!notifs || notifs.length === 0) ? (
               <div style={{ padding: '20px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
                 {T.topbar.notifications.empty}
               </div>
             ) : (
-              <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+              <div style={{ maxHeight: 380, overflowY: 'auto' }}>
                 {notifs.map(n => (
-                  <div key={n.id} style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                    <span aria-hidden style={{ marginTop: 2, width: 8, height: 8, borderRadius: 999, flexShrink: 0, background: n.severity === 'critical' ? '#b91c1c' : n.severity === 'info' ? '#7c3aed' : '#b45309' }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 600, wordBreak: 'break-word' }}>{n.label}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{n.at ? new Date(n.at).toLocaleString() : ''}</div>
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => void onNotifClick(n)}
+                    style={{ width: '100%', textAlign: 'left', padding: '10px 14px', borderTop: '1px solid var(--border)', borderLeft: 'none', borderRight: 'none', borderBottom: 'none', display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer', background: n.read ? 'transparent' : 'rgba(124,58,237,0.05)' }}
+                  >
+                    <span aria-hidden style={{ marginTop: 4, width: 8, height: 8, borderRadius: 999, flexShrink: 0, background: n.read ? 'var(--border)' : (n.severity === 'critical' ? '#b91c1c' : n.severity === 'info' ? '#7c3aed' : '#b45309') }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontWeight: n.read ? 500 : 700, wordBreak: 'break-word' }}>{n.title}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{n.at ? new Date(n.at).toLocaleString() : ''}{n.route ? ' · open →' : ''}</div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

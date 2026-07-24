@@ -245,30 +245,56 @@ export async function setTicketStatus(ticketId: string, status: 'open' | 'answer
   } catch { return false; }
 }
 
-/** One entry in the operator notification feed (bell). No PII. */
+/** A durable, actionable notification (bell + panel). No PII. */
 export interface NotificationItem {
-  id: string; type: 'alert' | 'ticket' | 'feedback'; kind: string; label: string; severity: string; at: string;
+  id: string; audience: string; type: string;
+  targetType: string; targetId: string; route: string;
+  title: string; severity: string; read: boolean; readAt: string; at: string;
 }
-export interface PlatformNotifications {
+export interface NotificationsResult {
   items: NotificationItem[];
-  count: number;        // needs-attention badge (open critical + awaiting tickets)
-  openCritical: number;
-  awaiting: number;
+  unreadCount: number;
+  total: number;
 }
 
 /**
- * Operator notification feed for the bell — merges open alerts, awaiting tickets
- * and recent feedback. Platform-admin gated at the endpoint, so a non-operator
- * simply gets null and the bell stays empty. No PII.
+ * The caller's notifications (durable, read/unread). Every authed user gets their
+ * own user notifications; platform admins additionally get operator ones. Filter:
+ * 'all' | 'unread' | 'read'.
  */
-export async function fetchPlatformNotifications(): Promise<PlatformNotifications | null> {
+export async function fetchNotifications(filter: 'all' | 'unread' | 'read' = 'all'): Promise<NotificationsResult | null> {
   const token = await getIdToken();
   if (!token) return null;
   try {
-    const res = await fetch(`${WORKER_BASE}/api/platform/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${WORKER_BASE}/api/notifications?filter=${filter}`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return null;
-    return (await res.json()) as PlatformNotifications;
+    return (await res.json()) as NotificationsResult;
   } catch { return null; }
+}
+
+/** Mark one notification read (caller-owned only). */
+export async function markNotificationRead(id: string): Promise<boolean> {
+  const token = await getIdToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/notifications/read`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+/** Mark all the caller's notifications read. */
+export async function markAllNotificationsRead(): Promise<boolean> {
+  const token = await getIdToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/notifications/read-all`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.ok;
+  } catch { return false; }
 }
 
 /** Lightweight open-critical alert signal for a proactive badge. No PII. */

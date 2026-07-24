@@ -13,6 +13,7 @@
 
 import { firestoreSet } from './firestoreAdmin';
 import { sendTransactional, type SequenzySendResult } from './sequenzy';
+import { createNotification, routeForAlertKind } from './notifications';
 
 export type BillingAlertKind =
   | 'topup_credit_failed'        // paid, but incrementBalance failed — customer owed tokens
@@ -64,6 +65,17 @@ export async function recordBillingAlert(saJson: string, input: BillingAlertInpu
   } catch (err) {
     console.error('[billing-alert] durable write FAILED (alert not persisted):', err instanceof Error ? err.message : err);
   }
+
+  // Every alert is ALSO an operator notification (read/unread, actionable). One
+  // hook covers billing/token/production alerts + feedback + new tickets +
+  // email failures — they all flow through here. Idempotent on the alert id.
+  const { route, type } = routeForAlertKind(input.kind);
+  await createNotification(saJson, {
+    id: `notif_${alertId}`,
+    audience: 'operator', type, route,
+    targetType: input.kind, targetId: idBase,
+    title: input.message, severity: input.severity,
+  });
 }
 
 /**

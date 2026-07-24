@@ -27,6 +27,7 @@ import { requirePlatformAdmin } from '../lib/platformAdmin';
 import { firestoreRunQuery, firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
 import { sanitizeText } from '../lib/support-shared';
 import { sendObservableEmail } from '../lib/billing-alerts';
+import { createNotification } from '../lib/notifications';
 import type { AppEnv } from '../index';
 
 const platformFeedback = new Hono<AppEnv>();
@@ -308,6 +309,18 @@ platformFeedback.post('/api/platform/support/reply', requireAuth(), requirePlatf
     emailed = res.ok;
   }
 
+  // Customer in-app notification (in ADDITION to the email — the email is not
+  // removed). Only when the ticket was submitted by a signed-in user (uid known).
+  const ticketUid = str(ticket.uid);
+  if (ticketUid) {
+    await createNotification(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+      id: `notif_reply_${ticketId}_${replies.length}`,
+      audience: 'user', uid: ticketUid, type: 'reply',
+      targetType: 'support_ticket', targetId: ticketId, route: 'help',
+      title: 'Support replied to your ticket', severity: 'info',
+    });
+  }
+
   return c.json({ ok: true, status: 'answered', emailed, repliesCount: replies.length });
 });
 
@@ -342,6 +355,19 @@ platformFeedback.post('/api/platform/support/status', requireAuth(), requirePlat
   } catch (err) {
     console.error('[support-status] persist failed:', err);
     return c.json({ error: 'Failed to update status', code: 'PERSIST_FAILED' }, 500);
+  }
+
+  // Customer in-app notification on close (uid-addressed; no PII).
+  if (status === 'closed') {
+    const ticketUid = str(ticket.uid);
+    if (ticketUid) {
+      await createNotification(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+        id: `notif_closed_${ticketId}`,
+        audience: 'user', uid: ticketUid, type: 'closed',
+        targetType: 'support_ticket', targetId: ticketId, route: 'help',
+        title: 'Your support ticket was closed', severity: 'info',
+      });
+    }
   }
 
   return c.json({ ok: true, status });

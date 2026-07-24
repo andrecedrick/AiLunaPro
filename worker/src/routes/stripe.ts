@@ -27,6 +27,7 @@ import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib
 import { recordWebhookEvent } from './billing-config';
 import { sendPaymentConfirmation } from './invoices';
 import { recordBillingAlert, RetryableWebhookError } from '../lib/billing-alerts';
+import { createNotification } from '../lib/notifications';
 import type { AppEnv } from '../index';
 import type Stripe from 'stripe';
 
@@ -256,9 +257,24 @@ async function handleEvent(
           }, { merge: true });
           // BUG 5 — mirror the quote lifecycle to 'paid' (parity with admin mark-paid)
           // so admin/platform panels and activity feeds see the settled state.
+          // Also notify the org member who created the quote (in-app, in addition
+          // to the receipt email) — resolve their uid from the quote's createdBy.
           if (typeof inv.quoteId === 'string' && inv.quoteId) {
-            try { await firestoreSet(saJson, `organizations/${payOrg}/quotes/${inv.quoteId}`, { stage: 'paid', paidAt: paidIso }, { merge: true }); }
+            const quotePath = `organizations/${payOrg}/quotes/${inv.quoteId}`;
+            try { await firestoreSet(saJson, quotePath, { stage: 'paid', paidAt: paidIso }, { merge: true }); }
             catch { /* best-effort mirror */ }
+            try {
+              const quote = await firestoreGet(saJson, quotePath) as Record<string, unknown> | null;
+              const createdBy = quote && typeof quote.createdBy === 'string' ? quote.createdBy : '';
+              if (createdBy) {
+                await createNotification(saJson, {
+                  id: `notif_invpaid_${invoiceId}`,
+                  audience: 'user', uid: createdBy, type: 'invoice_paid',
+                  targetType: 'invoice', targetId: invoiceId, route: 'my-quotes',
+                  title: 'An invoice was paid', severity: 'info',
+                });
+              }
+            } catch { /* best-effort notification */ }
           }
           // BUG 1 — the customer gets a payment confirmation (receipt) on successful
           // Stripe payment. Best-effort: a mail hiccup never fails the webhook ack.
