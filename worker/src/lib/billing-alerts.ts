@@ -16,7 +16,8 @@ import { firestoreSet } from './firestoreAdmin';
 export type BillingAlertKind =
   | 'topup_credit_failed'      // paid, but incrementBalance failed — customer owed tokens
   | 'invoice_amount_mismatch'  // Stripe settled an amount ≠ the invoice total
-  | 'topup_credit_recovered';  // a retry completed a previously-failed credit
+  | 'topup_credit_recovered'   // a retry completed a previously-failed credit
+  | 'feedback_received';       // a customer submitted product feedback (info, not billing)
 
 export interface BillingAlertInput {
   kind:      BillingAlertKind;
@@ -24,6 +25,8 @@ export interface BillingAlertInput {
   orgId?:    string;
   sessionId?: string;
   invoiceId?: string;
+  /** Generic reference id for idempotency when there is no session/invoice (e.g. a feedback id). */
+  refId?:    string;
   message:   string;
   /** Non-PII context (ids, amounts, token counts). Never email/name/message text. */
   context?:  Record<string, string | number | boolean>;
@@ -38,7 +41,7 @@ export interface BillingAlertInput {
  * one per delivery.
  */
 export async function recordBillingAlert(saJson: string, input: BillingAlertInput): Promise<void> {
-  const idBase = input.sessionId ?? input.invoiceId ?? `${Date.now()}`;
+  const idBase = input.sessionId ?? input.invoiceId ?? input.refId ?? `${Date.now()}`;
   const alertId = `${input.kind}__${idBase}`;
   const doc = {
     kind:      input.kind,

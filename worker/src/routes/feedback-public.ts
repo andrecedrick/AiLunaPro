@@ -21,6 +21,8 @@ import { firestoreSet, fsTimestamp } from '../lib/firestoreAdmin';
 import { checkCooldown } from '../lib/rateLimit';
 import { dlog } from '../lib/log';
 import { validateFeedback, generateFeedbackId, feedbackExpiresAt } from '../lib/feedback-shared';
+import { recordBillingAlert } from '../lib/billing-alerts';
+import { sendTransactional } from '../lib/sequenzy';
 import type { AppEnv } from '../index';
 
 const feedback = new Hono<AppEnv>();
@@ -75,6 +77,35 @@ feedback.post('/api/public/feedback', async c => {
 
   // No PII to log — source + satisfaction only.
   dlog(env, '[feedback] saved — id:', id, 'source:', fb.source, 'sat:', fb.satisfaction);
+
+  // Notify operators (best-effort — a notification failure never fails the save).
+  // Durable alert (surfaces in the Production Alerts panel; 'warning' so it does
+  // NOT inflate the open-critical count). Feedback is anonymous → the alert and
+  // the email carry no PII beyond what feedback already holds.
+  const e = env as AppEnv['Bindings'] & { ADMIN_EMAIL?: string; SEQUENZY_API_KEY?: string };
+  try {
+    await recordBillingAlert(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+      kind: 'feedback_received', severity: 'warning', refId: id,
+      message: `New customer feedback (${String(fb.source)})`,
+      context: { source: String(fb.source), satisfaction: String(fb.satisfaction ?? ''), difficulty: String(fb.difficulty ?? '') },
+    });
+  } catch (err) { dlog(env, '[feedback] alert failed:', err instanceof Error ? err.message : 'error'); }
+
+  if (e.ADMIN_EMAIL) {
+    try {
+      await sendTransactional(e.SEQUENZY_API_KEY, {
+        to:   e.ADMIN_EMAIL,
+        slug: 'feedback-admin',
+        variables: {
+          SOURCE:       String(fb.source),
+          SATISFACTION: String(fb.satisfaction ?? '-'),
+          DIFFICULTY:   String(fb.difficulty ?? '-'),
+          BLOCKER:      String(fb.blocker ?? '-'),
+          SUGGESTION:   String(fb.suggestion ?? '-'),
+        },
+      });
+    } catch (err) { dlog(env, '[feedback] admin email failed:', err instanceof Error ? err.message : 'error'); }
+  }
 
   return c.json({ ok: true, id });
 });

@@ -24,7 +24,9 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePlatformAdmin } from '../lib/platformAdmin';
-import { firestoreRunQuery } from '../lib/firestoreAdmin';
+import { firestoreRunQuery, firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { sanitizeText } from '../lib/support-shared';
+import { sendTransactional } from '../lib/sequenzy';
 import type { AppEnv } from '../index';
 
 const platformFeedback = new Hono<AppEnv>();
@@ -156,6 +158,14 @@ platformFeedback.get('/api/platform/feedback', requireAuth(), requirePlatformAdm
 
 /* ── Support tickets ──────────────────────────────────── */
 
+interface TicketReply {
+  message:   string;
+  repliedAt: string;
+  repliedBy: string;
+  /** Index signature: lets a reply be written directly as a Firestore map. */
+  [k: string]: string;
+}
+
 interface TicketRow {
   id:          string;
   type:        string;
@@ -167,6 +177,17 @@ interface TicketRow {
   priority:    string;
   country:     string;
   createdAt:   string;
+  replies:     TicketReply[];
+  closedAt:    string;
+  closedBy:    string;
+}
+
+function mapReplies(raw: unknown): TicketReply[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(r => {
+    const o = (r ?? {}) as Record<string, unknown>;
+    return { message: str(o.message), repliedAt: str(o.repliedAt), repliedBy: str(o.repliedBy) };
+  });
 }
 
 function mapTicket(name: string, f: Record<string, unknown>): TicketRow {
@@ -184,6 +205,9 @@ function mapTicket(name: string, f: Record<string, unknown>): TicketRow {
     priority:    str(f.priority),
     country:     str(cf.country),
     createdAt:   str(f.createdAt),
+    replies:     mapReplies(f.replies),
+    closedAt:    str(f.closedAt),
+    closedBy:    str(f.closedBy),
   };
 }
 
@@ -207,7 +231,9 @@ platformFeedback.get('/api/platform/support', requireAuth(), requirePlatformAdmi
     return c.json({
       items,
       total:      items.length,
-      open:       items.filter(t => t.status === 'open').length,
+      // Open = anything not closed; Awaiting = still 'open' (no reply yet).
+      open:       items.filter(t => t.status !== 'closed').length,
+      awaiting:   items.filter(t => t.status === 'open').length,
       byType:     tally(items.map(t => t.type)),
       // Most problematic pages — deterministic count of ticket origin routes.
       topPages:   tally(items.map(t => t.page)).slice(0, TOP_N),
@@ -216,8 +242,109 @@ platformFeedback.get('/api/platform/support', requireAuth(), requirePlatformAdmi
     });
   } catch (err) {
     console.warn('[platform-support] query failed:', err instanceof Error ? err.message : err);
-    return c.json({ items: [], total: 0, open: 0, byType: [], topPages: [], capped: false, generatedAt: Date.now() });
+    return c.json({ items: [], total: 0, open: 0, awaiting: 0, byType: [], topPages: [], capped: false, generatedAt: Date.now() });
   }
+});
+
+/* ── Ticket reply + status (platform-admin, MUTATING) ─── */
+
+const REPLY_MAX = 4000;
+const TICKET_STATUSES = ['open', 'answered', 'closed'] as const;
+type TicketStatus = typeof TICKET_STATUSES[number];
+
+/** support_tickets ids are base64url from generateSupportId — restrict to that shape. */
+function safeTicketId(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const id = raw.trim();
+  return /^[A-Za-z0-9_-]{1,64}$/.test(id) ? id : null;
+}
+
+/**
+ * POST /api/platform/support/reply  { ticketId, message }
+ * Appends an operator reply to the ticket's conversation history, flips status to
+ * 'answered', and emails the reply to the ticket contact. The reply is PERSISTED
+ * before the email is attempted; a mail failure is reported (emailed:false) but
+ * never loses the reply.
+ */
+platformFeedback.post('/api/platform/support/reply', requireAuth(), requirePlatformAdmin(), async c => {
+  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string; SEQUENZY_API_KEY?: string; APP_BASE_URL?: string };
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
+
+  let body: { ticketId?: unknown; message?: unknown };
+  try { body = await c.req.json(); } catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const ticketId = safeTicketId(body.ticketId);
+  if (!ticketId) return c.json({ error: 'Invalid ticketId', code: 'INVALID_ID' }, 400);
+  const message = typeof body.message === 'string' ? sanitizeText(body.message, REPLY_MAX) : null;
+  if (!message) return c.json({ error: 'Reply message is required', code: 'INVALID_MESSAGE' }, 400);
+
+  const ticket = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `support_tickets/${ticketId}`) as Record<string, unknown> | null;
+  if (!ticket) return c.json({ error: 'Ticket not found', code: 'NOT_FOUND' }, 404);
+
+  const repliedBy = str(c.get('email')) || 'operator';
+  const now = new Date().toISOString();
+  const replies = mapReplies(ticket.replies);
+  replies.push({ message, repliedAt: now, repliedBy });
+
+  try {
+    await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `support_tickets/${ticketId}`, {
+      replies, status: 'answered', answeredAt: now, updatedAt: now,
+    }, { merge: true });
+  } catch (err) {
+    console.error('[support-reply] persist failed:', err);
+    return c.json({ error: 'Failed to save reply', code: 'PERSIST_FAILED' }, 500);
+  }
+
+  // Email the customer (best-effort; the reply is already saved).
+  let emailed = false;
+  const to = str(ticket.email);
+  if (to) {
+    try {
+      const res = await sendTransactional(env.SEQUENZY_API_KEY, {
+        to, slug: 'support-ticket-reply',
+        variables: { MESSAGE: message, TYPE: str(ticket.type) || 'question', TICKET: ticketId },
+      });
+      emailed = res.ok;
+    } catch { emailed = false; }
+  }
+
+  return c.json({ ok: true, status: 'answered', emailed, repliesCount: replies.length });
+});
+
+/**
+ * POST /api/platform/support/status  { ticketId, status }
+ * Sets the ticket status (open | answered | closed). 'closed' records closedAt +
+ * closedBy for the timeline. No email — this is an internal state change.
+ */
+platformFeedback.post('/api/platform/support/status', requireAuth(), requirePlatformAdmin(), async c => {
+  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string };
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Firestore is not configured', code: 'FIRESTORE_NOT_CONFIGURED' }, 503);
+
+  let body: { ticketId?: unknown; status?: unknown };
+  try { body = await c.req.json(); } catch { return c.json({ error: 'Invalid JSON body', code: 'INVALID_BODY' }, 400); }
+
+  const ticketId = safeTicketId(body.ticketId);
+  if (!ticketId) return c.json({ error: 'Invalid ticketId', code: 'INVALID_ID' }, 400);
+  if (typeof body.status !== 'string' || !TICKET_STATUSES.includes(body.status as TicketStatus)) {
+    return c.json({ error: 'Invalid status', code: 'INVALID_STATUS' }, 400);
+  }
+  const status = body.status as TicketStatus;
+
+  const ticket = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `support_tickets/${ticketId}`) as Record<string, unknown> | null;
+  if (!ticket) return c.json({ error: 'Ticket not found', code: 'NOT_FOUND' }, 404);
+
+  const now = new Date().toISOString();
+  const patch: Record<string, string> = { status, updatedAt: now };
+  if (status === 'closed') { patch.closedAt = now; patch.closedBy = str(c.get('email')) || 'operator'; }
+
+  try {
+    await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `support_tickets/${ticketId}`, patch, { merge: true });
+  } catch (err) {
+    console.error('[support-status] persist failed:', err);
+    return c.json({ error: 'Failed to update status', code: 'PERSIST_FAILED' }, 500);
+  }
+
+  return c.json({ ok: true, status });
 });
 
 export default platformFeedback;

@@ -175,15 +175,19 @@ export interface PlatformFeedback {
   capped: boolean;
 }
 
+/** One operator reply in a ticket's conversation history. */
+export interface TicketReply { message: string; repliedAt: string; repliedBy: string }
+
 /** A support ticket. Carries submitter contact details — operators only. */
 export interface SupportTicketItem {
   id: string; type: string; status: string; email: string; phone: string;
   page: string; description: string; priority: string; country: string; createdAt: string;
+  replies: TicketReply[]; closedAt: string; closedBy: string;
 }
 
 export interface PlatformSupport {
   items: SupportTicketItem[];
-  total: number; open: number;
+  total: number; open: number; awaiting: number;
   byType: SignalCount[];
   topPages: SignalCount[];
   capped: boolean;
@@ -200,7 +204,7 @@ export async function fetchPlatformFeedback(): Promise<PlatformFeedback | null> 
   } catch { return null; }
 }
 
-/** Support tickets (incl. email + phone — operator-gated). Read-only. */
+/** Support tickets (incl. email + phone — operator-gated). */
 export async function fetchPlatformSupport(): Promise<PlatformSupport | null> {
   const token = await getIdToken();
   if (!token) return null;
@@ -209,6 +213,36 @@ export async function fetchPlatformSupport(): Promise<PlatformSupport | null> {
     if (!res.ok) return null;
     return (await res.json()) as PlatformSupport;
   } catch { return null; }
+}
+
+/** Reply to a ticket (appends to history, flips to answered, emails the contact). */
+export async function replyToTicket(ticketId: string, message: string): Promise<{ ok: boolean; emailed: boolean }> {
+  const token = await getIdToken();
+  if (!token) return { ok: false, emailed: false };
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/platform/support/reply`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticketId, message }),
+    });
+    if (!res.ok) return { ok: false, emailed: false };
+    const j = await res.json() as { ok?: boolean; emailed?: boolean };
+    return { ok: j.ok === true, emailed: j.emailed === true };
+  } catch { return { ok: false, emailed: false }; }
+}
+
+/** Set a ticket status (open | answered | closed). */
+export async function setTicketStatus(ticketId: string, status: 'open' | 'answered' | 'closed'): Promise<boolean> {
+  const token = await getIdToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/platform/support/status`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticketId, status }),
+    });
+    return res.ok;
+  } catch { return false; }
 }
 
 /** Lightweight open-critical alert signal for a proactive badge. No PII. */

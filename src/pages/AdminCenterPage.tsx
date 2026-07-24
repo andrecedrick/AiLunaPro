@@ -19,7 +19,7 @@ import { buildOrgActivity, buildPlatformActivity } from '../lib/quote/activityFe
 import { TokenUsagePanel } from '../components/tokens/TokenUsagePanel';
 import { TokenEconomyPanel } from '../components/tokens/TokenEconomyPanel';
 import { ProductionAlertsPanel } from '../components/platform/ProductionAlertsPanel';
-import { fetchAlertNotify } from '../lib/platform/platformService';
+import { fetchAlertNotify, fetchPlatformSupport, fetchPlatformFeedback } from '../lib/platform/platformService';
 import { CustomerFeedbackPanel } from '../components/platform/CustomerFeedbackPanel';
 import { SupportInboxPanel } from '../components/platform/SupportInboxPanel';
 
@@ -56,6 +56,8 @@ export function AdminCenterPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   // Proactive alert signal — open critical count for the notification banner.
   const [alertNotify, setAlertNotify] = useState<{ openCritical: number; latestKind: string } | null>(null);
+  // CS notification strip — open tickets, awaiting reply, feedback count.
+  const [csStrip, setCsStrip] = useState<{ openTickets: number; awaiting: number; feedbacks: number } | null>(null);
 
   const orgAdmin = session?.role === 'owner' || session?.role === 'admin';
   useEffect(() => {
@@ -77,6 +79,10 @@ export function AdminCenterPage() {
     let alive = true;
     // Notification signal — badge open critical alerts without opening the panel.
     fetchAlertNotify().then(n => { if (alive && n) setAlertNotify({ openCritical: n.openCritical, latestKind: n.latestKind }); }).catch(() => {});
+    // CS strip counters — open tickets, awaiting reply, feedback count.
+    Promise.all([fetchPlatformSupport(), fetchPlatformFeedback()]).then(([sup, fb]) => {
+      if (alive) setCsStrip({ openTickets: sup?.open ?? 0, awaiting: sup?.awaiting ?? 0, feedbacks: fb?.total ?? 0 });
+    }).catch(() => {});
     listPlatformQuotes()
       .then(d => { if (alive) { setPlatformQuotes(d.quotes); setPlatformInvoices(d.invoices); } })
       .catch(() => { if (alive) setPlatformQuotes([]); });
@@ -370,6 +376,22 @@ export function AdminCenterPage() {
 
       {/* Token Economy — cross-org aggregates, platform operators only. No PII. */}
       {platformAdmin && section('Token Economy', <TokenEconomyPanel />)}
+
+      {/* CS notification strip — open tickets · awaiting reply · feedback (operators). */}
+      {platformAdmin && csStrip && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, padding: '12px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+          {([
+            ['Open tickets', csStrip.openTickets, csStrip.openTickets > 0 ? '#b45309' : undefined],
+            ['Awaiting response', csStrip.awaiting, csStrip.awaiting > 0 ? '#b91c1c' : undefined],
+            ['Feedback', csStrip.feedbacks, undefined],
+          ] as const).map(([label, value, color]) => (
+            <div key={label}>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-muted)', fontWeight: 700 }}>{label}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: color ?? 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Proactive notification — open critical alerts, always visible to operators. */}
       {platformAdmin && alertNotify && alertNotify.openCritical > 0 && (
