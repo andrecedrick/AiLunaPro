@@ -51,6 +51,7 @@ const InvoicesPage         = lazy(() => import('./pages/InvoicesPage').then(m =>
 const AdminCenterPage      = lazy(() => import('./pages/AdminCenterPage').then(m => ({ default: m.AdminCenterPage })));
 const MyQuotesPage         = lazy(() => import('./pages/MyQuotesPage').then(m => ({ default: m.MyQuotesPage })));
 const HelpPage             = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
+const MyTicketsPage        = lazy(() => import('./pages/MyTicketsPage').then(m => ({ default: m.MyTicketsPage })));
 const SystemBuilderPage    = lazy(() => import('./pages/SystemBuilderPage').then(m => ({ default: m.SystemBuilderPage })));
 const WorksheetPage        = lazy(() => import('./pages/WorksheetPage').then(m => ({ default: m.WorksheetPage })));
 const ContactsPage         = lazy(() => import('./pages/ContactsPage').then(m => ({ default: m.ContactsPage })));
@@ -128,6 +129,8 @@ function PageOutlet() {
         return <AgentDetailPage />;
       case 'help':
         return <HelpPage />;
+      case 'support/tickets':
+        return <MyTicketsPage />;
       case 'system-builder':
         return <SystemBuilderPage />;
       case 'worksheet':

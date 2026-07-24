@@ -20,14 +20,14 @@ describe('resolveNotifRoute', () => {
 
   it('ignores an INVALID/unknown stored route and falls back by type', () => {
     expect(resolveNotifRoute(n({ route: 'nonsense', type: 'feedback' }))).toBe('admin');
-    expect(resolveNotifRoute(n({ route: '', type: 'reply', audience: 'user' }))).toBe('help');
+    expect(resolveNotifRoute(n({ route: '', type: 'reply', audience: 'user' }))).toBe('support/tickets');
     expect(resolveNotifRoute(n({ route: 'bogus', type: 'invoice_paid', audience: 'user' }))).toBe('my-quotes');
   });
 
   it('falls back by type when no route is stored', () => {
     expect(resolveNotifRoute(n({ type: 'ticket' }))).toBe('admin');
     expect(resolveNotifRoute(n({ type: 'token' }))).toBe('admin');
-    expect(resolveNotifRoute(n({ type: 'closed', audience: 'user' }))).toBe('help');
+    expect(resolveNotifRoute(n({ type: 'closed', audience: 'user' }))).toBe('support/tickets');
   });
 
   it('never returns empty — final fallback by audience', () => {

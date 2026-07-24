@@ -256,7 +256,7 @@ export interface NotificationItem {
  * Param-less Route names a notification is allowed to open. A stored route is
  * used only if it is in this set — a stale/invalid route can never no-op a click.
  */
-const NOTIF_ROUTES = new Set<string>(['admin', 'help', 'my-quotes', 'invoices', 'billing', 'billing/tokens', 'contacts', 'reports']);
+const NOTIF_ROUTES = new Set<string>(['admin', 'help', 'my-quotes', 'invoices', 'billing', 'billing/tokens', 'contacts', 'reports', 'support/tickets']);
 
 /**
  * Resolve a notification to a VALID, useful destination so a click always goes
@@ -267,7 +267,7 @@ export function resolveNotifRoute(n: Pick<NotificationItem, 'route' | 'type' | '
   if (n.route && NOTIF_ROUTES.has(n.route)) return n.route;
   switch (n.type) {
     case 'reply':
-    case 'closed':       return 'help';
+    case 'closed':       return 'support/tickets';
     case 'invoice_paid': return 'my-quotes';
     case 'feedback':
     case 'ticket':

@@ -316,7 +316,7 @@ platformFeedback.post('/api/platform/support/reply', requireAuth(), requirePlatf
     await createNotification(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
       id: `notif_reply_${ticketId}_${replies.length}`,
       audience: 'user', uid: ticketUid, type: 'reply',
-      targetType: 'support_ticket', targetId: ticketId, route: 'help',
+      targetType: 'support_ticket', targetId: ticketId, route: 'support/tickets',
       title: 'Support replied to your ticket', severity: 'info',
     });
   }
@@ -364,7 +364,7 @@ platformFeedback.post('/api/platform/support/status', requireAuth(), requirePlat
       await createNotification(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
         id: `notif_closed_${ticketId}`,
         audience: 'user', uid: ticketUid, type: 'closed',
-        targetType: 'support_ticket', targetId: ticketId, route: 'help',
+        targetType: 'support_ticket', targetId: ticketId, route: 'support/tickets',
         title: 'Your support ticket was closed', severity: 'info',
       });
     }

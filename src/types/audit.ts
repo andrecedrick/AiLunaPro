@@ -93,6 +93,7 @@ export type Route =
   | { name: 'admin' }
   | { name: 'contacts' }
   | { name: 'help' }
+  | { name: 'support/tickets' }
   | { name: 'system-builder' }
   | { name: 'worksheet' }
   | { name: 'visibility' }
