@@ -12,12 +12,15 @@
  */
 
 import { firestoreSet } from './firestoreAdmin';
+import { sendTransactional, type SequenzySendResult } from './sequenzy';
 
 export type BillingAlertKind =
-  | 'topup_credit_failed'      // paid, but incrementBalance failed — customer owed tokens
-  | 'invoice_amount_mismatch'  // Stripe settled an amount ≠ the invoice total
-  | 'topup_credit_recovered'   // a retry completed a previously-failed credit
-  | 'feedback_received';       // a customer submitted product feedback (info, not billing)
+  | 'topup_credit_failed'        // paid, but incrementBalance failed — customer owed tokens
+  | 'invoice_amount_mismatch'    // Stripe settled an amount ≠ the invoice total
+  | 'topup_credit_recovered'     // a retry completed a previously-failed credit
+  | 'feedback_received'          // a customer submitted product feedback (info, not billing)
+  | 'support_ticket_created'     // a customer opened a support ticket (info)
+  | 'notification_email_failed'; // a notification email did NOT send — makes silent failures visible
 
 export interface BillingAlertInput {
   kind:      BillingAlertKind;
@@ -61,6 +64,39 @@ export async function recordBillingAlert(saJson: string, input: BillingAlertInpu
   } catch (err) {
     console.error('[billing-alert] durable write FAILED (alert not persisted):', err instanceof Error ? err.message : err);
   }
+}
+
+/**
+ * Send a NOTIFICATION email with observability. Wraps sendTransactional and, on
+ * ANY failure (missing key, non-2xx, network, thrown), records a durable
+ * `notification_email_failed` alert so the failure is visible in the Production
+ * Alerts panel + the bell instead of vanishing into real-time-only logs.
+ *
+ * The alert carries the template slug + reason ONLY — never the recipient
+ * address or message body (no PII). Best-effort: the alert write never throws.
+ * Returns the send result so callers can still branch on `ok`.
+ */
+export async function sendObservableEmail(
+  saJson: string,
+  apiKey: string | undefined,
+  params: { to: string; slug: string; variables: Record<string, string>; replyTo?: string },
+  refId?: string,
+): Promise<SequenzySendResult> {
+  let result: SequenzySendResult;
+  try {
+    result = await sendTransactional(apiKey, params);
+  } catch (err) {
+    result = { ok: false, error: err instanceof Error ? err.message : 'send threw' };
+  }
+  if (!result.ok) {
+    await recordBillingAlert(saJson, {
+      kind: 'notification_email_failed', severity: 'warning',
+      refId: `${params.slug}_${refId ?? Date.now()}`,
+      message: `Notification email failed to send: ${params.slug}`,
+      context: { template: params.slug, reason: result.error ?? 'unknown' },
+    });
+  }
+  return result;
 }
 
 /**

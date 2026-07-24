@@ -18,8 +18,8 @@ import { Hono } from 'hono';
 import { firestoreSet } from '../lib/firestoreAdmin';
 import { checkCooldown } from '../lib/rateLimit';
 import { verifyIdTokenClaims } from '../middleware/auth';
-import { sendTransactional } from '../lib/sequenzy';
 import { dlog } from '../lib/log';
+import { recordBillingAlert, sendObservableEmail } from '../lib/billing-alerts';
 import { validateSupport, generateSupportId } from '../lib/support-shared';
 import type { AppEnv } from '../index';
 
@@ -89,13 +89,25 @@ support.post('/api/support/ticket', async c => {
   // PII: do NOT log the email or description.
   dlog(env, '[support] saved — id:', id, 'type:', t.type, 'priority:', t.priority ?? '-', 'authed:', uid !== null);
 
-  // Best-effort admin notification (non-fatal). Only when ADMIN_EMAIL is set AND
-  // the Sequenzy template support-ticket-admin exists operator-side.
+  // Durable notification for operators — a new ticket now surfaces in the
+  // Production Alerts panel + the bell, not only the Support Inbox. Idempotent on
+  // the ticket id; 'warning' so it never inflates open-critical. No PII (type +
+  // page only). Best-effort.
+  try {
+    await recordBillingAlert(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+      kind: 'support_ticket_created', severity: 'warning', refId: id,
+      message: `New ${t.type} support ticket`,
+      context: { type: t.type, page: t.context?.route ?? '-' },
+    });
+  } catch (err) { dlog(env, '[support] alert failed:', err instanceof Error ? err.message : 'error'); }
+
+  // Admin notification email — observable: a send failure records a durable
+  // notification_email_failed alert instead of vanishing silently.
   if (env.ADMIN_EMAIL) {
     const ctx = t.context
       ? `route=${t.context.route ?? '-'} · locale=${t.context.locale ?? '-'} · v=${t.context.appVersion ?? '-'}`
       : '-';
-    await sendTransactional(env.SEQUENZY_API_KEY, {
+    await sendObservableEmail(env.FIREBASE_SERVICE_ACCOUNT_JSON, env.SEQUENZY_API_KEY, {
       to:   env.ADMIN_EMAIL,
       slug: 'support-ticket-admin',
       variables: {
@@ -107,7 +119,7 @@ support.post('/api/support/ticket', async c => {
         CONTEXT:     ctx,
       },
       replyTo: t.email,   // admin can reply straight to the submitter
-    });
+    }, id);
   }
 
   return c.json({ ok: true, id });

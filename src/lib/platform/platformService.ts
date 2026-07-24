@@ -245,6 +245,32 @@ export async function setTicketStatus(ticketId: string, status: 'open' | 'answer
   } catch { return false; }
 }
 
+/** One entry in the operator notification feed (bell). No PII. */
+export interface NotificationItem {
+  id: string; type: 'alert' | 'ticket' | 'feedback'; kind: string; label: string; severity: string; at: string;
+}
+export interface PlatformNotifications {
+  items: NotificationItem[];
+  count: number;        // needs-attention badge (open critical + awaiting tickets)
+  openCritical: number;
+  awaiting: number;
+}
+
+/**
+ * Operator notification feed for the bell — merges open alerts, awaiting tickets
+ * and recent feedback. Platform-admin gated at the endpoint, so a non-operator
+ * simply gets null and the bell stays empty. No PII.
+ */
+export async function fetchPlatformNotifications(): Promise<PlatformNotifications | null> {
+  const token = await getIdToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/platform/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    return (await res.json()) as PlatformNotifications;
+  } catch { return null; }
+}
+
 /** Lightweight open-critical alert signal for a proactive badge. No PII. */
 export interface AlertNotify {
   openCritical: number;

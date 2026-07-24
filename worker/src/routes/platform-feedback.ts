@@ -26,7 +26,7 @@ import { requireAuth } from '../middleware/auth';
 import { requirePlatformAdmin } from '../lib/platformAdmin';
 import { firestoreRunQuery, firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
 import { sanitizeText } from '../lib/support-shared';
-import { sendTransactional } from '../lib/sequenzy';
+import { sendObservableEmail } from '../lib/billing-alerts';
 import type { AppEnv } from '../index';
 
 const platformFeedback = new Hono<AppEnv>();
@@ -299,13 +299,13 @@ platformFeedback.post('/api/platform/support/reply', requireAuth(), requirePlatf
   let emailed = false;
   const to = str(ticket.email);
   if (to) {
-    try {
-      const res = await sendTransactional(env.SEQUENZY_API_KEY, {
-        to, slug: 'support-ticket-reply',
-        variables: { MESSAGE: message, TYPE: str(ticket.type) || 'question', TICKET: ticketId },
-      });
-      emailed = res.ok;
-    } catch { emailed = false; }
+    // Observable send — a failure records a durable notification_email_failed
+    // alert, so a reply that never reached the customer is visible to operators.
+    const res = await sendObservableEmail(env.FIREBASE_SERVICE_ACCOUNT_JSON, env.SEQUENZY_API_KEY, {
+      to, slug: 'support-ticket-reply',
+      variables: { MESSAGE: message, TYPE: str(ticket.type) || 'question', TICKET: ticketId },
+    }, ticketId);
+    emailed = res.ok;
   }
 
   return c.json({ ok: true, status: 'answered', emailed, repliesCount: replies.length });
@@ -345,6 +345,112 @@ platformFeedback.post('/api/platform/support/status', requireAuth(), requirePlat
   }
 
   return c.json({ ok: true, status });
+});
+
+/* ── Unified notifications feed (bell) ────────────────── */
+
+/**
+ * GET /api/platform/notifications — the durable feed the notification bell reads,
+ * for platform operators. Merges the three real notification sources that were
+ * previously only visible in their own panels:
+ *   - open platform_alerts (billing/token failures, email failures, feedback,
+ *     new tickets) — resolved === false
+ *   - awaiting support tickets (status 'open')
+ *   - recent customer feedback
+ * newest-first, capped. `count` = open-critical alerts + awaiting tickets (the
+ * "needs attention" number). No PII: tickets/feedback are summarised by
+ * type/source/page, never email/description.
+ */
+const NOTIF_LIMIT = 50;
+
+interface NotifItem {
+  id:       string;
+  type:     'alert' | 'ticket' | 'feedback';
+  kind:     string;
+  label:    string;
+  severity: string;
+  at:       string;
+}
+
+platformFeedback.get('/api/platform/notifications', requireAuth(), requirePlatformAdmin(), async c => {
+  const env = c.env as AppEnv['Bindings'] & { FIREBASE_SERVICE_ACCOUNT_JSON?: string };
+  if (!env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    return c.json({ items: [], count: 0, generatedAt: Date.now() });
+  }
+  const sa = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+
+  const items: NotifItem[] = [];
+  let openCritical = 0;
+  let awaiting = 0;
+
+  // Open alerts.
+  try {
+    const rows = await firestoreRunQuery(sa, {
+      from:    [{ collectionId: 'platform_alerts' }],
+      orderBy: [{ field: { fieldPath: 'at' }, direction: 'DESCENDING' }],
+      limit:   NOTIF_LIMIT,
+    });
+    for (const r of rows) {
+      const f = r.fields;
+      if (f.resolved === true) continue;
+      const severity = str(f.severity) || 'warning';
+      if (severity === 'critical') openCritical += 1;
+      items.push({
+        id: `alert:${r.name.split('/').pop() ?? ''}`,
+        type: 'alert', kind: str(f.kind) || 'alert',
+        label: str(f.message) || str(f.kind), severity, at: str(f.at),
+      });
+    }
+  } catch { /* collection may not exist yet */ }
+
+  // Awaiting tickets.
+  try {
+    const rows = await firestoreRunQuery(sa, {
+      from:    [{ collectionId: 'support_tickets' }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit:   NOTIF_LIMIT,
+    });
+    for (const r of rows) {
+      const f = r.fields;
+      if ((str(f.status) || 'open') !== 'open') continue;
+      awaiting += 1;
+      const ctx = (f.context ?? {}) as Record<string, unknown>;
+      items.push({
+        id: `ticket:${str(f.id) || (r.name.split('/').pop() ?? '')}`,
+        type: 'ticket', kind: 'support_ticket_open',
+        label: `New ${str(f.type) || 'support'} ticket · ${str(ctx.route) || '—'}`,
+        severity: 'warning', at: str(f.createdAt),
+      });
+    }
+  } catch { /* none */ }
+
+  // Recent feedback (last few).
+  try {
+    const rows = await firestoreRunQuery(sa, {
+      from:    [{ collectionId: 'public_feedback' }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit:   10,
+    });
+    for (const r of rows) {
+      const f = r.fields;
+      items.push({
+        id: `feedback:${str(f.id) || (r.name.split('/').pop() ?? '')}`,
+        type: 'feedback', kind: 'feedback_received',
+        label: `New feedback · ${str(f.source) || '—'}`,
+        severity: 'info', at: str(f.createdAt),
+      });
+    }
+  } catch { /* none */ }
+
+  items.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+
+  return c.json({
+    items:  items.slice(0, NOTIF_LIMIT),
+    count:  openCritical + awaiting,     // the "needs attention" badge number
+    openCritical,
+    awaiting,
+    generatedAt: Date.now(),
+  });
 });
 
 export default platformFeedback;

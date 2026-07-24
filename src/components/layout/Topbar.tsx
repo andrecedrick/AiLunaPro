@@ -12,6 +12,7 @@ import { useToast } from '../../hooks/useToast';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
 import { ROLE } from '../../types/auth';
+import { fetchPlatformNotifications, type NotificationItem } from '../../lib/platform/platformService';
 
 interface TopbarProps {
   onToggleSidebar: () => void;
@@ -47,10 +48,26 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const [customFrom, setCustomFrom] = useState('');
   const [customTo,   setCustomTo]   = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
+  // Operator notification feed for the bell. Platform-admin gated at the endpoint,
+  // so a non-operator gets null and the bell stays empty (no per-user feed exists).
+  const [notifs, setNotifs] = useState<NotificationItem[] | null>(null);
+  const [notifCount, setNotifCount] = useState(0);
   const [lunaOpen,  setLunaOpen]  = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [lunaTokens, setLunaTokens] = useState<{ balance: number; required: number } | null>(null);
   const [search, setSearch] = useState('');
+
+  // Load the operator notification feed once on mount. Endpoint is platform-admin
+  // gated → non-operators resolve to null and the bell shows the empty state.
+  useEffect(() => {
+    let alive = true;
+    fetchPlatformNotifications().then(n => {
+      if (!alive || !n) return;
+      setNotifs(n.items);
+      setNotifCount(n.count);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const dateRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -266,15 +283,34 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
+          {notifCount > 0 && (
+            <span aria-hidden style={{ position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, background: '#b91c1c', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {notifCount > 99 ? '99+' : notifCount}
+            </span>
+          )}
         </button>
         {notifOpen && (
-          <div style={dropdownStyle({ width: 260 })}>
+          <div style={dropdownStyle({ width: 320 })}>
             <div style={{ padding: '10px 14px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               {T.topbar.notifications.title}
             </div>
-            <div style={{ padding: '20px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-              {T.topbar.notifications.empty}
-            </div>
+            {(!notifs || notifs.length === 0) ? (
+              <div style={{ padding: '20px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                {T.topbar.notifications.empty}
+              </div>
+            ) : (
+              <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                {notifs.map(n => (
+                  <div key={n.id} style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span aria-hidden style={{ marginTop: 2, width: 8, height: 8, borderRadius: 999, flexShrink: 0, background: n.severity === 'critical' ? '#b91c1c' : n.severity === 'info' ? '#7c3aed' : '#b45309' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 600, wordBreak: 'break-word' }}>{n.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{n.at ? new Date(n.at).toLocaleString() : ''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

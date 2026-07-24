@@ -21,8 +21,7 @@ import { firestoreSet, fsTimestamp } from '../lib/firestoreAdmin';
 import { checkCooldown } from '../lib/rateLimit';
 import { dlog } from '../lib/log';
 import { validateFeedback, generateFeedbackId, feedbackExpiresAt } from '../lib/feedback-shared';
-import { recordBillingAlert } from '../lib/billing-alerts';
-import { sendTransactional } from '../lib/sequenzy';
+import { recordBillingAlert, sendObservableEmail } from '../lib/billing-alerts';
 import type { AppEnv } from '../index';
 
 const feedback = new Hono<AppEnv>();
@@ -92,19 +91,19 @@ feedback.post('/api/public/feedback', async c => {
   } catch (err) { dlog(env, '[feedback] alert failed:', err instanceof Error ? err.message : 'error'); }
 
   if (e.ADMIN_EMAIL) {
-    try {
-      await sendTransactional(e.SEQUENZY_API_KEY, {
-        to:   e.ADMIN_EMAIL,
-        slug: 'feedback-admin',
-        variables: {
-          SOURCE:       String(fb.source),
-          SATISFACTION: String(fb.satisfaction ?? '-'),
-          DIFFICULTY:   String(fb.difficulty ?? '-'),
-          BLOCKER:      String(fb.blocker ?? '-'),
-          SUGGESTION:   String(fb.suggestion ?? '-'),
-        },
-      });
-    } catch (err) { dlog(env, '[feedback] admin email failed:', err instanceof Error ? err.message : 'error'); }
+    // Observable send — a failure records a durable notification_email_failed
+    // alert (visible in Production Alerts + the bell), never a silent dlog.
+    await sendObservableEmail(env.FIREBASE_SERVICE_ACCOUNT_JSON, e.SEQUENZY_API_KEY, {
+      to:   e.ADMIN_EMAIL,
+      slug: 'feedback-admin',
+      variables: {
+        SOURCE:       String(fb.source),
+        SATISFACTION: String(fb.satisfaction ?? '-'),
+        DIFFICULTY:   String(fb.difficulty ?? '-'),
+        BLOCKER:      String(fb.blocker ?? '-'),
+        SUGGESTION:   String(fb.suggestion ?? '-'),
+      },
+    }, id);
   }
 
   return c.json({ ok: true, id });
