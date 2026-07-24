@@ -3755,6 +3755,139 @@ Décisions ouvertes : (1) guardrail no-LLM vs Luna ; (2) re-tarification des 4 a
 
 ---
 
+## 25. État de production & registre de durcissement *(2026-07-23 — production et code font foi)*
+
+> Cette section est la **photographie autoritative courante**. En cas de conflit avec une section
+> antérieure (§18–§24), **§25 fait foi**. Méthode : audit read-only du dépôt à HEAD `125791e` +
+> hashes de déploiement Cloudflare + vérification navigateur en prod. "Prod-verified" = présent
+> dans l'artefact déployé + endpoint live vérifié ; les rendus derrière auth (panels operator) sont
+> vérifiés build+deploy+RBAC, pas visuellement (pas de session operator disponible en audit).
+
+### 25.1 — TASK 1 · État de production (architecture + déploiements)
+
+| Élément | État |
+|---|---|
+| **Branche / HEAD** | `main` @ **`125791e`** — ⚠️ **7 commits non poussés** (`origin/main` @ `4d7b0cd`) |
+| **Frontend** | Cloudflare **Pages** `ailunapro-app` → `audit.ailunapro.com` · deploy **`d0e72640`** ⇐ `125791e` · buildId `2026-07-23T09-09-40-806Z` |
+| **Worker** | `ailunapro-worker` → `api.ailunapro.com` · version **`2434afbb-cb52-4750-a16a-1b47a649afda`** |
+| **Cloudflare** | compte `d9d1c2ffc590a9854a1b6904d7fc5b95` (patrickdurant1409@ — ≠ owner GitHub andrecedrick@, cf §25.6) · **Rocket Loader OFF** pour l'hostname |
+| **Firebase** | Auth + Firestore réels (projet `audit-ai-cc9e2`) · `firestore.rules` RBAC actives · service-account worker (REST) + client SDK front |
+| **Stripe** | mode test · checkout, subscriptions, portal, **webhook signature-vérifié** · packs token |
+| **R2** | bucket `ailunapro-audit-pdfs` (PDF Audit Express) |
+| **Turnstile** | `TURNSTILE_SECRET_KEY`/`SITE_KEY` — anti-bot public endpoints ; App Check monitor-only |
+| **PostHog** | analytics consent-gated (Phase A) |
+| **Token Governance** | ledger `organizations/{orgId}/tokens/current/usage/{eventId}` avec `mode`/`priceSnapshot`/`schemaV` ; rollups mensuels `…/rollups/{YYYY-MM}` |
+| **Token Economy** | `GET /api/platform/token-usage` (cross-org, rollup-first, no-PII) + panel operator |
+| **Production Alerts** | `platform_alerts/{kind__id}` durable + `GET /api/platform/alerts` + `/notify` + bannière operator |
+| **Stack** | Vite 8 · React 19 · TS 6 strict · Tailwind 4 · hash routing · Hono worker `nodejs_compat` |
+
+### 25.2 — TASK 2 · Programmes COMPLÉTÉS + PROD-VERIFIED
+
+| Programme | Preuve (commit / endpoint) |
+|---|---|
+| **Audit Express** | routes `audit-express*` (run/save/PDF/share HMAC) — §0bis.2 |
+| **Reports** | `reports.ts` scoring+PDF v2+share — §0bis.2 |
+| **Guided Journey (B1–B8)** | §19.B8 epic closed |
+| **Billing** | 12 routes billing (config/checkout/portal/sync/invoices/admin×6) |
+| **Stripe** | `stripe.ts` checkout+webhook ; webhook seam testé `1bba3b0` |
+| **Quotes** | `quote.ts` V2, prix publié fixe, split $15k — §0bis.2 Quote-to-Cash |
+| **Invoices** | `invoices.ts` invoice-on-accept + PDF téléchargeable `822ee34` |
+| **PDFs** | invoice/receipt + report v2 + express PDF (déterministe, logo embarqué) |
+| **Public Receipts** | lien signé no-login `5e211e5`+`d53d71e` |
+| **Admin Center** | `AdminCenterPage.tsx` — override, resend, recovery, activity |
+| **Platform Center** | `platform`/`platform-ops`/`platform-metrics`/`platform-token-usage`/`platform-alerts` |
+| **Token Governance** | `9e0bc0e` (obs. MVP) + `ddd9885` (free idempotency) |
+| **Token Economy** | `63e76b8` + `b6b4e7a` (rollup-based) |
+| **Production Alerts** | `285cd2f` + `125791e` (notify + banner) |
+| **Performance hardening** | `2cba5e6` (reload rate-limit) + `4d7b0cd` (EN async −122 KB entry) |
+| **Auth hardening** | `6b37ea3` fail-closed (mock forbidden in prod build) |
+| **Billing hardening** | `6b37ea3` retryable Stripe credit + alerts · `dd28a0a` billing scope → Firestore |
+
+### 25.3 — TASK 3 · Programmes PARTIELS (statut exact)
+
+| Item | Statut |
+|---|---|
+| **SEO (surfaces publiques)** | 🟡 pages publiques live (audit-express, eu-ai-act, faq, methodologie, pricing, shadow-ai, use-cases) |
+| **sitemap.xml** | 🔴 non implémenté |
+| **schema.org** | 🔴 non implémenté |
+| **llms.txt** | 🔴 non implémenté |
+| **i18n PDF Latin-5 (B6.3)** | 🔴 non implémenté (PDF rendu EN/FR/ES/DE/IT/PT via WinAnsi ; RU/ZH/AR fallback EN) |
+| **Arabic + RTL (B6.6)** | 🔴 non implémenté |
+| **Analytics Phase B (feature-usage)** | 🔴 non démarré (Phase A seule live) |
+| **V1 site-fiche** | 🟡 crawl lite via Audit Express `runExtraction` ; fiche éditable + surface autonome manquantes |
+| **W1 cockpit** | 🟡 matrice Impact×Effort dans le PDF Express + Worksheet §21 ; cockpit scoré autonome manquant |
+
+### 25.4 — TASK 4 · Items de gouvernance OUVERTS (réalité constatée, aucune décision)
+
+**A. Luna LLM vs guardrail no-LLM.** `worker/src/routes/luna.ts` + `luna-llm.ts` appellent l'Anthropic
+Messages API (`claude-haiku-4-5`), route montée `index.ts` sans flag, accessible à tous les rôles
+authentifiés, `ANTHROPIC_API_KEY` présente en prod. Monétisé : `luna.message` = 50 tokens après 3
+gratuits/jour. **Le cahier (§0bis.2 K6 🔴, §19.B4 « no AI chat », guardrail no-LLM §0bis.3) affirme
+l'inverse.** État : **CONTRADICTION active, non résolue.** Décision opérateur requise (lever / cadrer /
+re-gater) — **non prise ici**. Ce n'est pas K6 tel que spécifié (pas de SSE/tool-use/RAG) : 3ᵉ variante.
+
+**B. Billing dans-plan vs formulation historique §23.** 4 actions débitent le ledger **dans les limites
+du plan** aujourd'hui : `luna.message`, `quote.generation`, `report.export.pdf`, `audit_express.pdf`
+(`src/lib/tokens/value.ts:45-47` `CHARGED_ACTIONS`). Le §23.4 dit « aucune facturation dans les limites »
+et « facturation NON ACTIVÉE ». **Corrigé factuellement en §24** (bannière + constat). État : **réalité
+documentée, tarification non arbitrée.** `recommendation.run` reste le seul débit overflow-gaté.
+Aucune décision de re-tarification prise ici.
+
+### 25.5 — TASK 5 · Registre de durcissement technique (livré)
+
+| Durcissement | Preuve | Effet |
+|---|---|---|
+| **Fail-closed auth** | `6b37ea3` `assertProductionLayers()` | Build prod en mock → hard-stop diagnostiqué au boot (plus de mock silencieux) |
+| **Retryable Stripe credits** | `6b37ea3` | `pending→crediting→credited` ; échec → release + 500 → Stripe redelivery ; jamais de perte silencieuse |
+| **Billing alerts** | `6b37ea3` `billing-alerts.ts` | `platform_alerts` durables (credit-fail, invoice-mismatch) |
+| **CI workflow** | `502437a` `.github/workflows/ci.yml` | gate typecheck+build+test ; deploy `needs: gate` — ⚠️ **non actif** (non poussé + secrets absents, §25.6) |
+| **Rollups** | `ceea580` + `b6b4e7a` | agrégats mensuels O(orgs) au lieu de scans 1000/5000 docs |
+| **Token observability** | `9e0bc0e`+`ddd9885` | `mode`/`priceSnapshot`/`schemaV`, free-usage mesurable, id déterministe |
+| **Production alerts (visibilité)** | `285cd2f`+`125791e` | panel operator + endpoint notify + bannière |
+| **EN async split** | `4d7b0cd` | catalogue EN 156 KB hors entry (entry 200→78 KB, boot 515→393 KB) |
+| **Rocket Loader removal** | config Cloudflare | supprime le retard de ~2,4 s au boot (module app ES) |
+| **Billing scope → Firestore** | `dd28a0a` | scope hors wrangler.toml → `platform_config/billing` (rollback-safe) |
+
+### 25.6 — TASK 6 · Registre des risques (actifs uniquement ; résolus retirés)
+
+**Résolus (retirés du registre) :** perte de crédit token silencieuse (P1, `6b37ea3`) · mock-auth
+silencieux sur drift (P0, `6b37ea3`) · alerts invisibles/log-only (`6b37ea3`+`285cd2f`) · billing scope
+couplé au déploiement (`dd28a0a`) · scan 1000 docs summary (`ceea580`) · scan 5000 docs platform
+(`b6b4e7a`) · reload recovery once-per-session (`2cba5e6`) · couplage test createContext(EN) (`b452df5`)
+· free-Luna non-idempotent (`ddd9885`) · dead code + flag ENABLE_QUOTE_V2 (`37411fd`).
+
+**Actifs — gouvernance (non arbitrés) :** ① Luna-LLM vs guardrail (§25.4.A) · ② tarification des 4
+actions dans-plan (§25.4.B).
+
+**Actifs — opérationnels :** ③ **CI non active** — 7 commits non poussés + secrets `CLOUDFLARE_API_TOKEN`/
+`CLOUDFLARE_ACCOUNT_ID` absents ; aucune gate ne tourne tant que non poussé. ④ **Notification pull, pas
+push** — bannière au chargement d'Admin Center ; pas d'email/Slack out-of-band. ⑤ **Seed billing-config
+non vérifié** contre Firestore live (pas de creds en audit ; seed au 1er requête). ⑥ **Identité split**
+Cloudflare (patrickdurant1409@) ≠ GitHub (andrecedrick@). ⑦ **Secret orphelin `SEQUENZY_API`** (le code lit
+`SEQUENZY_API_KEY`).
+
+**Actifs — scaling :** ⑧ **Mois de transition rollup** — le mois courant (démarrage rollup à mi-mois)
+sous-compte via le chemin rollup jusqu'au mois suivant ; docs `usage` bruts restent complets, mois passés
+OK via fallback scan. ⑨ **Croissance `usage` non bornée** — pas de TTL/purge sur les docs bruts (audit
+trail intact ; les lectures agrégées passent désormais par les rollups).
+
+### 25.7 — TASK 7 · Roadmap propre (références avril supprimées)
+
+- **COMPLETED (prod-verified) :** Audit Express · Reports · Guided Journey B1–B8 · Billing · Stripe ·
+  Quote-to-Cash (Quotes/Invoices/PDF/Public receipts/Branding) · Admin Center · Platform Center ·
+  Token Governance · Token Economy · Production Alerts · Analytics Phase A · durcissements §25.5.
+- **IN PROGRESS :** aucun chantier de code ouvert (dernière phase = ops completion, close).
+- **PARTIAL :** i18n 8-lang (manque B6.3 PDF-Latin5, B6.6 Arabe-RTL) · SEO surfaces (manque sitemap/
+  schema.org/llms.txt) · V1 site-fiche (crawl lite) · W1 cockpit (matrice PDF + Worksheet).
+- **NOT STARTED (🔴) :** U1 · K5 · X1 · L3 · L4 · Y1 · R1 · S1 · T1 · Q1 · Analytics Phase B ·
+  activation CI (push + secrets).
+- **DEFERRED (gated) :** K5 RAG/LLM · K6 LLM/SSE copilot — bloqués par le guardrail no-LLM, lui-même
+  en contradiction ouverte avec Luna-LLM déjà en prod (§25.4.A).
+
+**Statut §25 :** DOCUMENTATION — aucune modification de code, aucun déploiement.
+
+---
+
 **Fin du cahier des charges v2.**
 
 *Document maintenu en parallèle de l'implémentation. Toute décision architecturale ou

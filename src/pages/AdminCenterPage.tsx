@@ -20,6 +20,8 @@ import { TokenUsagePanel } from '../components/tokens/TokenUsagePanel';
 import { TokenEconomyPanel } from '../components/tokens/TokenEconomyPanel';
 import { ProductionAlertsPanel } from '../components/platform/ProductionAlertsPanel';
 import { fetchAlertNotify } from '../lib/platform/platformService';
+import { CustomerFeedbackPanel } from '../components/platform/CustomerFeedbackPanel';
+import { SupportInboxPanel } from '../components/platform/SupportInboxPanel';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
 const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' } as const;
@@ -380,6 +382,12 @@ export function AdminCenterPage() {
 
       {/* Production Alerts — durable billing/production alerts, operators only, read-only. */}
       {platformAdmin && section('Production Alerts', <ProductionAlertsPanel />)}
+
+      {/* Customer Feedback Center + Customer Signals + Luna Insights (deterministic). */}
+      {platformAdmin && section('Customer Feedback Center', <CustomerFeedbackPanel />)}
+
+      {/* Support Inbox — read-only ticket queue with callback contact details. */}
+      {platformAdmin && section('Support Inbox', <SupportInboxPanel />)}
     </div>
   );
 }

@@ -69,6 +69,7 @@ support.post('/api/support/ticket', async c => {
     type:          t.type,
     description:   t.description,
     email:         t.email,
+    phone:         t.phone,          // mandatory callback number (validated)
     priority:      t.priority,
     context:       t.context,
     uid:           uid ?? null,             // opaque id when authed; not PII
@@ -102,6 +103,7 @@ support.post('/api/support/ticket', async c => {
         PRIORITY:    t.priority ?? '-',
         DESCRIPTION: t.description,
         EMAIL:       t.email,
+        PHONE:       t.phone,
         CONTEXT:     ctx,
       },
       replyTo: t.email,   // admin can reply straight to the submitter

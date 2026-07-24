@@ -21,10 +21,33 @@ const DESC_MAX = 2000;
 const CTX_MAX = 200;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Phone is MANDATORY (operators must be able to call back). Accepts an optional
+ * leading '+' then 7–15 digits after separators are stripped — the E.164 digit
+ * range, permissive enough for any national format a customer types.
+ */
+const PHONE_DIGITS_MIN = 7;
+const PHONE_DIGITS_MAX = 15;
+
+/** Normalise a typed phone: keep a leading '+' and digits, drop spaces/()-./ */
+export function normalizePhone(raw: string): string {
+  const trimmed = raw.trim();
+  const plus = trimmed.startsWith('+');
+  const digits = trimmed.replace(/\D/g, '');
+  return plus ? `+${digits}` : digits;
+}
+
+/** True when the normalised phone carries a plausible 7–15 digit subscriber number. */
+export function isValidPhone(raw: string): boolean {
+  const digits = normalizePhone(raw).replace(/\D/g, '');
+  return digits.length >= PHONE_DIGITS_MIN && digits.length <= PHONE_DIGITS_MAX;
+}
+
 export interface SupportInput {
   type?:        unknown;
   description?: unknown;
   email?:       unknown;
+  phone?:       unknown;
   priority?:    unknown;
   context?:     unknown;
 }
@@ -39,6 +62,8 @@ export interface ValidatedSupport {
   type:        SupportType;
   description: string;
   email:       string;
+  /** Mandatory callback number, normalised to '+' + digits. */
+  phone:       string;
   priority:    SupportPriority | null;
   context:     SupportContext | null;
 }
@@ -104,7 +129,18 @@ export function validateSupport(
   const email = rawEmail.trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return { ok: false, error: 'Valid email is required' };
 
-  return { ok: true, ticket: { type, description, email, priority, context: cleanContext(body.context) } };
+  // Phone is MANDATORY for every ticket — anonymous and authed alike. There is no
+  // verified phone on the token, so it is always client-supplied and must be
+  // present AND well-formed (empty / junk is rejected, never stored blank).
+  if (typeof body.phone !== 'string' || body.phone.trim() === '') {
+    return { ok: false, error: 'Phone number is required' };
+  }
+  if (!isValidPhone(body.phone)) {
+    return { ok: false, error: 'Valid phone number is required' };
+  }
+  const phone = normalizePhone(body.phone);
+
+  return { ok: true, ticket: { type, description, email, phone, priority, context: cleanContext(body.context) } };
 }
 
 export function generateSupportId(): string {

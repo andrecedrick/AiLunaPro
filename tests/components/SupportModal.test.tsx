@@ -42,6 +42,7 @@ describe('SupportModal (S2)', () => {
     fireEvent.click(screen.getByText('Bug'));
     fireEvent.change(screen.getByPlaceholderText('What happened?'), { target: { value: 'it broke' } });
     fireEvent.change(screen.getByPlaceholderText('you@company.com'), { target: { value: 'a@b.com' } });
+    fireEvent.change(screen.getByPlaceholderText('+33 6 12 34 56 78'), { target: { value: '+33612345678' } });
     fireEvent.click(screen.getByText('Send'));
 
     await waitFor(() => expect(submitSpy).toHaveBeenCalled());
@@ -71,9 +72,11 @@ describe('SupportModal (S2)', () => {
 
     fireEvent.click(screen.getByText('Question'));
     fireEvent.change(screen.getByPlaceholderText('What happened?'), { target: { value: 'a question' } });
+    // Phone is required for authed users too — the token carries no phone claim.
+    fireEvent.change(screen.getByPlaceholderText('+33 6 12 34 56 78'), { target: { value: '+33612345678' } });
     fireEvent.click(screen.getByText('Send'));
 
     await waitFor(() => expect(submitSpy).toHaveBeenCalled());
-    expect(submitSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'question', description: 'a question', email: 'me@x.com' }));
+    expect(submitSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'question', description: 'a question', email: 'me@x.com', phone: '+33612345678' }));
   });
 });

@@ -9,20 +9,23 @@ type: project
 > Ce fichier est la **source autoritative** du statut projet et de la roadmap.
 > Toute mise à jour de phase ou de plan doit être consignée ici en premier.
 >
-> **Branche de travail :** `main` (production) — remote `github.com/andrecedrick/AiLunaPro`. HEAD = `cf5f230`.
-> **Dernière révision :** 2026-07-20 (v5 — reconciliation post-recovery : état réel July, programme Quote-to-Cash, migration GitHub, roadmap A→J archivée comme livrée).
+> **Branche de travail :** `main` (production) — remote `github.com/andrecedrick/AiLunaPro`. HEAD = `125791e` (7 commits non poussés).
+> **Dernière révision :** 2026-07-23 (v6 — sync post-durcissement : état prod + hashes courants ; photographie autoritative = cahier §25).
 >
 > ⚠️ **La roadmap A→J des §3/§4/§5 ci-dessous est HISTORIQUE** — toutes ses phases sont livrées et déployées. L'état courant fait foi = §1 ci-dessous. Le **Phase Workflow Contract anti-skip (§8/§9) reste actif** comme discipline permanente.
 
 ---
 
-## 1. État réel actuel du projet — CURRENT TRUTH (2026-07-20, HEAD `cf5f230`)
+## 1. État réel actuel du projet — CURRENT TRUTH (2026-07-23, HEAD `125791e`)
 
-> Reconstitué post-recovery (réinstall Windows) : git + `dist` + hashes de déploiement Cloudflare. Remplace l'état d'avril (obsolète) ci-dessus supprimé.
+> **Photographie autoritative = cahier §25** (production + durcissement + roadmap propre). Ce §1 en est le miroir court.
+> ⚠️ HEAD `125791e` = **7 commits non poussés** (`origin/main` @ `4d7b0cd`).
 
 **Live en production :**
-- ✅ **Frontend déployé** — Cloudflare Pages `ailunapro-app` → `audit.ailunapro.com`. Prod = commit **`cf5f230`** (deployment `56910706-c7b7-49a5-a43a-62722f813946`).
-- ✅ **Worker déployé** — `ailunapro-worker` → `api.ailunapro.com`. Version **`366460c2-394c-47e3-81aa-bab945100963`** (2026-07-17 16:24Z).
+- ✅ **Frontend déployé** — Cloudflare Pages `ailunapro-app` → `audit.ailunapro.com`. Prod = commit **`125791e`** (deployment `d0e72640`, buildId `2026-07-23T09-09-40-806Z`).
+- ✅ **Worker déployé** — `ailunapro-worker` → `api.ailunapro.com`. Version **`2434afbb-cb52-4750-a16a-1b47a649afda`**.
+- ✅ **Durcissement livré** (cahier §25.5) — fail-closed auth · retryable Stripe credits · billing alerts durables · rollups mensuels · token observability · production alerts + notify · EN async split · Rocket Loader OFF · billing scope → Firestore. CI workflow **écrit mais NON actif** (non poussé + secrets absents).
+- ✅ **Firebase Auth + Firestore RÉELS en service** — service-account worker + client SDK front ; `firestore.rules` déployées (RBAC multi-tenant).
 - ✅ **Firebase Auth + Firestore RÉELS en service** — service-account worker + client SDK front ; `firestore.rules` déployées (RBAC multi-tenant).
 - ✅ **Stripe réel** (mode test) — checkout, subscriptions, portal, webhooks (seam testé `1bba3b0`), multi-devises→USD, token/overflow packs.
 - ✅ **Emails réels** — Sequenzy (`SEQUENZY_API_KEY`), templates transactionnels (invoice-client, payment-confirmation, quote).

@@ -107,7 +107,10 @@ Restent en anglais par décision produit : noms d'agents, citations réglementai
 
 ## Déploiement
 
-> Le déploiement est **manuel et opéré** — il n'y a pas de CI/CD git-connecté.
+> Le déploiement est **manuel et opéré**. Un workflow CI (`.github/workflows/ci.yml` :
+> typecheck + build + test, avec `deploy` gaté sur la gate) est **écrit mais pas encore
+> actif** — il nécessite un push des commits + les secrets `CLOUDFLARE_API_TOKEN` /
+> `CLOUDFLARE_ACCOUNT_ID` dans le repo GitHub. Tant que non activé, déployer à la main :
 
 **Frontend → Cloudflare Pages** (projet `ailunapro-app`) :
 ```bash

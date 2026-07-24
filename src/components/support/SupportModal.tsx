@@ -19,7 +19,17 @@ import { submitSupportTicket, friendlySupportError, type SupportType, type Suppo
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const APP_VERSION = import.meta.env.VITE_APP_VERSION as string | undefined;
 
-interface Errors { type?: string; description?: string; email?: string }
+interface Errors { type?: string; description?: string; email?: string; phone?: string }
+
+/**
+ * Phone is MANDATORY (operators must be able to call back). Mirrors the worker's
+ * server-authoritative rule: optional leading '+', 7–15 digits once separators
+ * are stripped. The server re-validates — this is UX, not the boundary.
+ */
+function isValidPhone(raw: string): boolean {
+  const digits = raw.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+}
 
 export function SupportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const T = useLocale().support;
@@ -34,6 +44,7 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
   const [type, setType]               = useState<SupportType | ''>('');
   const [description, setDescription] = useState('');
   const [email, setEmail]             = useState('');
+  const [phone, setPhone]             = useState('');
   const [priority, setPriority]       = useState<SupportPriority | null>(null);
   const [errors, setErrors]           = useState<Errors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -65,6 +76,10 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
     if (!type)                                    err.type = T.errType;
     if (description.trim().length === 0)          err.description = T.errDescription;
     if (!authed && !EMAIL_RE.test(finalEmail))    err.email = T.errEmail;
+    // Phone is required for EVERY ticket (authed included — the token carries no
+    // phone), and must be well-formed. Empty is never accepted.
+    if (phone.trim().length === 0)                err.phone = 'Phone number is required';
+    else if (!isValidPhone(phone))                err.phone = 'Enter a valid phone number';
     setErrors(err);
     if (Object.keys(err).length > 0) return;
 
@@ -74,6 +89,7 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
         type: type as SupportType,
         description: description.trim(),
         email: finalEmail,
+        phone: phone.trim(),
         priority: priority ?? undefined,
         context: { route: route.name, locale: language, appVersion: APP_VERSION },
       });
@@ -140,6 +156,21 @@ export function SupportModal({ open, onClose }: { open: boolean; onClose: () => 
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={T.emailPlaceholder} style={inputStyle()} />
           )}
           {errors.email && <div style={errLine}>{errors.email}</div>}
+        </div>
+
+        {/* Phone — REQUIRED for every ticket (no verified phone on the token). */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={label}>Phone <span style={{ color: 'var(--red-text)' }}>*</span></label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="+33 6 12 34 56 78"
+            aria-required="true"
+            aria-invalid={errors.phone ? true : undefined}
+            style={inputStyle()}
+          />
+          {errors.phone && <div style={errLine}>{errors.phone}</div>}
         </div>
 
         {/* Priority — optional */}

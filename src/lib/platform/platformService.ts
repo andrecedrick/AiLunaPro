@@ -152,6 +152,65 @@ export async function fetchPlatformAlerts(): Promise<ProductionAlerts | null> {
   }
 }
 
+/* ── Customer Feedback Center + Support Inbox (read-only) ── */
+
+/** One anonymous feedback entry. No uid/email/orgId is ever captured. */
+export interface FeedbackItem {
+  id: string; source: string; satisfaction: string; difficulty: string;
+  blocker: string; suggestion: string; country: string; createdAt: string;
+}
+
+/** Deterministic signal bucket — an exact-count tally, never an AI summary. */
+export interface SignalCount { value: string; count: number }
+
+export interface PlatformFeedback {
+  items: FeedbackItem[];
+  total: number; rated: number;
+  positive: number; negative: number;
+  positivePct: number; negativePct: number;
+  avgDifficulty: number | null;
+  topBlockers: SignalCount[];
+  topSuggestions: SignalCount[];
+  topSources: SignalCount[];
+  capped: boolean;
+}
+
+/** A support ticket. Carries submitter contact details — operators only. */
+export interface SupportTicketItem {
+  id: string; type: string; status: string; email: string; phone: string;
+  page: string; description: string; priority: string; country: string; createdAt: string;
+}
+
+export interface PlatformSupport {
+  items: SupportTicketItem[];
+  total: number; open: number;
+  byType: SignalCount[];
+  topPages: SignalCount[];
+  capped: boolean;
+}
+
+/** Anonymous product feedback + deterministic Customer Signals. Operators only. */
+export async function fetchPlatformFeedback(): Promise<PlatformFeedback | null> {
+  const token = await getIdToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/platform/feedback`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    return (await res.json()) as PlatformFeedback;
+  } catch { return null; }
+}
+
+/** Support tickets (incl. email + phone — operator-gated). Read-only. */
+export async function fetchPlatformSupport(): Promise<PlatformSupport | null> {
+  const token = await getIdToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${WORKER_BASE}/api/platform/support`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    return (await res.json()) as PlatformSupport;
+  } catch { return null; }
+}
+
 /** Lightweight open-critical alert signal for a proactive badge. No PII. */
 export interface AlertNotify {
   openCritical: number;

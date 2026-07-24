@@ -16,22 +16,22 @@ import {
 
 describe('validateSupport', () => {
   it('accepts an anonymous ticket with a provided email', () => {
-    const r = validateSupport({ type: 'bug', description: 'it broke', email: 'a@b.com' });
+    const r = validateSupport({ type: 'bug', description: 'it broke', email: 'a@b.com', phone: '+33612345678' });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.ticket).toEqual({ type: 'bug', description: 'it broke', email: 'a@b.com', priority: null, context: null });
+      expect(r.ticket).toEqual({ type: 'bug', description: 'it broke', email: 'a@b.com', phone: '+33612345678', priority: null, context: null });
     }
   });
 
   it('uses the verified authed email and ignores a client-supplied one', () => {
-    const r = validateSupport({ type: 'question', description: 'hi', email: 'spoof@evil.com' }, 'Real@User.com');
+    const r = validateSupport({ type: 'question', description: 'hi', email: 'spoof@evil.com', phone: '+33612345678' }, 'Real@User.com');
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.ticket.email).toBe('real@user.com'); // authed wins + normalised
   });
 
   it('accepts priority + sanitised context', () => {
     const r = validateSupport({
-      type: 'billing', description: 'charge issue', email: 'a@b.com', priority: 'high',
+      type: 'billing', description: 'charge issue', email: 'a@b.com', phone: '+33612345678', priority: 'high',
       context: { route: 'billing', locale: 'fr', appVersion: '<b>1.2</b>' },
     });
     expect(r.ok).toBe(true);
@@ -42,44 +42,44 @@ describe('validateSupport', () => {
   });
 
   it('drops an all-empty context to null', () => {
-    const r = validateSupport({ type: 'bug', description: 'x', email: 'a@b.com', context: { route: '  ', locale: '', appVersion: null } });
+    const r = validateSupport({ type: 'bug', description: 'x', email: 'a@b.com', phone: '+33612345678', context: { route: '  ', locale: '', appVersion: null } });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.ticket.context).toBeNull();
   });
 
   it.each(['bug', 'question', 'billing'])('accepts type %s', (type) => {
-    expect(validateSupport({ type, description: 'x', email: 'a@b.com' }).ok).toBe(true);
+    expect(validateSupport({ type, description: 'x', email: 'a@b.com', phone: '+33612345678' }).ok).toBe(true);
   });
 
   it('rejects an unknown type', () => {
-    expect(validateSupport({ type: 'feature', description: 'x', email: 'a@b.com' } as SupportInput).ok).toBe(false);
+    expect(validateSupport({ type: 'feature', description: 'x', email: 'a@b.com', phone: '+33612345678' } as SupportInput).ok).toBe(false);
   });
 
   it('rejects an empty / whitespace description', () => {
-    expect(validateSupport({ type: 'bug', description: '   ', email: 'a@b.com' }).ok).toBe(false);
-    expect(validateSupport({ type: 'bug', email: 'a@b.com' }).ok).toBe(false);
+    expect(validateSupport({ type: 'bug', description: '   ', email: 'a@b.com', phone: '+33612345678' }).ok).toBe(false);
+    expect(validateSupport({ type: 'bug', email: 'a@b.com', phone: '+33612345678' }).ok).toBe(false);
   });
 
   it('rejects an invalid priority', () => {
-    expect(validateSupport({ type: 'bug', description: 'x', email: 'a@b.com', priority: 'urgent' } as SupportInput).ok).toBe(false);
+    expect(validateSupport({ type: 'bug', description: 'x', email: 'a@b.com', phone: '+33612345678', priority: 'urgent' } as SupportInput).ok).toBe(false);
   });
 
   it('requires a valid email when anonymous', () => {
-    expect(validateSupport({ type: 'bug', description: 'x', email: 'not-an-email' }).ok).toBe(false);
+    expect(validateSupport({ type: 'bug', description: 'x', email: 'not-an-email', phone: '+33612345678' }).ok).toBe(false);
     expect(validateSupport({ type: 'bug', description: 'x' }).ok).toBe(false);
   });
 
   it('caps the description at 2000 chars', () => {
-    const r = validateSupport({ type: 'bug', description: 'x'.repeat(2500), email: 'a@b.com' });
+    const r = validateSupport({ type: 'bug', description: 'x'.repeat(2500), email: 'a@b.com', phone: '+33612345678' });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.ticket.description.length).toBe(2000);
   });
 
   it('produces NO PII beyond email (no uid/ip/name/orgId fields)', () => {
-    const r = validateSupport({ type: 'bug', description: 'x', email: 'a@b.com', priority: 'low' });
+    const r = validateSupport({ type: 'bug', description: 'x', email: 'a@b.com', phone: '+33612345678', priority: 'low' });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(Object.keys(r.ticket).sort()).toEqual(['context', 'description', 'email', 'priority', 'type']);
+      expect(Object.keys(r.ticket).sort()).toEqual(['context', 'description', 'email', 'phone', 'priority', 'type']);
     }
   });
 });

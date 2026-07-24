@@ -21,13 +21,15 @@
 
 ---
 
-## État courant (2026-07-20)
+## État courant (2026-07-23)
 
-**EN PRODUCTION.** Branche `main` — remote `github.com/andrecedrick/AiLunaPro`, HEAD `cf5f230`.
-- Frontend Pages `audit.ailunapro.com` (deploy `56910706`, commit `cf5f230`) · Worker `api.ailunapro.com` (version `366460c2`).
-- Firebase Auth+Firestore réels · Stripe réel (test) · Emails Sequenzy réels.
-- **Programme Quote-to-Cash — ✅ PROD-VERIFIED (2026-07-20)** : devis V2, factures+PDF, Stripe, accès public reçus, page reçu client, branding, Admin Center, platform visibility. Preuve : Pages deploy `56910706` ⇐ `cf5f230` ; Worker `366460c2`. (cahier §0bis.2)
-- Roadmap A→J d'avril = **livrée/archivée**. Détail item-par-item : voir `status.md` §1.
+**EN PRODUCTION.** Branche `main` — remote `github.com/andrecedrick/AiLunaPro`, HEAD `125791e` (⚠️ 7 commits **non poussés**, `origin/main` @ `4d7b0cd`).
+- Frontend Pages `audit.ailunapro.com` (deploy `d0e72640`, commit `125791e`) · Worker `api.ailunapro.com` (version `2434afbb`).
+- Firebase Auth+Firestore réels · Stripe réel (test) · Emails Sequenzy réels · R2 · Turnstile · PostHog (A).
+- **Photographie autoritative = cahier §25** (état prod + déploiements + registre de durcissement + roadmap propre + risques actifs).
+- Quote-to-Cash ✅ prod-verified + **durcissement livré** : fail-closed auth, retryable Stripe credits, billing alerts, rollups mensuels, token observability, production alerts + notify, EN async split, Rocket Loader OFF, billing scope→Firestore. **CI écrit mais NON actif** (non poussé + secrets absents).
+- **Gouvernance ouverte (non arbitrée)** : Luna-LLM vs guardrail no-LLM · tarification 4 actions dans-plan vs §23 (cahier §25.4).
+- Roadmap A→J d'avril = **livrée/archivée**. Détail : `status.md` §1 + cahier §25.
 
 ## Règles globales (extrait du Phase Workflow Contract — TOUJOURS actif)
 

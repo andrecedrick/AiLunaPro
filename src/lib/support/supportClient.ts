@@ -16,6 +16,7 @@ export interface SupportTicketInput {
   type:        SupportType;
   description: string;
   email?:      string;                 // required when anonymous; ignored server-side when authed
+  phone:       string;                 // REQUIRED for every ticket — server re-validates
   priority?:   SupportPriority;
   context?:    { route?: string; locale?: string; appVersion?: string };
 }
