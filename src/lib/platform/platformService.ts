@@ -251,6 +251,31 @@ export interface NotificationItem {
   targetType: string; targetId: string; route: string;
   title: string; severity: string; read: boolean; readAt: string; at: string;
 }
+
+/**
+ * Param-less Route names a notification is allowed to open. A stored route is
+ * used only if it is in this set — a stale/invalid route can never no-op a click.
+ */
+const NOTIF_ROUTES = new Set<string>(['admin', 'help', 'my-quotes', 'invoices', 'billing', 'billing/tokens', 'contacts', 'reports']);
+
+/**
+ * Resolve a notification to a VALID, useful destination so a click always goes
+ * somewhere. Prefers the stored route; falls back by type, then by audience
+ * (operator → Admin Center where the panels live; user → Help).
+ */
+export function resolveNotifRoute(n: Pick<NotificationItem, 'route' | 'type' | 'audience'>): string {
+  if (n.route && NOTIF_ROUTES.has(n.route)) return n.route;
+  switch (n.type) {
+    case 'reply':
+    case 'closed':       return 'help';
+    case 'invoice_paid': return 'my-quotes';
+    case 'feedback':
+    case 'ticket':
+    case 'alert':
+    case 'token':        return 'admin';
+  }
+  return n.audience === 'user' ? 'help' : 'admin';
+}
 export interface NotificationsResult {
   items: NotificationItem[];
   unreadCount: number;

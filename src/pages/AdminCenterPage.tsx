@@ -89,6 +89,28 @@ export function AdminCenterPage() {
     return () => { alive = false; };
   }, [platformAdmin]);
 
+  // Scroll to the panel a clicked notification points at. Runs on mount (fresh
+  // navigation) AND on the notif-nav event (already on this page → same-route
+  // navigate is a no-op, so the event is what triggers the scroll). Retries a few
+  // times because panels mount lazily after their data loads.
+  useEffect(() => {
+    const go = () => {
+      let sec: string | null = null;
+      try { sec = sessionStorage.getItem('ailunapro:notif-section'); } catch { sec = null; }
+      if (!sec) return;
+      let tries = 0;
+      const tick = () => {
+        const el = document.getElementById(sec!);
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); try { sessionStorage.removeItem('ailunapro:notif-section'); } catch { /* noop */ } return; }
+        if (tries++ < 20) setTimeout(tick, 150);
+      };
+      tick();
+    };
+    go();
+    window.addEventListener('ailunapro:notif-nav', go);
+    return () => window.removeEventListener('ailunapro:notif-nav', go);
+  }, []);
+
   // PERF — targeted reloads: an action refetches only the list(s) it changed, not both.
   const reload = (which: 'quotes' | 'invoices' | 'all' = 'all') => {
     if (!orgId) return;
@@ -166,8 +188,8 @@ export function AdminCenterPage() {
     </div>
   );
 
-  const section = (title: string, children: React.ReactNode) => (
-    <div style={{ display: 'grid', gap: 10 }}>
+  const section = (title: string, children: React.ReactNode, id?: string) => (
+    <div id={id} style={{ display: 'grid', gap: 10, scrollMarginTop: 80 }}>
       <div style={heading}>{title}</div>
       {children}
     </div>
@@ -403,13 +425,13 @@ export function AdminCenterPage() {
       )}
 
       {/* Production Alerts — durable billing/production alerts, operators only, read-only. */}
-      {platformAdmin && section('Production Alerts', <ProductionAlertsPanel />)}
+      {platformAdmin && section('Production Alerts', <ProductionAlertsPanel />, 'cs-alerts')}
 
       {/* Customer Feedback Center + Customer Signals + Luna Insights (deterministic). */}
-      {platformAdmin && section('Customer Feedback Center', <CustomerFeedbackPanel />)}
+      {platformAdmin && section('Customer Feedback Center', <CustomerFeedbackPanel />, 'cs-feedback')}
 
       {/* Support Inbox — read-only ticket queue with callback contact details. */}
-      {platformAdmin && section('Support Inbox', <SupportInboxPanel />)}
+      {platformAdmin && section('Support Inbox', <SupportInboxPanel />, 'cs-support')}
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { useToast } from '../../hooks/useToast';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
 import { ROLE } from '../../types/auth';
-import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from '../../lib/platform/platformService';
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, resolveNotifRoute, type NotificationItem } from '../../lib/platform/platformService';
 import type { Route } from '../../types/audit';
 
 interface TopbarProps {
@@ -73,12 +73,25 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const refreshNotifs = () => {
     fetchNotifications(notifFilter).then(n => { if (n) { setNotifs(n.items); setNotifCount(n.unreadCount); } }).catch(() => {});
   };
-  // Click a notification → mark read + navigate to its target area.
-  const onNotifClick = async (n: NotificationItem) => {
-    if (!n.read) { await markNotificationRead(n.id); }
-    if (n.route) { try { navigate({ name: n.route } as Route); } catch { /* unknown route → no-op */ } }
+  // Click a notification → navigate FIRST (instant, never blocked by the network),
+  // then mark it read. Resolve to a VALID destination so a click is never dead:
+  // use the stored route if it's a known page, else fall back by type/audience.
+  const onNotifClick = (n: NotificationItem) => {
+    const target = resolveNotifRoute(n);
     setNotifOpen(false);
-    refreshNotifs();
+    // When landing on the Admin Center, remember which panel this notification is
+    // about so the page scrolls to it — this is what makes a click USEFUL even
+    // when the operator is already on that page (same-route navigate is a no-op).
+    if (target === 'admin') {
+      const sec = n.type === 'feedback' ? 'cs-feedback'
+        : (n.type === 'ticket' || n.type === 'reply' || n.type === 'closed') ? 'cs-support'
+        : 'cs-alerts';
+      try { sessionStorage.setItem('ailunapro:notif-section', sec); } catch { /* storage blocked */ }
+      try { window.dispatchEvent(new CustomEvent('ailunapro:notif-nav')); } catch { /* older browser */ }
+    }
+    try { navigate({ name: target } as Route); } catch { /* defensive */ }
+    if (!n.read) { void markNotificationRead(n.id).then(refreshNotifs); }
+    else refreshNotifs();
   };
   const onMarkAll = async () => { await markAllNotificationsRead(); refreshNotifs(); };
 
