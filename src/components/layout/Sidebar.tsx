@@ -25,6 +25,7 @@ function routeToActiveId(name: RouteName): string {
   if (name === 'agents') return 'agents';
   if (name === 'agents/detail') return 'agents';
   if (name === 'team') return 'team';
+  if (name === 'support/tickets') return 'support-tickets';
   if (name === 'help') return 'help';
   if (name === 'settings/profile')     return 'settings';
   if (name === 'settings/org')         return 'settings';
@@ -91,8 +92,11 @@ const NAV_GROUPS: NavGroupDef[] = [
     { id: 'diag-tool', icon: 'diag-tool', route: { name: 'diagnostic' },     src: 'menu-diagnostic' },
   ] },
   { id: 'system', items: [
-    { id: 'settings', icon: 'settings', route: { name: 'settings/profile' } },
-    { id: 'help',     icon: 'help',     route: { name: 'help' } },
+    { id: 'settings',        icon: 'settings', route: { name: 'settings/profile' } },
+    // My Tickets — visible to ALL authed users (customers included, no gate) so the
+    // reply-notification destination is also reachable manually.
+    { id: 'support-tickets', icon: 'help',     route: { name: 'support/tickets' } },
+    { id: 'help',            icon: 'help',     route: { name: 'help' } },
   ] },
 ];
 
@@ -107,6 +111,7 @@ function navLabel(id: string, T: ReturnType<typeof useLocale>): string {
     case 'visibility': return T.auditTools.nav.visibilityLabel;
     case 'admin':      return T.adminCenter.nav;
     case 'contacts':   return T.contacts.nav;
+    case 'support-tickets': return 'My Tickets';
     default:           return (T.nav as Record<string, string>)[id] ?? id;
   }
 }
