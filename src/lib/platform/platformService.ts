@@ -193,26 +193,48 @@ export interface PlatformSupport {
   capped: boolean;
 }
 
+/**
+ * In-flight request de-duplication.
+ *
+ * The Admin Center mounts the CS counter strip AND the panels at the same time,
+ * so `fetchPlatformSupport` / `fetchPlatformFeedback` each fired TWICE per page
+ * load — two extra round-trips returning up to 200 documents apiece. Concurrent
+ * callers now share one promise; the entry is dropped as soon as it settles, so
+ * a later refresh still hits the network (no stale cache, no staleness window).
+ */
+const inflight = new Map<string, Promise<unknown>>();
+function dedup<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const p = run().finally(() => { inflight.delete(key); });
+  inflight.set(key, p);
+  return p;
+}
+
 /** Anonymous product feedback + deterministic Customer Signals. Operators only. */
 export async function fetchPlatformFeedback(): Promise<PlatformFeedback | null> {
-  const token = await getIdToken();
-  if (!token) return null;
-  try {
-    const res = await fetch(`${WORKER_BASE}/api/platform/feedback`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return null;
-    return (await res.json()) as PlatformFeedback;
-  } catch { return null; }
+  return dedup('platform-feedback', async () => {
+    const token = await getIdToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${WORKER_BASE}/api/platform/feedback`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return null;
+      return (await res.json()) as PlatformFeedback;
+    } catch { return null; }
+  });
 }
 
 /** Support tickets (incl. email + phone — operator-gated). */
 export async function fetchPlatformSupport(): Promise<PlatformSupport | null> {
-  const token = await getIdToken();
-  if (!token) return null;
-  try {
-    const res = await fetch(`${WORKER_BASE}/api/platform/support`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return null;
-    return (await res.json()) as PlatformSupport;
-  } catch { return null; }
+  return dedup('platform-support', async () => {
+    const token = await getIdToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${WORKER_BASE}/api/platform/support`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return null;
+      return (await res.json()) as PlatformSupport;
+    } catch { return null; }
+  });
 }
 
 /** Reply to a ticket (appends to history, flips to answered, emails the contact). */

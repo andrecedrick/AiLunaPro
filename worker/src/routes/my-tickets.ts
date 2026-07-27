@@ -64,13 +64,24 @@ myTickets.get('/api/support/my-tickets', requireAuth(), async c => {
   const uid = c.get('uid') as string;
 
   try {
+    // Server-side ownership filter. This previously read up to SCAN (300) ticket
+    // docs and filtered by uid in JS — every customer paid for the whole recent
+    // collection, and the cost grew with TOTAL tickets rather than their own.
+    // A single-field equality filter uses Firestore's automatic index; `orderBy`
+    // is deliberately omitted (equality + orderBy would need a composite index,
+    // and firestore.indexes.json is empty) — we sort in memory instead, over a
+    // set that is now bounded by the caller's own ticket count.
     const rows = await firestoreRunQuery(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
-      from:    [{ collectionId: 'support_tickets' }],
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
-      limit:   SCAN,
+      from:  [{ collectionId: 'support_tickets' }],
+      where: { fieldFilter: { field: { fieldPath: 'uid' }, op: 'EQUAL', value: { stringValue: uid } } },
+      limit: SCAN,
     });
-    // OWNERSHIP: only the caller's own tickets.
-    const items = rows.filter(r => str(r.fields.uid) === uid).map(r => mapMine(r.name, r.fields));
+    // Defence in depth: the server-side filter is authoritative, but ownership is
+    // re-checked here so a query quirk can never leak another customer's ticket.
+    const items = rows
+      .filter(r => str(r.fields.uid) === uid)
+      .map(r => mapMine(r.name, r.fields))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
     return c.json({ items, total: items.length, open: items.filter(t => t.status !== 'closed').length });
   } catch (err) {
     console.warn('[my-tickets] list failed:', err instanceof Error ? err.message : err);
