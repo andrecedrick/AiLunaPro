@@ -1,4 +1,56 @@
 {
-  "indexes": [],
-  "fieldOverrides": []
+  "//": "Index plan. Deploy with: firebase deploy --only firestore:indexes",
+  "//fieldOverrides": "Firestore auto-creates single-field indexes at COLLECTION scope ONLY. A collectionGroup query (allDescendants:true) filtering or ordering on a field needs an explicit COLLECTION_GROUP entry — without it the query fails FAILED_PRECONDITION. An override REPLACES the automatic config, so the default ASCENDING/DESCENDING COLLECTION entries are re-declared here on purpose.",
+  "indexes": [
+    {
+      "//": "worker/src/routes/invoices.ts — where orgId EQUAL + newest-first. Today the query omits orderBy and takes an arbitrary 1000-doc window sorted in JS (see the DATA-LOSS BUG note there). With this index the query can become orderBy createdAt DESC + limit 50.",
+      "collectionGroup": "invoices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orgId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "worker/src/routes/my-tickets.ts — where uid EQUAL + newest-first. Today orderBy is omitted (no composite index existed) and the caller's tickets are sorted in memory under a 300 cap. With this index: orderBy createdAt DESC + limit 50.",
+      "collectionGroup": "support_tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "//": "worker/src/routes/platform-token-usage.ts:80 — collectionGroup 'rollups' WHERE month EQUAL. Missing COLLECTION_GROUP scope => the rollup fast path throws, and the route falls through to a 5000-doc raw usage scan (or 502).",
+      "collectionGroup": "rollups",
+      "fieldPath": "month",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
+      "//": "worker/src/routes/platform-metrics.ts:149 — collectionGroup 'tokens' WHERE balance > 0. Missing COLLECTION_GROUP scope => the query throws, is swallowed by the catch, and the token-active-orgs metric silently reports 0.",
+      "collectionGroup": "tokens",
+      "fieldPath": "balance",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
+      "//": "worker/src/routes/contacts.ts:147 — collectionGroup 'contacts' ORDER BY createdAt DESC. Missing COLLECTION_GROUP scope => the ordered query throws and the code degrades to an unordered re-query sorted in JS (that fallback stays as a safety net).",
+      "collectionGroup": "contacts",
+      "fieldPath": "createdAt",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    }
+  ]
 }

@@ -143,24 +143,24 @@ async function computeTokenActiveOrgsCount(saJson: string | undefined): Promise<
   if (!saJson) return 0;
   try {
     // CollectionGroup query on 'tokens' (subcollection of organizations/{orgId})
-    // filtered by document id 'current' and balance > 0. Each org has at most
-    // one such doc, so the result count equals the number of token-active orgs.
+    // filtered by balance > 0. Each org has at most one 'current' doc, so the
+    // count of matching 'current' docs equals the number of token-active orgs.
+    //
+    // This previously ANDed in `__name__ EQUAL {stringValue:'__current__'}`. That
+    // filter is invalid — Firestore requires a full resource name as a
+    // `referenceValue` for __name__, never a bare string — so the whole query was
+    // rejected, the catch below swallowed it, and this metric silently reported 0
+    // in production. The doc-id restriction is done client-side (as the old
+    // comment already claimed), so the filter was never load-bearing: removed.
+    //
+    // NOTE: `balance > 0` on a collectionGroup needs a COLLECTION_GROUP-scope
+    // single-field index on tokens.balance — declared in firestore.indexes.json
+    // (auto-created single-field indexes are COLLECTION scope only). Until that
+    // file is deployed this still falls into the catch and returns 0.
     const docs = await firestoreRunQuery(saJson, {
-      from: [{ collectionId: 'tokens', allDescendants: true }],
-      where: {
-        compositeFilter: {
-          op: 'AND',
-          filters: [
-            { fieldFilter: { field: { fieldPath: '__name__' }, op: 'EQUAL', value: { stringValue: '__current__' } } },
-            { fieldFilter: { field: { fieldPath: 'balance' }, op: 'GREATER_THAN', value: { integerValue: '0' } } },
-          ],
-        },
-      },
+      from:  [{ collectionId: 'tokens', allDescendants: true }],
+      where: { fieldFilter: { field: { fieldPath: 'balance' }, op: 'GREATER_THAN', value: { integerValue: '0' } } },
     });
-    // Note: the __name__ filter above only matches doc id 'current'. Firestore
-    // requires the full resource name for __name__ EQUAL — we instead filter
-    // client-side on the returned name to keep the query simple and avoid an
-    // index requirement. The balance>0 server-side filter still prunes most.
     let n = 0;
     for (const d of docs) {
       if (d.name.endsWith('/tokens/current')) n++;
