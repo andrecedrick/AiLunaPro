@@ -160,6 +160,7 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
   const [name, setName]       = useState('');
   const [email, setEmail]     = useState('');
   const [company, setCompany] = useState('');
+  const [phone, setPhone]     = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -168,11 +169,17 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
   // B2.2: actually persist the request (worker-only demo_requests store) —
   // success is only reported once the server confirmed the write.
   const onSend = async () => {
-    if (!name || !email || sending) return;
+    if (!name || !email || !phone || sending) return;
+    // Mirror of the server rule (isValidPhone): fail here with a clear message
+    // instead of letting the worker reject the whole lead with a raw 400.
+    if (phone.replace(/\D/g, '').length < 7 || phone.replace(/\D/g, '').length > 15) {
+      setError(T.dashboardHome.cta.demoModal.errorPhone);
+      return;
+    }
     setSending(true);
     setError(null);
     try {
-      await submitDemoRequest({ orgId, name, email, company: company || undefined, message: message || undefined });
+      await submitDemoRequest({ orgId, name, email, phone, company: company || undefined, message: message || undefined });
       onSubmitted();
     } catch (err) {
       setError(err instanceof Error ? err.message : T.dashboardHome.cta.demoModal.errorFallback);
@@ -205,6 +212,9 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
           <input value={name} onChange={e => setName(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderFullName} style={inputStyle()} />
           <input value={email} onChange={e => setEmail(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderWorkEmail} type="email" style={inputStyle()} />
           <input value={company} onChange={e => setCompany(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderCompany} style={inputStyle()} />
+          {/* Sales operators call demo leads back, so a reachable number is required
+              (same posture as support tickets). Validated server-side too. */}
+          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderPhone} type="tel" style={inputStyle()} />
           <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderMessage} rows={3} style={{ ...inputStyle(), resize: 'vertical', fontFamily: 'inherit' }} />
         </div>
         {error && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--red-text, #DC2626)' }}>{error}</p>}
@@ -213,7 +223,7 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
           <button type="button" onClick={onClose} style={btnGhost()}>{T.dashboardHome.cta.demoModal.cancel}</button>
-          <button type="button" onClick={onSend} disabled={!name || !email || sending} style={btnPrimary(!name || !email || sending)}>
+          <button type="button" onClick={onSend} disabled={!name || !email || !phone || sending} style={btnPrimary(!name || !email || !phone || sending)}>
             {sending ? T.dashboardHome.cta.demoModal.submitting : T.dashboardHome.cta.demoModal.submit}
           </button>
         </div>

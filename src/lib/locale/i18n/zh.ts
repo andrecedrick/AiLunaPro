@@ -2362,6 +2362,8 @@ export const zh: Dict = {
         "placeholderFullName": "全名",
         "placeholderWorkEmail": "工作邮箱",
         "placeholderCompany": "公司",
+        "placeholderPhone": "电话号码",
+        "errorPhone": "需要有效的电话号码。",
         "placeholderMessage": "您想讨论些什么？",
         "privacyNote": "我们仅使用这些信息来回应您的请求。",
         "cancel": "取消",

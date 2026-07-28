@@ -130,6 +130,8 @@ function toItem(name: string, f: Record<string, unknown>) {
     // neither, so both default rather than rendering as undefined.
     identityEmail:  typeof f.identityEmail === 'string' ? f.identityEmail : '',
     leadStatus:     typeof f.leadStatus === 'string' ? f.leadStatus : '',
+    countryCode:    typeof f.countryCode === 'string' ? f.countryCode : '',
+    phoneCountry:   typeof f.phoneCountry === 'string' ? f.phoneCountry : '',
     lastActivityAt: typeof f.lastActivityAt === 'string' ? f.lastActivityAt : '',
   };
 }

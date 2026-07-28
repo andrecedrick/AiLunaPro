@@ -83,7 +83,7 @@ async function submit(body: Record<string, unknown>, env: Record<string, unknown
   const route = (await import('../../worker/src/routes/demo-request')).default;
   const res = await route.request('/api/demo-request', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok', 'CF-IPCountry': 'FR' },
     body: JSON.stringify(body),
   }, env);
   return { status: res.status, body: await res.json() as Record<string, never> };
@@ -95,7 +95,7 @@ async function listAsAdmin() {
   return { status: res.status, body: await res.json() as Record<string, never> };
 }
 
-const VALID = { orgId: 'org-1', name: 'Ada Lovelace', email: 'typed@acme.com', company: 'Acme', message: 'Want a demo' };
+const VALID = { orgId: 'org-1', name: 'Ada Lovelace', email: 'typed@acme.com', phone: '+33 6 12 34 56 78', company: 'Acme', message: 'Want a demo' };
 
 const find = (prefix: string) => [...store.writes.entries()].find(([k]) => k.startsWith(prefix));
 
@@ -134,7 +134,38 @@ describe('demo request — capture', () => {
     expect(lead.contactEmail).toBe('typed@acme.com');
     // Legacy field retained, still the identity address, for pre-v3 readers.
     expect(lead.email).toBe('prospect@acme.com');
-    expect(lead.schemaVersion).toBe(3);
+    expect(lead.schemaVersion).toBe(4);
+  });
+
+  it('stores a normalised phone plus both country signals', async () => {
+    await submit(VALID);
+    const lead = find('demo_requests/')?.[1] ?? {};
+    // '+33 6 12 34 56 78' must not become a second CRM format.
+    expect(lead.phone).toBe('+33612345678');
+    expect(lead.countryCode).toBe('FR');    // CF-IPCountry — where the request came from
+    expect(lead.phoneCountry).toBe('FR');    // resolved from the dialling prefix
+  });
+
+  it.each([
+    ['missing',   undefined],
+    ['blank',     '   '],
+    ['too short', '+33 6'],
+    ['too long',  '+3361234567890123456'],
+  ])('rejects a %s phone at the boundary', async (_label, phone) => {
+    const res = await submit({ ...VALID, phone });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('INVALID_PHONE');
+    expect(find('demo_requests/')).toBeUndefined();   // nothing half-written
+  });
+
+  it('leaves countryCode empty when the edge sends no geo header', async () => {
+    const route = (await import('../../worker/src/routes/demo-request')).default;
+    await route.request('/api/demo-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+      body: JSON.stringify(VALID),
+    }, ENV);
+    expect(find('demo_requests/')?.[1].countryCode).toBe('');
   });
 
   it('falls back to the identity email when the typed one is invalid', async () => {
@@ -246,7 +277,7 @@ describe('demo request — lead-management fields', () => {
     expect(lead.owner).toBe('');              // unassigned
     expect(lead.lastContactAt).toBe('');      // never contacted
     expect(String(lead.createdAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    expect(lead.schemaVersion).toBe(3);
+    expect(lead.schemaVersion).toBe(4);
   });
 
   it('the operator surface returns the lead-management fields', async () => {
@@ -312,6 +343,9 @@ describe('demo request — lead reaches the CRM', () => {
       emailKey:      'typed@acme.com',   // dedup key = where they asked to be reached
       identityEmail: 'prospect@acme.com',
       company:       'Acme',
+      phone:         '+33612345678',
+      countryCode:   'FR',
+      phoneCountry:  'FR',
       source:        'demo_request',
       leadStatus:    'new',
       status:        'active',

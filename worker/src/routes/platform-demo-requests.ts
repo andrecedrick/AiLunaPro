@@ -37,6 +37,8 @@ interface DemoRow {
   /** Address the prospect asked to be reached on — WHERE to follow up. */
   contactEmail:  string;
   company:       string;
+  phone:         string;
+  countryCode:   string;
   message:       string;
   orgId:         string;
   source:        string;
@@ -60,6 +62,9 @@ function mapDemo(name: string, f: Record<string, unknown>): DemoRow {
     identityEmail: str(f.identityEmail) || str(f.email),
     contactEmail:  str(f.contactEmail)  || str(f.email),
     company:       str(f.company),
+    // Pre-v4 leads carry neither; both default so the panel renders a dash.
+    phone:         str(f.phone),
+    countryCode:   str(f.countryCode),
     message:       str(f.message),
     orgId:         str(f.orgId),
     source:        str(f.source),

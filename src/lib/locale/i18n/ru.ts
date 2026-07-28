@@ -2361,6 +2361,8 @@ export const ru: Dict = {
         "placeholderFullName": "Полное имя",
         "placeholderWorkEmail": "Рабочий email",
         "placeholderCompany": "Компания",
+        "placeholderPhone": "Номер телефона",
+        "errorPhone": "Требуется действительный номер телефона.",
         "placeholderMessage": "Что бы вы хотели обсудить?",
         "privacyNote": "Мы используем эти данные только для ответа на ваш запрос.",
         "cancel": "Отмена",

@@ -42,7 +42,9 @@ function post(body: unknown, token?: string) {
   return demoRequest.request('/api/demo-request', { method: 'POST', headers, body: JSON.stringify(body) }, ENV);
 }
 
-const VALID = { orgId: 'orgA', name: 'Aaron Fox', email: 'Aaron@Example.com ', company: 'FOX Co', message: 'Interested in a demo.' };
+// `phone` is required since the CRM-enrichment change: sales calls demo leads
+// back, so the route rejects a lead with no reachable number (INVALID_PHONE).
+const VALID = { orgId: 'orgA', name: 'Aaron Fox', email: 'Aaron@Example.com ', phone: '+33612345678', company: 'FOX Co', message: 'Interested in a demo.' };
 
 beforeEach(() => {
   state.members.clear(); state.docs.clear();

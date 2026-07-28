@@ -7,6 +7,8 @@ export interface DemoRequestInput {
   orgId: string;
   name: string;
   email: string;
+  /** Required: sales calls demo leads back. Validated again server-side. */
+  phone: string;
   company?: string;
   message?: string;
 }

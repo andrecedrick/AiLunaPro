@@ -2360,6 +2360,8 @@ export const fr: Dict = {
         "placeholderFullName": "Nom complet",
         "placeholderWorkEmail": "E-mail professionnel",
         "placeholderCompany": "Entreprise",
+        "placeholderPhone": "Numéro de téléphone",
+        "errorPhone": "Un numéro de téléphone valide est requis.",
         "placeholderMessage": "De quoi souhaitez-vous discuter ?",
         "privacyNote": "Nous utilisons ces informations uniquement pour répondre à votre demande.",
         "cancel": "Annuler",

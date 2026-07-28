@@ -32,6 +32,12 @@ export interface LeadContactInput {
   /** Verified account address, kept for reconciliation. Never used as the dedup key. */
   identityEmail: string;
   company:       string;
+  /** Normalised phone (support-shared format). Sales calls the lead back. */
+  phone:         string;
+  /** ISO-3166 alpha-2 of the REQUEST, from Cloudflare edge geo. */
+  countryCode:   string;
+  /** International dialling prefix typed by the user, e.g. "+33". */
+  phoneCountry:  string;
   /** Verified uid of the submitter, recorded as provenance. */
   uid:           string;
 }
@@ -82,6 +88,11 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
       updatedAt:      now,
     };
     if (input.company && !(typeof current?.company === 'string' && current.company)) patch.company = input.company;
+    // Same fill-a-blank rule as company: an operator may have corrected the number
+    // by hand, and a repeat request must not overwrite that correction.
+    if (input.phone && !(typeof current?.phone === 'string' && current.phone)) patch.phone = input.phone;
+    if (input.countryCode && !(typeof current?.countryCode === 'string' && current.countryCode)) patch.countryCode = input.countryCode;
+    if (input.phoneCountry && !(typeof current?.phoneCountry === 'string' && current.phoneCountry)) patch.phoneCountry = input.phoneCountry;
     await firestoreSet(saJson, `${COLLECTION(input.orgId)}/${existingId}`, patch, { merge: true });
     return { contactId: existingId, created: false };
   }
@@ -94,7 +105,9 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
     email:          emailKey,
     emailKey,                       // dedup key the CRM already indexes
     identityEmail:  input.identityEmail,
-    phone:          '',
+    phone:          input.phone,
+    countryCode:    input.countryCode,
+    phoneCountry:   input.phoneCountry,
     company:        input.company,
     notes:          '',
     tags:           [],

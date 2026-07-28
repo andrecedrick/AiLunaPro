@@ -245,6 +245,10 @@ export interface DemoRequestRow {
   /** Address the prospect asked to be reached on (where to follow up). */
   contactEmail: string;
   company: string;
+  /** Normalised callback number. */
+  phone: string;
+  /** ISO-3166 alpha-2 of the request. */
+  countryCode: string;
   message: string; orgId: string; source: string; status: string;
   owner: string; lastContactAt: string; createdAt: string;
 }

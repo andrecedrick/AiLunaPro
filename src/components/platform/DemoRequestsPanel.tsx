@@ -58,6 +58,8 @@ export function DemoRequestsPanel() {
               <th style={th}>When</th>
               <th style={th}>Name</th>
               <th style={th}>Contact email</th>
+              <th style={th}>Phone</th>
+              <th style={th}>Country</th>
               <th style={th}>Account email</th>
               <th style={th}>Company</th>
               <th style={th}>Message</th>
@@ -77,6 +79,11 @@ export function DemoRequestsPanel() {
                     ? <a href={`mailto:${d.contactEmail}`} style={{ color: 'var(--violet-text)' }}>{d.contactEmail}</a>
                     : '—'}
                 </td>
+                <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                  {/* One click to call the lead back. */}
+                  {d.phone ? <a href={`tel:${d.phone}`} style={{ color: 'var(--violet-text)' }}>{d.phone}</a> : '—'}
+                </td>
+                <td style={{ ...td, color: 'var(--text-muted)' }}>{d.countryCode || '—'}</td>
                 <td style={{ ...td, color: 'var(--text-muted)' }}>
                   {/* Shown only when it differs — identical addresses are noise. */}
                   {d.identityEmail && d.identityEmail !== d.contactEmail ? d.identityEmail : 'same'}

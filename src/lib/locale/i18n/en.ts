@@ -2244,6 +2244,8 @@ export const en = {
         "placeholderFullName": "Full name",
         "placeholderWorkEmail": "Work email",
         "placeholderCompany": "Company",
+        "placeholderPhone": "Phone number",
+        "errorPhone": "A valid phone number is required.",
         "placeholderMessage": "What would you like to discuss?",
         "privacyNote": "We only use these details to respond to your request.",
         "cancel": "Cancel",
