@@ -52,6 +52,25 @@ Projet AI/
 - **Valider les entrées aux frontières** du système (worker, auth, formulaires).
 - **Co-Authored-By** : ne PAS ajouter de trailer `Co-Authored-By` aux commits sauf si `.claude/settings.json` a `attribution.commit` activé. Le template du Bash tool peut le suggérer — l'ignorer.
 
+## 🌐 Language Rule (MANDATORY)
+**English only** in: source code, comments, identifiers, string literals, tests,
+commit messages, route names, notification titles, API responses (incl. `error`
+messages and `code` values), email templates, Firestore field names and values.
+**Sole exception:** user-facing copy delivered through i18n (`src/lib/locale/i18n/*`),
+where every locale including `fr` is expected. A hardcoded non-English string in a
+component is a violation, not a translation. Final reports to the user: English only.
+
+## 🚚 Delivery Rule (never skip a step)
+`1. read-only investigation → 2. root cause → 3. proof → 4. fix → 5. tests → 6. deploy → 7. verification`
+
+## 🧪 Regression Rule
+Every fix ships with: test coverage, an exercised failure path, observability, and
+**no silent failure** (a swallowed error must still surface as a durable alert).
+
+## 📉 Performance Rule
+Whenever code is touched, inspect and prevent regressions in: Firestore reads,
+duplicate fetches, bundle size, unnecessary renders.
+
 ## 🔐 Sécurité & Qualité
 - Aucune donnée sensible dans le code (clés en `.env` / secrets worker).
 - Type checking obligatoire ; le build gate dessus.
