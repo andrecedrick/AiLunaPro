@@ -237,6 +237,30 @@ export async function fetchPlatformSupport(): Promise<PlatformSupport | null> {
   });
 }
 
+/** A commercial demo request (name/email/company — operator-gated). */
+export interface DemoRequestRow {
+  id: string; name: string; email: string; company: string;
+  message: string; orgId: string; source: string; status: string; createdAt: string;
+}
+export interface PlatformDemoRequests {
+  items: DemoRequestRow[];
+  total: number;
+  newCount: number;
+}
+
+/** Demo requests, newest first. Operators only. */
+export async function fetchPlatformDemoRequests(): Promise<PlatformDemoRequests | null> {
+  return dedup('platform-demo-requests', async () => {
+    const token = await getIdToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${WORKER_BASE}/api/platform/demo-requests`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return null;
+      return (await res.json()) as PlatformDemoRequests;
+    } catch { return null; }
+  });
+}
+
 /** Reply to a ticket (appends to history, flips to answered, emails the contact). */
 export async function replyToTicket(ticketId: string, message: string): Promise<{ ok: boolean; emailed: boolean }> {
   const token = await getIdToken();
@@ -293,6 +317,7 @@ export function resolveNotifRoute(n: Pick<NotificationItem, 'route' | 'type' | '
     case 'invoice_paid': return 'my-quotes';
     case 'feedback':
     case 'ticket':
+    case 'demo':
     case 'alert':
     case 'token':        return 'admin';
   }

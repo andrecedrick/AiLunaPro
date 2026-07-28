@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import type { AppEnv } from '../index';
 import { verifyIdTokenClaims } from '../middleware/auth';
 import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { recordBillingAlert, sendObservableEmail } from '../lib/billing-alerts';
 
 /**
  * B2.2 — Demo-request capture (authed dashboard CTA).
@@ -17,6 +18,8 @@ import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
 interface Bindings {
   FIREBASE_PROJECT_ID: string;
   FIREBASE_SERVICE_ACCOUNT_JSON: string;
+  ADMIN_EMAIL?: string;
+  SEQUENZY_API_KEY?: string;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,6 +83,39 @@ demoRequest.post('/api/demo-request', async c => {
   } catch (err) {
     console.error('[demo-request] firestoreSet failed:', err instanceof Error ? err.message : 'unknown');
     return c.json({ error: 'Could not record your request. Please try again.', code: 'STORE_FAILED' }, 500);
+  }
+
+  // The lead is now safe in Firestore. Everything below is best-effort ALERTING:
+  // it must never turn a captured lead into a 500 the customer sees.
+  //
+  // Until this existed the route stopped at the write above — the doc landed in a
+  // worker-only collection that NOTHING read, so a commercial lead was invisible
+  // to the operator: no bell entry, no alert, no email, no admin surface.
+  //
+  // No PII in the durable alert / bell title (same posture as feedback + tickets).
+  // The name/email/company travel only in the admin email and the gated
+  // /api/platform/demo-requests panel.
+  try {
+    await recordBillingAlert(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+      kind: 'demo_request_received', severity: 'warning', orgId, refId: id,
+      message: 'New demo request — a customer asked to be contacted',
+      context: { source: 'dashboard-cta', hasCompany: Boolean(company), hasMessage: Boolean(message) },
+    });
+  } catch { /* best-effort — the lead is already stored */ }
+
+  if (env.ADMIN_EMAIL) {
+    await sendObservableEmail(env.FIREBASE_SERVICE_ACCOUNT_JSON, env.SEQUENZY_API_KEY, {
+      to: env.ADMIN_EMAIL, slug: 'demo-request-admin',
+      variables: {
+        NAME:    name,
+        EMAIL:   email,
+        COMPANY: company || '-',
+        MESSAGE: message || '-',
+        ORG_ID:  orgId,
+      },
+      // Reply goes straight back to the prospect — one click to start the deal.
+      replyTo: email,
+    }, id);
   }
 
   return c.json({ ok: true, id });

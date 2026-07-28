@@ -22,6 +22,7 @@ import { ProductionAlertsPanel } from '../components/platform/ProductionAlertsPa
 import { fetchAlertNotify, fetchPlatformSupport, fetchPlatformFeedback } from '../lib/platform/platformService';
 import { CustomerFeedbackPanel } from '../components/platform/CustomerFeedbackPanel';
 import { SupportInboxPanel } from '../components/platform/SupportInboxPanel';
+import { DemoRequestsPanel } from '../components/platform/DemoRequestsPanel';
 
 const usd = (n: number | null) => n != null ? `$${Math.round(n).toLocaleString('en-US')}` : '—';
 const card = { padding: '14px 18px', borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' } as const;
@@ -432,6 +433,9 @@ export function AdminCenterPage() {
 
       {/* Support Inbox — read-only ticket queue with callback contact details. */}
       {platformAdmin && section('Support Inbox', <SupportInboxPanel />, 'cs-support')}
+
+      {/* Demo Requests — commercial leads from the dashboard CTA. Was invisible. */}
+      {platformAdmin && section('Demo Requests', <DemoRequestsPanel />, 'cs-demo')}
     </div>
   );
 }
