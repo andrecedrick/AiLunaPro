@@ -36,7 +36,10 @@ const safeId = (v: unknown): string => (typeof v === 'string' ? v.replace(/[^a-z
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STATUS_VALUES: readonly string[] = ['active', 'inactive', 'blocked'];
-const SOURCE_VALUES: readonly string[] = ['worksheet', 'quote', 'manual', 'visibility', 'import'];
+// 'demo_request' is written by the lead → contact bridge (lib/lead-contact.ts).
+// Listed here so an operator can also set it by hand and so validation does not
+// reject a contact the platform itself created.
+const SOURCE_VALUES: readonly string[] = ['worksheet', 'quote', 'manual', 'visibility', 'import', 'demo_request'];
 const ORG_ROLES: readonly Role[]    = ['owner', 'admin', 'member']; // billing/client excluded
 const MANAGE_ROLES: readonly Role[] = ['owner', 'admin'];           // block + delete-any
 
@@ -123,6 +126,11 @@ function toItem(name: string, f: Record<string, unknown>) {
     createdByUid:  typeof f.createdByUid === 'string' ? f.createdByUid : '',
     createdAt:     typeof f.createdAt === 'string' ? f.createdAt : '',
     updatedAt:     typeof f.updatedAt === 'string' ? f.updatedAt : '',
+    // Written by the lead → contact bridge. Manually-created contacts have
+    // neither, so both default rather than rendering as undefined.
+    identityEmail:  typeof f.identityEmail === 'string' ? f.identityEmail : '',
+    leadStatus:     typeof f.leadStatus === 'string' ? f.leadStatus : '',
+    lastActivityAt: typeof f.lastActivityAt === 'string' ? f.lastActivityAt : '',
   };
 }
 

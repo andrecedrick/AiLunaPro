@@ -22,6 +22,7 @@ const store = vi.hoisted(() => ({
   sendOk: true,
   setThrowsOn: null as string | null,
   queryThrows: false,
+  patches: [] as Array<{ path: string; doc: Record<string, unknown>; merge: boolean }>,
 }));
 
 vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
@@ -31,15 +32,27 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
     if (store.writes.has(path)) return store.writes.get(path)!;
     return store.members.has(path) ? { role: 'owner' } : null;
   }),
-  firestoreSet: vi.fn(async (_sa: string, path: string, doc: Record<string, unknown>) => {
+  firestoreSet: vi.fn(async (_sa: string, path: string, doc: Record<string, unknown>, opts?: { merge?: boolean }) => {
     if (store.setThrowsOn && path.startsWith(store.setThrowsOn)) throw new Error('firestore down');
-    store.writes.set(path, doc);
+    // Record the RAW patch so a test can assert which keys a merge did NOT touch.
+    store.patches.push({ path, doc, merge: opts?.merge === true });
+    store.writes.set(path, opts?.merge ? { ...(store.writes.get(path) ?? {}), ...doc } : doc);
   }),
-  firestoreRunQuery: vi.fn(async (_sa: string, q: { from?: Array<{ collectionId?: string }> }) => {
+  // Models the two things the demo-request path actually relies on: parent-scoped
+  // collection queries (organizations/{orgId}/contacts) and a single equality
+  // fieldFilter. Without the parent, contact dedup silently matched nothing.
+  firestoreRunQuery: vi.fn(async (
+    _sa: string,
+    q: { from?: Array<{ collectionId?: string }>; where?: { fieldFilter?: { field?: { fieldPath?: string }; value?: { stringValue?: string } } } },
+    parent?: string,
+  ) => {
     if (store.queryThrows) throw new Error('FAILED_PRECONDITION: index required');
     const cid = q.from?.[0]?.collectionId ?? '';
+    const prefix = parent ? `${parent}/${cid}/` : `${cid}/`;
+    const ff = q.where?.fieldFilter;
     return [...store.writes.entries()]
-      .filter(([k]) => k.startsWith(`${cid}/`))
+      .filter(([k]) => k.startsWith(prefix))
+      .filter(([, v]) => !ff?.field?.fieldPath || v[ff.field.fieldPath] === ff.value?.stringValue)
       .map(([k, v]) => ({ name: `projects/p/databases/(default)/documents/${k}`, fields: v }));
   }),
 }));
@@ -94,6 +107,7 @@ beforeEach(() => {
   store.sendOk = true;
   store.setThrowsOn = null;
   store.queryThrows = false;
+  store.patches = [];
   vi.resetModules();
 });
 
@@ -283,6 +297,94 @@ describe('demo request — duplicate protection', () => {
     const res = await submit(VALID);
     expect(res.status).toBe(200);
     expect(find('demo_requests/')).toBeDefined();
+  });
+});
+
+describe('demo request — lead reaches the CRM', () => {
+  const contacts = () => [...store.writes.entries()].filter(([k]) => k.startsWith('organizations/org-1/contacts/'));
+
+  it('creates a contact from the lead, keyed on the contact email', async () => {
+    await submit(VALID);
+    expect(contacts()).toHaveLength(1);
+    expect(contacts()[0][1]).toMatchObject({
+      name:          'Ada Lovelace',
+      email:         'typed@acme.com',
+      emailKey:      'typed@acme.com',   // dedup key = where they asked to be reached
+      identityEmail: 'prospect@acme.com',
+      company:       'Acme',
+      source:        'demo_request',
+      leadStatus:    'new',
+      status:        'active',
+    });
+    const doc = contacts()[0][1];
+    expect(String(doc.createdAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(String(doc.lastActivityAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it('updates the existing contact instead of creating a duplicate', async () => {
+    store.writes.set('organizations/org-1/contacts/c-1', {
+      contactId: 'c-1', name: 'Ada L.', email: 'typed@acme.com', emailKey: 'typed@acme.com',
+      company: 'Acme Corp', source: 'manual', status: 'active', leadStatus: 'qualified',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    await submit({ ...VALID, message: 'second touch' });
+
+    expect(contacts()).toHaveLength(1);
+    const doc = contacts()[0][1];
+    expect(String(doc.lastActivityAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(doc.identityEmail).toBe('prospect@acme.com');
+  });
+
+  it('never demotes operator work on an existing contact', async () => {
+    store.writes.set('organizations/org-1/contacts/c-1', {
+      contactId: 'c-1', name: 'Corrected Name', email: 'typed@acme.com', emailKey: 'typed@acme.com',
+      company: 'Acme Corp', source: 'manual', status: 'active', leadStatus: 'qualified',
+      tags: ['vip'], createdAt: '2026-01-01T00:00:00Z',
+    });
+    await submit(VALID);
+    const patch = store.patches.find(p => p.path.startsWith('organizations/org-1/contacts/'))!.doc;
+    // A merge patch must not carry these keys at all — a qualified lead cannot be
+    // reset to 'new', nor a corrected name overwritten, by a repeat request.
+    expect(patch).not.toHaveProperty('leadStatus');
+    expect(patch).not.toHaveProperty('source');
+    expect(patch).not.toHaveProperty('status');
+    expect(patch).not.toHaveProperty('name');
+    expect(patch).not.toHaveProperty('company');   // already set → not overwritten
+  });
+
+  it('a CRM failure raises a durable critical alert and never loses the lead', async () => {
+    store.setThrowsOn = 'organizations/org-1/contacts/';
+    const res = await submit(VALID);
+
+    expect(res.status).toBe(200);                       // the lead still succeeded
+    expect(find('demo_requests/')).toBeDefined();
+    const alert = find('platform_alerts/lead_contact_failed__');
+    expect(alert).toBeDefined();
+    expect(alert?.[1]).toMatchObject({ kind: 'lead_contact_failed', severity: 'critical' });
+  });
+
+  it('a duplicate demo request does not touch the CRM twice', async () => {
+    await submit(VALID);
+    const before = contacts().length;
+    await submit(VALID);                                // same content, same window
+    expect(contacts()).toHaveLength(before);
+  });
+});
+
+describe('demo request — confirmation CTA destination', () => {
+  it('sends the signup URL so the button is not hardcoded to the marketing site', async () => {
+    await submit(VALID, { ...ENV, APP_BASE_URL: 'https://audit.ailunapro.com' });
+    expect(prospectSends()[0].variables.CTA_URL).toBe('https://audit.ailunapro.com/#/signup');
+  });
+
+  it('tolerates a trailing slash on APP_BASE_URL', async () => {
+    await submit(VALID, { ...ENV, APP_BASE_URL: 'https://audit.ailunapro.com/' });
+    expect(prospectSends()[0].variables.CTA_URL).toBe('https://audit.ailunapro.com/#/signup');
+  });
+
+  it('falls back to the production app URL when APP_BASE_URL is unset', async () => {
+    await submit(VALID);
+    expect(prospectSends()[0].variables.CTA_URL).toBe('https://audit.ailunapro.com/#/signup');
   });
 });
 
