@@ -2491,6 +2491,11 @@ export const es: Dict = {
         "targetWorkflowLabel": "Flujo de trabajo objetivo",
         "workflowPlaceholderOption": "Selecciona un flujo de trabajo…"
       },
+      "worksheetBridge": {
+        "cta": "Estimación global — calcula con tus datos reales, tarea por tarea →",
+        "title": "Ir más lejos: Auditoría Tiempo → Dinero",
+        "note": "Esta estimación es global. Calcula con tus datos reales, tarea por tarea, y obtén un veredicto (mantener / automatizar / delegar)."
+      },
       "leadCapture": {
         "legend": "¿A dónde te enviamos tu estimación?",
         "emailLabel": "Correo electrónico",

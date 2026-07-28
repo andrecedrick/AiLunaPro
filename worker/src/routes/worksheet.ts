@@ -35,7 +35,10 @@ const WORKSHEET_ROLES: readonly string[] = ['owner', 'admin', 'member'];
 /** Non-PII title from the input (task count); never stores raw labels here. */
 function deriveTitle(input: WorksheetInput): string {
   const n = input.tasks.length;
-  return `Audit Temps → Argent (${n} tâche${n > 1 ? 's' : ''})`;
+  // English on purpose: this is a persisted Firestore field, and the front derives
+  // the identical string for local saves (src/lib/worksheet/localSaves.ts) so the
+  // merged saved-audits list stays in one language.
+  return `Time → Money Audit (${n})`;
 }
 
 async function gate(c: Context<AppEnv>, orgId: string): Promise<{ uid: string; role: string } | Response> {

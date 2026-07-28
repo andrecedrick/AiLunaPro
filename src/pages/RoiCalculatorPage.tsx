@@ -333,13 +333,13 @@ export function RoiCalculatorPage() {
               <div style={{ marginTop: 14, fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 {T.publicTools.roi.result.disclaimer}{' '}{format(T.publicTools.roi.result.pricingNote, { cost: money.format(AGENT_DEFAULT_MONTHLY_USD) })}
               </div>
-              {/* Bridge to the detailed per-task audit (Audit Temps → Argent). */}
+              {/* Bridge to the detailed per-task audit (Time → Money Audit). */}
               <button
                 type="button"
                 onClick={() => { track('cta_clicked', { flow: 'roi', target: 'worksheet', src: getSrc() ?? undefined }); navigate({ name: 'worksheet' }); }}
                 style={{ marginTop: 14, fontSize: 12.5, fontWeight: 700, color: 'var(--violet-text)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
               >
-                Estimation globale — calcule avec tes vraies données, tâche par tâche →
+                {T.publicTools.roi.worksheetBridge.cta}
               </button>
             </div>
 
@@ -577,10 +577,10 @@ function ResultView({ result, onReset }: { result: RoiResult; onReset: () => voi
         <span aria-hidden style={{ flex: '0 0 auto', width: 36, height: 36, borderRadius: 9, background: 'rgba(124,58,237,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--violet-text)', fontSize: 18 }}>📊</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Aller plus loin : Audit Temps → Argent
+            {T.publicTools.roi.worksheetBridge.title}
           </span>
           <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            Cette estimation est globale. Calcule avec tes vraies données, tâche par tâche, et obtiens un verdict (garder / automatiser / déléguer).
+            {T.publicTools.roi.worksheetBridge.note}
           </span>
         </span>
         <span aria-hidden style={{ flex: '0 0 auto', color: 'var(--violet-text)', fontSize: 18, fontWeight: 700 }}>→</span>

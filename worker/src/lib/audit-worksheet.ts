@@ -7,10 +7,11 @@
  * profile and every task, and the engine returns the hourly rate, a per-task
  * VERDICT, the annual cost, and the recoverable hours — exactly like the sheet.
  *
- * The verdict formula reproduces the spreadsheet cell formula verbatim:
- *   =SI(Qui="Toi seul";
- *        SI(Énergie="Énergisant";"GARDER";"REPENSER");
- *        SI(ET(Qui="N'importe qui formé";Règles="Oui");"AUTOMATISER";"DÉLÉGUER"))
+ * The verdict formula reproduces the original spreadsheet cell formula, translated
+ * here from the French source sheet into the codebase language:
+ *   =IF(Who="Me only";
+ *        IF(Energy="Energizing";"KEEP";"RETHINK");
+ *        IF(AND(Who="Anyone trained";Rules="Yes");"AUTOMATE";"DELEGATE"))
  *
  * Mirrored byte-for-byte in src/lib/worksheet/auditWorksheet.ts; parity locked by
  * tests/unit/audit-worksheet-parity.test.ts.

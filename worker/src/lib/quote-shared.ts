@@ -1,5 +1,5 @@
 /**
- * Quote (Devis) — types, validation, estimation — Phase Q0.
+ * Quote — types, validation, estimation — Phase Q0.
  *
  * Server-side authoritative. The estimate is a PURE deterministic lookup over
  * {category, tier} against the static QUOTE_RANGES table — same inputs => byte-

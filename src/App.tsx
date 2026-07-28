@@ -484,7 +484,7 @@ function AppShell() {
     );
   }
 
-  /* ── Quote / Devis (Q1): public campaign page (same adaptive chrome). ── */
+  /* ── Quote (Q1): public campaign page (same adaptive chrome). ── */
   if (route.name === 'quote') {
     return (
       <Suspense fallback={<PageFallback />}>

@@ -353,7 +353,7 @@ invoices.get('/api/invoices', requireAuth(), requireRole(INVOICE_ROLES), async c
       quoteId:       typeof f.quoteId === 'string' ? f.quoteId : '',
       // DATA-CONSISTENCY BUG: quoteTitle IS persisted on the invoice at birth
       // (finalizeQuoteInvoice) but was never mapped here — so every invoice-sourced
-      // row/event rendered a raw uuid ("Quote · 4332d263-…", "Devis · f337693e")
+      // row/event rendered a raw uuid ("Quote · 4332d263-…", "Quote · f337693e")
       // while quote-sourced events showed the real project name. Same invoice, two
       // identities across surfaces. Now returned → one identity everywhere.
       quoteTitle:    typeof f.quoteTitle === 'string' ? f.quoteTitle : '',

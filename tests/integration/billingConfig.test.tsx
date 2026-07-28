@@ -10,11 +10,11 @@ import { AuthProvider } from '../../src/context/AuthContext';
 import { RouteProvider } from '../../src/context/RouteContext';
 
 /*
- * CONTRAT ACTUEL (J5/J7 redesign) : BillingSettingsPage est **operator-gated**
- * (allowlist plateforme via fetchPlatformMe), PAS owner-gated par role. Les
- * tenant owners/members voient "Managed by the platform operator". Seul un
- * operator (isPlatformAdmin=true, email vérifié) voit le panneau read-only
- * (mode badge, key health, webhook). fetchPlatformMe est indépendant de session.role.
+ * CURRENT CONTRACT (J5/J7 redesign): BillingSettingsPage is **operator-gated**
+ * (platform allowlist via fetchPlatformMe), NOT owner-gated by role. Tenant
+ * owners/members see "Managed by the platform operator". Only an operator
+ * (isPlatformAdmin=true, verified email) sees the read-only panel (mode badge,
+ * key health, webhook). fetchPlatformMe is independent of session.role.
  */
 
 /* ── Mock data ──────────────────────────────────────────── */

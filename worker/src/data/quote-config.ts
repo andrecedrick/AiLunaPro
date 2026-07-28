@@ -1,5 +1,5 @@
 /**
- * Quote (Devis) config — Phase Q0.
+ * Quote config — Phase Q0.
  *
  * Server-side authoritative. Indicative 2026 market ranges (USD). Prices are a
  * STATIC reference table — the estimator is a pure lookup over {category, tier}

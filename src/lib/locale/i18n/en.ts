@@ -2507,6 +2507,11 @@ export const en = {
         "targetWorkflowLabel": "Target workflow",
         "workflowPlaceholderOption": "Select a workflow…"
       },
+      "worksheetBridge": {
+        "cta": "Overall estimate — calculate with your real data, task by task →",
+        "title": "Go further: Time → Money Audit",
+        "note": "This estimate is global. Calculate with your real data, task by task, and get a verdict (keep / automate / delegate)."
+      },
       "leadCapture": {
         "legend": "Where should we send your estimate?",
         "emailLabel": "Email",

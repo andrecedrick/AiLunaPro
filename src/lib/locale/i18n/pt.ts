@@ -2491,6 +2491,11 @@ export const pt: Dict = {
         "targetWorkflowLabel": "Fluxo de trabalho alvo",
         "workflowPlaceholderOption": "Selecione um fluxo de trabalho…"
       },
+      "worksheetBridge": {
+        "cta": "Estimativa global — calcula com os teus dados reais, tarefa a tarefa →",
+        "title": "Ir mais longe: Auditoria Tempo → Dinheiro",
+        "note": "Esta estimativa é global. Calcula com os teus dados reais, tarefa a tarefa, e obtém um veredicto (manter / automatizar / delegar)."
+      },
       "leadCapture": {
         "legend": "Para onde devemos enviar a sua estimativa?",
         "emailLabel": "E-mail",

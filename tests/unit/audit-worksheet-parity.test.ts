@@ -33,7 +33,7 @@ describe('Worksheet verdict — verbatim spreadsheet formula', () => {
   it('matches the named rows from the source spreadsheet', () => {
     // "Toi seul" branch keys off energy.
     expect(workerVerdict('self', 'yes', 'energizing')).toBe('keep');      // Prospection
-    expect(workerVerdict('self', 'yes', 'draining')).toBe('rethink');     // Devis client
+    expect(workerVerdict('self', 'yes', 'draining')).toBe('rethink');     // Customer quote
     expect(workerVerdict('self', 'no', 'neutral')).toBe('rethink');
     // Otherwise branch: automate only when anyone + clear rules.
     expect(workerVerdict('anyone', 'yes', 'draining')).toBe('automate');  // Emails / planning
@@ -53,8 +53,8 @@ describe('Worksheet client/server parity', () => {
     { id: 't1', label: 'Emails',       weeklyHours: 10, who: 'anyone',     rules: 'yes', energy: 'draining' },
     { id: 't2', label: 'Comptabilité', weeklyHours: 4,  who: 'specialist', rules: 'no',  energy: 'neutral' },
     { id: 't3', label: 'Prospection',  weeklyHours: 20, who: 'self',       rules: 'yes', energy: 'energizing' },
-    { id: 't4', label: 'Saisie CRM',   weeklyHours: 2,  who: 'anyone',     rules: 'no',  energy: 'draining' },
-    { id: 't5', label: 'Devis',        weeklyHours: 10, who: 'self',       rules: 'yes', energy: 'draining' },
+    { id: 't4', label: 'CRM entry',    weeklyHours: 2,  who: 'anyone',     rules: 'no',  energy: 'draining' },
+    { id: 't5', label: 'Quotes',       weeklyHours: 10, who: 'self',       rules: 'yes', energy: 'draining' },
   ];
 
   it('produces identical results across profiles', () => {

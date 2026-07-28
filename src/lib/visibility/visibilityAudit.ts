@@ -26,23 +26,30 @@ export interface VisibilityQuestion {
 
 export const RECO_THRESHOLD = 0.75;
 
-/** Question bank (méthode §7.1 GEO / §7.2 social). Order is stable. */
+/**
+ * Question bank (method §7.1 GEO / §7.2 social). Order is stable.
+ *
+ * `label`/`reco` are the ENGLISH source strings and a structural fallback only:
+ * the UI resolves display copy from T.auditTools.visibility.questions.byId keyed
+ * by the stable `id` (see VisibilityAuditPage). They are kept byte-identical to
+ * the `en` locale entries so source and translation never drift.
+ */
 export const VISIBILITY_QUESTIONS: VisibilityQuestion[] = [
   // ── GEO / AI Search ──
-  { id: 'geo_offer',      dimension: 'geo', weight: 3, label: 'Les IA (ChatGPT, Perplexity, Gemini) décrivent-elles correctement ton offre et tes avantages (USP) ?', reco: 'Publie des pages claires « source de vérité » (offre, USP, prix) pour que les IA citent les bons faits.' },
-  { id: 'geo_appear',     dimension: 'geo', weight: 3, label: 'Ta marque apparaît-elle dans les réponses IA sur tes requêtes clés ?', reco: 'Teste tes 10 requêtes clés dans ChatGPT/Perplexity ; vise une présence et corrige les pages manquantes.' },
-  { id: 'geo_cited',      dimension: 'geo', weight: 2, label: 'Ton site est-il cité comme source par les moteurs IA ?', reco: 'Repère les sources tierces citées (Reddit, Quora, médias) où tu es absent → liste de PR digitale prioritaire.' },
-  { id: 'geo_competitor', dimension: 'geo', weight: 2, label: 'Sais-tu comment les IA te comparent à tes concurrents (qui elles mettent en avant) ?', reco: 'Audite le positionnement concurrentiel dans les réponses IA et identifie l’argument qui fait gagner le concurrent.' },
-  { id: 'geo_sentiment',  dimension: 'geo', weight: 2, label: 'Le sentiment des IA sur ta marque est-il positif et exact ?', reco: 'Corrige à la source (ton site) les faits négatifs/erronés pour que les IA mettent à jour leur perception.' },
-  { id: 'geo_structured', dimension: 'geo', weight: 2, label: 'As-tu du contenu structuré (FAQ, schema, pages piliers) optimisé pour être capté par les IA ?', reco: 'Ajoute FAQ, données structurées (schema.org) et pages piliers pour être capté comme source de vérité.' },
+  { id: 'geo_offer',      dimension: 'geo', weight: 3, label: 'Do AI tools (ChatGPT, Perplexity, Gemini) correctly describe your offer and your advantages (USP)?', reco: 'Publish clear "source of truth" pages (offer, USP, pricing) so AI engines cite the right facts.' },
+  { id: 'geo_appear',     dimension: 'geo', weight: 3, label: 'Does your brand appear in AI answers for your key queries?', reco: 'Test your 10 key queries in ChatGPT/Perplexity; aim for presence and fix the missing pages.' },
+  { id: 'geo_cited',      dimension: 'geo', weight: 2, label: 'Is your site cited as a source by AI engines?', reco: 'Find the third-party sources cited (Reddit, Quora, media) where you are absent → a prioritized digital-PR list.' },
+  { id: 'geo_competitor', dimension: 'geo', weight: 2, label: 'Do you know how AI compares you to your competitors (who it highlights)?', reco: 'Audit the competitive positioning in AI answers and identify the argument that makes the competitor win.' },
+  { id: 'geo_sentiment',  dimension: 'geo', weight: 2, label: 'Is the AI sentiment about your brand positive and accurate?', reco: 'Fix negative/incorrect facts at the source (your site) so AI engines update their perception.' },
+  { id: 'geo_structured', dimension: 'geo', weight: 2, label: 'Do you have structured content (FAQ, schema, pillar pages) optimized to be captured by AI?', reco: 'Add FAQ, structured data (schema.org) and pillar pages to be captured as a source of truth.' },
 
   // ── Social media & content ──
-  { id: 'soc_story',      dimension: 'social', weight: 3, label: 'Ton contenu social construit-il une autorité (storytelling) plutôt que du spam de démos ?', reco: 'Passe du spam de fonctionnalités au storytelling (échecs/réussites) pour bâtir l’autorité.' },
-  { id: 'soc_meetings',   dimension: 'social', weight: 2, label: 'Mesures-tu les rendez-vous qualifiés générés (au-delà des likes/impressions) ?', reco: 'Suis la métrique « rendez-vous qualifiés » : c’est elle qui compte, pas les likes.' },
-  { id: 'soc_cadence',    dimension: 'social', weight: 2, label: 'Publies-tu à une cadence régulière et tenable ?', reco: 'Mets en place un calendrier éditorial régulier (cadence tenable > pics irréguliers).' },
-  { id: 'soc_unique',     dimension: 'social', weight: 2, label: 'Ton contenu reflète-t-il une expertise unique difficile à copier (« productize yourself ») ?', reco: 'Mets en avant ton angle/expertise unique pour échapper à la concurrence générique.' },
-  { id: 'soc_repurpose',  dimension: 'social', weight: 1, label: 'Réutilises-tu ton contenu en plusieurs formats (repurposing) ?', reco: 'Décline chaque contenu en plusieurs formats (post, vidéo, carrousel) pour démultiplier la portée.' },
-  { id: 'soc_oversight',  dimension: 'social', weight: 2, label: 'Le contenu généré par IA est-il supervisé (anti « Shadow Social » / hallucinations) ?', reco: 'Mets une relecture humaine sur le contenu IA pour éviter hallucinations et perte d’authenticité.' },
+  { id: 'soc_story',      dimension: 'social', weight: 3, label: 'Does your social content build authority (storytelling) rather than demo spam?', reco: 'Move from feature spam to storytelling (failures/wins) to build authority.' },
+  { id: 'soc_meetings',   dimension: 'social', weight: 2, label: 'Do you measure the qualified meetings generated (beyond likes/impressions)?', reco: 'Track the "qualified meetings" metric: that\'s what counts, not likes.' },
+  { id: 'soc_cadence',    dimension: 'social', weight: 2, label: 'Do you publish at a regular, sustainable cadence?', reco: 'Set up a regular editorial calendar (a sustainable cadence beats irregular spikes).' },
+  { id: 'soc_unique',     dimension: 'social', weight: 2, label: 'Does your content reflect unique expertise that\'s hard to copy ("productize yourself")?', reco: 'Highlight your unique angle/expertise to escape generic competition.' },
+  { id: 'soc_repurpose',  dimension: 'social', weight: 1, label: 'Do you repurpose your content into several formats?', reco: 'Repurpose each piece into several formats (post, video, carousel) to multiply reach.' },
+  { id: 'soc_oversight',  dimension: 'social', weight: 2, label: 'Is AI-generated content supervised (anti "Shadow Social" / hallucinations)?', reco: 'Add human review on AI content to avoid hallucinations and loss of authenticity.' },
 ];
 
 export type Answers = Record<string, number>; // id -> 0 | 0.5 | 1

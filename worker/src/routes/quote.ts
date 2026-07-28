@@ -1,5 +1,5 @@
 /**
- * Quote (Devis) generation route — Phase Q2.
+ * Quote generation route — Phase Q2.
  *
  *   POST /api/quote/generate
  *

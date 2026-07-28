@@ -2491,6 +2491,11 @@ export const it: Dict = {
         "targetWorkflowLabel": "Flusso di lavoro target",
         "workflowPlaceholderOption": "Seleziona un flusso di lavoro…"
       },
+      "worksheetBridge": {
+        "cta": "Stima complessiva — calcola con i tuoi dati reali, attività per attività →",
+        "title": "Vai oltre: Audit Tempo → Denaro",
+        "note": "Questa stima è complessiva. Calcola con i tuoi dati reali, attività per attività, e ottieni un verdetto (mantenere / automatizzare / delegare)."
+      },
       "leadCapture": {
         "legend": "Dove dobbiamo inviare la tua stima?",
         "emailLabel": "Email",

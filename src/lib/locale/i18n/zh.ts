@@ -2493,6 +2493,11 @@ export const zh: Dict = {
         "targetWorkflowLabel": "目标工作流",
         "workflowPlaceholderOption": "选择一个工作流……"
       },
+      "worksheetBridge": {
+        "cta": "整体估算 — 用你的真实数据逐项任务计算 →",
+        "title": "深入了解：时间 → 金钱审计",
+        "note": "这是一个整体估算。用你的真实数据逐项任务计算，并获得结论（保留 / 自动化 / 委派）。"
+      },
       "leadCapture": {
         "legend": "我们应将您的估算结果发送到哪里？",
         "emailLabel": "电子邮箱",

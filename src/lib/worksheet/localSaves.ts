@@ -41,7 +41,11 @@ export function localSaveWorksheet(input: WorksheetInput, createdAtIso: string):
   const n = input.tasks.length;
   const entry: LocalSave = {
     id: localId(),
-    title: `Audit Temps → Argent (${n} tâche${n > 1 ? 's' : ''})`,
+    // English on purpose: the worker derives the SAME title for server-side saves
+    // (worker/src/routes/worksheet.ts deriveTitle) and both sources are merged into
+    // one saved-audits list. It is a persisted field, so the language rule keeps it
+    // English rather than leaving that list half-translated.
+    title: `Time → Money Audit (${n})`,
     createdAt: createdAtIso,
     input,
   };

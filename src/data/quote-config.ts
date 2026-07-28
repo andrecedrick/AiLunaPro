@@ -1,5 +1,5 @@
 /**
- * Quote (Devis) UI config — Phase Q1 (frontend mirror).
+ * Quote UI config — Phase Q1 (frontend mirror).
  *
  * MIRROR of worker/src/data/quote-config.ts (the worker stays authoritative on
  * generation). Kept in sync manually so the public Quote page can show the

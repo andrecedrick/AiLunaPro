@@ -1,5 +1,5 @@
 /**
- * Quote (Devis) PDF — Phase Q3 + U1 (whitepaper upgrade).
+ * Quote PDF — Phase Q3 + U1 (whitepaper upgrade).
  *
  * Deterministic, dependency-free PDF on the shared PdfBuilder (Base-14 Helvetica,
  * WinAnsi). Same {input} => byte-identical output. 8-section consulting layout:

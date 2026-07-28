@@ -20,9 +20,9 @@ describe('Task catalog integrity', () => {
 
 describe('Task disambiguation', () => {
   it('flags ambiguous phone-call tasks with inbound/outbound splits', () => {
-    const d = suggestForLabel('appel téléphonique');
+    const d = suggestForLabel('phone call');
     expect(d).not.toBeNull();
-    expect(d!.splits.map(s => s.label)).toEqual(['Appels entrants (support)', 'Appels sortants (prospection)']);
+    expect(d!.splits.map(s => s.label)).toEqual(['Inbound calls (support)', 'Outbound calls (prospecting)']);
     // The two splits get DIFFERENT verdicts — the whole point.
     const v0 = taskVerdict(d!.splits[0].who, d!.splits[0].rules, d!.splits[0].energy);
     const v1 = taskVerdict(d!.splits[1].who, d!.splits[1].rules, d!.splits[1].energy);
@@ -35,26 +35,59 @@ describe('Task disambiguation', () => {
     expect(suggestForLabel('Réunion équipe')).not.toBeNull();
   });
 
-  it('recognizes emails, meetings, content, invoices', () => {
-    expect(suggestForLabel('répondre aux emails')).not.toBeNull();
-    expect(suggestForLabel('réunion hebdo')).not.toBeNull();
-    expect(suggestForLabel('post réseaux sociaux')).not.toBeNull();
-    expect(suggestForLabel('facturation clients')).not.toBeNull();
+  /*
+   * The rule keywords are MATCH TOKENS compared against text the user types, not
+   * display copy — so they must work in whatever language the user writes in.
+   * They used to carry only the French term for every ambiguity-specific concept
+   * ('facture', 'saisie', 'rédaction', 'tournée'…), so an English user typing
+   * "invoicing" or "data entry" silently got no suggestion at all. Both languages
+   * are asserted below; French must keep working exactly as before.
+   */
+  describe('English input (previously unmatched)', () => {
+    it.each([
+      ['replying to emails',  'email'],
+      ['weekly meeting',      'meeting'],
+      ['social media posts',  'content'],
+      ['customer invoicing',  'invoice'],
+      ['monthly reporting',   'report'],
+      ['cv screening',        'recruit'],
+      ['data entry',          'data'],
+      ['writing articles',    'writing'],
+      ['document translation', 'translate'],
+      ['delivery planning',   'logistics'],
+    ])('suggests for %s', (label, ruleId) => {
+      const d = suggestForLabel(label);
+      expect(d, `no suggestion for "${label}"`).not.toBeNull();
+      expect(d!.id).toBe(ruleId);
+    });
   });
 
-  it('recognizes recruiting, data entry, writing, translation, logistics', () => {
-    expect(suggestForLabel('tri de cv')).not.toBeNull();
-    expect(suggestForLabel('saisie de données')).not.toBeNull();
-    expect(suggestForLabel('rédaction article blog')).not.toBeNull();
-    expect(suggestForLabel('traduction de contenu')).not.toBeNull();
-    expect(suggestForLabel('planification de tournée')).not.toBeNull();
-    // Recruiting splits into screening (automatable) vs interview (keep) — different verdicts.
-    const d = suggestForLabel('recrutement')!;
-    expect(d.splits).toHaveLength(2);
+  describe('French input (no regression)', () => {
+    it.each([
+      ['répondre aux emails',      'email'],
+      ['réunion hebdo',            'meeting'],
+      ['post réseaux sociaux',     'content'],
+      ['facturation clients',      'invoice'],
+      ['tri de cv',                'recruit'],
+      ['saisie de données',        'data'],
+      ['rédaction article blog',   'writing'],
+      ['traduction de documents',  'translate'],
+      ['planification de tournée', 'logistics'],
+    ])('still suggests for %s', (label, ruleId) => {
+      const d = suggestForLabel(label);
+      expect(d, `no suggestion for "${label}"`).not.toBeNull();
+      expect(d!.id).toBe(ruleId);
+    });
+
+    it('recruiting still splits into screening vs interview', () => {
+      const d = suggestForLabel('recrutement')!;
+      expect(d.splits).toHaveLength(2);
+    });
   });
 
-  it('returns null for unknown / too-short labels', () => {
+  it('returns null for unknown / too-short labels, in either language', () => {
     expect(suggestForLabel('xy')).toBeNull();
-    expect(suggestForLabel('peindre la clôture')).toBeNull();
+    expect(suggestForLabel('painting the fence')).toBeNull();
+    expect(suggestForLabel('peindre la cloture')).toBeNull();
   });
 });

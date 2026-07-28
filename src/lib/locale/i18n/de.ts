@@ -2491,6 +2491,11 @@ export const de: Dict = {
         "targetWorkflowLabel": "Ziel-Workflow",
         "workflowPlaceholderOption": "Workflow auswählen…"
       },
+      "worksheetBridge": {
+        "cta": "Gesamtschätzung — rechne mit deinen echten Daten, Aufgabe für Aufgabe →",
+        "title": "Mehr erfahren: Zeit-→-Geld-Audit",
+        "note": "Diese Schätzung ist pauschal. Rechne mit deinen echten Daten, Aufgabe für Aufgabe, und erhalte ein Urteil (behalten / automatisieren / delegieren)."
+      },
       "leadCapture": {
         "legend": "Wohin sollen wir Ihre Schätzung senden?",
         "emailLabel": "E-Mail",
