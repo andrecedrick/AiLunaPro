@@ -12,7 +12,7 @@ import { useToast } from '../../hooks/useToast';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
 import { ROLE } from '../../types/auth';
-import { fetchNotifications, markNotificationRead, markAllNotificationsRead, resolveNotifRoute, type NotificationItem } from '../../lib/platform/platformService';
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, resolveNotifRoute, subscribeNotificationRefresh, type NotificationItem } from '../../lib/platform/platformService';
 import type { Route } from '../../types/audit';
 
 interface TopbarProps {
@@ -73,6 +73,10 @@ export function Topbar({ onToggleSidebar, sidebarCollapsed, isMobile, mobileOpen
   const refreshNotifs = () => {
     fetchNotifications(notifFilter).then(n => { if (n) { setNotifs(n.items); setNotifCount(n.unreadCount); } }).catch(() => {});
   };
+
+  // Refetch once when an action elsewhere in the app creates a notification (e.g.
+  // a demo request). Event-driven, not polled — see requestNotificationRefresh.
+  useEffect(() => subscribeNotificationRefresh(refreshNotifs), [notifFilter]);   // eslint-disable-line react-hooks/exhaustive-deps
   // Click a notification → navigate FIRST (instant, never blocked by the network),
   // then mark it read. Resolve to a VALID destination so a click is never dead:
   // use the stored route if it's a known page, else fall back by type/audience.

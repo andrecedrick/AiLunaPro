@@ -111,9 +111,23 @@ describe('demo request — capture', () => {
     expect(stored?.[1]).toMatchObject({ name: 'Ada Lovelace', company: 'Acme', orgId: 'org-1', status: 'new', source: 'dashboard-cta' });
   });
 
-  it('records the VERIFIED token email, not the client-supplied one', async () => {
+  it('keeps identity and contact emails apart instead of discarding the typed one', async () => {
     await submit(VALID);
-    expect(find('demo_requests/')?.[1].email).toBe('prospect@acme.com');
+    const lead = find('demo_requests/')?.[1] ?? {};
+    // Identity is the VERIFIED token email — a member must not file a lead as anyone.
+    expect(lead.identityEmail).toBe('prospect@acme.com');
+    // The typed "Work email" used to be thrown away entirely.
+    expect(lead.contactEmail).toBe('typed@acme.com');
+    // Legacy field retained, still the identity address, for pre-v3 readers.
+    expect(lead.email).toBe('prospect@acme.com');
+    expect(lead.schemaVersion).toBe(3);
+  });
+
+  it('falls back to the identity email when the typed one is invalid', async () => {
+    await submit({ ...VALID, email: 'not-an-email' });
+    const lead = find('demo_requests/')?.[1] ?? {};
+    expect(lead.contactEmail).toBe('prospect@acme.com');   // never lose a lead over a typo
+    expect(lead.identityEmail).toBe('prospect@acme.com');
   });
 
   it('rejects a non-member of the workspace', async () => {
@@ -136,6 +150,7 @@ describe('demo request — operator alerting (the P0 gap)', () => {
     const blob = JSON.stringify(alert);
     expect(blob).not.toContain('Ada Lovelace');
     expect(blob).not.toContain('prospect@acme.com');
+    expect(blob).not.toContain('typed@acme.com');
     expect(blob).not.toContain('Acme');
   });
 
@@ -149,15 +164,21 @@ describe('demo request — operator alerting (the P0 gap)', () => {
   it('attempts the demo-request-admin email, replying to the prospect', async () => {
     await submit(VALID);
     expect(adminSends()).toHaveLength(1);
-    expect(adminSends()[0]).toMatchObject({ to: 'admin@ailunapro.com', slug: 'demo-request-admin', replyTo: 'prospect@acme.com' });
-    expect(adminSends()[0].variables).toMatchObject({ NAME: 'Ada Lovelace', COMPANY: 'Acme', ORG_ID: 'org-1' });
+    // Reply reaches the address the prospect nominated, not their login.
+    expect(adminSends()[0]).toMatchObject({ to: 'admin@ailunapro.com', slug: 'demo-request-admin', replyTo: 'typed@acme.com' });
+    expect(adminSends()[0].variables).toMatchObject({
+      NAME: 'Ada Lovelace', COMPANY: 'Acme', ORG_ID: 'org-1',
+      IDENTITY_EMAIL: 'prospect@acme.com',
+      CONTACT_EMAIL:  'typed@acme.com',
+      EMAIL:          'typed@acme.com',
+    });
   });
 
   it('attempts the prospect confirmation, replying to a human operator', async () => {
     await submit(VALID);
     expect(prospectSends()).toHaveLength(1);
     expect(prospectSends()[0]).toMatchObject({
-      to: 'prospect@acme.com', slug: 'demo-request-confirmation', replyTo: 'admin@ailunapro.com',
+      to: 'typed@acme.com', slug: 'demo-request-confirmation', replyTo: 'admin@ailunapro.com',
     });
     expect(prospectSends()[0].variables).toMatchObject({ NAME: 'Ada Lovelace', COMPANY: 'Acme' });
   });
@@ -211,7 +232,7 @@ describe('demo request — lead-management fields', () => {
     expect(lead.owner).toBe('');              // unassigned
     expect(lead.lastContactAt).toBe('');      // never contacted
     expect(String(lead.createdAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    expect(lead.schemaVersion).toBe(2);
+    expect(lead.schemaVersion).toBe(3);
   });
 
   it('the operator surface returns the lead-management fields', async () => {
@@ -291,8 +312,24 @@ describe('demo request — operator visibility', () => {
     expect(res.status).toBe(200);
     const items = res.body.items as unknown as Array<{ name: string; email: string; status: string }>;
     expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ name: 'Ada Lovelace', email: 'prospect@acme.com', status: 'new' });
+    expect(items[0]).toMatchObject({
+      name: 'Ada Lovelace', identityEmail: 'prospect@acme.com', contactEmail: 'typed@acme.com', status: 'new',
+    });
     expect(res.body.newCount).toBe(1);
+  });
+
+  it('a pre-v3 lead (only `email`) still renders both addresses', async () => {
+    // Historical leads carry no identityEmail/contactEmail. Both must fall back to
+    // the legacy field rather than rendering two blanks in the operator panel.
+    store.writes.set('demo_requests/legacy-1', {
+      id: 'legacy-1', name: 'Old Lead', email: 'legacy@acme.com',
+      status: 'new', createdAt: '2026-01-01T00:00:00Z',
+    });
+    const items = (await listAsAdmin()).body.items as unknown as Array<Record<string, string>>;
+    expect(items[0]).toMatchObject({
+      identityEmail: 'legacy@acme.com',
+      contactEmail:  'legacy@acme.com',
+    });
   });
 
   it('an empty collection renders as an empty inbox, not an error', async () => {

@@ -239,7 +239,12 @@ export async function fetchPlatformSupport(): Promise<PlatformSupport | null> {
 
 /** A commercial demo request (name/email/company — operator-gated). */
 export interface DemoRequestRow {
-  id: string; name: string; email: string; company: string;
+  id: string; name: string;
+  /** Verified account address (who). */
+  identityEmail: string;
+  /** Address the prospect asked to be reached on (where to follow up). */
+  contactEmail: string;
+  company: string;
   message: string; orgId: string; source: string; status: string;
   owner: string; lastContactAt: string; createdAt: string;
 }
@@ -328,6 +333,33 @@ export interface NotificationsResult {
   items: NotificationItem[];
   unreadCount: number;
   total: number;
+}
+
+/*
+ * Notification refresh signal.
+ *
+ * The bell loads on mount and on filter change only, so an action taken in the
+ * SAME session (submitting a demo request) produced a notification the user could
+ * not see until a full reload — the data was there, the UI was stale.
+ *
+ * This is a one-shot signal, NOT a polling loop: an action that is known to have
+ * created a notification calls requestNotificationRefresh(), and the mounted bell
+ * refetches once. No timers, no interval, no cost when nothing happens.
+ */
+type RefreshListener = () => void;
+const refreshListeners = new Set<RefreshListener>();
+
+/** Subscribe to refresh signals. Returns an unsubscribe function. */
+export function subscribeNotificationRefresh(fn: RefreshListener): () => void {
+  refreshListeners.add(fn);
+  return () => { refreshListeners.delete(fn); };
+}
+
+/** Signal that something just created a notification — mounted bells refetch once. */
+export function requestNotificationRefresh(): void {
+  for (const fn of refreshListeners) {
+    try { fn(); } catch { /* one bad listener must not block the others */ }
+  }
 }
 
 /**

@@ -57,7 +57,8 @@ export function DemoRequestsPanel() {
             <tr>
               <th style={th}>When</th>
               <th style={th}>Name</th>
-              <th style={th}>Email</th>
+              <th style={th}>Contact email</th>
+              <th style={th}>Account email</th>
               <th style={th}>Company</th>
               <th style={th}>Message</th>
               <th style={th}>Status</th>
@@ -71,8 +72,14 @@ export function DemoRequestsPanel() {
                 <td style={{ ...td, whiteSpace: 'nowrap' }}>{d.createdAt ? new Date(d.createdAt).toLocaleString() : '—'}</td>
                 <td style={{ ...td, fontWeight: 700 }}>{d.name || '—'}</td>
                 <td style={td}>
-                  {/* One click to answer the lead. */}
-                  {d.email ? <a href={`mailto:${d.email}`} style={{ color: 'var(--violet-text)' }}>{d.email}</a> : '—'}
+                  {/* Follow up on the address the prospect nominated, not their login. */}
+                  {d.contactEmail
+                    ? <a href={`mailto:${d.contactEmail}`} style={{ color: 'var(--violet-text)' }}>{d.contactEmail}</a>
+                    : '—'}
+                </td>
+                <td style={{ ...td, color: 'var(--text-muted)' }}>
+                  {/* Shown only when it differs — identical addresses are noise. */}
+                  {d.identityEmail && d.identityEmail !== d.contactEmail ? d.identityEmail : 'same'}
                 </td>
                 <td style={td}>{d.company || '—'}</td>
                 <td style={td}>{d.message || '—'}</td>

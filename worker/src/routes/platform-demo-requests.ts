@@ -32,7 +32,10 @@ const DEFAULT_LIMIT = 200;
 interface DemoRow {
   id:            string;
   name:          string;
-  email:         string;
+  /** Verified account address — WHO the lead is. */
+  identityEmail: string;
+  /** Address the prospect asked to be reached on — WHERE to follow up. */
+  contactEmail:  string;
   company:       string;
   message:       string;
   orgId:         string;
@@ -51,7 +54,11 @@ function mapDemo(name: string, f: Record<string, unknown>): DemoRow {
   return {
     id:            str(f.id) || (name.split('/').pop() ?? ''),
     name:          str(f.name),
-    email:         str(f.email),
+    // Pre-v3 leads carry only `email`, which WAS the identity address. Both new
+    // fields fall back to it so historical leads still render an address in the
+    // panel instead of two blanks.
+    identityEmail: str(f.identityEmail) || str(f.email),
+    contactEmail:  str(f.contactEmail)  || str(f.email),
     company:       str(f.company),
     message:       str(f.message),
     orgId:         str(f.orgId),
