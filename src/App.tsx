@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useRef, useState, lazy as reactLazy, type ReactNode } from 'react';
 import { lazyWithRetry as lazy } from './lib/routing/lazyWithRetry';
+import { routeFromHash } from './lib/routing/hashRoute';
 import './App.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CampaignChrome } from './components/layout/CampaignChrome';
@@ -286,67 +287,12 @@ function AppShell() {
        #/reports                           → reports list                       */
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const h = window.location.hash;
-    if (h.startsWith('#/invite/')) {
-      navigate({ name: 'accept-invite' });
-    } else if (h.startsWith('#/diagnostic')) {
-      navigate({ name: 'diagnostic' });
-    } else if (h.startsWith('#/roi-calculator')) {
-      navigate({ name: 'roi-calculator' });
-    } else if (h.startsWith('#/quote/result')) {
-      navigate({ name: 'quote/result' });
-    } else if (h.startsWith('#/quote/status')) {
-      navigate({ name: 'quote/status' });
-    } else if (h.startsWith('#/quote')) {
-      navigate({ name: 'quote' });
-    } else if (h.startsWith('#/invoices')) {
-      // Email CTAs deep-link here (#/invoices?invoiceId=… / ?quoteId=…); the query
-      // stays in the hash for InvoicesPage to focus + scroll to the exact card.
-      navigate({ name: 'invoices' });
-    } else if (h.startsWith('#/admin')) {
-      navigate({ name: 'admin' });
-    } else if (h.startsWith('#/contacts')) {
-      navigate({ name: 'contacts' });
-    } else if (h.startsWith('#/my-quotes')) {
-      navigate({ name: 'my-quotes' });
-    } else if (h.startsWith('#/help')) {
-      navigate({ name: 'help' });
-    } else if (h.startsWith('#/operator')) {
-      navigate({ name: 'operator' });
-    } else if (h.startsWith('#/system-builder')) {
-      navigate({ name: 'system-builder' });
-    } else if (h.startsWith('#/worksheet')) {
-      navigate({ name: 'worksheet' });
-    } else if (h.startsWith('#/visibility')) {
-      navigate({ name: 'visibility' });
-    } else if (h.startsWith('#/audit-express/detail/')) {
-      const id = decodeURIComponent(h.slice('#/audit-express/detail/'.length).split(/[?#]/)[0]);
-      navigate(id ? { name: 'audit-express/detail', auditId: id } : { name: 'audit-express/saved' });
-    } else if (h.startsWith('#/audit-express/saved')) {
-      navigate({ name: 'audit-express/saved' });
-    } else if (h.startsWith('#/audit-express/run')) {
-      navigate({ name: 'audit-express/run' });
-    } else if (h.startsWith('#/journey/start')) {
-      navigate({ name: 'journey/start' });
-    } else if (h.startsWith('#/audit/result')) {
-      // Reload-safe: without this, a refresh / stale-bundle recovery on the
-      // results URL fell through to the default route (dashboard) after submit.
-      navigate({ name: 'audit/result' });
-    } else if (h.startsWith('#/audit/assistance')) {
-      navigate({ name: 'audit/assistance' });
-    } else if (h.startsWith('#/audit/new')) {
-      navigate({ name: 'audit/new' });
-    } else if (h.startsWith('#/audit/history')) {
-      navigate({ name: 'audit/history' });
-    } else if (h.startsWith('#/reports/share/')) {
-      const id = decodeURIComponent(h.slice('#/reports/share/'.length).split(/[?#]/)[0]);
-      navigate(id ? { name: 'reports/share', reportId: id } : { name: 'reports' });
-    } else if (h.startsWith('#/reports/detail/')) {
-      const id = decodeURIComponent(h.slice('#/reports/detail/'.length).split(/[?#]/)[0]);
-      navigate(id ? { name: 'reports/detail', reportId: id } : { name: 'reports' });
-    } else if (h.startsWith('#/reports')) {
-      navigate({ name: 'reports' });
-    }
+    // Deep-link entry. The branch chain lives in routeFromHash (lib/routing/
+    // hashRoute.ts) so it is testable — inline here it was unreachable by any test,
+    // and #/signup and bare #/billing had silently never been given a branch.
+    // No match → leave the route alone (unchanged fall-through behaviour).
+    const parsed = routeFromHash(window.location.hash);
+    if (parsed) navigate(parsed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

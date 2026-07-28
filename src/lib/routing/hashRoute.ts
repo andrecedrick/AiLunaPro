@@ -21,6 +21,76 @@ function currentHash(): string {
   return typeof window !== 'undefined' ? window.location.hash : '';
 }
 
+/**
+ * Hash-URL → Route. The inverse of routeToHash, and the ONLY deep-link entry
+ * point: it decides what a URL pasted into the address bar, or clicked in an
+ * email, actually opens.
+ *
+ * Lifted verbatim out of an inline useEffect in App.tsx so it can be tested.
+ * Living there, it was unreachable by any test, and two externally-linked routes
+ * had silently never been given a branch:
+ *   - `#/signup`  — the demo-request confirmation CTA
+ *   - `#/billing` — the Stripe billing-portal return URL
+ * Both fell through to the caller's default (dashboard), so the link "worked"
+ * while landing on the wrong page.
+ *
+ * Returns `null` when no branch matches; the caller then leaves the current route
+ * alone (preserving the previous fall-through behaviour exactly).
+ *
+ * ORDER IS SIGNIFICANT — every branch is a prefix match, so more specific paths
+ * must precede their prefixes (`#/quote/result` before `#/quote`).
+ */
+export function routeFromHash(h: string): Route | null {
+  if (h.startsWith('#/invite/'))                 return { name: 'accept-invite' };
+  if (h.startsWith('#/signup'))                  return { name: 'signup' };
+  if (h.startsWith('#/diagnostic'))              return { name: 'diagnostic' };
+  if (h.startsWith('#/roi-calculator'))          return { name: 'roi-calculator' };
+  if (h.startsWith('#/quote/result'))            return { name: 'quote/result' };
+  if (h.startsWith('#/quote/status'))            return { name: 'quote/status' };
+  if (h.startsWith('#/quote'))                   return { name: 'quote' };
+  if (h.startsWith('#/invoices'))                return { name: 'invoices' };
+  if (h.startsWith('#/admin'))                   return { name: 'admin' };
+  if (h.startsWith('#/contacts'))                return { name: 'contacts' };
+  if (h.startsWith('#/my-quotes'))               return { name: 'my-quotes' };
+  if (h.startsWith('#/help'))                    return { name: 'help' };
+  if (h.startsWith('#/operator'))                return { name: 'operator' };
+  if (h.startsWith('#/system-builder'))          return { name: 'system-builder' };
+  if (h.startsWith('#/worksheet'))               return { name: 'worksheet' };
+  if (h.startsWith('#/visibility'))              return { name: 'visibility' };
+
+  if (h.startsWith('#/audit-express/detail/')) {
+    const id = decodeURIComponent(h.slice('#/audit-express/detail/'.length).split(/[?#]/)[0]);
+    return id ? { name: 'audit-express/detail', auditId: id } : { name: 'audit-express/saved' };
+  }
+  if (h.startsWith('#/audit-express/saved'))     return { name: 'audit-express/saved' };
+  if (h.startsWith('#/audit-express/run'))       return { name: 'audit-express/run' };
+  if (h.startsWith('#/journey/start'))           return { name: 'journey/start' };
+  if (h.startsWith('#/audit/result'))            return { name: 'audit/result' };
+  if (h.startsWith('#/audit/assistance'))        return { name: 'audit/assistance' };
+  if (h.startsWith('#/audit/new'))               return { name: 'audit/new' };
+  if (h.startsWith('#/audit/history'))           return { name: 'audit/history' };
+
+  if (h.startsWith('#/reports/share/')) {
+    const id = decodeURIComponent(h.slice('#/reports/share/'.length).split(/[?#]/)[0]);
+    return id ? { name: 'reports/share', reportId: id } : { name: 'reports' };
+  }
+  if (h.startsWith('#/reports/detail/')) {
+    const id = decodeURIComponent(h.slice('#/reports/detail/'.length).split(/[?#]/)[0]);
+    return id ? { name: 'reports/detail', reportId: id } : { name: 'reports' };
+  }
+  if (h.startsWith('#/reports'))                 return { name: 'reports' };
+
+  // Bare `#/billing` ONLY. `#/billing/success` and `#/billing/tokens` carry Stripe
+  // query params and are owned by the dedicated redirect effect in App.tsx — a
+  // top-up routed to BillingSuccessPage produces a bogus "Sync failed", so they
+  // must not be swallowed by this prefix.
+  if (h.startsWith('#/billing')
+      && !h.startsWith('#/billing/success')
+      && !h.startsWith('#/billing/tokens'))      return { name: 'billing' };
+
+  return null;
+}
+
 export function routeToHash(route: Route): string | null {
   switch (route.name) {
     // Routes that manage their own URL/query — never clobber.
