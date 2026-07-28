@@ -22,6 +22,7 @@ export type BillingAlertKind =
   | 'feedback_received'          // a customer submitted product feedback (info, not billing)
   | 'support_ticket_created'     // a customer opened a support ticket (info)
   | 'demo_request_received'      // a customer asked to be contacted for a demo (COMMERCIAL LEAD)
+  | 'demo_visibility_failed'     // the operator demo-request panel could NOT read its leads
   | 'notification_email_failed'; // a notification email did NOT send — makes silent failures visible
 
 export interface BillingAlertInput {

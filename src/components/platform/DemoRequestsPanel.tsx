@@ -60,8 +60,9 @@ export function DemoRequestsPanel() {
               <th style={th}>Email</th>
               <th style={th}>Company</th>
               <th style={th}>Message</th>
-              <th style={th}>Source</th>
               <th style={th}>Status</th>
+              <th style={th}>Owner</th>
+              <th style={th}>Last contact</th>
             </tr>
           </thead>
           <tbody>
@@ -75,8 +76,11 @@ export function DemoRequestsPanel() {
                 </td>
                 <td style={td}>{d.company || '—'}</td>
                 <td style={td}>{d.message || '—'}</td>
-                <td style={{ ...td, color: 'var(--text-muted)' }}>{d.source || '—'}</td>
                 <td style={td}>{d.status || '—'}</td>
+                <td style={{ ...td, color: d.owner ? undefined : 'var(--text-muted)' }}>{d.owner || 'Unassigned'}</td>
+                <td style={{ ...td, whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
+                  {d.lastContactAt ? new Date(d.lastContactAt).toLocaleString() : 'Never'}
+                </td>
               </tr>
             ))}
           </tbody>

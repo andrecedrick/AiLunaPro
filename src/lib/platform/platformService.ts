@@ -240,7 +240,8 @@ export async function fetchPlatformSupport(): Promise<PlatformSupport | null> {
 /** A commercial demo request (name/email/company — operator-gated). */
 export interface DemoRequestRow {
   id: string; name: string; email: string; company: string;
-  message: string; orgId: string; source: string; status: string; createdAt: string;
+  message: string; orgId: string; source: string; status: string;
+  owner: string; lastContactAt: string; createdAt: string;
 }
 export interface PlatformDemoRequests {
   items: DemoRequestRow[];

@@ -77,6 +77,7 @@ export function routeForAlertKind(kind: string): { route: string; type: string }
     case 'feedback_received':        return { route: 'admin', type: 'feedback' };
     case 'support_ticket_created':   return { route: 'admin', type: 'ticket' };
     case 'demo_request_received':    return { route: 'admin', type: 'demo' };
+    case 'demo_visibility_failed':   return { route: 'admin', type: 'demo' };
     case 'topup_credit_failed':
     case 'topup_credit_recovered':
     case 'invoice_amount_mismatch':  return { route: 'admin', type: 'token' };

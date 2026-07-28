@@ -21,6 +21,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePlatformAdmin } from '../lib/platformAdmin';
 import { firestoreRunQuery } from '../lib/firestoreAdmin';
+import { recordBillingAlert } from '../lib/billing-alerts';
 import type { AppEnv } from '../index';
 
 const platformDemoRequests = new Hono<AppEnv>();
@@ -29,15 +30,17 @@ const MAX_LIMIT = 500;
 const DEFAULT_LIMIT = 200;
 
 interface DemoRow {
-  id:        string;
-  name:      string;
-  email:     string;
-  company:   string;
-  message:   string;
-  orgId:     string;
-  source:    string;
-  status:    string;
-  createdAt: string;
+  id:            string;
+  name:          string;
+  email:         string;
+  company:       string;
+  message:       string;
+  orgId:         string;
+  source:        string;
+  status:        string;
+  owner:         string;
+  lastContactAt: string;
+  createdAt:     string;
 }
 
 function str(v: unknown): string {
@@ -46,15 +49,19 @@ function str(v: unknown): string {
 
 function mapDemo(name: string, f: Record<string, unknown>): DemoRow {
   return {
-    id:        str(f.id) || (name.split('/').pop() ?? ''),
-    name:      str(f.name),
-    email:     str(f.email),
-    company:   str(f.company),
-    message:   str(f.message),
-    orgId:     str(f.orgId),
-    source:    str(f.source),
-    status:    str(f.status) || 'new',
-    createdAt: str(f.createdAt),
+    id:            str(f.id) || (name.split('/').pop() ?? ''),
+    name:          str(f.name),
+    email:         str(f.email),
+    company:       str(f.company),
+    message:       str(f.message),
+    orgId:         str(f.orgId),
+    source:        str(f.source),
+    // Lead-management fields. Pre-schemaV2 leads carry neither, so both default
+    // here rather than rendering as undefined in the panel.
+    status:        str(f.status) || 'new',
+    owner:         str(f.owner),
+    lastContactAt: str(f.lastContactAt),
+    createdAt:     str(f.createdAt),
   };
 }
 
@@ -79,10 +86,19 @@ platformDemoRequests.get('/api/platform/demo-requests', requireAuth(), requirePl
       newCount: items.filter(d => d.status === 'new').length,
     });
   } catch (err) {
-    // A missing collection is an empty inbox, not an error — same as the other
-    // operator panels, so a brand-new environment renders instead of failing.
-    console.warn('[platform-demo-requests] query failed:', err instanceof Error ? err.message : err);
-    return c.json({ items: [], total: 0, newCount: 0 });
+    // This used to return an empty list, which made a BROKEN read look exactly
+    // like "no leads yet" — the operator would see a reassuring empty panel while
+    // real leads sat unread in Firestore. A missing collection does not throw
+    // (Firestore returns no rows), so reaching here is a genuine failure: raise a
+    // durable alert and fail loudly instead of rendering a comfortable lie.
+    const reason = err instanceof Error ? err.message : 'unknown';
+    console.error('[platform-demo-requests] query failed:', reason);
+    await recordBillingAlert(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+      kind: 'demo_visibility_failed', severity: 'critical', refId: `demovis_${new Date().toISOString().slice(0, 13)}`,
+      message: 'Demo Requests panel could not read its leads — commercial leads may be unread',
+      context: { reason: reason.slice(0, 140) },
+    });
+    return c.json({ error: 'Could not load demo requests.', code: 'QUERY_FAILED' }, 500);
   }
 });
 
