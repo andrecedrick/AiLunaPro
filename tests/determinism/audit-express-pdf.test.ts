@@ -179,6 +179,37 @@ describe('audit-express PDF — layout stability', () => {
   });
 });
 
+describe('audit-express PDF — forwarded-copy CTA', () => {
+  const s = latin1(buildFull());
+
+  it('renders the CTA block and its visible link label', () => {
+    expect(s).toContain('Was this snapshot shared with you?');
+    expect(s).toContain('audit.ailunapro.com/audit-express');
+  });
+
+  it('emits a clickable external URI annotation with utm attribution', () => {
+    expect(s).toContain('/A << /S /URI /URI (');
+    expect(s).toContain('utm_source=shared_pdf');
+    expect(s).toContain('utm_campaign=audit_express_share');
+  });
+
+  it('keeps the internal appendix /Dest links working alongside the URI link', () => {
+    expect(s).toContain('/Dest');
+    expect((s.match(/\/Subtype \/Link/g) || []).length).toBeGreaterThan(1);
+  });
+
+  it('does not break byte determinism', () => {
+    expect(bytesEqual(buildFull(), buildFull())).toBe(true);
+  });
+
+  it('is present on the preview-only build too (no snapshot required)', () => {
+    const p = computePreview(TAPS);
+    const only = latin1(buildAuditExpressPdf({ createdAt: CREATED, preview: p }));
+    expect(only).toContain('Was this snapshot shared with you?');
+    expect(only).toContain('/S /URI');
+  });
+});
+
 describe('audit-express PDF — privacy', () => {
   const s = latin1(buildFull());
   it('never renders scrubbed email or phone', () => {

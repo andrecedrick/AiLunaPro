@@ -24,6 +24,16 @@ import type { Understanding } from './audit-express-understanding';
 export const PDF_DISCLAIMER =
   'Preparation support, NOT a certification, attestation, or legal advice.';
 
+/**
+ * Forwarded-copy CTA. This PDF is generated once and served BOTH as the owner's
+ * download and as the public shared link (/api/audit-express/shared/:token), so
+ * a reader may have no account at all. Constant (not env-derived) to keep the
+ * builder pure and byte-deterministic; the utm_* tags attribute the share loop.
+ */
+const SHARE_CTA_URL =
+  'https://audit.ailunapro.com/audit-express/?utm_source=shared_pdf&utm_medium=pdf&utm_campaign=audit_express_share';
+const SHARE_CTA_LABEL = 'audit.ailunapro.com/audit-express';
+
 export interface AuditPdfInput {
   createdAt:        string;
   preview:          AuditExpressPreview;
@@ -235,6 +245,14 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
   doc.paraKey(`The numbers in this snapshot are not abstract - they are hours and dollars leaving your business every month, and they keep leaving until you act. At ${preview.k1a.normalizedScore}/100, the path to recovering them is short and low-risk: one focused pilot is usually enough to prove the saving and build momentum.`);
   doc.para('The fastest movers do not wait for a perfect plan - they start with a single high-volume task, measure the result, and scale what works. You can do exactly that today, with AiLuna doing the heavy lifting. Open your matched agents, or run a full audit for the complete picture.');
   doc.callout('Estimates are indicative and based on your inputs - a starting point for your decision, not a guarantee or a legal classification.', 'amber');
+
+  // ── Forwarded-copy CTA: the only route back for a reader with no account ──
+  doc.ctaBlock(
+    'Was this snapshot shared with you?',
+    'Run the same readiness snapshot on your own organisation - free, no account needed, about ten minutes. You get your readiness score, the AI usage signals we can see, an indicative regulatory level, and a rough ROI on the repetitive work you could automate.',
+    SHARE_CTA_URL,
+    SHARE_CTA_LABEL,
+  );
 
   // ── Appendix: Sources & reasons (human label + raw id) ──
   doc.h2('Sources & reasons');

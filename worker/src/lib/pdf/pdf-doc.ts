@@ -28,7 +28,11 @@ interface LineOp { kind: 'line'; x1: number; y1: number; x2: number; y2: number;
 interface ImageOp { kind: 'image'; x: number; y: number; w: number; h: number; img: number }
 type Op = TextOp | RectOp | LineOp | ImageOp;
 
-interface PendingAnnot { pageIndex: number; rect: [number, number, number, number]; targetId: string }
+type AnnotRect = [number, number, number, number];
+/** Internal appendix jump (`/Dest`) or external link (`/A /URI`). */
+type PendingAnnot =
+  | { pageIndex: number; rect: AnnotRect; kind: 'dest'; targetId: string }
+  | { pageIndex: number; rect: AnnotRect; kind: 'uri'; uri: string };
 
 const VIOLET: [number, number, number] = [0.486, 0.227, 0.929];
 const CYAN: [number, number, number] = [0.133, 0.827, 0.933];
@@ -234,6 +238,44 @@ export class PdfBuilder {
     this.y = top - boxH - 8;
   }
 
+  /**
+   * Closing call-to-action block with one clickable external link.
+   *
+   * Exists for FORWARDED copies: a shared PDF is read by someone with no
+   * account and no way back to the product, so every other CTA in the document
+   * ("open the app", "in the app both are one click away") is a dead end for
+   * them. The URL is drawn on its own line so the annotation rect matches the
+   * glyphs exactly, and underlined so it still reads as a link in viewers that
+   * do not decorate annotations.
+   */
+  ctaBlock(title: string, body: string, url: string, linkLabel: string): void {
+    const titleSize = 11.5, size = 10, lineGap = 4, linkSize = 10.5, pad = 13;
+    const lines = wrapText(body, 'regular', size, CONTENT_W - pad * 2);
+    const boxH = pad * 2 + titleSize + 6 + lines.length * (size + lineGap) + linkSize + 4;
+    this.ensure(boxH + 8);
+    const top = this.y;
+    this.rectAbs(MARGIN, top - boxH, CONTENT_W, boxH, TINT_BG);
+
+    let ty = top - pad - titleSize;
+    this.cur().push({ kind: 'text', x: MARGIN + pad, y: ty, size: titleSize, font: 'bold', color: INK, text: asciiSanitize(title) });
+    ty -= 6;
+    for (const line of lines) {
+      ty -= size;
+      this.cur().push({ kind: 'text', x: MARGIN + pad, y: ty, size, font: 'regular', color: INK, text: line });
+      ty -= lineGap;
+    }
+
+    ty -= linkSize;
+    const label = asciiSanitize(linkLabel);
+    const lx = MARGIN + pad;
+    this.cur().push({ kind: 'text', x: lx, y: ty, size: linkSize, font: 'bold', color: VIOLET, text: label });
+    const lw = measureText(label, 'bold', linkSize);
+    this.lineAbs(lx, ty - 2, lx + lw, ty - 2, VIOLET);
+    this.annots.push({ pageIndex: this.pi, kind: 'uri', rect: [lx - 2, ty - 4, lx + lw + 2, ty + linkSize], uri: url });
+
+    this.y = top - boxH - 8;
+  }
+
   /** Bullet line with optional trailing [n] reference links. */
   bullet(text: string, refIds: string[] = []): void {
     const size = 10.5, lineGap = 5, indent = 16;
@@ -285,7 +327,7 @@ export class PdfBuilder {
       const label = String(num);
       const x1 = cx;
       draw(label, 'bold', VIOLET);
-      this.annots.push({ pageIndex: this.pi, rect: [x1 - 0.5, y - 1.5, cx + 0.5, y + size - 2], targetId: id });
+      this.annots.push({ pageIndex: this.pi, kind: 'dest', rect: [x1 - 0.5, y - 1.5, cx + 0.5, y + size - 2], targetId: id });
     }
     draw(']', 'regular', MUTED);
   }
@@ -361,10 +403,13 @@ export class PdfBuilder {
       const annots = this.annots
         .filter(a => a.pageIndex === i)
         .map(a => {
+          const r = a.rect.map(fmt).join(' ');
+          if (a.kind === 'uri') {
+            return `<< /Type /Annot /Subtype /Link /Rect [ ${r} ] /Border [0 0 0] /A << /S /URI /URI (${escapeText(a.uri)}) >> >>`;
+          }
           const t = this.targets[a.targetId];
           const destPage = t ? pageObjNum(t.pageIndex) : pageObjNum(i);
           const destY = t ? fmt(t.y + 4) : fmt(PAGE_H - MARGIN);
-          const r = a.rect.map(fmt).join(' ');
           return `<< /Type /Annot /Subtype /Link /Rect [ ${r} ] /Border [0 0 0] /Dest [ ${destPage} 0 R /XYZ ${fmt(MARGIN)} ${destY} null ] >>`;
         });
       const annotStr = annots.length ? ` /Annots [ ${annots.join(' ')} ]` : '';
