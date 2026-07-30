@@ -58,31 +58,70 @@ async function post(
     return { ok: false, error: err instanceof Error ? err.message.slice(0, 140) : 'network error' };
   }
 
+  const raw = await res.text().catch(() => '');
+
   if (!res.ok) {
-    let detail = '';
-    try {
-      const raw = await res.text();
-      let msg = raw;
-      try {
-        const j = JSON.parse(raw) as Record<string, unknown>;
-        msg = String(j.message ?? j.error ?? raw);
-      } catch { /* non-JSON body → use the raw text */ }
-      detail = msg.replace(/[\w.+-]+@[\w.-]+\.\w+/g, '<email>').replace(/\s+/g, ' ').trim().slice(0, 140);
-    } catch { /* body unreadable → status only */ }
-    return { ok: false, error: `Twenty ${path} failed (HTTP ${res.status})${detail ? `: ${detail}` : ''}` };
+    // Twenty's real error shape is {statusCode, messages:[...], error}. Reading
+    // only `message`/`error` surfaced the useless half ("UNAUTHENTICATED") and
+    // dropped the diagnostic half ("Token invalid."), which is exactly the part
+    // that identifies a wrong field name. `messages` is preferred.
+    return { ok: false, error: `Twenty ${path} failed (HTTP ${res.status}): ${scrub(raw)}` };
   }
 
-  try {
-    const json = await res.json() as { data?: Record<string, { id?: string }> };
-    // Twenty wraps a created record as { data: { createPerson: { id } } } (or the
-    // equivalent key for the object). Take the first id we find rather than
-    // hard-coding the wrapper key, which also varies by object name.
-    const id = Object.values(json.data ?? {}).map(v => v?.id).find(Boolean);
-    return { ok: true, id: id ?? '' };
-  } catch {
-    // Created but unparseable: still a success — do not retry and double-create.
-    return { ok: true, id: '' };
+  // A create that returns no id is NOT a success. This previously returned
+  // `{ ok: true, id: '' }` whenever the body did not match the assumed wrapper —
+  // so a 2xx with an unexpected shape looked like a completed push, stored an
+  // empty id as the idempotency key, and raised no alert. Silent, and the exact
+  // failure mode a CRM push must never have.
+  const id = extractId(raw);
+  if (!id) {
+    return { ok: false, error: `Twenty ${path} returned HTTP ${res.status} with no record id: ${scrub(raw)}` };
   }
+  return { ok: true, id };
+}
+
+/**
+ * PII-scrub a provider body before it reaches a log or the alert panel. A CRM
+ * push carries name/email/phone, so an unscrubbed echo would leak the whole lead
+ * into an operator surface.
+ */
+function scrub(raw: string): string {
+  let msg = raw;
+  try {
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const messages = Array.isArray(j.messages) ? j.messages.join('; ') : '';
+    msg = String(messages || j.message || j.error || raw);
+  } catch { /* non-JSON body → use the raw text */ }
+  return msg.replace(/[\w.+-]+@[\w.-]+\.\w+/g, '<email>').replace(/\s+/g, ' ').trim().slice(0, 200);
+}
+
+/**
+ * Pull the created record's id out of whatever shape Twenty returns.
+ *
+ * Tolerates the three plausible wrappers rather than assuming one:
+ *   { data: { createPerson: { id } } } · { data: { id } } · { id }
+ * Returns '' when none matches, which the caller treats as a failure.
+ */
+export function extractId(raw: string): string {
+  let json: Record<string, unknown>;
+  try { json = JSON.parse(raw) as Record<string, unknown>; } catch { return ''; }
+
+  const asId = (v: unknown): string =>
+    (v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string')
+      ? (v as { id: string }).id
+      : '';
+
+  if (typeof json.id === 'string') return json.id;
+  const data = json.data;
+  if (data && typeof data === 'object') {
+    const direct = asId(data);
+    if (direct) return direct;
+    for (const v of Object.values(data as Record<string, unknown>)) {
+      const nested = asId(v);
+      if (nested) return nested;
+    }
+  }
+  return '';
 }
 
 /** Split a display name into Twenty's firstName / lastName pair. */

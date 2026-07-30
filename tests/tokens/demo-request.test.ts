@@ -25,6 +25,7 @@ const store = vi.hoisted(() => ({
   patches: [] as Array<{ path: string; doc: Record<string, unknown>; merge: boolean }>,
   crmCalls: [] as Array<{ path: string; body: unknown }>,
   crmFails: false,
+  crmNoId: false,
   crmSeq: 0,
 }));
 
@@ -33,9 +34,10 @@ const store = vi.hoisted(() => ({
 vi.stubGlobal("fetch", vi.fn(async (url: string, init?: { body?: string }) => {
   const path = new URL(String(url)).pathname;
   store.crmCalls.push({ path, body: JSON.parse(init?.body ?? "{}") });
-  if (store.crmFails) return { ok: false, status: 400, text: async () => JSON.stringify({ message: "bad field" }) } as unknown as Response;
+  if (store.crmFails) return { ok: false, status: 400, text: async () => JSON.stringify({ statusCode: 400, messages: ["bad field"], error: "BAD_REQUEST" }) } as unknown as Response;
+  if (store.crmNoId) return { ok: true, status: 200, text: async () => "<!doctype html><html></html>" } as unknown as Response;
   store.crmSeq += 1;
-  return { ok: true, status: 200, json: async () => ({ data: { record: { id: `id-${store.crmSeq}` } } }) } as unknown as Response;
+  return { ok: true, status: 200, text: async () => JSON.stringify({ data: { record: { id: `id-${store.crmSeq}` } } }) } as unknown as Response;
 }));
 
 vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
@@ -123,6 +125,7 @@ beforeEach(() => {
   store.patches = [];
   store.crmCalls = [];
   store.crmFails = false;
+  store.crmNoId = false;
   store.crmSeq = 0;
   vi.resetModules();
 });
@@ -469,6 +472,29 @@ describe('demo request — Twenty CRM push', () => {
     const alert = find('platform_alerts/crm_push_failed__');
     expect(alert).toBeDefined();
     expect(alert?.[1]).toMatchObject({ kind: 'crm_push_failed', severity: 'critical' });
+  });
+
+  it('a 2xx carrying no record id raises an alert instead of passing silently', async () => {
+    // The original client treated any 2xx as success even when it could not find
+    // an id, so a push that created nothing looked complete and alerted nobody.
+    store.crmNoId = true;
+    const res = await submit(VALID, CRM_ENV);
+
+    expect(res.status).toBe(200);                     // lead still safe
+    const alert = find('platform_alerts/crm_push_failed__');
+    expect(alert).toBeDefined();
+    // The empty id must never be stored as the idempotency key.
+    expect(contacts()[0][1].twentyPersonId ?? '').toBe('');
+  });
+
+  it('surfaces Twenty\'s own diagnostic message, not just its error code', async () => {
+    // Twenty replies {statusCode, messages:[...], error}. Reading only `error`
+    // yielded "UNAUTHENTICATED" and dropped "Token invalid." — the half that
+    // actually identifies the problem.
+    store.crmFails = true;
+    await submit(VALID, CRM_ENV);
+    const alert = find('platform_alerts/crm_push_failed__');
+    expect(String(alert?.[1].context)).toContain('bad field');
   });
 
   it('is skipped entirely when Twenty is not configured — no alert storm', async () => {

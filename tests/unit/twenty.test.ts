@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitName, splitPhone, companyPayload, personPayload, notePayload, type TwentyLead } from '../../worker/src/lib/twenty';
+import { splitName, splitPhone, companyPayload, personPayload, notePayload, extractId, type TwentyLead } from '../../worker/src/lib/twenty';
 
 /*
  * Twenty CRM payload mapping.
@@ -28,6 +28,28 @@ const LEAD: TwentyLead = {
   createdAt:     '2026-07-30T10:00:00.000Z',
   leadId:        'dr_abc_123',
 };
+
+describe('extractId — a create with no id is not a success', () => {
+  it.each([
+    ['nested wrapper',  '{"data":{"createPerson":{"id":"p-1"}}}', 'p-1'],
+    ['data.id',         '{"data":{"id":"p-2"}}',                  'p-2'],
+    ['top-level id',    '{"id":"p-3"}',                           'p-3'],
+  ])('reads %s', (_label, body, expected) => {
+    expect(extractId(body)).toBe(expected);
+  });
+
+  it.each([
+    ['empty body',        ''],
+    ['HTML',              '<!doctype html><html></html>'],
+    ['JSON without id',   '{"data":{"ok":true}}'],
+    ['null data',         '{"data":null}'],
+  ])('returns empty for %s so the caller fails loudly', (_label, body) => {
+    // The original client returned { ok: true, id: '' } here: a 2xx with an
+    // unexpected shape looked like a completed push, stored an empty idempotency
+    // key, and raised no alert.
+    expect(extractId(body)).toBe('');
+  });
+});
 
 describe('splitName', () => {
   it.each([
