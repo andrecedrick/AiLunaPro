@@ -18,6 +18,7 @@ import { Button } from '../components/ui/Button';
 import { fetchPlatformMe } from '../lib/platform/platformService';
 import { contactsToCsv, csvFilename } from '../lib/contacts/contactsExport';
 import { ContactDetailPanel } from '../components/contacts/ContactDetailPanel';
+import { useViewport } from '../lib/ui/useViewport';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
   ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource, type LeadStatus,
@@ -44,6 +45,10 @@ export function ContactsPage() {
   const role = session?.role ?? '';
   const isContentRole = role === 'owner' || role === 'admin' || role === 'member';
   const isManager = role === 'owner' || role === 'admin';
+
+  // Below desktop the 13-column table is unusable, so the page renders cards.
+  const viewport = useViewport();
+  const isDesktop = viewport === 'desktop';
 
   const [isSuperAdmin, setSuper] = useState(false);
   const [mode, setMode] = useState<'org' | 'all'>('org');
@@ -212,6 +217,50 @@ export function ContactsPage() {
 
       {/* Table */}
       <section style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        {/* Cards below desktop. A 13-column table at a 860px minimum means
+            dragging sideways to read one row on a phone, so the table is not
+            rendered at all there — no hidden columns, no horizontal scroll, and
+            no wasted DOM for a list that could hold a thousand contacts. */}
+        {!isDesktop && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {rows === null ? (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{C.loading}</div>
+            ) : filtered.length === 0 ? (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{C.empty}</div>
+            ) : filtered.map(c => (
+              <div key={(c.orgId ?? '') + c.contactId} style={contactCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'start' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{c.name}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)', wordBreak: 'break-word' }}>{c.company || '—'}</div>
+                  </div>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', background: STATUS_COLOR[c.status].bg, color: STATUS_COLOR[c.status].fg }}>
+                    {(C.statuses as Record<string, string>)[c.status]}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gap: 4, marginTop: 8, fontSize: 12.5 }}>
+                  <a href={`mailto:${c.email}`} style={{ color: 'var(--violet-text)', wordBreak: 'break-all' }}>{c.email}</a>
+                  {c.phone && <a href={`tel:${c.phone}`} style={{ color: 'var(--violet-text)' }}>{c.phone}</a>}
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    {[(C.sources as Record<string, string>)[c.source] ?? c.source,
+                      c.countryCode || c.phoneCountry,
+                      c.leadStatus].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <Button variant="secondary" size="sm" onClick={() => setDetail(c)}>{C.viewDetail}</Button>
+                  {canEditRow(c) && (
+                    <Button variant="secondary" size="sm" onClick={() => openEdit(c)} disabled={busyId === c.contactId}>{C.edit}</Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isDesktop && (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 860 }}>
             <thead>
@@ -298,6 +347,7 @@ export function ContactsPage() {
             </tbody>
           </table>
         </div>
+        )}
       </section>
 
       {/* Create / edit modal */}
@@ -375,6 +425,7 @@ const th: React.CSSProperties = { padding: '10px 12px', fontWeight: 700 };
 const td: React.CSSProperties = { padding: '10px 12px', verticalAlign: 'middle' };
 const toggleBtn: React.CSSProperties = { padding: '7px 14px', border: 'none', background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' };
 const toggleOn: React.CSSProperties = { background: 'var(--violet)', color: '#fff' };
+const contactCard: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 14 };
 const tagPill: React.CSSProperties = { padding: '2px 7px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border)' };
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 };
 const modal: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, width: '100%', maxWidth: 620, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--card-shadow)' };
