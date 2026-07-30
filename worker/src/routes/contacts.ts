@@ -51,9 +51,13 @@ function genId(): string {
   return btoa(String.fromCharCode(...buf)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
+/** Sales funnel stages. Distinct from `status`, which is the CRM record state. */
+const LEAD_STATUS_VALUES: readonly string[] = ['new', 'contacted', 'qualified', 'won', 'lost'];
+
 interface ContactInput {
   name: string; email: string; phone: string; company: string;
   tags: string[]; notes: string; status: string; source: string;
+  leadStatus: string; owner: string; countryCode: string;
   linkedQuoteId: string; linkedAuditId: string;
 }
 
@@ -104,6 +108,24 @@ function validate(body: Record<string, unknown>, partial: boolean): { ok: true; 
     if (!SOURCE_VALUES.includes(source)) return { ok: false, error: `source must be one of: ${SOURCE_VALUES.join(', ')}` };
     v.source = source;
   }
+  // Sales-pipeline fields. leadStatus drives the funnel, owner assigns the lead,
+  // countryCode records the region — all editable by the same org roles that may
+  // already edit name/phone/company, so this widens WHAT can be edited, never WHO.
+  if (has('leadStatus')) {
+    const ls = typeof body.leadStatus === 'string' ? body.leadStatus : '';
+    if (ls && !LEAD_STATUS_VALUES.includes(ls)) return { ok: false, error: `leadStatus must be one of: ${LEAD_STATUS_VALUES.join(', ')}` };
+    v.leadStatus = ls;
+  }
+  if (has('owner')) {
+    const owner = typeof body.owner === 'string' ? body.owner.trim() : '';
+    if (owner.length > NAME_MAX) return { ok: false, error: `owner must be ≤ ${NAME_MAX} chars` };
+    v.owner = owner;
+  }
+  if (has('countryCode')) {
+    const cc = typeof body.countryCode === 'string' ? body.countryCode.trim().toUpperCase() : '';
+    if (cc && !/^[A-Z]{2}$/.test(cc)) return { ok: false, error: 'countryCode must be an ISO-3166 alpha-2 code' };
+    v.countryCode = cc;
+  }
   if (has('linkedQuoteId')) v.linkedQuoteId = safeId(body.linkedQuoteId);
   if (has('linkedAuditId')) v.linkedAuditId = safeId(body.linkedAuditId);
   return { ok: true, value: v };
@@ -133,6 +155,8 @@ function toItem(name: string, f: Record<string, unknown>) {
     countryCode:    typeof f.countryCode === 'string' ? f.countryCode : '',
     phoneCountry:   typeof f.phoneCountry === 'string' ? f.phoneCountry : '',
     lastActivityAt: typeof f.lastActivityAt === 'string' ? f.lastActivityAt : '',
+    owner:          typeof f.owner === 'string' ? f.owner : '',
+    lastMessage:    typeof f.lastMessage === 'string' ? f.lastMessage : '',
   };
 }
 

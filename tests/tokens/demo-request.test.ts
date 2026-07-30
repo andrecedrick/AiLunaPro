@@ -355,6 +355,21 @@ describe('demo request — lead reaches the CRM', () => {
     expect(String(doc.lastActivityAt)).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
+  it('carries the prospect message onto the contact so sales can prepare the call', async () => {
+    await submit(VALID);
+    // Previously the "what would you like to discuss?" text lived ONLY on the
+    // demo_requests lead, so a sales operator working the CRM could not see it.
+    expect(contacts()[0][1].lastMessage).toBe('Want a demo');
+    expect(contacts()[0][1].owner).toBe('');   // unassigned until an operator takes it
+  });
+
+  it('refreshes lastMessage on a returning lead', async () => {
+    await submit(VALID);
+    await submit({ ...VALID, message: 'Now about enterprise pricing' });
+    const patch = store.patches.filter(p => p.path.startsWith('organizations/org-1/contacts/')).pop()!.doc;
+    expect(patch.lastMessage).toBe('Now about enterprise pricing');
+  });
+
   it('updates the existing contact instead of creating a duplicate', async () => {
     store.writes.set('organizations/org-1/contacts/c-1', {
       contactId: 'c-1', name: 'Ada L.', email: 'typed@acme.com', emailKey: 'typed@acme.com',

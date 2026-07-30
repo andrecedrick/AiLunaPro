@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRoute } from '../../context/RouteContext';
 import { useAuth } from '../../context/AuthContext';
 import { useBilling } from '../../context/BillingContext';
 import { useToast } from '../../hooks/useToast';
 import { useLocale } from '../../context/LocaleContext';
 import { submitDemoRequest } from '../../lib/leads/demoRequestClient';
+import { usePreferences } from '../../context/PreferencesContext';
+import { countryOptions, searchCountries, toE164 } from '../../lib/geo/countries';
 
 export function CTABlock() {
   const { navigate } = useRoute();
@@ -160,26 +162,42 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
   const [name, setName]       = useState('');
   const [email, setEmail]     = useState('');
   const [company, setCompany] = useState('');
+  // Country + local number, composed into one E.164 value on submit. Free-text
+  // phone produced national-format leads ("0612345678") that carried no country
+  // at all, so the CRM could not tell sales which region to call.
+  const [country, setCountry] = useState('');
+  const [countryQuery, setCountryQuery] = useState('');
   const [phone, setPhone]     = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError]     = useState<string | null>(null);
   const T = useLocale();
+  const { language } = usePreferences();
+  // Localised through Intl.DisplayNames, so the directory ships ISO + dial codes
+  // only — no country-name translation blob in any locale file.
+  const allCountries = useMemo(() => countryOptions(language), [language]);
+  const countryList  = useMemo(() => searchCountries(allCountries, countryQuery), [allCountries, countryQuery]);
 
   // B2.2: actually persist the request (worker-only demo_requests store) —
   // success is only reported once the server confirmed the write.
   const onSend = async () => {
-    if (!name || !email || !phone || sending) return;
+    if (!name || !email || !country || !phone || sending) return;
+    if (!country) { setError(T.dashboardHome.cta.demoModal.errorCountry); return; }
+    // Compose E.164 from the selected country + the typed local number, so the
+    // worker always receives a fully-qualified number regardless of how the user
+    // typed it (trunk '0', spaces, or an already-international paste).
+    const e164 = toE164(country, phone);
     // Mirror of the server rule (isValidPhone): fail here with a clear message
     // instead of letting the worker reject the whole lead with a raw 400.
-    if (phone.replace(/\D/g, '').length < 7 || phone.replace(/\D/g, '').length > 15) {
+    const digits = e164.replace(/\D/g, '').length;
+    if (digits < 7 || digits > 15) {
       setError(T.dashboardHome.cta.demoModal.errorPhone);
       return;
     }
     setSending(true);
     setError(null);
     try {
-      await submitDemoRequest({ orgId, name, email, phone, company: company || undefined, message: message || undefined });
+      await submitDemoRequest({ orgId, name, email, phone: e164, company: company || undefined, message: message || undefined });
       onSubmitted();
     } catch (err) {
       setError(err instanceof Error ? err.message : T.dashboardHome.cta.demoModal.errorFallback);
@@ -213,7 +231,26 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
           <input value={email} onChange={e => setEmail(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderWorkEmail} type="email" style={inputStyle()} />
           <input value={company} onChange={e => setCompany(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderCompany} style={inputStyle()} />
           {/* Sales operators call demo leads back, so a reachable number is required
-              (same posture as support tickets). Validated server-side too. */}
+              (same posture as support tickets). Country is mandatory so the stored
+              number is always E.164 — validated server-side too. */}
+          <input
+            value={countryQuery}
+            onChange={e => setCountryQuery(e.target.value)}
+            placeholder={T.dashboardHome.cta.demoModal.countrySearch}
+            style={inputStyle()}
+            aria-label={T.dashboardHome.cta.demoModal.countrySearch}
+          />
+          <select
+            value={country}
+            onChange={e => setCountry(e.target.value)}
+            style={inputStyle()}
+            aria-label={T.dashboardHome.cta.demoModal.labelCountry}
+          >
+            <option value="">{T.dashboardHome.cta.demoModal.labelCountry}</option>
+            {countryList.map(o => (
+              <option key={o.iso} value={o.iso}>{o.name} ({o.dial})</option>
+            ))}
+          </select>
           <input value={phone} onChange={e => setPhone(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderPhone} type="tel" style={inputStyle()} />
           <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={T.dashboardHome.cta.demoModal.placeholderMessage} rows={3} style={{ ...inputStyle(), resize: 'vertical', fontFamily: 'inherit' }} />
         </div>
@@ -223,7 +260,7 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
           <button type="button" onClick={onClose} style={btnGhost()}>{T.dashboardHome.cta.demoModal.cancel}</button>
-          <button type="button" onClick={onSend} disabled={!name || !email || !phone || sending} style={btnPrimary(!name || !email || !phone || sending)}>
+          <button type="button" onClick={onSend} disabled={!name || !email || !country || !phone || sending} style={btnPrimary(!name || !email || !country || !phone || sending)}>
             {sending ? T.dashboardHome.cta.demoModal.submitting : T.dashboardHome.cta.demoModal.submit}
           </button>
         </div>

@@ -38,6 +38,8 @@ export interface LeadContactInput {
   countryCode:   string;
   /** International dialling prefix typed by the user, e.g. "+33". */
   phoneCountry:  string;
+  /** What the prospect asked to discuss. Sales needs it to prepare the call. */
+  message:       string;
   /** Verified uid of the submitter, recorded as provenance. */
   uid:           string;
 }
@@ -93,6 +95,10 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
     if (input.phone && !(typeof current?.phone === 'string' && current.phone)) patch.phone = input.phone;
     if (input.countryCode && !(typeof current?.countryCode === 'string' && current.countryCode)) patch.countryCode = input.countryCode;
     if (input.phoneCountry && !(typeof current?.phoneCountry === 'string' && current.phoneCountry)) patch.phoneCountry = input.phoneCountry;
+    // The latest ask, so an operator opening a returning lead sees what THIS
+    // request was about. Older text is preserved in the demo_requests lead, which
+    // remains the immutable per-request record.
+    if (input.message) patch.lastMessage = input.message;
     await firestoreSet(saJson, `${COLLECTION(input.orgId)}/${existingId}`, patch, { merge: true });
     return { contactId: existingId, created: false };
   }
@@ -109,6 +115,8 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
     countryCode:    input.countryCode,
     phoneCountry:   input.phoneCountry,
     company:        input.company,
+    lastMessage:    input.message,
+    owner:          '',          // unassigned until an operator takes the lead
     notes:          '',
     tags:           [],
     status:         'active',       // CRM record status (active/inactive/blocked)

@@ -8,7 +8,9 @@ import { WORKER_BASE } from '../billing/stripeClient';
 import { getIdToken } from '../team/teamApiClient';
 
 export type ContactStatus = 'active' | 'inactive' | 'blocked';
-export type ContactSource = 'worksheet' | 'quote' | 'manual' | 'visibility' | 'import';
+export type ContactSource = 'worksheet' | 'quote' | 'manual' | 'visibility' | 'import' | 'demo_request';
+/** Sales funnel stage. Distinct from ContactStatus (the CRM record state). */
+export type LeadStatus = '' | 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
 
 export interface Contact {
   contactId:     string;
@@ -26,6 +28,16 @@ export interface Contact {
   createdByUid:  string;
   createdAt:     string;
   updatedAt:     string;
+  // Written by the demo-request → CRM bridge. Manually-created contacts carry
+  // none of these, so each is optional and defaults at the API boundary.
+  identityEmail?:  string;
+  countryCode?:    string;
+  phoneCountry?:   string;
+  leadStatus?:     LeadStatus;
+  owner?:          string;
+  lastActivityAt?: string;
+  /** The prospect's most recent "what would you like to discuss?" text. */
+  lastMessage?:    string;
 }
 
 export interface ContactInput {
@@ -37,6 +49,9 @@ export interface ContactInput {
   notes?:         string;
   status?:        ContactStatus;
   source?:        ContactSource;
+  leadStatus?:    LeadStatus;
+  owner?:         string;
+  countryCode?:   string;
   linkedQuoteId?: string;
   linkedAuditId?: string;
 }

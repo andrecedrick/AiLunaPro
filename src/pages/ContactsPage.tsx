@@ -21,7 +21,7 @@ import {
   ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource,
 } from '../lib/contacts/contactsClient';
 
-const SOURCES: ContactSource[] = ['manual', 'quote', 'worksheet', 'visibility', 'import'];
+const SOURCES: ContactSource[] = ['manual', 'quote', 'worksheet', 'visibility', 'import', 'demo_request'];
 const STATUSES: ContactStatus[] = ['active', 'inactive', 'blocked'];
 
 const STATUS_COLOR: Record<ContactStatus, { bg: string; fg: string }> = {
@@ -182,6 +182,12 @@ export function ContactsPage() {
                 <th style={th}>{C.colEmail}</th>
                 <th style={th}>{C.colCompany}</th>
                 {readOnly && <th style={th}>{C.colOrg}</th>}
+                {/* Phone/country/lead-status were STORED by the demo-request bridge
+                    but had no column, so a sales operator could not see the number
+                    to call without opening Firestore. */}
+                <th style={th}>{C.phone}</th>
+                <th style={th}>{C.colCountry}</th>
+                <th style={th}>{C.colLeadStatus}</th>
                 <th style={th}>{C.colTags}</th>
                 <th style={th}>{C.colSource}</th>
                 <th style={th}>{C.colStatus}</th>
@@ -191,15 +197,21 @@ export function ContactsPage() {
             </thead>
             <tbody>
               {rows === null ? (
-                <tr><td style={td} colSpan={9}>{C.loading}</td></tr>
+                <tr><td style={td} colSpan={12}>{C.loading}</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td style={{ ...td, color: 'var(--text-muted)' }} colSpan={9}>{C.empty}</td></tr>
+                <tr><td style={{ ...td, color: 'var(--text-muted)' }} colSpan={12}>{C.empty}</td></tr>
               ) : filtered.map(c => (
                 <tr key={(c.orgId ?? '') + c.contactId} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ ...td, fontWeight: 600 }}>{c.name}</td>
                   <td style={td}>{c.email}</td>
                   <td style={td}>{c.company || '—'}</td>
                   {readOnly && <td style={{ ...td, fontFamily: 'monospace', fontSize: 11 }}>{c.orgId}</td>}
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                    {/* One click to call the lead back. */}
+                    {c.phone ? <a href={`tel:${c.phone}`} style={{ color: 'var(--violet-text)' }}>{c.phone}</a> : '—'}
+                  </td>
+                  <td style={{ ...td, color: 'var(--text-muted)' }}>{c.countryCode || c.phoneCountry || '—'}</td>
+                  <td style={td}>{c.leadStatus || '—'}</td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {c.tags.length ? c.tags.map(t => <span key={t} style={tagPill}>{t}</span>) : '—'}
