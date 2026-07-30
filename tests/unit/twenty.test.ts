@@ -134,7 +134,10 @@ describe('payload mapping — every commercially useful field survives', () => {
   it('links the note to the person as its own record', () => {
     // noteTarget has no companyId field in this workspace, so the link is
     // person-only; the person already carries companyId.
-    expect(noteTargetPayload('n-1', 'p-1')).toEqual({ noteId: 'n-1', personId: 'p-1' });
+    // Relation columns are target-PREFIXED in this workspace schema; the
+    // unprefixed names are rejected outright.
+    expect(noteTargetPayload('n-1', 'p-1')).toEqual({ noteId: 'n-1', targetPersonId: 'p-1' });
+    expect(noteTargetPayload('n-1', 'p-1', 'co-1')).toEqual({ noteId: 'n-1', targetPersonId: 'p-1', targetCompanyId: 'co-1' });
   });
 
   it('renders a placeholder rather than an empty section when no message was given', () => {

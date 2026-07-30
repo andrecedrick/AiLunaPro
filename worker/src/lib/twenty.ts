@@ -222,8 +222,16 @@ export function notePayload(lead: TwentyLead): Record<string, unknown> {
  * "One-to-many relation noteTargets field does not support write operations."
  * Each link is its own record, created after the note exists.
  */
-export function noteTargetPayload(noteId: string, personId: string): Record<string, unknown> {
-  return { noteId, personId };
+export function noteTargetPayload(noteId: string, personId: string, companyId?: string): Record<string, unknown> {
+  // The relation columns are target-PREFIXED. Confirmed against this workspace's
+  // OpenAPI document (components.schemas.NoteTarget), which declares noteId,
+  // targetPersonId, targetCompanyId and targetOpportunityId. The unprefixed names
+  // are rejected: "Object noteTarget doesn't have any \"personId\" field."
+  return {
+    noteId,
+    targetPersonId: personId,
+    ...(companyId ? { targetCompanyId: companyId } : {}),
+  };
 }
 
 /* ── Public API ─────────────────────────────────────────────────────────────── */
@@ -231,5 +239,5 @@ export function noteTargetPayload(noteId: string, personId: string): Record<stri
 export const createCompany = (k: string, u: string, lead: TwentyLead) => post(k, u, '/rest/companies', companyPayload(lead));
 export const createPerson  = (k: string, u: string, lead: TwentyLead, companyId?: string) => post(k, u, '/rest/people', personPayload(lead, companyId));
 export const createNote    = (k: string, u: string, lead: TwentyLead) => post(k, u, '/rest/notes', notePayload(lead));
-export const createNoteTarget = (k: string, u: string, noteId: string, personId: string) =>
-  post(k, u, '/rest/noteTargets', noteTargetPayload(noteId, personId));
+export const createNoteTarget = (k: string, u: string, noteId: string, personId: string, companyId?: string) =>
+  post(k, u, '/rest/noteTargets', noteTargetPayload(noteId, personId, companyId));
