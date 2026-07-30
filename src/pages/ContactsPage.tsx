@@ -17,6 +17,7 @@ import { useLocale } from '../context/LocaleContext';
 import { Button } from '../components/ui/Button';
 import { fetchPlatformMe } from '../lib/platform/platformService';
 import { contactsToCsv, csvFilename } from '../lib/contacts/contactsExport';
+import { ContactDetailPanel } from '../components/contacts/ContactDetailPanel';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
   ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource, type LeadStatus,
@@ -112,6 +113,16 @@ export function ContactsPage() {
       setDraft(null); await reload();
     } catch (e) { setFormErr(e instanceof ContactError ? e.code : 'SAVE_FAILED'); }
     finally { setSaving(false); }
+  };
+
+  // Detail panel: the full record, the read-only prospect request and the
+  // editable internal notes. The table can only show a scannable summary.
+  const [detail, setDetail] = useState<Contact | null>(null);
+  const saveNotes = async (notes: string) => {
+    if (!detail) return;
+    await patchContact(detail.orgId ?? orgId, detail.contactId, { notes });
+    setDetail({ ...detail, notes });
+    await reload();
   };
 
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -245,10 +256,21 @@ export function ContactsPage() {
                   {/* Preview only: a pasted brief can be 2000 characters and would
                       otherwise make one row taller than the viewport. Full text on
                       hover, so the table stays scannable. */}
-                  <td style={{ ...td, maxWidth: 240 }} title={c.lastMessage || ''}>
-                    <span style={{ display: 'block', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.lastMessage || '—'}
-                    </span>
+                  {/* Preview + an explicit way in. A hover tooltip is unreachable
+                      on touch and unreadable for a long brief, so the full text
+                      lives in the detail panel instead. */}
+                  <td style={{ ...td, maxWidth: 240 }}>
+                    <button
+                      type="button"
+                      onClick={() => setDetail(c)}
+                      style={{
+                        display: 'block', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap', background: 'none', border: 'none', padding: 0,
+                        font: 'inherit', color: 'var(--violet-text)', cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      {c.lastMessage || C.viewDetail}
+                    </button>
                   </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -322,6 +344,15 @@ export function ContactsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {detail && (
+        <ContactDetailPanel
+          contact={detail}
+          canEdit={canEditRow(detail)}
+          onClose={() => setDetail(null)}
+          onSaveNotes={saveNotes}
+        />
       )}
     </div>
   );

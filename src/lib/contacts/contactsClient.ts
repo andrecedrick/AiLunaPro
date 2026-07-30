@@ -38,6 +38,9 @@ export interface Contact {
   lastActivityAt?: string;
   /** The prospect's most recent "what would you like to discuss?" text. */
   lastMessage?:    string;
+  /** Reconciliation link into Twenty CRM. Empty for manually-created contacts. */
+  twentyPersonId?:  string;
+  twentyCompanyId?: string;
 }
 
 export interface ContactInput {

@@ -156,6 +156,10 @@ function toItem(name: string, f: Record<string, unknown>) {
     phoneCountry:   typeof f.phoneCountry === 'string' ? f.phoneCountry : '',
     lastActivityAt: typeof f.lastActivityAt === 'string' ? f.lastActivityAt : '',
     owner:          typeof f.owner === 'string' ? f.owner : '',
+    // Reconciliation link into Twenty. Written by the CRM push; empty for
+    // manually-created contacts and for leads captured before the integration.
+    twentyPersonId:  typeof f.twentyPersonId === 'string' ? f.twentyPersonId : '',
+    twentyCompanyId: typeof f.twentyCompanyId === 'string' ? f.twentyCompanyId : '',
     lastMessage:    typeof f.lastMessage === 'string' ? f.lastMessage : '',
   };
 }
