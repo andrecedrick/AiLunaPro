@@ -2361,7 +2361,6 @@ export const de: Dict = {
         "placeholderWorkEmail": "Geschäftliche E-Mail",
         "placeholderCompany": "Unternehmen",
         "labelCountry": "Land",
-        "countrySearch": "Land suchen…",
         "errorCountry": "Bitte wählen Sie ein Land aus.",
         "placeholderPhone": "Telefonnummer",
         "errorPhone": "Eine gültige Telefonnummer ist erforderlich.",

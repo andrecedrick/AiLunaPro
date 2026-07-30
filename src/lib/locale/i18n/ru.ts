@@ -2362,7 +2362,6 @@ export const ru: Dict = {
         "placeholderWorkEmail": "Рабочий email",
         "placeholderCompany": "Компания",
         "labelCountry": "Страна",
-        "countrySearch": "Поиск страны…",
         "errorCountry": "Пожалуйста, выберите страну.",
         "placeholderPhone": "Номер телефона",
         "errorPhone": "Требуется действительный номер телефона.",

@@ -18,7 +18,7 @@ import { Button } from '../components/ui/Button';
 import { fetchPlatformMe } from '../lib/platform/platformService';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
-  ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource,
+  ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource, type LeadStatus,
 } from '../lib/contacts/contactsClient';
 
 const SOURCES: ContactSource[] = ['manual', 'quote', 'worksheet', 'visibility', 'import', 'demo_request'];
@@ -30,8 +30,10 @@ const STATUS_COLOR: Record<ContactStatus, { bg: string; fg: string }> = {
   blocked:  { bg: 'rgba(239,68,68,0.12)',   fg: 'var(--red-text)' },
 };
 
-interface Draft { contactId?: string; name: string; email: string; phone: string; company: string; tagsText: string; notes: string; source: ContactSource; status: ContactStatus; }
-const emptyDraft = (): Draft => ({ name: '', email: '', phone: '', company: '', tagsText: '', notes: '', source: 'manual', status: 'active' });
+interface Draft { contactId?: string; name: string; email: string; phone: string; company: string; tagsText: string; notes: string; source: ContactSource; status: ContactStatus; leadStatus: LeadStatus; owner: string; }
+const emptyDraft = (): Draft => ({ name: '', email: '', phone: '', company: '', tagsText: '', notes: '', source: 'manual', status: 'active', leadStatus: '', owner: '' });
+/** Sales funnel stages an operator can set. Mirrors LEAD_STATUS_VALUES server-side. */
+const LEAD_STATUSES: LeadStatus[] = ['', 'new', 'contacted', 'qualified', 'won', 'lost'];
 
 export function ContactsPage() {
   const { session } = useAuth();
@@ -89,7 +91,7 @@ export function ContactsPage() {
   const openCreate = () => { setFormErr(null); setDraft(emptyDraft()); };
   const openEdit = (c: Contact) => {
     setFormErr(null);
-    setDraft({ contactId: c.contactId, name: c.name, email: c.email, phone: c.phone, company: c.company, tagsText: c.tags.join(', '), notes: c.notes, source: c.source, status: c.status });
+    setDraft({ contactId: c.contactId, name: c.name, email: c.email, phone: c.phone, company: c.company, tagsText: c.tags.join(', '), notes: c.notes, source: c.source, status: c.status, leadStatus: c.leadStatus ?? '', owner: c.owner ?? '' });
   };
 
   const submit = async () => {
@@ -99,6 +101,7 @@ export function ContactsPage() {
       name: draft.name, email: draft.email, phone: draft.phone, company: draft.company,
       tags: draft.tagsText.split(',').map(t => t.trim()).filter(Boolean),
       notes: draft.notes, source: draft.source,
+      leadStatus: draft.leadStatus, owner: draft.owner,
       // status only sent by managers (members cannot change it).
       ...(isManager ? { status: draft.status } : {}),
     };
@@ -188,6 +191,9 @@ export function ContactsPage() {
                 <th style={th}>{C.phone}</th>
                 <th style={th}>{C.colCountry}</th>
                 <th style={th}>{C.colLeadStatus}</th>
+                {/* What the prospect actually asked for. Without this an operator
+                    had to open Firestore to know what the call was about. */}
+                <th style={th}>{C.colLastMessage}</th>
                 <th style={th}>{C.colTags}</th>
                 <th style={th}>{C.colSource}</th>
                 <th style={th}>{C.colStatus}</th>
@@ -197,9 +203,9 @@ export function ContactsPage() {
             </thead>
             <tbody>
               {rows === null ? (
-                <tr><td style={td} colSpan={12}>{C.loading}</td></tr>
+                <tr><td style={td} colSpan={13}>{C.loading}</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td style={{ ...td, color: 'var(--text-muted)' }} colSpan={12}>{C.empty}</td></tr>
+                <tr><td style={{ ...td, color: 'var(--text-muted)' }} colSpan={13}>{C.empty}</td></tr>
               ) : filtered.map(c => (
                 <tr key={(c.orgId ?? '') + c.contactId} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ ...td, fontWeight: 600 }}>{c.name}</td>
@@ -212,6 +218,9 @@ export function ContactsPage() {
                   </td>
                   <td style={{ ...td, color: 'var(--text-muted)' }}>{c.countryCode || c.phoneCountry || '—'}</td>
                   <td style={td}>{c.leadStatus || '—'}</td>
+                  <td style={{ ...td, maxWidth: 260 }} title={c.lastMessage || ''}>
+                    {c.lastMessage || '—'}
+                  </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {c.tags.length ? c.tags.map(t => <span key={t} style={tagPill}>{t}</span>) : '—'}
@@ -264,6 +273,14 @@ export function ContactsPage() {
               )}
             </div>
             <div style={{ marginTop: 12 }}>
+              {/* Sales pipeline. Same org roles that may already edit name/phone —
+                  this widens WHAT is editable, never WHO may edit. */}
+              <Labeled label={C.colLeadStatus}>
+                <select value={draft.leadStatus} onChange={e => setDraft({ ...draft, leadStatus: e.target.value as LeadStatus })} style={field}>
+                  {LEAD_STATUSES.map(s => <option key={s || 'none'} value={s}>{s || '—'}</option>)}
+                </select>
+              </Labeled>
+              <Labeled label={C.colOwner}><input value={draft.owner} onChange={e => setDraft({ ...draft, owner: e.target.value })} style={field} /></Labeled>
               <Labeled label={C.tagsLabel}><input value={draft.tagsText} onChange={e => setDraft({ ...draft, tagsText: e.target.value })} placeholder={C.tagsPlaceholder} style={{ ...field, width: '100%' }} /></Labeled>
             </div>
             <div style={{ marginTop: 12 }}>

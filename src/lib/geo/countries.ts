@@ -38,8 +38,6 @@ export interface CountryOption {
   dial:     string;
   /** Localised country name, or the ISO code when Intl cannot resolve it. */
   name:     string;
-  /** Pre-lowercased "name iso dial" haystack for substring search. */
-  haystack: string;
 }
 
 /** Localised country name for an ISO code. Falls back to the code itself. */
@@ -57,16 +55,9 @@ export function countryOptions(locale: string): CountryOption[] {
     .map(([iso, code]) => {
       const name = countryName(iso, locale);
       const dial = `+${code}`;
-      return { iso, dial, name, haystack: `${name} ${iso} ${dial}`.toLowerCase() };
+      return { iso, dial, name };
     })
     .sort((a, b) => a.name.localeCompare(b.name, locale));
-}
-
-/** Filter the directory by a free-text query over name, ISO code and dial code. */
-export function searchCountries(options: CountryOption[], query: string): CountryOption[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return options;
-  return options.filter(o => o.haystack.includes(q));
 }
 
 /**

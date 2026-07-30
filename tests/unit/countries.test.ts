@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { COUNTRY_DIAL_CODES, countryOptions, searchCountries, toE164 } from '../../src/lib/geo/countries';
+import { COUNTRY_DIAL_CODES, countryOptions, toE164 } from '../../src/lib/geo/countries';
 import { phoneCountryIso } from '../../worker/src/lib/phone-country';
 
 /*
@@ -69,13 +69,13 @@ describe('country directory', () => {
     expect(fr.find(o => o.iso === 'DE')?.name).toBe('Allemagne');
   });
 
-  it('search matches on name, ISO code and dial code', () => {
+  it('exposes the whole directory — the UI relies on a native select, not a filter', () => {
+    // A separate search box was removed: it rendered as an empty field above the
+    // selector that users had to skip past, and a native <select> already
+    // type-aheads. countryOptions is therefore the complete list, unfiltered.
     const opts = countryOptions('en');
-    expect(searchCountries(opts, 'franc').map(o => o.iso)).toContain('FR');
-    expect(searchCountries(opts, 'FR').map(o => o.iso)).toContain('FR');
-    expect(searchCountries(opts, '+33').map(o => o.iso)).toContain('FR');
-    expect(searchCountries(opts, '')).toHaveLength(opts.length);
-    expect(searchCountries(opts, 'zzzz')).toHaveLength(0);
+    expect(opts.map(o => o.iso)).toContain('FR');
+    expect(opts).toHaveLength(Object.keys(COUNTRY_DIAL_CODES).length);
   });
 });
 

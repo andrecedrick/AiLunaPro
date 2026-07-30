@@ -2245,7 +2245,6 @@ export const en = {
         "placeholderWorkEmail": "Work email",
         "placeholderCompany": "Company",
         "labelCountry": "Country",
-        "countrySearch": "Search a country…",
         "errorCountry": "Please select a country.",
         "placeholderPhone": "Phone number",
         "errorPhone": "A valid phone number is required.",

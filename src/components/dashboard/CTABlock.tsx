@@ -6,7 +6,7 @@ import { useToast } from '../../hooks/useToast';
 import { useLocale } from '../../context/LocaleContext';
 import { submitDemoRequest } from '../../lib/leads/demoRequestClient';
 import { usePreferences } from '../../context/PreferencesContext';
-import { countryOptions, searchCountries, toE164 } from '../../lib/geo/countries';
+import { countryOptions, toE164 } from '../../lib/geo/countries';
 
 export function CTABlock() {
   const { navigate } = useRoute();
@@ -166,7 +166,6 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
   // phone produced national-format leads ("0612345678") that carried no country
   // at all, so the CRM could not tell sales which region to call.
   const [country, setCountry] = useState('');
-  const [countryQuery, setCountryQuery] = useState('');
   const [phone, setPhone]     = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -175,8 +174,7 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
   const { language } = usePreferences();
   // Localised through Intl.DisplayNames, so the directory ships ISO + dial codes
   // only — no country-name translation blob in any locale file.
-  const allCountries = useMemo(() => countryOptions(language), [language]);
-  const countryList  = useMemo(() => searchCountries(allCountries, countryQuery), [allCountries, countryQuery]);
+  const countryList = useMemo(() => countryOptions(language), [language]);
 
   // B2.2: actually persist the request (worker-only demo_requests store) —
   // success is only reported once the server confirmed the write.
@@ -233,13 +231,8 @@ function DemoModal({ onClose, orgId, onSubmitted }: { onClose: () => void; orgId
           {/* Sales operators call demo leads back, so a reachable number is required
               (same posture as support tickets). Country is mandatory so the stored
               number is always E.164 — validated server-side too. */}
-          <input
-            value={countryQuery}
-            onChange={e => setCountryQuery(e.target.value)}
-            placeholder={T.dashboardHome.cta.demoModal.countrySearch}
-            style={inputStyle()}
-            aria-label={T.dashboardHome.cta.demoModal.countrySearch}
-          />
+          {/* No separate search box: a native <select> already type-aheads, so the
+              extra field was an empty control users had to skip past. */}
           <select
             value={country}
             onChange={e => setCountry(e.target.value)}

@@ -2363,7 +2363,6 @@ export const zh: Dict = {
         "placeholderWorkEmail": "工作邮箱",
         "placeholderCompany": "公司",
         "labelCountry": "国家/地区",
-        "countrySearch": "搜索国家/地区…",
         "errorCountry": "请选择国家/地区。",
         "placeholderPhone": "电话号码",
         "errorPhone": "需要有效的电话号码。",
