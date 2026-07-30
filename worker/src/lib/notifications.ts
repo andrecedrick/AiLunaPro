@@ -79,6 +79,7 @@ export function routeForAlertKind(kind: string): { route: string; type: string }
     case 'demo_request_received':    return { route: 'admin', type: 'demo' };
     case 'demo_visibility_failed':   return { route: 'admin', type: 'demo' };
     case 'lead_contact_failed':      return { route: 'contacts', type: 'demo' };
+    case 'crm_push_failed':           return { route: 'admin', type: 'demo' };
     case 'topup_credit_failed':
     case 'topup_credit_recovered':
     case 'invoice_amount_mismatch':  return { route: 'admin', type: 'token' };

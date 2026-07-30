@@ -53,3 +53,24 @@ export function phoneCountryIso(normalizedPhone: string): string {
   }
   return '';
 }
+
+/**
+ * Split an E.164 number into its calling code and national number.
+ *
+ * Uses the SAME longest-match table as phoneCountryIso rather than a regex. A
+ * pattern like /^\+(\d{1,4})(\d+)$/ is greedy and silently wrong: it splits
+ * "+33612345678" into "+3361" / "2345678". Prefixes are variable length and not
+ * self-delimiting, so only a table can split them correctly.
+ *
+ * An unknown prefix or a national-format number yields an empty calling code and
+ * the digits untouched — never an invented split.
+ */
+export function splitE164(normalizedPhone: string): { callingCode: string; national: string } {
+  const trimmed = normalizedPhone.trim();
+  if (!trimmed.startsWith('+')) return { callingCode: '', national: trimmed.replace(/\D/g, '') };
+  const digits = trimmed.slice(1).replace(/\D/g, '');
+  for (const [, code] of BY_LENGTH) {
+    if (digits.startsWith(code)) return { callingCode: `+${code}`, national: digits.slice(code.length) };
+  }
+  return { callingCode: '', national: digits };
+}

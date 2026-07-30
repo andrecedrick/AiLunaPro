@@ -24,6 +24,7 @@ export type BillingAlertKind =
   | 'demo_request_received'      // a customer asked to be contacted for a demo (COMMERCIAL LEAD)
   | 'demo_visibility_failed'     // the operator demo-request panel could NOT read its leads
   | 'lead_contact_failed'        // a lead was captured but did NOT reach the CRM
+  | 'crm_push_failed'             // a lead was captured but did NOT reach Twenty CRM
   | 'notification_email_failed'; // a notification email did NOT send — makes silent failures visible
 
 export interface BillingAlertInput {

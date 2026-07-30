@@ -23,6 +23,19 @@ const store = vi.hoisted(() => ({
   setThrowsOn: null as string | null,
   queryThrows: false,
   patches: [] as Array<{ path: string; doc: Record<string, unknown>; merge: boolean }>,
+  crmCalls: [] as Array<{ path: string; body: unknown }>,
+  crmFails: false,
+  crmSeq: 0,
+}));
+
+// Twenty CRM is reached over plain fetch; intercept it so no test ever performs a
+// real outbound call, and so the exact push sequence can be asserted.
+vi.stubGlobal("fetch", vi.fn(async (url: string, init?: { body?: string }) => {
+  const path = new URL(String(url)).pathname;
+  store.crmCalls.push({ path, body: JSON.parse(init?.body ?? "{}") });
+  if (store.crmFails) return { ok: false, status: 400, text: async () => JSON.stringify({ message: "bad field" }) } as unknown as Response;
+  store.crmSeq += 1;
+  return { ok: true, status: 200, json: async () => ({ data: { record: { id: `id-${store.crmSeq}` } } }) } as unknown as Response;
 }));
 
 vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
@@ -108,6 +121,9 @@ beforeEach(() => {
   store.setThrowsOn = null;
   store.queryThrows = false;
   store.patches = [];
+  store.crmCalls = [];
+  store.crmFails = false;
+  store.crmSeq = 0;
   vi.resetModules();
 });
 
@@ -417,6 +433,59 @@ describe('demo request — lead reaches the CRM', () => {
     const before = contacts().length;
     await submit(VALID);                                // same content, same window
     expect(contacts()).toHaveLength(before);
+  });
+});
+
+describe('demo request — Twenty CRM push', () => {
+  const CRM_ENV = { ...ENV, TWENTY_API_KEY: 'tk', TWENTY_BASE_URL: 'https://ailunapro.twenty.com' };
+  const contacts = () => [...store.writes.entries()].filter(([k]) => k.startsWith('organizations/org-1/contacts/'));
+
+  it('creates company, person and note, then records the ids for idempotency', async () => {
+    await submit(VALID, CRM_ENV);
+    expect(store.crmCalls.map(c => c.path)).toEqual(['/rest/companies', '/rest/people', '/rest/notes']);
+    expect(contacts()[0][1]).toMatchObject({ twentyPersonId: 'id-2', twentyCompanyId: 'id-1' });
+  });
+
+  it('a returning prospect adds only a NOTE — never a second person', async () => {
+    await submit(VALID, CRM_ENV);
+    store.crmCalls = [];
+    // Different message → a new lead (new dedup bucket content), same contact.
+    await submit({ ...VALID, message: 'Following up' }, CRM_ENV);
+    expect(store.crmCalls.map(c => c.path)).toEqual(['/rest/notes']);
+  });
+
+  it('sends the prospect message in the note body', async () => {
+    await submit(VALID, CRM_ENV);
+    const note = store.crmCalls.find(c => c.path === '/rest/notes')!;
+    expect(JSON.stringify(note.body)).toContain('Want a demo');
+  });
+
+  it('a CRM failure raises a critical alert and never loses the lead', async () => {
+    store.crmFails = true;
+    const res = await submit(VALID, CRM_ENV);
+
+    expect(res.status).toBe(200);                    // the lead still succeeded
+    expect(find('demo_requests/')).toBeDefined();
+    const alert = find('platform_alerts/crm_push_failed__');
+    expect(alert).toBeDefined();
+    expect(alert?.[1]).toMatchObject({ kind: 'crm_push_failed', severity: 'critical' });
+  });
+
+  it('is skipped entirely when Twenty is not configured — no alert storm', async () => {
+    await submit(VALID);                             // ENV has no TWENTY_* keys
+    expect(store.crmCalls).toHaveLength(0);
+    // An unconfigured integration is a deliberate state, not a failure.
+    expect(find('platform_alerts/crm_push_failed__')).toBeUndefined();
+    expect(find('demo_requests/')).toBeDefined();
+  });
+
+  it('never pushes tenant contact data — only the demo lead', async () => {
+    await submit(VALID, CRM_ENV);
+    // Every outbound body must relate to THIS lead. A payload containing another
+    // contact would mean customer-owned data leaving Firestore.
+    const blob = JSON.stringify(store.crmCalls.map(c => c.body));
+    expect(blob).toContain('typed@acme.com');
+    expect(blob).not.toContain('organizations/');
   });
 });
 

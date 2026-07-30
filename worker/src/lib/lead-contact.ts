@@ -47,6 +47,16 @@ export interface LeadContactInput {
 export interface LeadContactResult {
   contactId: string;
   created:   boolean;
+  /**
+   * Twenty CRM ids already recorded on this contact, when any.
+   *
+   * The contact doubles as the idempotency LEDGER for the CRM push: a returning
+   * prospect gets a NEW lead (different dedup bucket) but must not get a second
+   * Person in Twenty. Because the contact is deduped by email, a non-empty
+   * personId here means "already pushed" — so the push adds only a Note.
+   */
+  twentyPersonId:  string;
+  twentyCompanyId: string;
 }
 
 function genId(): string {
@@ -100,7 +110,12 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
     // remains the immutable per-request record.
     if (input.message) patch.lastMessage = input.message;
     await firestoreSet(saJson, `${COLLECTION(input.orgId)}/${existingId}`, patch, { merge: true });
-    return { contactId: existingId, created: false };
+    const str = (v: unknown) => (typeof v === 'string' ? v : '');
+    return {
+      contactId: existingId, created: false,
+      twentyPersonId:  str(current?.twentyPersonId),
+      twentyCompanyId: str(current?.twentyCompanyId),
+    };
   }
 
   const contactId = genId();
@@ -122,6 +137,8 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
     status:         'active',       // CRM record status (active/inactive/blocked)
     leadStatus:     'new',          // sales pipeline stage, distinct from `status`
     source:         'demo_request',
+    twentyPersonId: '',   // filled by the CRM push; also its idempotency key
+    twentyCompanyId: '',
     linkedQuoteId:  '',
     linkedAuditId:  '',
     createdByUid:   input.uid,
@@ -129,5 +146,5 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
     lastActivityAt: now,
     updatedAt:      now,
   });
-  return { contactId, created: true };
+  return { contactId, created: true, twentyPersonId: '', twentyCompanyId: '' };
 }
