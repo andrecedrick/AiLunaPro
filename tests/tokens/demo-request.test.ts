@@ -445,7 +445,7 @@ describe('demo request — Twenty CRM push', () => {
 
   it('creates company, person and note, then records the ids for idempotency', async () => {
     await submit(VALID, CRM_ENV);
-    expect(store.crmCalls.map(c => c.path)).toEqual(['/rest/companies', '/rest/people', '/rest/notes']);
+    expect(store.crmCalls.map(c => c.path)).toEqual(['/rest/companies', '/rest/people', '/rest/notes', '/rest/noteTargets']);
     expect(contacts()[0][1]).toMatchObject({ twentyPersonId: 'id-2', twentyCompanyId: 'id-1' });
   });
 
@@ -454,7 +454,7 @@ describe('demo request — Twenty CRM push', () => {
     store.crmCalls = [];
     // Different message → a new lead (new dedup bucket content), same contact.
     await submit({ ...VALID, message: 'Following up' }, CRM_ENV);
-    expect(store.crmCalls.map(c => c.path)).toEqual(['/rest/notes']);
+    expect(store.crmCalls.map(c => c.path)).toEqual(['/rest/notes', '/rest/noteTargets']);
   });
 
   it('sends the prospect message in the note body', async () => {

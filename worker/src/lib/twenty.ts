@@ -30,8 +30,18 @@ export interface TwentyResult<T = string> {
   error?: string;
 }
 
-/** Strip the workspace host's trailing slash so path joins stay predictable. */
-const base = (url: string): string => url.replace(/\/+$/, '');
+/**
+ * Normalise the configured base URL to a bare origin.
+ *
+ * TWENTY_BASE_URL was set to `https://api.twenty.com/rest`, which already carries
+ * the `/rest` prefix this client appends — producing `/rest/rest/companies`.
+ * Twenty reads the second segment as a record id and rejects the call with
+ * `'companies' is not a valid UUID`, so every create failed with a 400 that named
+ * a field nobody sent. Both `https://host` and `https://host/rest` are now
+ * accepted, because the value is operator-configured and either is a reasonable
+ * thing to paste.
+ */
+export const base = (url: string): string => url.replace(/\/+$/, '').replace(/\/rest$/i, '');
 
 /**
  * POST a record and return its id.
@@ -182,12 +192,11 @@ export function personPayload(lead: TwentyLead, companyId?: string): Record<stri
       primaryPhoneCallingCode:  phone.callingCode,
       primaryPhoneCountryCode:  phone.countryCode,
     },
-    city: lead.countryCode,
     ...(companyId ? { companyId } : {}),
   };
 }
 
-export function notePayload(lead: TwentyLead, personId: string, companyId?: string): Record<string, unknown> {
+export function notePayload(lead: TwentyLead): Record<string, unknown> {
   return {
     title: `Demo request — ${lead.source}`,
     bodyV2: {
@@ -203,15 +212,24 @@ export function notePayload(lead: TwentyLead, personId: string, companyId?: stri
         `Lead id: ${lead.leadId}`,
       ].join('\n'),
     },
-    noteTargets: [
-      { personId },
-      ...(companyId ? [{ companyId }] : []),
-    ],
   };
+}
+
+/**
+ * Note → record links.
+ *
+ * noteTargets CANNOT be written inline on the note: Twenty answers
+ * "One-to-many relation noteTargets field does not support write operations."
+ * Each link is its own record, created after the note exists.
+ */
+export function noteTargetPayload(noteId: string, personId: string): Record<string, unknown> {
+  return { noteId, personId };
 }
 
 /* ── Public API ─────────────────────────────────────────────────────────────── */
 
 export const createCompany = (k: string, u: string, lead: TwentyLead) => post(k, u, '/rest/companies', companyPayload(lead));
 export const createPerson  = (k: string, u: string, lead: TwentyLead, companyId?: string) => post(k, u, '/rest/people', personPayload(lead, companyId));
-export const createNote    = (k: string, u: string, lead: TwentyLead, personId: string, companyId?: string) => post(k, u, '/rest/notes', notePayload(lead, personId, companyId));
+export const createNote    = (k: string, u: string, lead: TwentyLead) => post(k, u, '/rest/notes', notePayload(lead));
+export const createNoteTarget = (k: string, u: string, noteId: string, personId: string) =>
+  post(k, u, '/rest/noteTargets', noteTargetPayload(noteId, personId));

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitName, splitPhone, companyPayload, personPayload, notePayload, extractId, type TwentyLead } from '../../worker/src/lib/twenty';
+import { base, splitName, splitPhone, companyPayload, personPayload, notePayload, noteTargetPayload, extractId, type TwentyLead } from '../../worker/src/lib/twenty';
 
 /*
  * Twenty CRM payload mapping.
@@ -28,6 +28,25 @@ const LEAD: TwentyLead = {
   createdAt:     '2026-07-30T10:00:00.000Z',
   leadId:        'dr_abc_123',
 };
+
+describe('base — tolerates a configured URL that already carries /rest', () => {
+  it.each([
+    ['https://api.twenty.com',        'https://api.twenty.com'],
+    ['https://api.twenty.com/',       'https://api.twenty.com'],
+    ['https://api.twenty.com/rest',   'https://api.twenty.com'],
+    ['https://api.twenty.com/rest/',  'https://api.twenty.com'],
+    ['https://ailunapro.twenty.com',  'https://ailunapro.twenty.com'],
+  ])('%s → %s', (input, expected) => {
+    expect(base(input)).toBe(expected);
+  });
+
+  it('never produces a doubled /rest segment', () => {
+    // The production incident: base was https://api.twenty.com/rest, the client
+    // appended /rest/companies, and Twenty read 'companies' as a record id —
+    // "'companies' is not a valid UUID" on every create.
+    expect(`${base('https://api.twenty.com/rest')}/rest/companies`).toBe('https://api.twenty.com/rest/companies');
+  });
+});
 
 describe('extractId — a create with no id is not a success', () => {
   it.each([
@@ -87,6 +106,8 @@ describe('payload mapping — every commercially useful field survives', () => {
       primaryPhoneNumber: '612345678', primaryPhoneCallingCode: '+33', primaryPhoneCountryCode: 'FR',
     });
     expect(p.companyId).toBe('co-1');
+    // "Object person doesn't have any \"city\" field" — must not be sent.
+    expect(p).not.toHaveProperty('city');
   });
 
   it('does not repeat the identity email when it equals the contact email', () => {
@@ -98,23 +119,26 @@ describe('payload mapping — every commercially useful field survives', () => {
     expect(personPayload(LEAD)).not.toHaveProperty('companyId');
   });
 
-  it('note carries the prospect message and links to the person', () => {
-    const n = notePayload(LEAD, 'p-1', 'co-1') as Record<string, never>;
+  it('note carries the prospect message', () => {
+    const n = notePayload(LEAD) as Record<string, never>;
     const md = (n.bodyV2 as unknown as { markdown: string }).markdown;
     expect(md).toContain('Want a demo of the audit engine');
     expect(md).toContain('ada@acme.com');
     expect(md).toContain('+33612345678');
     expect(md).toContain('dr_abc_123');          // reconciliation link back to the lead
-    expect(n.noteTargets).toEqual([{ personId: 'p-1' }, { companyId: 'co-1' }]);
+    // noteTargets is a one-to-many relation: Twenty answers "does not support
+    // write operations" if it is sent inline, so it must NOT be on the note.
+    expect(n).not.toHaveProperty('noteTargets');
   });
 
-  it('note still links to the person when there is no company', () => {
-    const n = notePayload(LEAD, 'p-1') as Record<string, never>;
-    expect(n.noteTargets).toEqual([{ personId: 'p-1' }]);
+  it('links the note to the person as its own record', () => {
+    // noteTarget has no companyId field in this workspace, so the link is
+    // person-only; the person already carries companyId.
+    expect(noteTargetPayload('n-1', 'p-1')).toEqual({ noteId: 'n-1', personId: 'p-1' });
   });
 
   it('renders a placeholder rather than an empty section when no message was given', () => {
-    const n = notePayload({ ...LEAD, message: '' }, 'p-1') as Record<string, never>;
+    const n = notePayload({ ...LEAD, message: '' }) as Record<string, never>;
     expect((n.bodyV2 as unknown as { markdown: string }).markdown).toContain('(no message provided)');
   });
 });
