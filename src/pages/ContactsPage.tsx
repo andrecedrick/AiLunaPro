@@ -165,7 +165,13 @@ export function ContactsPage() {
               <button onClick={() => setMode('all')} style={{ ...toggleBtn, ...(mode === 'all' ? toggleOn : {}) }}>{C.modeAll}</button>
             </div>
           )}
-          <Button variant="secondary" size="md" onClick={exportCsv} disabled={!filtered.length}>{C.exportCsv}</Button>
+          {/* Export is Super Admin only. It bundles customer PII (name, email,
+              phone) into a file that leaves the app, so it is not offered to
+              ordinary org roles even though they can already read those same
+              contacts in the table. */}
+          {isSuperAdmin && (
+            <Button variant="secondary" size="md" onClick={exportCsv} disabled={!filtered.length}>{C.exportCsv}</Button>
+          )}
           {!readOnly && isContentRole && (
             <Button variant="primary" size="md" onClick={openCreate}>{C.create}</Button>
           )}
