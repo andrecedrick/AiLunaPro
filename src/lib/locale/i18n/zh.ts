@@ -3358,6 +3358,8 @@ export const zh: Dict = {
     colLastActivity: "最近活动",
     colOwner: "负责人",
     colLastMessage: "最新请求",
+    exportCsv: "导出 CSV",
+    viewDetail: "查看",
     colStatus: "状态",
     colCreated: "创建时间",
     colActions: "操作",

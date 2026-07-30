@@ -3357,6 +3357,8 @@ export const ru: Dict = {
     colLastActivity: "Последняя активность",
     colOwner: "Ответственный",
     colLastMessage: "Последний запрос",
+    exportCsv: "Экспорт CSV",
+    viewDetail: "Открыть",
     colStatus: "Статус",
     colCreated: "Создан",
     colActions: "Действия",

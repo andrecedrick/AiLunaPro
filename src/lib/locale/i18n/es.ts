@@ -3356,6 +3356,8 @@ export const es: Dict = {
     colLastActivity: "Última actividad",
     colOwner: "Responsable",
     colLastMessage: "Última solicitud",
+    exportCsv: "Exportar CSV",
+    viewDetail: "Ver",
     colStatus: "Estado",
     colCreated: "Creado",
     colActions: "Acciones",

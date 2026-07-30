@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocale } from '../context/LocaleContext';
 import { Button } from '../components/ui/Button';
 import { fetchPlatformMe } from '../lib/platform/platformService';
+import { contactsToCsv, csvFilename } from '../lib/contacts/contactsExport';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
   ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource, type LeadStatus,
@@ -127,6 +128,22 @@ export function ContactsPage() {
     finally { setBusyId(null); }
   };
 
+  /**
+   * Export what the operator is actually looking at. `filtered` already has the
+   * search, tag, source and status filters applied, so the CSV matches the
+   * screen — exporting `rows` would hand over records deliberately filtered
+   * away, including other organisations' contacts in the cross-org view.
+   */
+  const exportCsv = () => {
+    const blob = new Blob([contactsToCsv(filtered)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = csvFilename();
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const canEditRow = (c: Contact) => !readOnly && (isManager || c.createdByUid === (session?.userId ?? ''));
   const errMsg = (code: string) => (C.errors as Record<string, string>)[code] ?? code;
 
@@ -148,6 +165,7 @@ export function ContactsPage() {
               <button onClick={() => setMode('all')} style={{ ...toggleBtn, ...(mode === 'all' ? toggleOn : {}) }}>{C.modeAll}</button>
             </div>
           )}
+          <Button variant="secondary" size="md" onClick={exportCsv} disabled={!filtered.length}>{C.exportCsv}</Button>
           {!readOnly && isContentRole && (
             <Button variant="primary" size="md" onClick={openCreate}>{C.create}</Button>
           )}
@@ -218,8 +236,13 @@ export function ContactsPage() {
                   </td>
                   <td style={{ ...td, color: 'var(--text-muted)' }}>{c.countryCode || c.phoneCountry || '—'}</td>
                   <td style={td}>{c.leadStatus || '—'}</td>
-                  <td style={{ ...td, maxWidth: 260 }} title={c.lastMessage || ''}>
-                    {c.lastMessage || '—'}
+                  {/* Preview only: a pasted brief can be 2000 characters and would
+                      otherwise make one row taller than the viewport. Full text on
+                      hover, so the table stays scannable. */}
+                  <td style={{ ...td, maxWidth: 240 }} title={c.lastMessage || ''}>
+                    <span style={{ display: 'block', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.lastMessage || '—'}
+                    </span>
                   </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

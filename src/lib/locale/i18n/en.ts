@@ -3372,6 +3372,8 @@ export const en = {
     colLastActivity: "Last activity",
     colOwner: "Owner",
     colLastMessage: "Latest request",
+    exportCsv: "Export CSV",
+    viewDetail: "View",
     colStatus: "Status",
     colCreated: "Created",
     colActions: "Actions",
