@@ -19,6 +19,7 @@ import { fetchPlatformMe } from '../lib/platform/platformService';
 import { contactsToCsv, csvFilename } from '../lib/contacts/contactsExport';
 import { ContactDetailPanel } from '../components/contacts/ContactDetailPanel';
 import { useViewport } from '../lib/ui/useViewport';
+import { messagePreview } from '../lib/contacts/messagePreview';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
   ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource, type LeadStatus,
@@ -305,9 +306,10 @@ export function ContactsPage() {
                   {/* Preview only: a pasted brief can be 2000 characters and would
                       otherwise make one row taller than the viewport. Full text on
                       hover, so the table stays scannable. */}
-                  {/* Preview + an explicit way in. A hover tooltip is unreachable
-                      on touch and unreadable for a long brief, so the full text
-                      lives in the detail panel instead. */}
+                  {/* Preview ONLY — capped at 80 characters in the string, not
+                      merely clipped by CSS. The full request lives solely in the
+                      detail panel; a hover tooltip is unreachable on touch and
+                      unreadable for a long brief. */}
                   <td style={{ ...td, maxWidth: 240 }}>
                     <button
                       type="button"
@@ -318,7 +320,7 @@ export function ContactsPage() {
                         font: 'inherit', color: 'var(--violet-text)', cursor: 'pointer', textAlign: 'left',
                       }}
                     >
-                      {c.lastMessage || C.viewDetail}
+                      {messagePreview(c.lastMessage) || C.viewDetail}
                     </button>
                   </td>
                   <td style={td}>
