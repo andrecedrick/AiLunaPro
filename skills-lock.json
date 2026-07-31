@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "firebase-auth-basics": {
+      "source": "firebase/skills",
+      "sourceType": "github",
+      "skillPath": "skills/firebase-auth-basics/SKILL.md",
+      "computedHash": "4499186c77ea2ba52ad2e0e9ef24f0a07713d09c4b437d8868f8877a673a8e4e"
+    },
+    "firebase-security-rules-auditor": {
+      "source": "firebase/skills",
+      "sourceType": "github",
+      "skillPath": "skills/firebase-security-rules-auditor/SKILL.md",
+      "computedHash": "5bace0582d47be000675799dbadadec7844837ee9dbec9dc30f97ea3a23ca36e"
+    },
     "sequenzy-email-marketing": {
       "source": "Sequenzy/skills",
       "sourceType": "github",

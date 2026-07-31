@@ -109,6 +109,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { mountedRef.current = false; };
   }, []);
 
+  /*
+   * Signup → CRM.
+   *
+   * A registered user reached NEITHER CRM: upsertLeadContact and the Twenty
+   * client had one caller between them (the demo-request route), so an account
+   * created through #/signup existed only as a Firebase user plus its org/member
+   * documents.
+   *
+   * It fires here, on the session gaining an orgId, rather than at signup:
+   * signup creates no organisation (it navigates to #/org/create), and the CRM
+   * route is org-scoped and re-verifies membership — at signup there is nothing
+   * to be a member of. createOrg is fire-and-forget and sets orgId inside a
+   * .then(), so reading session.orgId at the call site would be stale; watching
+   * the transition is the only reliable trigger.
+   *
+   * pushSignupToCrm is gated on the signup stash, so an ordinary login is a
+   * no-op. Best-effort: the account already exists, and the worker raises a
+   * durable alert on failure.
+   */
+  const crmPushedRef = useRef(false);
+  useEffect(() => {
+    const orgId = session?.orgId;
+    if (!orgId || crmPushedRef.current) return;
+    crmPushedRef.current = true;
+    void import('../lib/crm/signupCrmClient').then(m => m.pushSignupToCrm(orgId));
+  }, [session?.orgId]);
+
   useEffect(() => {
     if (LAYER !== 'firebase') return;
 

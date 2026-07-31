@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AuthCard } from '../components/auth/AuthCard';
 import { AuthInput, FormField } from '../components/auth/FormField';
 import { Button } from '../components/ui/Button';
@@ -8,15 +8,25 @@ import { useLocale } from '../context/LocaleContext';
 import { signupValidate } from '../utils/validators/auth';
 import { track } from '../lib/analytics/track';
 import type { FormErrors } from '../types/form';
+import { usePreferences } from '../context/PreferencesContext';
+import { countryOptions, toE164 } from '../lib/geo/countries';
+import { stashSignupCrm } from '../lib/crm/signupCrmClient';
 
 export function SignupPage() {
   const { signup } = useAuth();
   const { navigate } = useRoute();
   const A = useLocale().auth;
+  const D = useLocale().dashboardHome.cta.demoModal;
+  const { language } = usePreferences();
+  const countryList = useMemo(() => countryOptions(language), [language]);
 
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
+  // Country + local number, composed into E.164. Sales calls new accounts back,
+  // and a national-format number carries no region at all.
+  const [country, setCountry] = useState('');
+  const [phone,   setPhone]   = useState('');
   const [errors,   setErrors]   = useState<FormErrors>({});
   const [apiError, setApiError] = useState('');
   const [loading,  setLoading]  = useState(false);
@@ -33,6 +43,9 @@ export function SignupPage() {
     setApiError('');
     setLoading(true);
     track('signup_started');
+    // Stashed before the network call: signup navigates to #/org/create and the
+    // org-scoped CRM push only runs once that workspace exists.
+    stashSignupCrm({ name, phone: country && phone ? toE164(country, phone) : '' });
     const result = await signup(name, email, password);
     setLoading(false);
     if (result.success) {
@@ -104,6 +117,35 @@ export function SignupPage() {
             onChange={e => setEmail(e.target.value)}
             placeholder={A.placeholder.email}
             autoComplete="email"
+          />
+        </FormField>
+
+        {/* Country + phone. Optional at signup so a CRM field can never block
+            account creation, but captured here because sales needs a reachable
+            number and the country makes the stored value unambiguous E.164. */}
+        <FormField label={D.labelCountry}>
+          <select
+            value={country}
+            onChange={e => setCountry(e.target.value)}
+            aria-label={D.labelCountry}
+            style={{
+              width: '100%', padding: '10px 12px', borderRadius: 10,
+              border: '1px solid var(--border)', background: 'var(--surface)',
+              color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit',
+            }}
+          >
+            <option value="">{D.labelCountry}</option>
+            {countryList.map(o => <option key={o.iso} value={o.iso}>{o.name} ({o.dial})</option>)}
+          </select>
+        </FormField>
+
+        <FormField label={D.placeholderPhone}>
+          <AuthInput
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder={D.placeholderPhone}
+            autoComplete="tel"
           />
         </FormField>
 
