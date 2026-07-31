@@ -303,9 +303,6 @@ export function ContactsPage() {
                   </td>
                   <td style={{ ...td, color: 'var(--text-muted)' }}>{c.countryCode || c.phoneCountry || '—'}</td>
                   <td style={td}>{c.leadStatus || '—'}</td>
-                  {/* Preview only: a pasted brief can be 2000 characters and would
-                      otherwise make one row taller than the viewport. Full text on
-                      hover, so the table stays scannable. */}
                   {/* Preview ONLY — capped at 80 characters in the string, not
                       merely clipped by CSS. The full request lives solely in the
                       detail panel; a hover tooltip is unreachable on touch and
