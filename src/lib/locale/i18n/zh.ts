@@ -3396,16 +3396,56 @@ export const zh: Dict = {
     assignTo: "分配给",
     assign: "分配",
     transfer: "转交",
-    importCsv: "导入 CSV",
+    importCsv: "导入",
     importTitle: "导入联系人",
-    importHelp: "上传至少包含电子邮件列的 CSV 文件。每行必须填写姓名和公司；电话和国家/地区为可选。重复项将被跳过。",
+    importHelp: "选择文件后导入立即开始。重复项会被自动跳过。",
     importRowsFound: "行",
     importBatches: "批",
     importProgress: "正在导入批次",
     importImported: "已导入",
     importRejected: "行被跳过",
     importStart: "开始导入",
+    importFormats: "支持：CSV（推荐）和 Excel .xlsx。在 Google 表格中选择“文件 → 下载 → 逗号分隔值”。",
+
+    importColumns: "列",
+
+    importRequired: "必填",
+
+    importOptional: "选填",
+
+    importChooseFile: "选择文件",
+
+    importSample: "下载示例",
+
+    importStageReading: "正在读取文件…",
+
+    importStageValidating: "正在校验行…",
+
+    importStageImporting: "正在导入…",
+
+    importStageDone: "已完成",
+
+    importFailed: "失败",
+
+    pageSize: "每页",
+
+    loadMore: "加载更多",
+
+    loadedCount: "已加载",
+
+    scannedCount: "已读取",
+
     importErrors: {
+
+      UNSUPPORTED_FORMAT: "不支持该格式。请将文件另存为 .csv 或 .xlsx。",
+
+      NOT_A_ZIP: "该文件不是可读取的 .xlsx 工作簿。",
+
+      NO_WORKSHEET: "该工作簿没有工作表。",
+
+      UNSUPPORTED_COMPRESSION: "该工作簿使用了不支持的压缩方式。请重新保存或导出为 CSV。",
+
+      CORRUPT_FILE: "无法读取该文件。请重新保存或导出为 CSV。",
       EMPTY_FILE: "该文件没有数据行。",
       NO_EMAIL_COLUMN: "未找到电子邮件列。请添加名为“Email”的列。",
       INVALID_EMAIL: "电子邮件无效",

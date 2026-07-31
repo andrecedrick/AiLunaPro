@@ -3394,16 +3394,56 @@ export const de: Dict = {
     assignTo: "Zuweisen an",
     assign: "Zuweisen",
     transfer: "Übertragen",
-    importCsv: "CSV importieren",
+    importCsv: "Importieren",
     importTitle: "Kontakte importieren",
-    importHelp: "Laden Sie eine CSV-Datei mit mindestens einer E-Mail-Spalte hoch. Name und Unternehmen sind in jeder Zeile erforderlich; Telefon und Land sind optional. Duplikate werden übersprungen.",
+    importHelp: "Wählen Sie eine Datei — der Import startet sofort. Duplikate werden automatisch übersprungen.",
     importRowsFound: "Zeilen gefunden",
     importBatches: "Stapel",
     importProgress: "Stapel wird importiert",
     importImported: "importiert",
     importRejected: "Zeilen übersprungen",
     importStart: "Import starten",
+    importFormats: "Unterstützt: CSV (empfohlen) und Excel .xlsx. Aus Google Sheets: Datei → Herunterladen → Kommagetrennte Werte.",
+
+    importColumns: "Spalten",
+
+    importRequired: "Erforderlich",
+
+    importOptional: "Optional",
+
+    importChooseFile: "Datei wählen",
+
+    importSample: "Beispiel herunterladen",
+
+    importStageReading: "Datei wird gelesen…",
+
+    importStageValidating: "Zeilen werden geprüft…",
+
+    importStageImporting: "Import läuft…",
+
+    importStageDone: "Abgeschlossen",
+
+    importFailed: "fehlgeschlagen",
+
+    pageSize: "pro Seite",
+
+    loadMore: "Mehr laden",
+
+    loadedCount: "geladen",
+
+    scannedCount: "gelesen",
+
     importErrors: {
+
+      UNSUPPORTED_FORMAT: "Dieses Format wird nicht unterstützt. Speichern Sie die Datei als .csv oder .xlsx.",
+
+      NOT_A_ZIP: "Diese Datei ist keine lesbare .xlsx-Arbeitsmappe.",
+
+      NO_WORKSHEET: "Diese Arbeitsmappe enthält kein Tabellenblatt.",
+
+      UNSUPPORTED_COMPRESSION: "Diese Arbeitsmappe verwendet eine nicht unterstützte Komprimierung. Erneut speichern oder als CSV exportieren.",
+
+      CORRUPT_FILE: "Diese Datei konnte nicht gelesen werden. Erneut speichern oder als CSV exportieren.",
       EMPTY_FILE: "Diese Datei enthält keine Datenzeilen.",
       NO_EMAIL_COLUMN: "Keine E-Mail-Spalte gefunden. Fügen Sie eine Spalte „Email“ hinzu.",
       INVALID_EMAIL: "Ungültige E-Mail",

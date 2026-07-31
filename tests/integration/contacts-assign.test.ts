@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const state = vi.hoisted(() => ({
   members: new Map<string, { role: string; email: string; status?: string }>(), // `${orgId}/${uid}`
   docs:    new Map<string, Record<string, unknown>>(),
+  commits: [] as number[],
 }));
 
 vi.mock('../../worker/src/middleware/auth', () => ({
@@ -32,6 +33,12 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
     state.docs.set(path, { ...prev, ...data });
   }),
   firestoreDelete: vi.fn(async () => {}),
+  // The import writes the whole batch in one commit. Recorded so a test can
+  // assert it is ONE round trip and not one per row.
+  firestoreCommit: vi.fn(async (_sa: string, writes: Array<{ path: string; data: Record<string, unknown> }>) => {
+    state.commits.push(writes.length);
+    for (const w of writes) state.docs.set(w.path, { ...(state.docs.get(w.path) ?? {}), ...w.data });
+  }),
   firestoreRunQuery: vi.fn(async (_sa: string, sq: Record<string, unknown>, parent: string) => {
     const from = (sq.from as Array<{ collectionId: string }>)[0];
     const out: Array<{ name: string; fields: Record<string, unknown> }> = [];
@@ -66,7 +73,7 @@ const post = (app: typeof assignRoutes, path: string, uid: string, body: unknown
 const CONTACT = 'organizations/orgA/contacts/c1';
 
 beforeEach(() => {
-  state.members.clear(); state.docs.clear(); vi.clearAllMocks();
+  state.members.clear(); state.docs.clear(); state.commits.length = 0; vi.clearAllMocks();
   state.members.set('orgA/sales1', { role: 'member', email: 'sales1@acme.com' });
   state.members.set('orgA/sales2', { role: 'admin',  email: 'sales2@acme.com' });
   state.members.set('orgA/gone',   { role: 'member', email: 'gone@acme.com', status: 'disabled' });
@@ -205,5 +212,34 @@ describe('CSV import', () => {
   it('handles a FULL batch of 500 rows', async () => {
     const r = await doImport('sales1', { orgId: 'orgA', rows: rows(500) }, 'sales1@acme.com');
     expect((await r.json()).imported).toBe(500);
+  });
+
+  /**
+   * The performance regression this guards: the route wrote each contact with
+   * its own PATCH in waves of 8, so 500 rows meant ~63 sequential round trips —
+   * tens of seconds during which the modal looked frozen.
+   */
+  it('writes the whole batch in ONE commit, not one round trip per row', async () => {
+    await doImport('sales1', { orgId: 'orgA', rows: rows(500) }, 'sales1@acme.com');
+    expect(state.commits).toEqual([500]);
+  });
+
+  it('reads only the emailKey column when checking for duplicates', async () => {
+    const { firestoreRunQuery } = await import('../../worker/src/lib/firestoreAdmin');
+    await doImport('sales1', { orgId: 'orgA', rows: rows(1) }, 'sales1@acme.com');
+    const call = vi.mocked(firestoreRunQuery).mock.calls.find(c => (c[1] as { select?: unknown }).select);
+    expect(call).toBeTruthy();
+    expect((call![1] as { select: { fields: Array<{ fieldPath: string }> } }).select.fields)
+      .toEqual([{ fieldPath: 'emailKey' }]);
+  });
+
+  it('a failed commit reports EVERY row as failed — never a silent partial', async () => {
+    const { firestoreCommit } = await import('../../worker/src/lib/firestoreAdmin');
+    vi.mocked(firestoreCommit).mockRejectedValueOnce(new Error('commit exploded'));
+    const res = await (await doImport('sales1', { orgId: 'orgA', rows: rows(4) }, 'sales1@acme.com')).json() as
+      { imported: number; rejected: Array<{ code: string }> };
+    expect(res.imported).toBe(0);
+    expect(res.rejected).toHaveLength(4);
+    expect(res.rejected.every(r => r.code === 'WRITE_FAILED')).toBe(true);
   });
 });

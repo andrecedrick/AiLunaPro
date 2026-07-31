@@ -20,7 +20,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePlatformAdmin } from '../lib/platformAdmin';
-import { firestoreGet, firestoreSet, firestoreRunQuery } from '../lib/firestoreAdmin';
+import { firestoreGet, firestoreCommit, firestoreRunQuery, COMMIT_MAX_WRITES } from '../lib/firestoreAdmin';
 import type { AppEnv } from '../index';
 
 const backfill = new Hono<AppEnv>();
@@ -49,18 +49,25 @@ backfill.post('/api/contacts/backfill-company', requireAuth(), requirePlatformAd
     return c.json({ error: 'Could not read contacts.', code: 'QUERY_FAILED' }, 500);
   }
 
-  const blanks = rows
-    .map(r => {
-      const f = r.fields as Record<string, unknown>;
-      const m = r.name.match(/organizations\/([^/]+)\/contacts\/([^/]+)$/);
-      return {
-        orgId:     m ? m[1] : '',
-        contactId: m ? m[2] : '',
-        name:      typeof f.name === 'string' ? f.name : '',
-        company:   typeof f.company === 'string' ? f.company : '',
-      };
-    })
-    .filter(x => x.orgId && x.contactId && !x.company.trim());
+  const parsed = rows.map(r => {
+    const f = r.fields as Record<string, unknown>;
+    const m = r.name.match(/organizations\/([^/]+)\/contacts\/([^/]+)$/);
+    return {
+      orgId:     m ? m[1] : '',
+      contactId: m ? m[2] : '',
+      name:      typeof f.name === 'string' ? f.name : '',
+      company:   typeof f.company === 'string' ? f.company : '',
+      assigned:  typeof f.assignedToUid === 'string' ? f.assignedToUid : '',
+      creator:   typeof f.createdByUid === 'string' ? f.createdByUid : '',
+    };
+  }).filter(x => x.orgId && x.contactId);
+
+  const blanks = parsed.filter(x => !x.company.trim());
+  // Records written before assignment existed carry no assignedToUid. They are
+  // readable today only because contact-access falls back to the creator; making
+  // the field explicit is what lets the visibility filter become an indexed query
+  // instead of a scan, so the same pass repairs it.
+  const unassigned = parsed.filter(x => !x.assigned && x.creator);
 
   // One org read per DISTINCT org, not per contact — a workspace with 300 blank
   // contacts must not cost 300 identical reads of the same org document.
@@ -72,26 +79,39 @@ backfill.post('/api/contacts/backfill-company', requireAuth(), requirePlatformAd
 
   const now = new Date().toISOString();
   const planned: { orgId: string; contactId: string; name: string; company: string }[] = [];
-  let written = 0;
+  const writes: { path: string; data: Record<string, string> }[] = [];
 
   for (const b of blanks) {
     const company = orgNames.get(b.orgId) ?? '';
     if (!company) continue; // no workspace name → nothing truthful to write
     planned.push({ ...b, company });
-    if (dryRun) continue;
-    try {
-      await firestoreSet(saJson, `organizations/${b.orgId}/contacts/${b.contactId}`,
-        { company, updatedAt: now }, { merge: true });
-      written++;
-    } catch (err) {
-      console.error('[contacts-backfill] write failed:', err instanceof Error ? err.message : '');
+    writes.push({ path: `organizations/${b.orgId}/contacts/${b.contactId}`, data: { company, updatedAt: now } });
+  }
+  for (const u of unassigned) {
+    writes.push({ path: `organizations/${u.orgId}/contacts/${u.contactId}`, data: { assignedToUid: u.creator, updatedAt: now } });
+  }
+
+  // Batched commits — one round trip per 500 documents instead of one per
+  // document. A cross-org repair over thousands of contacts would otherwise
+  // exceed the request budget long before it finished.
+  let written = 0;
+  if (!dryRun) {
+    for (let i = 0; i < writes.length; i += COMMIT_MAX_WRITES) {
+      const chunk = writes.slice(i, i + COMMIT_MAX_WRITES);
+      try { await firestoreCommit(saJson, chunk); written += chunk.length; }
+      catch (err) { console.error('[contacts-backfill] commit failed:', err instanceof Error ? err.message : ''); }
     }
   }
 
-  console.log(`[contacts-backfill] scanned=${rows.length} blank=${blanks.length} fillable=${planned.length} written=${written} dryRun=${dryRun}`);
+  // `remaining` is the verification answer: how many contacts would STILL have no
+  // company after this pass. It is non-zero only where the workspace itself is
+  // unnamed, which no automated source can truthfully fill.
+  const remaining = blanks.length - planned.length;
+  console.log(`[contacts-backfill] scanned=${rows.length} blank=${blanks.length} fillable=${planned.length} unassigned=${unassigned.length} written=${written} remaining=${remaining} dryRun=${dryRun}`);
   return c.json({
     ok: true, dryRun,
-    scanned: rows.length, blank: blanks.length, fillable: planned.length, written,
+    scanned: rows.length, blank: blanks.length, fillable: planned.length,
+    unassigned: unassigned.length, written, remaining,
     // Name + company only. Emails and phones stay out of an operator response body.
     sample: planned.slice(0, 25).map(p => ({ orgId: p.orgId, name: p.name, company: p.company })),
   });

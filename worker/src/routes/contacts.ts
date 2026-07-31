@@ -192,28 +192,129 @@ async function findByEmail(saJson: string, orgId: string, emailKey: string, exce
   return rows.some(r => (r.name.split('/').pop() ?? '') !== exceptId);
 }
 
-/**
- * Load contacts under `parent` (org doc, or '' for a root collectionGroup).
- * Tries the indexed orderBy(createdAt) query; on ANY failure (e.g. a fresh
- * collectionGroup with no single-field index yet → FAILED_PRECONDITION) it
- * retries WITHOUT orderBy and sorts in code, so the endpoint degrades gracefully
- * instead of 500-ing with QUERY_FAILED. Always returns newest-first.
+/* ── Pagination ────────────────────────────────────────────────────────────────
+ * The list used to fetch up to 1000 contacts on every load and filter them in
+ * memory. That is 1000 document reads for a member who can see three of them, and
+ * at 10,000 contacts the page simply could not show the newest ones.
+ *
+ * Reads are now bounded by the page size. The cursor is (createdAt, documentId):
+ * createdAt alone is not unique — contacts written in the same millisecond by the
+ * import would straddle a page boundary and either repeat or vanish — so the
+ * document id is carried as the tie-break, which is also why __name__ is the
+ * second orderBy key.
  */
-async function loadContacts(saJson: string, parent: string, allDescendants: boolean, limit: number) {
-  const from = [{ collectionId: 'contacts', ...(allDescendants ? { allDescendants: true } : {}) }];
-  let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
+const DEFAULT_LIMIT = 50, MAX_LIMIT = 200;
+/** Cap on documents READ while filling one page (see fillPage). */
+const MAX_SCAN_PER_PAGE = 1000;
+
+export const encodeCursor = (createdAt: string, docId: string): string =>
+  btoa(`${createdAt} ${docId}`).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+export function decodeCursor(raw: string): { createdAt: string; docId: string } | null {
+  if (!raw) return null;
   try {
-    rows = await firestoreRunQuery(saJson, { from, orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit }, parent);
-  } catch (err) {
-    console.warn('[contacts] ordered query failed, retrying without orderBy:', err instanceof Error ? err.message : '');
-    rows = await firestoreRunQuery(saJson, { from, limit }, parent);
+    const s = atob(raw.replace(/-/g, '+').replace(/_/g, '/'));
+    const i = s.indexOf(' ');
+    if (i < 0) return null;
+    return { createdAt: s.slice(0, i), docId: s.slice(i + 1) };
+  } catch { return null; }
+}
+
+export function clampLimit(raw: string | undefined): number {
+  const n = Number.parseInt(raw ?? '', 10);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
+  return Math.min(n, MAX_LIMIT);
+}
+
+/** One newest-first page, starting after `cursor` when given. */
+async function queryPage(
+  saJson: string, parent: string, allDescendants: boolean, limit: number,
+  cursor: { createdAt: string; docId: string } | null,
+) {
+  const from = [{ collectionId: 'contacts', ...(allDescendants ? { allDescendants: true } : {}) }];
+  const orderBy = [
+    { field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' },
+    { field: { fieldPath: '__name__' },  direction: 'DESCENDING' },
+  ];
+  const q: Record<string, unknown> = { from, orderBy, limit };
+  if (cursor) {
+    q.startAt = {
+      before: false, // startAFTER the cursor document
+      values: [{ stringValue: cursor.createdAt }, { referenceValue: cursor.docId }],
+    };
   }
-  rows.sort((a, b) => {
-    const ca = String((a.fields as Record<string, unknown>).createdAt ?? '');
-    const cb = String((b.fields as Record<string, unknown>).createdAt ?? '');
-    return ca < cb ? 1 : ca > cb ? -1 : 0;
-  });
-  return rows;
+  return firestoreRunQuery(saJson, q, parent);
+}
+
+export interface ContactPage<T> { items: T[]; nextCursor: string; scanned: number }
+
+/**
+ * Fill one page of contacts the caller may actually SEE.
+ *
+ * Visibility is assignment-based and cannot be expressed as an index on the
+ * legacy records (they carry no `assignedToUid` at all — see lib/contact-access),
+ * so filtering still happens after the read. The loop exists so that filtering
+ * does not produce a page of two rows: it keeps pulling pages until the page is
+ * full, the collection is exhausted, or MAX_SCAN_PER_PAGE documents have been
+ * read. That cap is the guarantee — one request can never read more than 1000
+ * documents no matter how sparse the caller's share of the org is.
+ */
+async function fillPage<T extends { contactId: string; createdAt: string }>(
+  saJson: string, parent: string, allDescendants: boolean,
+  limit: number, cursorRaw: string,
+  map: (name: string, fields: Record<string, unknown>) => T,
+  visible: (item: T) => boolean,
+): Promise<ContactPage<T>> {
+  // Each kept item is carried WITH its document name and createdAt, because the
+  // cursor must point at the last item actually RETURNED. Deriving it from the
+  // last row FETCHED silently skipped every over-fetched row that did not fit in
+  // the page — 25 contacts lost per page, invisible unless you count the walk.
+  const kept: { item: T; at: string; docId: string }[] = [];
+  let cursor = decodeCursor(cursorRaw);
+  let scanned = 0;
+  let exhausted = false;
+
+  while (kept.length < limit && scanned < MAX_SCAN_PER_PAGE) {
+    const want = Math.min(limit - kept.length + 25, MAX_SCAN_PER_PAGE - scanned);
+    let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
+    try {
+      rows = await queryPage(saJson, parent, allDescendants, want, cursor);
+    } catch (err) {
+      // A fresh collection group without the ordering index answers
+      // FAILED_PRECONDITION. Degrade to an unordered, unpaginated read rather
+      // than 500-ing the CRM, and stop after it.
+      console.warn('[contacts] ordered page failed, falling back:', err instanceof Error ? err.message : '');
+      const flat = await firestoreRunQuery(saJson, {
+        from: [{ collectionId: 'contacts', ...(allDescendants ? { allDescendants: true } : {}) }],
+        limit: MAX_SCAN_PER_PAGE,
+      }, parent);
+      const mapped = flat.map(r => map(r.name, r.fields as Record<string, unknown>)).filter(visible);
+      mapped.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+      return { items: mapped.slice(0, limit), nextCursor: '', scanned: flat.length };
+    }
+
+    scanned += rows.length;
+    if (rows.length === 0) { exhausted = true; break; }
+
+    for (const r of rows) {
+      const fields = r.fields as Record<string, unknown>;
+      const item = map(r.name, fields);
+      if (visible(item)) kept.push({ item, at: String(fields.createdAt ?? ''), docId: r.name });
+    }
+    // Resume from the last row READ, so the next iteration of this loop does not
+    // re-read what it just filtered out.
+    const last = rows[rows.length - 1];
+    cursor = { createdAt: String((last.fields as Record<string, unknown>).createdAt ?? ''), docId: last.name };
+    if (rows.length < want) { exhausted = true; break; }
+  }
+
+  const page = kept.slice(0, limit);
+  const overflowed = kept.length > limit;
+  // The caller's cursor is the last item they were GIVEN. When the page
+  // overflowed, the discarded remainder must be re-read next time, not skipped.
+  const tail = page[page.length - 1];
+  const nextCursor = (exhausted && !overflowed) || !tail ? '' : encodeCursor(tail.at, tail.docId);
+  return { items: page.map(k => k.item), nextCursor, scanned };
 }
 
 /* ── GET /api/contacts/list — org-scoped ──────────────────────────────────── */
@@ -225,29 +326,32 @@ contacts.get('/api/contacts/list', requireAuth(), requireRole(ORG_ROLES), async 
   const orgId = c.get('orgId') as string;
   const uid   = c.get('uid') as string;
 
-  let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
-  try {
-    rows = await loadContacts(saJson, `organizations/${orgId}`, false, 1000);
-  } catch (err) {
-    console.error('[contacts] list failed:', err instanceof Error ? err.message : '');
-    return c.json({ error: 'Could not load contacts.', code: 'QUERY_FAILED' }, 500);
-  }
-
   // Visibility is assignment-based, NOT role-based: an admin sees exactly what is
   // assigned to them, the same as a member. Only a super admin sees the whole org.
   const isSuper = isSuperAdmin(env, c.get('email'), c.get('emailVerified'));
   const tag    = (c.req.query('tag') ?? '').trim();
   const source = (c.req.query('source') ?? '').trim();
   const status = (c.req.query('status') ?? '').trim();
+  const limit  = clampLimit(c.req.query('limit'));
 
-  const list = rows
-    .map(r => toItem(r.name, r.fields as Record<string, unknown>))
-    .filter(x => canViewContact(x, uid, isSuper))
-    .filter(x => (tag ? x.tags.includes(tag) : true))
-    .filter(x => (source ? x.source === source : true))
-    .filter(x => (status ? x.status === status : true));
+  // Server-side filters are applied INSIDE the page fill, not after it. Filtering
+  // a completed page would hand back three rows for a page size of fifty and make
+  // the operator paginate through mostly-empty screens.
+  const visible = (x: ReturnType<typeof toItem>) =>
+    canViewContact(x, uid, isSuper) &&
+    (tag ? x.tags.includes(tag) : true) &&
+    (source ? x.source === source : true) &&
+    (status ? x.status === status : true);
 
-  return c.json({ ok: true, contacts: list });
+  try {
+    const page = await fillPage(saJson, `organizations/${orgId}`, false, limit,
+      c.req.query('cursor') ?? '', toItem, visible);
+    dlog(env as Record<string, unknown>, '[contacts] list org', orgId, 'returned', page.items.length, 'scanned', page.scanned);
+    return c.json({ ok: true, contacts: page.items, nextCursor: page.nextCursor, scanned: page.scanned });
+  } catch (err) {
+    console.error('[contacts] list failed:', err instanceof Error ? err.message : '');
+    return c.json({ error: 'Could not load contacts.', code: 'QUERY_FAILED' }, 500);
+  }
 });
 
 /* ── POST /api/contacts/create — org-scoped ───────────────────────────────── */
@@ -377,20 +481,20 @@ contactsPlatform.get('/api/contacts/all', requireAuth(), requirePlatformAdmin(),
   const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
 
-  let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
+  // orgId is derived from the document path (…/organizations/{orgId}/contacts/{id}).
+  const withOrg = (name: string, fields: Record<string, unknown>) => {
+    const m = name.match(/organizations\/([^/]+)\/contacts\//);
+    return { ...toItem(name, fields), orgId: m ? m[1] : '' };
+  };
+
   try {
-    rows = await loadContacts(saJson, '', true, 2000);
+    const page = await fillPage(saJson, '', true, clampLimit(c.req.query('limit')),
+      c.req.query('cursor') ?? '', withOrg, () => true);
+    return c.json({ ok: true, contacts: page.items, nextCursor: page.nextCursor, scanned: page.scanned });
   } catch (err) {
     console.error('[contacts] cross-org list failed:', err instanceof Error ? err.message : '');
     return c.json({ error: 'Could not load contacts.', code: 'QUERY_FAILED' }, 500);
   }
-
-  // orgId is derived from the document path (…/organizations/{orgId}/contacts/{id}).
-  const list = rows.map(r => {
-    const m = r.name.match(/organizations\/([^/]+)\/contacts\//);
-    return { ...toItem(r.name, r.fields as Record<string, unknown>), orgId: m ? m[1] : '' };
-  });
-  return c.json({ ok: true, contacts: list });
 });
 
 export { contactsPlatform };

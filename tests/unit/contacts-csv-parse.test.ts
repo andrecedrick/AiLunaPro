@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parseCsvGrid, mapHeaders, parseContactsCsv, batchRows, IMPORT_BATCH } from '../../src/lib/contacts/csvParse';
+import {
+  parseCsvGrid, mapHeaders, parseContactsCsv, batchRows, IMPORT_BATCH,
+  sampleCsv, REQUIRED_COLUMNS, OPTIONAL_COLUMNS,
+} from '../../src/lib/contacts/csvParse';
+import { planImport } from '../../worker/src/lib/contact-import';
 import { contactsToCsv, CSV_COLUMNS } from '../../src/lib/contacts/contactsExport';
 import type { Contact } from '../../src/lib/contacts/contactsClient';
 
@@ -78,6 +82,41 @@ describe('csvParse — file', () => {
     });
     // Every exported column the importer knows about is actually recognised.
     expect(CSV_COLUMNS).toContain('Company');
+  });
+});
+
+/**
+ * The downloadable template is the first thing an operator tries. If its own
+ * rows do not survive the importer, the feature teaches the wrong format — so
+ * the sample is run through the REAL server-side validator here, not eyeballed.
+ */
+describe('sample template', () => {
+  it('every column it declares is one the importer recognises', () => {
+    const [header] = parseCsvGrid(sampleCsv());
+    const idx = mapHeaders(header);
+    expect(header).toEqual([...REQUIRED_COLUMNS, ...OPTIONAL_COLUMNS]);
+    expect(Object.values(idx).every(i => i >= 0)).toBe(true);
+  });
+
+  it('every sample row passes server-side validation', () => {
+    const { rows, error } = parseContactsCsv(sampleCsv());
+    expect(error).toBeUndefined();
+    const plan = planImport(rows, new Set());
+    expect(plan.rejected).toEqual([]);
+    expect(plan.valid).toHaveLength(rows.length);
+  });
+
+  it('demonstrates the two formats operators get wrong: ISO country and E.164 phone', () => {
+    const { rows } = parseContactsCsv(sampleCsv());
+    expect(rows.every(r => r.countryCode.length === 2)).toBe(true);
+    expect(rows.some(r => r.phone.startsWith('+'))).toBe(true);
+    // And that a blank phone is acceptable, so nobody invents one.
+    expect(rows.some(r => r.phone === '')).toBe(true);
+  });
+
+  it('quotes a company containing a comma so the columns do not shift', () => {
+    const { rows } = parseContactsCsv(sampleCsv());
+    expect(rows[0].company).toBe('Analytical Engines, Ltd');
   });
 });
 

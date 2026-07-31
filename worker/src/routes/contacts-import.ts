@@ -24,7 +24,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requireRole, type Role } from '../middleware/requireRole';
 import { isSuperAdmin } from '../lib/platformAdmin';
-import { firestoreGet, firestoreSet, firestoreRunQuery } from '../lib/firestoreAdmin';
+import { firestoreGet, firestoreCommit, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { planImport, IMPORT_MAX_ROWS, type ImportRow } from '../lib/contact-import';
 import type { AppEnv } from '../index';
 
@@ -32,8 +32,6 @@ const imp = new Hono<AppEnv>();
 type Bindings = AppEnv['Bindings'];
 
 const ORG_ROLES: readonly Role[] = ['owner', 'admin', 'member'];
-/** Firestore writes issued at once. Bounded so a batch cannot exhaust the isolate. */
-const WRITE_CONCURRENCY = 8;
 
 const safeId = (v: unknown): string => (typeof v === 'string' ? v.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) : '');
 
@@ -80,9 +78,15 @@ imp.post('/api/contacts/import', requireAuth(), requireRole(ORG_ROLES), async c 
   }
 
   // Existing emails in the org — the dedup key the CRM already enforces.
+  // `select` projects ONLY emailKey: the row payload is what makes this scan
+  // expensive, and the other thirty fields are never looked at here.
   let existing: Set<string>;
   try {
-    const docs = await firestoreRunQuery(saJson, { from: [{ collectionId: 'contacts' }], limit: 2000 }, `organizations/${orgId}`);
+    const docs = await firestoreRunQuery(saJson, {
+      from:   [{ collectionId: 'contacts' }],
+      select: { fields: [{ fieldPath: 'emailKey' }] },
+      limit:  2000,
+    }, `organizations/${orgId}`);
     existing = new Set(docs.map(d => String((d.fields as Record<string, unknown>).emailKey ?? '')).filter(Boolean));
   } catch (err) {
     console.error('[contacts-import] dedup scan failed:', err instanceof Error ? err.message : '');
@@ -92,16 +96,21 @@ imp.post('/api/contacts/import', requireAuth(), requireRole(ORG_ROLES), async c 
   const plan = planImport(rows, existing);
   const now = new Date().toISOString();
 
-  // Writes are issued in bounded waves. A row that fails to write is reported as
-  // rejected rather than dropped: an import that silently loses leads is the same
-  // defect as a CRM that never receives them.
+  // ONE Firestore commit for the whole batch.
+  //
+  // This was 500 sequential PATCHes issued in waves of 8 — roughly 63 round trips
+  // per batch, tens of seconds of pure latency, and the reason the import looked
+  // frozen. `:commit` takes up to 500 writes in a single request.
+  //
+  // A commit is atomic, so a failure is reported per ROW (all of them) rather
+  // than leaving a half-written batch that a re-run would duplicate.
   const failed: { row: number; code: string; email: string }[] = [];
-  for (let i = 0; i < plan.valid.length; i += WRITE_CONCURRENCY) {
-    const wave = plan.valid.slice(i, i + WRITE_CONCURRENCY);
-    await Promise.all(wave.map(async (r, k) => {
+  try {
+    await firestoreCommit(saJson, plan.valid.map(r => {
       const contactId = genId();
-      try {
-        await firestoreSet(saJson, `organizations/${orgId}/contacts/${contactId}`, {
+      return {
+        path: `organizations/${orgId}/contacts/${contactId}`,
+        data: {
           contactId, orgId,
           name: r.name, email: r.email, emailKey: r.email, identityEmail: '',
           phone: r.phone, countryCode: r.countryCode, phoneCountry: r.phoneCountry,
@@ -114,12 +123,12 @@ imp.post('/api/contacts/import', requireAuth(), requireRole(ORG_ROLES), async c 
           twentyPersonId: '', twentyCompanyId: '',
           linkedQuoteId: '', linkedAuditId: '',
           createdByUid: uid, createdAt: now, lastActivityAt: now, updatedAt: now,
-        });
-      } catch (err) {
-        console.error('[contacts-import] write failed:', err instanceof Error ? err.message : '');
-        failed.push({ row: i + k + 1, code: 'WRITE_FAILED', email: r.email });
-      }
+        },
+      };
     }));
+  } catch (err) {
+    console.error('[contacts-import] commit failed:', err instanceof Error ? err.message : '');
+    plan.valid.forEach((r, i) => failed.push({ row: i + 1, code: 'WRITE_FAILED', email: r.email }));
   }
 
   const imported = plan.valid.length - failed.length;

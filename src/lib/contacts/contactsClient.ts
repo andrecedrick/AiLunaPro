@@ -70,6 +70,31 @@ export interface ContactInput {
 
 export interface ContactFilters { tag?: string; source?: string; status?: string }
 
+/**
+ * One page of contacts. `nextCursor` is empty when the server reached the end —
+ * it is the ONLY correct way to ask for more, because paging by offset over a
+ * collection that is still receiving signups would skip or repeat rows.
+ */
+export interface ContactPage {
+  contacts:   Contact[];
+  nextCursor: string;
+  /** Documents the server READ to build this page. Surfaced for measurement. */
+  scanned:    number;
+}
+
+export interface PageQuery { limit?: number; cursor?: string }
+
+function applyPaging(q: URLSearchParams, page?: PageQuery): void {
+  if (page?.limit)  q.set('limit', String(page.limit));
+  if (page?.cursor) q.set('cursor', page.cursor);
+}
+
+async function readPage(res: Response): Promise<ContactPage> {
+  if (!res.ok) return readError(res);
+  const j = await res.json().catch(() => null) as Partial<ContactPage> | null;
+  return { contacts: j?.contacts ?? [], nextCursor: j?.nextCursor ?? '', scanned: j?.scanned ?? 0 };
+}
+
 /** Error carrying the worker's machine code (e.g. DUPLICATE_EMAIL, FORBIDDEN_STATUS). */
 export class ContactError extends Error {
   code: string;
@@ -81,30 +106,35 @@ async function readError(res: Response): Promise<never> {
   throw new ContactError(j?.code ?? `HTTP_${res.status}`);
 }
 
-/** Org-scoped list. owner/admin → all org contacts; member → own only (server-enforced). */
-export async function listContacts(orgId: string, filters?: ContactFilters): Promise<Contact[]> {
+/**
+ * One page of the org's contacts. Assignment-scoped server-side: a super admin
+ * gets the whole org, everyone else gets what is assigned to them.
+ *
+ * Filters are sent to the SERVER rather than applied to the result, because the
+ * server applies them while filling the page — filtering a page after the fact
+ * would return a handful of rows for a page size of fifty.
+ */
+export async function listContacts(orgId: string, filters?: ContactFilters, page?: PageQuery): Promise<ContactPage> {
   const idToken = await getIdToken();
   const q = new URLSearchParams({ orgId });
   if (filters?.tag)    q.set('tag', filters.tag);
   if (filters?.source) q.set('source', filters.source);
   if (filters?.status) q.set('status', filters.status);
-  const res = await fetch(`${WORKER_BASE}/api/contacts/list?${q.toString()}`, {
+  applyPaging(q, page);
+  return readPage(await fetch(`${WORKER_BASE}/api/contacts/list?${q.toString()}`, {
     headers: { Authorization: `Bearer ${idToken}` },
-  });
-  if (!res.ok) return readError(res);
-  const j = await res.json().catch(() => null) as { contacts?: Contact[] } | null;
-  return j?.contacts ?? [];
+  }));
 }
 
-/** Super-admin (platform operator) cross-org READ-ONLY list. */
-export async function listAllContacts(): Promise<Contact[]> {
+/** Super-admin (platform operator) cross-org READ-ONLY page. */
+export async function listAllContacts(page?: PageQuery): Promise<ContactPage> {
   const idToken = await getIdToken();
-  const res = await fetch(`${WORKER_BASE}/api/contacts/all`, {
+  const q = new URLSearchParams();
+  applyPaging(q, page);
+  const qs = q.toString();
+  return readPage(await fetch(`${WORKER_BASE}/api/contacts/all${qs ? `?${qs}` : ''}`, {
     headers: { Authorization: `Bearer ${idToken}` },
-  });
-  if (!res.ok) return readError(res);
-  const j = await res.json().catch(() => null) as { contacts?: Contact[] } | null;
-  return j?.contacts ?? [];
+  }));
 }
 
 export async function createContact(orgId: string, input: ContactInput): Promise<string> {

@@ -95,15 +95,21 @@ export function mapHeaders(header: readonly string[]): Record<keyof ParsedRow, n
   };
 }
 
+export type ParseError =
+  | 'EMPTY_FILE' | 'NO_EMAIL_COLUMN' | 'UNSUPPORTED_FORMAT'
+  | 'NOT_A_ZIP' | 'NO_WORKSHEET' | 'UNSUPPORTED_COMPRESSION' | 'CORRUPT_FILE';
+
 export interface ParseResult {
   rows:   ParsedRow[];
   /** Set when the file cannot be used at all, so the page can say why. */
-  error?: 'EMPTY_FILE' | 'NO_EMAIL_COLUMN';
+  error?: ParseError;
 }
 
-/** Parse a whole CSV file into import rows. The first non-empty line is the header. */
-export function parseContactsCsv(text: string): ParseResult {
-  const grid = parseCsvGrid(text);
+/**
+ * Grid → import rows. Shared by CSV and XLSX: both formats reduce to a table of
+ * strings, and the header mapping must not be able to differ between them.
+ */
+export function rowsFromGrid(grid: readonly string[][]): ParseResult {
   if (grid.length < 2) return { rows: [], error: 'EMPTY_FILE' };
 
   const idx = mapHeaders(grid[0]);
@@ -111,7 +117,7 @@ export function parseContactsCsv(text: string): ParseResult {
   // at all, and saying so beats rejecting every row one by one.
   if (idx.email < 0) return { rows: [], error: 'NO_EMAIL_COLUMN' };
 
-  const cell = (r: readonly string[], i: number) => (i >= 0 && i < r.length ? r[i].trim() : '');
+  const cell = (r: readonly string[], i: number) => (i >= 0 && i < r.length ? (r[i] ?? '').trim() : '');
   const rows = grid.slice(1).map(r => ({
     name:        cell(r, idx.name),
     email:       cell(r, idx.email),
@@ -122,6 +128,62 @@ export function parseContactsCsv(text: string): ParseResult {
   }));
   return { rows };
 }
+
+/** Parse a whole CSV file into import rows. The first non-empty line is the header. */
+export function parseContactsCsv(text: string): ParseResult {
+  return rowsFromGrid(parseCsvGrid(text));
+}
+
+/**
+ * Parse any supported contact file.
+ *
+ * CSV is the PRIMARY format: it is what every CRM and every spreadsheet exports,
+ * it is what this app's own export produces (so a round trip works), and it needs
+ * no decoding step that can fail. Google Sheets is covered by the same path —
+ * "File → Download → CSV" is a plain CSV.
+ *
+ * .xlsx is accepted because operators genuinely receive lists that way, but its
+ * reader is lazily imported so the ZIP/XML code is downloaded only by the people
+ * who actually pick a spreadsheet.
+ */
+export async function parseContactsFile(file: File): Promise<ParseResult> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.xlsx')) {
+    const { parseXlsx } = await import('./xlsxParse');
+    const { grid, error } = await parseXlsx(await file.arrayBuffer());
+    if (error) return { rows: [], error };
+    return rowsFromGrid(grid);
+  }
+  // .xls is the old binary format (BIFF), not a ZIP — it would fail confusingly
+  // inside the xlsx reader, so it is refused by name with a format message.
+  if (name.endsWith('.xls')) return { rows: [], error: 'UNSUPPORTED_FORMAT' };
+  return parseContactsCsv(await file.text());
+}
+
+/** Columns the importer requires, and the ones it will use if present. */
+export const REQUIRED_COLUMNS = ['Name', 'Email', 'Company'] as const;
+export const OPTIONAL_COLUMNS = ['Phone', 'Country', 'Notes'] as const;
+
+/**
+ * Downloadable template.
+ *
+ * Real example rows, not `foo@bar.com` placeholders: the two things operators get
+ * wrong are the country format (ISO-3166 alpha-2, not "France") and the phone
+ * format (E.164 with the country code), and a sample that demonstrates both is
+ * worth more than a paragraph of instructions.
+ */
+export function sampleCsv(): string {
+  const header = [...REQUIRED_COLUMNS, ...OPTIONAL_COLUMNS].join(',');
+  const rows = [
+    'Ada Lovelace,ada.lovelace@example.com,"Analytical Engines, Ltd",+33612345678,FR,Met at the Paris AI summit',
+    'Grace Hopper,grace.hopper@example.com,Compiler Works,+12025550143,US,Asked about the EU AI Act deadline',
+    'Kenji Tanaka,kenji.tanaka@example.com,Sakura Robotics,,JP,No phone number on file',
+  ];
+  // UTF-8 BOM so Excel opens accented names correctly, matching the app's export.
+  return `﻿${[header, ...rows].join('\r\n')}`;
+}
+
+export const SAMPLE_FILENAME = 'ailunapro-contacts-template.csv';
 
 /** Split parsed rows into request-sized batches. */
 export function batchRows<T>(rows: readonly T[], size = IMPORT_BATCH): T[][] {

@@ -1,24 +1,28 @@
 /**
- * CSV contact import modal.
+ * CSV / XLSX contact import modal.
  *
- * The file is parsed in the browser and posted in batches (see lib/contacts/
- * csvParse.ts for why). Progress is reported per batch because a large file is
- * several requests, and a modal that shows nothing for forty seconds looks hung.
+ * WHY THIS WAS REWRITTEN: importing took THREE interactions — choose a file, then
+ * press "Start import", and the button gave no feedback until the first batch
+ * came back, which on a large file was tens of seconds of a dead-looking dialog.
+ * Choosing a file now starts the import, and the state machine below reports what
+ * it is doing from the first frame.
  *
- * PARTIAL SUCCESS IS THE NORMAL OUTCOME and is displayed as such: a real list has
- * blank companies, malformed addresses and people already in the CRM. The modal
- * reports how many landed and why each rejected row was rejected, rather than
- * collapsing the whole thing into "import failed" — the operator needs to know
- * which lines to fix, and the ones that succeeded are already saved.
+ * STAGES are real, not decorative: reading a 10,000-row spreadsheet off disk,
+ * decoding it, and posting it are three genuinely different waits, and an
+ * operator who sees "Validating" knows the file was read and the delay is not a
+ * hung upload.
  *
  * A batch that throws stops the run. Continuing after a 403 or a network failure
- * would produce a progress bar that reaches 100% while writing nothing.
+ * would drive a progress bar to 100% while writing nothing.
  */
 
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useLocale } from '../../context/LocaleContext';
 import { Button } from '../ui/Button';
-import { parseContactsCsv, batchRows, IMPORT_BATCH, type ParsedRow } from '../../lib/contacts/csvParse';
+import {
+  parseContactsFile, batchRows, sampleCsv, SAMPLE_FILENAME,
+  REQUIRED_COLUMNS, OPTIONAL_COLUMNS, IMPORT_BATCH, type ParsedRow,
+} from '../../lib/contacts/csvParse';
 import { importContacts, ContactError, type ImportRejection } from '../../lib/contacts/contactsClient';
 
 const overlay = {
@@ -29,6 +33,9 @@ const overlay = {
 
 const label = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--text-muted)' } as const;
 
+/** idle → reading → validating → importing → done. `failed` is terminal. */
+type Stage = 'idle' | 'reading' | 'validating' | 'importing' | 'done' | 'failed';
+
 export function ContactImportModal({ orgId, onClose, onDone }: {
   orgId: string;
   onClose: () => void;
@@ -36,55 +43,85 @@ export function ContactImportModal({ orgId, onClose, onDone }: {
 }) {
   const C = useLocale().contacts;
   const fileRef = useRef<HTMLInputElement>(null);
+  // A ref, not state: the guard must be true SYNCHRONOUSLY within the same click.
+  // A state flag is only visible after a re-render, so a double click fires the
+  // handler twice before React repaints and the file imports twice.
+  const running = useRef(false);
 
-  const [rows, setRows]         = useState<ParsedRow[] | null>(null);
+  const [stage, setStage]       = useState<Stage>('idle');
   const [fileName, setFileName] = useState('');
-  const [parseErr, setParseErr] = useState('');
-  const [running, setRunning]   = useState(false);
+  const [total, setTotal]       = useState(0);
   const [done, setDone]         = useState(0);
   const [imported, setImported] = useState(0);
   const [rejected, setRejected] = useState<ImportRejection[]>([]);
-  const [finished, setFinished] = useState(false);
-  const [runErr, setRunErr]     = useState('');
+  const [failedRows, setFailed] = useState(0);
+  const [err, setErr]           = useState('');
 
-  const pick = async (file: File) => {
-    setParseErr(''); setRows(null); setFinished(false);
-    setImported(0); setRejected([]); setDone(0); setRunErr('');
-    setFileName(file.name);
-    const text = await file.text();
-    const result = parseContactsCsv(text);
-    if (result.error) { setParseErr(result.error); return; }
-    setRows(result.rows);
+  const busy = stage === 'reading' || stage === 'validating' || stage === 'importing';
+
+  const downloadSample = () => {
+    const url = URL.createObjectURL(new Blob([sampleCsv()], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = SAMPLE_FILENAME; a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const run = async () => {
-    if (!rows?.length) return;
-    setRunning(true); setRunErr('');
-    const batches = batchRows(rows, IMPORT_BATCH);
-    let ok = 0;
-    const bad: ImportRejection[] = [];
+  /**
+   * Choosing a file IS the import. One interaction, and the stage is set before
+   * any await so the dialog reacts on the same frame as the click.
+   */
+  const start = useCallback(async (file: File) => {
+    if (running.current) return;
+    running.current = true;
+    setStage('reading'); setErr(''); setFileName(file.name);
+    setTotal(0); setDone(0); setImported(0); setRejected([]); setFailed(0);
+
     try {
+      const parsed = await parseContactsFile(file);
+      if (parsed.error) { setErr(parsed.error); setStage('failed'); return; }
+
+      setStage('validating');
+      const rows: ParsedRow[] = parsed.rows;
+      const batches = batchRows(rows, IMPORT_BATCH);
+      setTotal(rows.length);
+      if (!rows.length) { setErr('EMPTY_FILE'); setStage('failed'); return; }
+
+      setStage('importing');
+      let ok = 0, bad = 0;
+      const skipped: ImportRejection[] = [];
       for (let i = 0; i < batches.length; i++) {
         const res = await importContacts(orgId, batches[i] as unknown as Record<string, string>[]);
         ok += res.imported;
-        // Row numbers are per-batch server-side; re-base them onto the file so the
+        // Row numbers come back per-batch; re-base them onto the file so the
         // operator can find the actual line in their spreadsheet.
-        bad.push(...res.rejected.map(r => ({ ...r, row: r.row + i * IMPORT_BATCH })));
-        setDone(i + 1); setImported(ok); setRejected([...bad]);
+        for (const r of res.rejected) {
+          const row = { ...r, row: r.row + i * IMPORT_BATCH };
+          if (r.code === 'WRITE_FAILED') bad++; else skipped.push(row);
+        }
+        setDone((i + 1) * batches[i].length);
+        setImported(ok); setRejected([...skipped]); setFailed(bad);
       }
-      setFinished(true);
+      setStage('done');
       await onDone();
     } catch (e) {
-      setRunErr(e instanceof ContactError ? e.code : 'IMPORT_FAILED');
+      setErr(e instanceof ContactError ? e.code : 'IMPORT_FAILED');
+      setStage('failed');
     } finally {
-      setRunning(false);
+      running.current = false;
+      // Clear the input so re-picking the SAME file fires change again.
+      if (fileRef.current) fileRef.current.value = '';
     }
-  };
+  }, [orgId, onDone]);
 
-  const batchCount = rows ? batchRows(rows, IMPORT_BATCH).length : 0;
+  const stageText: Record<Stage, string> = {
+    idle: '', reading: C.importStageReading, validating: C.importStageValidating,
+    importing: C.importStageImporting, done: C.importStageDone, failed: '',
+  };
+  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  const msg = (code: string) => (C.importErrors as Record<string, string>)[code] ?? (C.errors as Record<string, string>)[code] ?? code;
 
   return (
-    <div style={overlay} onClick={() => !running && onClose()} role="dialog" aria-modal="true" aria-label={C.importTitle}>
+    <div style={overlay} onClick={() => !busy && onClose()} role="dialog" aria-modal="true" aria-label={C.importTitle}>
       <div
         onClick={e => e.stopPropagation()}
         style={{
@@ -94,67 +131,86 @@ export function ContactImportModal({ orgId, onClose, onDone }: {
         }}
       >
         <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 800 }}>{C.importTitle}</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{C.importHelp}</p>
+        <p style={{ margin: '0 0 4px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{C.importHelp}</p>
+        <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--text-muted)' }}>
+          {C.importFormats}
+        </p>
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".csv,text/csv"
-          onChange={e => { const f = e.target.files?.[0]; if (f) void pick(f); }}
-          disabled={running}
-          style={{ fontSize: 13, marginBottom: 12 }}
-        />
+        {/* Column contract, stated rather than discovered by trial and error. */}
+        <div style={{ ...label, marginBottom: 4 }}>{C.importColumns}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.6 }}>
+          <div><strong>{C.importRequired}:</strong> {REQUIRED_COLUMNS.join(', ')}</div>
+          <div><strong>{C.importOptional}:</strong> {OPTIONAL_COLUMNS.join(', ')}</div>
+        </div>
 
-        {parseErr && <div style={{ fontSize: 13, color: 'var(--red-text)', marginBottom: 12 }}>{(C.importErrors as Record<string, string>)[parseErr] ?? parseErr}</div>}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+          <Button variant="primary" size="md" onClick={() => fileRef.current?.click()} disabled={busy}>
+            {busy ? '…' : C.importChooseFile}
+          </Button>
+          <Button variant="secondary" size="md" onClick={downloadSample} disabled={busy}>{C.importSample}</Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={e => { const f = e.target.files?.[0]; if (f) void start(f); }}
+            style={{ display: 'none' }}
+          />
+        </div>
 
-        {rows && !finished && (
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
-            {fileName} — {rows.length} {C.importRowsFound}
-            {batchCount > 1 && ` (${batchCount} ${C.importBatches})`}
-          </div>
-        )}
-
-        {running && (
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
-            {C.importProgress} {done}/{batchCount} — {imported} {C.importImported}
-          </div>
-        )}
-
-        {finished && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green-text)' }}>
-              {imported} {C.importImported}
+        {stage !== 'idle' && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, marginBottom: 6 }}>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                {fileName}{stageText[stage] ? ` — ${stageText[stage]}` : ''}
+              </span>
+              {stage === 'importing' && total > 0 && <span style={{ color: 'var(--text-muted)' }}>{pct}%</span>}
             </div>
-            {rejected.length > 0 && (
-              <div style={{ marginTop: 10 }}>
-                <div style={label}>{rejected.length} {C.importRejected}</div>
-                <div style={{
-                  marginTop: 6, maxHeight: 200, overflowY: 'auto', fontSize: 12.5,
-                  background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 10,
-                }}>
-                  {rejected.slice(0, 100).map(r => (
-                    <div key={`${r.row}-${r.email}`} style={{ display: 'flex', gap: 8, padding: '2px 0' }}>
-                      <span style={{ color: 'var(--text-muted)', minWidth: 40 }}>#{r.row}</span>
-                      <span style={{ flex: 1, wordBreak: 'break-all' }}>{r.email || '—'}</span>
-                      <span style={{ color: 'var(--red-text)' }}>{(C.importErrors as Record<string, string>)[r.code] ?? r.code}</span>
-                    </div>
-                  ))}
-                  {rejected.length > 100 && <div style={{ color: 'var(--text-muted)', paddingTop: 4 }}>…</div>}
-                </div>
-              </div>
-            )}
+            {/* Indeterminate until the row count is known, then real progress. */}
+            <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-2)', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 999,
+                width: stage === 'done' ? '100%' : stage === 'importing' ? `${pct}%` : '35%',
+                background: stage === 'done' ? 'var(--green-text)' : 'var(--violet)',
+                transition: 'width 0.25s ease',
+                opacity: stage === 'reading' || stage === 'validating' ? 0.55 : 1,
+              }} />
+            </div>
           </div>
         )}
 
-        {runErr && <div style={{ fontSize: 13, color: 'var(--red-text)', marginBottom: 12 }}>{(C.errors as Record<string, string>)[runErr] ?? runErr}</div>}
+        {(stage === 'importing' || stage === 'done') && (
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14, fontSize: 13 }}>
+            <span><strong style={{ color: 'var(--green-text)' }}>{imported}</strong> {C.importImported}</span>
+            <span><strong style={{ color: 'var(--text-muted)' }}>{rejected.length}</strong> {C.importRejected}</span>
+            <span><strong style={{ color: failedRows ? 'var(--red-text)' : 'var(--text-muted)' }}>{failedRows}</strong> {C.importFailed}</span>
+          </div>
+        )}
+
+        {err && <div style={{ fontSize: 13, color: 'var(--red-text)', marginBottom: 12 }}>{msg(err)}</div>}
+
+        {rejected.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={label}>{C.importRejected}</div>
+            <div style={{
+              marginTop: 6, maxHeight: 180, overflowY: 'auto', fontSize: 12.5,
+              background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: 10,
+            }}>
+              {rejected.slice(0, 100).map(r => (
+                <div key={`${r.row}-${r.email}`} style={{ display: 'flex', gap: 8, padding: '2px 0' }}>
+                  <span style={{ color: 'var(--text-muted)', minWidth: 40 }}>#{r.row}</span>
+                  <span style={{ flex: 1, wordBreak: 'break-all' }}>{r.email || '—'}</span>
+                  <span style={{ color: 'var(--red-text)' }}>{msg(r.code)}</span>
+                </div>
+              ))}
+              {rejected.length > 100 && <div style={{ color: 'var(--text-muted)', paddingTop: 4 }}>…</div>}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-          <Button variant="ghost" size="md" onClick={onClose} disabled={running}>{finished ? C.closeDetail : C.cancel}</Button>
-          {!finished && (
-            <Button variant="primary" size="md" onClick={() => void run()} disabled={running || !rows?.length}>
-              {running ? '…' : C.importStart}
-            </Button>
-          )}
+          <Button variant="ghost" size="md" onClick={onClose} disabled={busy}>
+            {stage === 'done' ? C.closeDetail : C.cancel}
+          </Button>
         </div>
       </div>
     </div>

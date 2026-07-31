@@ -14,12 +14,26 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { isPlatformAdmin } from '../lib/platformAdmin';
-import { firestoreRunQuery, firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { firestoreRunQuery, firestoreGet, firestoreSet, firestoreCommit } from '../lib/firestoreAdmin';
 import type { AppEnv } from '../index';
 
 const notifications = new Hono<AppEnv>();
 
-const SCAN = 200;
+/**
+ * Per-recipient page size.
+ *
+ * This used to be a GLOBAL scan: the newest 200 notifications in the whole
+ * platform were read on every bell load and then filtered by uid in memory. A
+ * user with three notifications still cost 200 document reads, and on the
+ * Firestore free tier (50,000 reads/day) that capped the entire product at about
+ * 250 bell loads per day. Worse, it was silently WRONG at scale — once the
+ * platform produces more than 200 notifications in the window, a user's own
+ * notification can fall outside the global 200 and simply never appear.
+ *
+ * The queries below are targeted, so this is now a real per-recipient page size
+ * rather than a scan budget.
+ */
+const PAGE = 50;
 
 function str(v: unknown): string { return v === null || v === undefined ? '' : String(v); }
 
@@ -53,13 +67,71 @@ function visibleTo(n: NotifRow, uid: string, operator: boolean): boolean {
   return false;
 }
 
-async function fetchMine(saJson: string, uid: string, operator: boolean): Promise<NotifRow[]> {
+const eq = (field: string, value: string) =>
+  ({ fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: { stringValue: value } } });
+
+/** Newest-first page of one audience. Indexed — see firestore.indexes.json. */
+async function queryAudience(saJson: string, filters: object[]): Promise<NotifRow[]> {
+  const rows = await firestoreRunQuery(saJson, {
+    from:    [{ collectionId: 'notifications' }],
+    where:   { compositeFilter: { op: 'AND', filters } },
+    orderBy: [{ field: { fieldPath: 'at' }, direction: 'DESCENDING' }],
+    limit:   PAGE,
+  });
+  return rows.map(r => mapNotif(r.name, r.fields));
+}
+
+/**
+ * The caller's notifications: their own, plus the operator feed when they are a
+ * platform admin.
+ *
+ * Two targeted queries instead of one global scan. They are separate rather than
+ * an OR filter because the operator feed is only fetched for the handful of users
+ * entitled to it — an OR would make every ordinary user pay for a branch that can
+ * never match them. A non-operator therefore issues ONE query that reads only
+ * their own documents.
+ *
+ * The visibleTo() re-check is deliberate belt-and-braces: the query already
+ * constrains audience and uid, but this function's result feeds read-all, which
+ * WRITES. A query mistake must not become a cross-user write.
+ */
+/**
+ * Legacy path: the global scan this route used to do.
+ *
+ * Kept ONLY as a fallback for the window before the composite indexes exist.
+ * A targeted query against a missing index answers FAILED_PRECONDITION, and
+ * without this the bell would silently show nothing — the route's error handler
+ * returns an empty list, so the failure would look like "no notifications"
+ * rather than like a broken query. Expensive, correct, and self-retiring: once
+ * the indexes are live this never runs again.
+ */
+async function fetchByScan(saJson: string, uid: string, operator: boolean): Promise<NotifRow[]> {
   const rows = await firestoreRunQuery(saJson, {
     from:    [{ collectionId: 'notifications' }],
     orderBy: [{ field: { fieldPath: 'at' }, direction: 'DESCENDING' }],
-    limit:   SCAN,
+    limit:   200,
   });
   return rows.map(r => mapNotif(r.name, r.fields)).filter(n => visibleTo(n, uid, operator));
+}
+
+async function fetchMine(saJson: string, uid: string, operator: boolean): Promise<NotifRow[]> {
+  const queries = [queryAudience(saJson, [eq('audience', 'user'), eq('uid', uid)])];
+  if (operator) queries.push(queryAudience(saJson, [eq('audience', 'operator')]));
+
+  let pages: NotifRow[][];
+  try {
+    pages = await Promise.all(queries);
+  } catch (err) {
+    console.warn('[notifications] targeted query failed — falling back to scan. Deploy firestore.indexes.json:',
+      err instanceof Error ? err.message.slice(0, 200) : '');
+    return fetchByScan(saJson, uid, operator);
+  }
+
+  const merged = pages.flat().filter(n => visibleTo(n, uid, operator));
+  // Both pages are newest-first individually; the merge has to be re-sorted so
+  // the bell shows a single chronological feed.
+  merged.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  return merged;
 }
 
 notifications.get('/api/notifications', requireAuth(), async c => {
@@ -117,9 +189,12 @@ notifications.post('/api/notifications/read-all', requireAuth(), async c => {
     const mine = await fetchMine(env.FIREBASE_SERVICE_ACCOUNT_JSON, uid, operator);
     const unread = mine.filter(n => !n.read);
     const now = new Date().toISOString();
-    for (const n of unread) {
-      await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `notifications/${n.id}`, { read: true, readAt: now }, { merge: true });
-    }
+    // One commit instead of N sequential PATCHes. Marking 50 notifications read
+    // was 50 round trips; it is now one, and the page count bounds it at PAGE.
+    await firestoreCommit(env.FIREBASE_SERVICE_ACCOUNT_JSON, unread.map(n => ({
+      path: `notifications/${n.id}`,
+      data: { read: true, readAt: now },
+    })));
     return c.json({ ok: true, marked: unread.length });
   } catch (err) {
     console.warn('[notifications] read-all failed:', err instanceof Error ? err.message : err);

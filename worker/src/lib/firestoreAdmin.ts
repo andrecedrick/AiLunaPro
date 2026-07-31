@@ -222,6 +222,54 @@ export async function firestoreSet(
 }
 
 /**
+ * Write many documents in ONE request (Firestore `:commit`).
+ *
+ * WHY THIS EXISTS: the CSV import wrote each contact with its own PATCH. 500 rows
+ * meant 500 sequential HTTPS round trips from the Worker to Firestore — at ~60ms
+ * each that is ~30 seconds of pure latency for a single batch, which is what made
+ * the import look frozen. Firestore accepts up to 500 writes per commit, so the
+ * same 500 rows are now one round trip.
+ *
+ * Every write is a merge-PATCH (updateMask from the data keys), matching
+ * firestoreSet({ merge: true }) semantics.
+ *
+ * ATOMICITY: `:commit` applies all writes or none. A caller that wants partial
+ * success must split the batch itself — for the import that is the correct trade,
+ * because a batch either lands whole or is reported whole as failed, and a
+ * half-written batch is what makes a re-run unsafe.
+ */
+export const COMMIT_MAX_WRITES = 500;
+
+export async function firestoreCommit(
+  saJson: string,
+  writes: ReadonlyArray<{ path: string; data: Record<string, WritableValue> }>,
+): Promise<void> {
+  if (writes.length === 0) return;
+  if (writes.length > COMMIT_MAX_WRITES) {
+    throw new Error(`Firestore commit accepts at most ${COMMIT_MAX_WRITES} writes (got ${writes.length})`);
+  }
+  const sa = JSON.parse(saJson) as ServiceAccount;
+  const token = await getAccessToken(sa);
+  const root = `projects/${sa.project_id}/databases/(default)/documents`;
+
+  const res = await fetch(`https://firestore.googleapis.com/v1/${root}:commit`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      writes: writes.map(w => ({
+        update: { name: `${root}/${w.path}`, fields: toFirestoreFields(w.data) },
+        updateMask: { fieldPaths: Object.keys(w.data) },
+      })),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Firestore commit failed: ${text}`);
+  }
+}
+
+/**
  * Read full document including `_updateTime` (used for optimistic concurrency).
  */
 export async function firestoreGetWithMeta(
