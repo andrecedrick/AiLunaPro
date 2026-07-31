@@ -927,6 +927,7 @@ export const pt: Dict = {
       "noAccountPrompt": "Ainda não tem uma conta?",
       "signUpLink": "Registar-se"
     },
+    "error": { "companyRequired": "A empresa é obrigatória." },
     "field": {
       "emailAddress": "Endereço de e-mail",
       "password": "Palavra-passe",

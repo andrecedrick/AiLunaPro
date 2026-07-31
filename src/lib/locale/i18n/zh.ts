@@ -929,6 +929,7 @@ export const zh: Dict = {
       "noAccountPrompt": "还没有账户？",
       "signUpLink": "注册"
     },
+    "error": { "companyRequired": "公司为必填项。" },
     "field": {
       "emailAddress": "邮箱地址",
       "password": "密码",

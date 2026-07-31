@@ -943,6 +943,7 @@ export const en = {
       "noAccountPrompt": "Don't have an account?",
       "signUpLink": "Sign up"
     },
+    "error": { "companyRequired": "Company is required." },
     "field": {
       "emailAddress": "Email address",
       "password": "Password",

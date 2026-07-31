@@ -25,6 +25,7 @@ export function SignupPage() {
   const [password, setPassword] = useState('');
   // Country + local number, composed into E.164. Sales calls new accounts back,
   // and a national-format number carries no region at all.
+  const [company, setCompany] = useState('');
   const [country, setCountry] = useState('');
   const [phone,   setPhone]   = useState('');
   const [errors,   setErrors]   = useState<FormErrors>({});
@@ -38,6 +39,7 @@ export function SignupPage() {
     // owner of THAT workspace) or accept an invite (gets invite role).
     const errs = signupValidate(name, email, password, '__skip__');
     delete errs.orgName; // not collected here anymore
+    if (!company.trim()) errs.company = A.error.companyRequired;
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setApiError('');
@@ -45,7 +47,7 @@ export function SignupPage() {
     track('signup_started');
     // Stashed before the network call: signup navigates to #/org/create and the
     // org-scoped CRM push only runs once that workspace exists.
-    stashSignupCrm({ name, phone: country && phone ? toE164(country, phone) : '' });
+    stashSignupCrm({ name, company: company.trim(), phone: country && phone ? toE164(country, phone) : '' });
     const result = await signup(name, email, password);
     setLoading(false);
     if (result.success) {
@@ -117,6 +119,20 @@ export function SignupPage() {
             onChange={e => setEmail(e.target.value)}
             placeholder={A.placeholder.email}
             autoComplete="email"
+          />
+        </FormField>
+
+        {/* Company is MANDATORY: a lead with no company cannot be qualified or
+            routed, and it is what creates the Twenty Company the person is
+            linked to. It was the one field the pipeline accepted but the form
+            never collected. */}
+        <FormField label={D.placeholderCompany} error={errors.company}>
+          <AuthInput
+            type="text"
+            value={company}
+            onChange={e => setCompany(e.target.value)}
+            placeholder={D.placeholderCompany}
+            autoComplete="organization"
           />
         </FormField>
 

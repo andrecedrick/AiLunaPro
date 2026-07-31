@@ -928,6 +928,7 @@ export const ru: Dict = {
       "noAccountPrompt": "Нет аккаунта?",
       "signUpLink": "Зарегистрироваться"
     },
+    "error": { "companyRequired": "Укажите компанию." },
     "field": {
       "emailAddress": "Адрес эл. почты",
       "password": "Пароль",
