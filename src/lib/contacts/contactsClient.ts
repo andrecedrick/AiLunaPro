@@ -41,6 +41,15 @@ export interface Contact {
   /** Reconciliation link into Twenty CRM. Empty for manually-created contacts. */
   twentyPersonId?:  string;
   twentyCompanyId?: string;
+  // Ownership ledger. `assignedToUid` is what the server authorises on; the rest
+  // is for display. Absent on records created before assignment existed, where
+  // the server falls back to the creator.
+  assignedToUid?:         string;
+  assignedToEmail?:       string;
+  assignedByEmail?:       string;
+  assignedAt?:            string;
+  lastReassignedByEmail?: string;
+  lastReassignedAt?:      string;
 }
 
 export interface ContactInput {
@@ -120,6 +129,57 @@ export async function patchContact(orgId: string, contactId: string, input: Part
     body: JSON.stringify({ orgId, ...input }),
   });
   if (!res.ok) return readError(res);
+}
+
+/* ── Assignment — SUPER ADMIN ONLY (server-enforced via the operator allowlist) ── */
+
+export interface AssignableMember { uid: string; email: string; role: string }
+
+/** Members of `orgId` who may hold a lead. Super-admin only. */
+export async function listAssignable(orgId: string): Promise<AssignableMember[]> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/contacts/assignable?orgId=${encodeURIComponent(orgId)}`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!res.ok) return readError(res);
+  const j = await res.json().catch(() => null) as { members?: AssignableMember[] } | null;
+  return j?.members ?? [];
+}
+
+/**
+ * Assign, transfer or reassign a contact — one operation server-side.
+ * Pass an empty `assignToUid` to UNASSIGN (returns the lead to the super-admin pool).
+ */
+export async function assignContact(orgId: string, contactId: string, assignToUid: string): Promise<void> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/contacts/assign`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, contactId, assignToUid }),
+  });
+  if (!res.ok) return readError(res);
+}
+
+/* ── CSV import — owner/admin/member ───────────────────────────────────────── */
+
+export interface ImportRejection { row: number; code: string; email: string }
+export interface ImportResult { imported: number; rejected: ImportRejection[] }
+
+/** Post ONE batch. The caller splits the file (see lib/contacts/csvParse.ts). */
+export async function importContacts(
+  orgId: string,
+  rows: readonly Record<string, string>[],
+  assignToUid?: string,
+): Promise<ImportResult> {
+  const idToken = await getIdToken();
+  const res = await fetch(`${WORKER_BASE}/api/contacts/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ orgId, rows, ...(assignToUid ? { assignToUid } : {}) }),
+  });
+  if (!res.ok) return readError(res);
+  const j = await res.json().catch(() => null) as Partial<ImportResult> | null;
+  return { imported: j?.imported ?? 0, rejected: j?.rejected ?? [] };
 }
 
 export async function deleteContact(orgId: string, contactId: string): Promise<void> {

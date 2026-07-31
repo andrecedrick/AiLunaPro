@@ -67,7 +67,16 @@ signupCrm.post('/api/signup/crm', async c => {
   if (g instanceof Response) return g;
 
   const name    = typeof body.name === 'string' ? body.name.trim().slice(0, 120) : '';
-  const company = typeof body.company === 'string' ? body.company.trim().slice(0, 120) : '';
+  let company   = typeof body.company === 'string' ? body.company.trim().slice(0, 120) : '';
+  // The signup form makes company mandatory, but it reaches this route through a
+  // sessionStorage stash that a reload, a private-mode tab or a resumed invite can
+  // lose. Falling back to the workspace name means a prospect can never land in
+  // the CRM as "Company —" again: it is the same self-reported organisation the
+  // account holder typed on the very next screen.
+  if (!company) {
+    const org = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}`).catch(() => null);
+    company = typeof org?.name === 'string' ? org.name.trim().slice(0, 120) : '';
+  }
   // Identity is the VERIFIED token email — never the client-supplied value.
   const email = (g.email ?? '').trim().toLowerCase().slice(0, 200);
   if (!EMAIL_RE.test(email)) return c.json({ error: 'Verified email required.', code: 'INVALID_EMAIL' }, 400);

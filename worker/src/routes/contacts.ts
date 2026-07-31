@@ -1,18 +1,22 @@
 /**
  * Contacts — org-scoped contact/lead management (CRM-lite).
  *
- * RBAC (mirrors the validated model — billing/client are walled off):
- *   - GET  /api/contacts/list   requireRole([owner,admin,member]) — owner/admin see
- *     ALL org contacts; member sees only the ones they created.
+ * RBAC — ASSIGNMENT-BASED (see lib/contact-access.ts for the model and the reason
+ * the legacy fallback exists). Role no longer widens visibility:
+ *   - GET  /api/contacts/list   requireRole([owner,admin,member]) — SUPER ADMIN sees
+ *     every contact in the org; owner/admin/member see ONLY contacts assigned to
+ *     them. Two admins in one workspace no longer read each other's pipeline.
  *   - POST /api/contacts/create requireRole([owner,admin,member]) — any content role.
- *   - PATCH /api/contacts/:id   requireRole([owner,admin,member]) — member can edit
- *     only their OWN; ANY status change (block / activate / inactive) is owner/admin
- *     only (a member cannot change a contact's status — fail-closed superset of
- *     "members cannot block"). The UI hides the status control from members too.
- *   - DELETE /api/contacts/:id  requireRole([owner,admin,member]) — member can delete
- *     only their OWN; owner/admin delete any.
+ *     The new contact is assigned to its creator, so creating never means losing it.
+ *   - PATCH /api/contacts/:id   requireRole([owner,admin,member]) — you may edit only
+ *     what is assigned to you (super admin: anything). A status change
+ *     (block / activate / inactive) additionally requires owner/admin or super
+ *     admin, so a member cannot block even their own contact.
+ *   - DELETE /api/contacts/:id  requireRole([owner,admin,member]) — same assignment gate.
  *   - GET  /api/contacts/all    requirePlatformAdmin() — super-admin cross-org READ ONLY.
- *     No platform write route exists (super-admin can never create/edit/delete).
+ *
+ * Assignment, transfer and reassignment live in routes/contacts-assign.ts and are
+ * SUPER ADMIN ONLY. CSV import lives in routes/contacts-import.ts.
  *
  * Storage: organizations/{orgId}/contacts/{id}. firestore.rules deny ALL client
  * access (PII: email/phone) — the worker service account is the only reader/writer.
@@ -23,7 +27,8 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requireRole, type Role } from '../middleware/requireRole';
-import { requirePlatformAdmin } from '../lib/platformAdmin';
+import { requirePlatformAdmin, isSuperAdmin } from '../lib/platformAdmin';
+import { canEditContact, canViewContact } from '../lib/contact-access';
 import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
@@ -82,8 +87,12 @@ function validate(body: Record<string, unknown>, partial: boolean): { ok: true; 
     if (phone.length > PHONE_MAX) return { ok: false, error: `phone must be ≤ ${PHONE_MAX} chars` };
     v.phone = phone;
   }
-  if (has('company')) {
+  // Company is MANDATORY — on create AND on any patch that touches it. A lead with
+  // no company cannot be qualified or routed, so allowing an operator to clear the
+  // field would re-open the exact gap signup was fixed to close.
+  if (!partial || has('company')) {
     const company = typeof body.company === 'string' ? body.company.trim() : '';
+    if (!company) return { ok: false, error: 'company is required' };
     if (company.length > COMPANY_MAX) return { ok: false, error: `company must be ≤ ${COMPANY_MAX} chars` };
     v.company = company;
   }
@@ -156,6 +165,15 @@ function toItem(name: string, f: Record<string, unknown>) {
     phoneCountry:   typeof f.phoneCountry === 'string' ? f.phoneCountry : '',
     lastActivityAt: typeof f.lastActivityAt === 'string' ? f.lastActivityAt : '',
     owner:          typeof f.owner === 'string' ? f.owner : '',
+    // Ownership ledger. `assignedToUid` is the authorisation key; the *Email and
+    // *At fields exist so an operator can see WHO holds the lead and WHEN it
+    // changed hands without resolving uids by hand.
+    assignedToUid:        typeof f.assignedToUid === 'string' ? f.assignedToUid : '',
+    assignedToEmail:      typeof f.assignedToEmail === 'string' ? f.assignedToEmail : '',
+    assignedByEmail:      typeof f.assignedByEmail === 'string' ? f.assignedByEmail : '',
+    assignedAt:           typeof f.assignedAt === 'string' ? f.assignedAt : '',
+    lastReassignedByEmail: typeof f.lastReassignedByEmail === 'string' ? f.lastReassignedByEmail : '',
+    lastReassignedAt:      typeof f.lastReassignedAt === 'string' ? f.lastReassignedAt : '',
     // Reconciliation link into Twenty. Written by the CRM push; empty for
     // manually-created contacts and for leads captured before the integration.
     twentyPersonId:  typeof f.twentyPersonId === 'string' ? f.twentyPersonId : '',
@@ -206,7 +224,6 @@ contacts.get('/api/contacts/list', requireAuth(), requireRole(ORG_ROLES), async 
   if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
   const orgId = c.get('orgId') as string;
   const uid   = c.get('uid') as string;
-  const role  = c.get('role') as Role;
 
   let rows: Awaited<ReturnType<typeof firestoreRunQuery>>;
   try {
@@ -216,14 +233,16 @@ contacts.get('/api/contacts/list', requireAuth(), requireRole(ORG_ROLES), async 
     return c.json({ error: 'Could not load contacts.', code: 'QUERY_FAILED' }, 500);
   }
 
-  const ownOnly = !MANAGE_ROLES.includes(role); // member → own only; owner/admin → all
+  // Visibility is assignment-based, NOT role-based: an admin sees exactly what is
+  // assigned to them, the same as a member. Only a super admin sees the whole org.
+  const isSuper = isSuperAdmin(env, c.get('email'), c.get('emailVerified'));
   const tag    = (c.req.query('tag') ?? '').trim();
   const source = (c.req.query('source') ?? '').trim();
   const status = (c.req.query('status') ?? '').trim();
 
   const list = rows
     .map(r => toItem(r.name, r.fields as Record<string, unknown>))
-    .filter(x => (ownOnly ? x.createdByUid === uid : true))
+    .filter(x => canViewContact(x, uid, isSuper))
     .filter(x => (tag ? x.tags.includes(tag) : true))
     .filter(x => (source ? x.source === source : true))
     .filter(x => (status ? x.status === status : true));
@@ -255,6 +274,7 @@ contacts.post('/api/contacts/create', requireAuth(), requireRole(ORG_ROLES), asy
 
   const contactId = genId();
   const now = new Date().toISOString();
+  const email = c.get('email') ?? '';
   const doc = {
     contactId, orgId,
     name: f.name!, email: f.email!, emailKey: f.email!,
@@ -262,6 +282,12 @@ contacts.post('/api/contacts/create', requireAuth(), requireRole(ORG_ROLES), asy
     tags: f.tags ?? [], status: f.status ?? 'active', source: f.source ?? 'manual',
     linkedQuoteId: f.linkedQuoteId ?? '', linkedAuditId: f.linkedAuditId ?? '',
     createdByUid: uid, createdAt: now, updatedAt: now,
+    // Assigned to its creator at birth. Without this, visibility being
+    // assignment-based would mean a member creates a contact and immediately
+    // cannot see it — the record would vanish the moment it was saved.
+    assignedToUid: uid, assignedToEmail: email,
+    assignedByUid: uid, assignedByEmail: email, assignedAt: now,
+    lastReassignedByEmail: '', lastReassignedAt: '',
   };
   await firestoreSet(saJson, `${COLLECTION(orgId)}/${contactId}`, doc);
   dlog(env as Record<string, unknown>, '[contacts] created', contactId, 'org', orgId);
@@ -287,9 +313,11 @@ contacts.patch('/api/contacts/:id', requireAuth(), requireRole(ORG_ROLES), async
   const existing = await firestoreGet(saJson, path);
   if (!existing) return c.json({ error: 'Not found.', code: 'NOT_FOUND' }, 404);
 
-  // Member can only edit their own contacts.
-  const isManager = MANAGE_ROLES.includes(role);
-  if (!isManager && existing.createdByUid !== uid) {
+  // You may edit only what is assigned to you. Role does not widen this — an
+  // admin has no more reach over another admin's lead than a member does.
+  const isSuper   = isSuperAdmin(env, c.get('email'), c.get('emailVerified'));
+  const isManager = MANAGE_ROLES.includes(role) || isSuper;
+  if (!canEditContact(existing, uid, isSuper)) {
     return c.json({ error: 'Not your contact.', code: 'FORBIDDEN' }, 403);
   }
 
@@ -297,7 +325,7 @@ contacts.patch('/api/contacts/:id', requireAuth(), requireRole(ORG_ROLES), async
   if (!v.ok) return c.json({ error: v.error, code: 'INVALID_INPUT' }, 400);
   const f = v.value;
 
-  // Block / activate is a governance action — owner/admin only.
+  // Block / activate is a governance action — owner/admin (or super admin) only.
   if (f.status !== undefined && existing.status !== f.status && !isManager) {
     return c.json({ error: 'Only owner/admin can change a contact status.', code: 'FORBIDDEN_STATUS' }, 403);
   }
@@ -326,14 +354,15 @@ contacts.delete('/api/contacts/:id', requireAuth(), requireRole(ORG_ROLES), asyn
   if (!saJson) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 503);
   const orgId = c.get('orgId') as string;
   const uid   = c.get('uid') as string;
-  const role  = c.get('role') as Role;
   const id    = safeId(c.req.param('id'));
 
   const path = `${COLLECTION(orgId)}/${id}`;
   const existing = await firestoreGet(saJson, path);
   if (!existing) return c.json({ ok: true }); // idempotent
 
-  if (!MANAGE_ROLES.includes(role) && existing.createdByUid !== uid) {
+  // Same assignment gate as edit: deleting someone else's lead is the most
+  // destructive form of "editing a contact that is not yours".
+  if (!canEditContact(existing, uid, isSuperAdmin(env, c.get('email'), c.get('emailVerified')))) {
     return c.json({ error: 'Not your contact.', code: 'FORBIDDEN' }, 403);
   }
   await firestoreDelete(saJson, path);

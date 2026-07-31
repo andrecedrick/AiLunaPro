@@ -18,11 +18,14 @@ import { Button } from '../components/ui/Button';
 import { fetchPlatformMe } from '../lib/platform/platformService';
 import { contactsToCsv, csvFilename } from '../lib/contacts/contactsExport';
 import { ContactDetailPanel } from '../components/contacts/ContactDetailPanel';
+import { ContactImportModal } from '../components/contacts/ContactImportModal';
 import { useViewport } from '../lib/ui/useViewport';
 import { messagePreview } from '../lib/contacts/messagePreview';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
+  listAssignable, assignContact,
   ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource, type LeadStatus,
+  type AssignableMember,
 } from '../lib/contacts/contactsClient';
 
 const SOURCES: ContactSource[] = ['manual', 'quote', 'worksheet', 'visibility', 'import', 'demo_request'];
@@ -131,6 +134,28 @@ export function ContactsPage() {
     await reload();
   };
 
+  // Assignment. Fetched per open record rather than once for the page, because in
+  // the cross-org view each contact belongs to a DIFFERENT workspace and the list
+  // of people who may hold it changes with it.
+  const [assignable, setAssignable] = useState<AssignableMember[]>([]);
+  const detailOrg = detail?.orgId ?? orgId;
+  useEffect(() => {
+    if (!detail || !isSuperAdmin) { setAssignable([]); return; }
+    let alive = true;
+    listAssignable(detailOrg).then(m => { if (alive) setAssignable(m); }).catch(() => { if (alive) setAssignable([]); });
+    return () => { alive = false; };
+  }, [detail, detailOrg, isSuperAdmin]);
+
+  const doAssign = async (assignToUid: string) => {
+    if (!detail) return;
+    await assignContact(detailOrg, detail.contactId, assignToUid);
+    const holder = assignable.find(m => m.uid === assignToUid);
+    setDetail({ ...detail, assignedToUid: assignToUid, assignedToEmail: holder?.email ?? '', owner: holder?.email ?? '' });
+    await reload();
+  };
+
+  const [showImport, setShowImport] = useState(false);
+
   const [busyId, setBusyId] = useState<string | null>(null);
   const toggleBlock = async (c: Contact) => {
     setBusyId(c.contactId);
@@ -161,7 +186,17 @@ export function ContactsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const canEditRow = (c: Contact) => !readOnly && (isManager || c.createdByUid === (session?.userId ?? ''));
+  /**
+   * Mirrors the server rule exactly (worker lib/contact-access.ts): you may edit
+   * what is assigned to you; a super admin may edit anything. Role does not widen
+   * it. The fallback to `createdByUid` matches the server's legacy fallback for
+   * contacts written before assignment existed.
+   */
+  const canEditRow = (c: Contact) => {
+    if (readOnly) return false;
+    if (isSuperAdmin) return true;
+    return (c.assignedToUid || c.createdByUid) === (session?.userId ?? '');
+  };
   const errMsg = (code: string) => (C.errors as Record<string, string>)[code] ?? code;
 
   if (!isContentRole && !isSuperAdmin) {
@@ -188,6 +223,12 @@ export function ContactsPage() {
               contacts in the table. */}
           {isSuperAdmin && (
             <Button variant="secondary" size="md" onClick={exportCsv} disabled={!filtered.length}>{C.exportCsv}</Button>
+          )}
+          {/* Import is open to every content role: loading your own list is how a
+              sales user works, not a governance action. Rows land assigned to the
+              importer, so it can never widen anyone's visibility. */}
+          {!readOnly && isContentRole && (
+            <Button variant="secondary" size="md" onClick={() => setShowImport(true)}>{C.importCsv}</Button>
           )}
           {!readOnly && isContentRole && (
             <Button variant="primary" size="md" onClick={openCreate}>{C.create}</Button>
@@ -248,6 +289,11 @@ export function ContactsPage() {
                       c.countryCode || c.phoneCountry,
                       c.leadStatus].filter(Boolean).join(' · ')}
                   </div>
+                  {/* Owner, on the card too — the same question a sales manager
+                      asks on desktop is the one they ask on a phone. */}
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    {C.colOwner}: {c.assignedToEmail || c.owner || C.unassigned}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -276,6 +322,9 @@ export function ContactsPage() {
                 <th style={th}>{C.phone}</th>
                 <th style={th}>{C.colCountry}</th>
                 <th style={th}>{C.colLeadStatus}</th>
+                {/* Who holds this lead. Without it a sales manager cannot tell an
+                    unworked lead from one someone is already calling. */}
+                <th style={th}>{C.colOwner}</th>
                 {/* What the prospect actually asked for. Without this an operator
                     had to open Firestore to know what the call was about. */}
                 <th style={th}>{C.colLastMessage}</th>
@@ -288,9 +337,9 @@ export function ContactsPage() {
             </thead>
             <tbody>
               {rows === null ? (
-                <tr><td style={td} colSpan={13}>{C.loading}</td></tr>
+                <tr><td style={td} colSpan={14}>{C.loading}</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td style={{ ...td, color: 'var(--text-muted)' }} colSpan={13}>{C.empty}</td></tr>
+                <tr><td style={{ ...td, color: 'var(--text-muted)' }} colSpan={14}>{C.empty}</td></tr>
               ) : filtered.map(c => (
                 <tr key={(c.orgId ?? '') + c.contactId} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ ...td, fontWeight: 600 }}>{c.name}</td>
@@ -303,6 +352,9 @@ export function ContactsPage() {
                   </td>
                   <td style={{ ...td, color: 'var(--text-muted)' }}>{c.countryCode || c.phoneCountry || '—'}</td>
                   <td style={td}>{c.leadStatus || '—'}</td>
+                  <td style={{ ...td, color: (c.assignedToEmail || c.owner) ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                    {c.assignedToEmail || c.owner || C.unassigned}
+                  </td>
                   {/* Preview ONLY — capped at 80 characters in the string, not
                       merely clipped by CSS. The full request lives solely in the
                       detail panel; a hover tooltip is unreachable on touch and
@@ -358,7 +410,9 @@ export function ContactsPage() {
               <Labeled label={C.colName} req><input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} style={field} /></Labeled>
               <Labeled label={C.colEmail} req><input value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} style={field} /></Labeled>
               <Labeled label={C.phone}><input value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} style={field} /></Labeled>
-              <Labeled label={C.colCompany}><input value={draft.company} onChange={e => setDraft({ ...draft, company: e.target.value })} style={field} /></Labeled>
+              {/* Mandatory, like every other prospect surface: a lead with no
+                  company cannot be qualified or routed. Server rejects it too. */}
+              <Labeled label={C.colCompany} req><input value={draft.company} onChange={e => setDraft({ ...draft, company: e.target.value })} style={field} /></Labeled>
               <Labeled label={C.colSource}>
                 <select value={draft.source} onChange={e => setDraft({ ...draft, source: e.target.value as ContactSource })} style={field}>
                   {SOURCES.map(s => <option key={s} value={s}>{(C.sources as Record<string, string>)[s]}</option>)}
@@ -399,8 +453,23 @@ export function ContactsPage() {
         <ContactDetailPanel
           contact={detail}
           canEdit={canEditRow(detail)}
+          // Assigning is super-admin only, and deliberately still available in the
+          // cross-org view: leads land in the PROSPECT's workspace, so handing one
+          // to a sales rep is inherently a cross-org write. Read-only there refers
+          // to the contact's own fields, not to who holds it.
+          canAssign={isSuperAdmin}
+          assignable={assignable}
+          onAssign={doAssign}
           onClose={() => setDetail(null)}
           onSaveNotes={saveNotes}
+        />
+      )}
+
+      {showImport && (
+        <ContactImportModal
+          orgId={orgId}
+          onClose={() => setShowImport(false)}
+          onDone={reload}
         />
       )}
     </div>

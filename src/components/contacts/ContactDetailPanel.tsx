@@ -19,7 +19,7 @@
 import { useEffect, useState } from 'react';
 import { useLocale } from '../../context/LocaleContext';
 import { Button } from '../ui/Button';
-import type { Contact } from '../../lib/contacts/contactsClient';
+import type { Contact, AssignableMember } from '../../lib/contacts/contactsClient';
 
 const overlay = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
@@ -41,17 +41,32 @@ function Field({ k, v }: { k: string; v: string }) {
 }
 
 export function ContactDetailPanel({
-  contact, canEdit, onClose, onSaveNotes,
+  contact, canEdit, canAssign = false, assignable = [], onClose, onSaveNotes, onAssign,
 }: {
   contact: Contact;
   canEdit: boolean;
+  /** Super admin only. Assigning is the one action a role can never grant. */
+  canAssign?: boolean;
+  assignable?: readonly AssignableMember[];
   onClose: () => void;
   onSaveNotes: (notes: string) => Promise<void>;
+  onAssign?: (assignToUid: string) => Promise<void>;
 }) {
   const C = useLocale().contacts;
   const [notes, setNotes] = useState(contact.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [target, setTarget] = useState(contact.assignedToUid ?? '');
+  const [assigning, setAssigning] = useState(false);
+  const [assignErr, setAssignErr] = useState('');
+
+  const doAssign = async () => {
+    if (!onAssign) return;
+    setAssigning(true); setAssignErr('');
+    try { await onAssign(target); }
+    catch (e) { setAssignErr(e instanceof Error ? e.message : 'ASSIGN_FAILED'); }
+    finally { setAssigning(false); }
+  };
 
   // Escape closes — a modal that can only be dismissed by hitting a small target
   // is painful on a phone, which is where this panel matters most.
@@ -108,6 +123,52 @@ export function ContactDetailPanel({
           )}
           <Field k={C.colCreated}      v={contact.createdAt ? new Date(contact.createdAt).toLocaleString() : ''} />
           <Field k={C.colLastActivity} v={contact.lastActivityAt ? new Date(contact.lastActivityAt).toLocaleString() : ''} />
+        </section>
+
+        {/* Ownership ledger. Shown to everyone who can open the record — knowing
+            who holds a lead is not privileged information; CHANGING it is. */}
+        <section style={{ marginBottom: 18 }}>
+          <div style={{ ...label, marginBottom: 6 }}>{C.assignmentSection}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+            <Field k={C.assignedTo} v={contact.assignedToEmail || contact.owner || C.unassigned} />
+            <Field k={C.assignedBy} v={contact.assignedByEmail ?? ''} />
+            <Field k={C.assignedAt} v={contact.assignedAt ? new Date(contact.assignedAt).toLocaleString() : ''} />
+            {/* Only present once a lead has actually changed hands. */}
+            {contact.lastReassignedAt && (
+              <>
+                <Field k={C.lastReassignedBy} v={contact.lastReassignedByEmail ?? ''} />
+                <Field k={C.lastReassignedAt} v={new Date(contact.lastReassignedAt).toLocaleString()} />
+              </>
+            )}
+          </div>
+
+          {canAssign && onAssign && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <select
+                value={target}
+                onChange={e => setTarget(e.target.value)}
+                aria-label={C.assignTo}
+                style={{
+                  flex: '1 1 200px', minWidth: 160, padding: '8px 10px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                  color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit',
+                }}
+              >
+                {/* '' is a real choice: it returns the lead to the unassigned pool
+                    so a misassignment can be undone. */}
+                <option value="">{C.unassigned}</option>
+                {assignable.map(m => <option key={m.uid} value={m.uid}>{m.email || m.uid} ({m.role})</option>)}
+              </select>
+              <Button
+                variant="primary" size="sm"
+                onClick={doAssign}
+                disabled={assigning || target === (contact.assignedToUid ?? '')}
+              >
+                {contact.assignedToUid ? C.transfer : C.assign}
+              </Button>
+            </div>
+          )}
+          {assignErr && <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--red-text)' }}>{assignErr}</div>}
         </section>
 
         {contact.tags.length > 0 && (
