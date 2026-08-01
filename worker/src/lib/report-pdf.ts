@@ -11,6 +11,8 @@ import { PdfBuilder } from './pdf/pdf-doc';
 import { drawReadinessBar, drawKpiTiles } from './pdf/pdf-charts';
 import { coverPage, conceptBox, flowDiagram, maturityLadder, twoColumn } from './pdf/pdf-whitepaper';
 import { getDeepNarrative } from './report-narrative';
+import { enrichmentSection } from './pdf/pdf-enrichment';
+import type { EnrichmentReportView } from './enrichment-report';
 import type { AuditAnswers, AuditResult } from './audit-scoring';
 
 export const REPORT_PDF_ENGINE = 'report-pdf-2.0.0';
@@ -22,6 +24,12 @@ export interface ReportPdfInput {
   createdAt: string;
   result: AuditResult;
   answers: AuditAnswers;
+  /**
+   * Public-source enrichment (§26.10). Optional: a report without a stored
+   * evidence snapshot simply omits the section rather than printing an empty
+   * one, which would read as "nothing found" instead of "not collected".
+   */
+  enrichment?: EnrichmentReportView;
 }
 
 const RISK_LABEL: Record<string, string> = {
@@ -202,6 +210,9 @@ export function buildReportPdf(input: ReportPdfInput): Uint8Array {
   doc.bullet('Act. Start with the highest-leverage, lowest-effort fixes from your 30-day roadmap.');
   doc.bullet('Prove. Re-audit to watch your score climb and generate the evidence your stakeholders ask for.');
   doc.callout('Your next step: open your matched agents and start with action one from the roadmap. In the app, this links straight to your recommended agents and a deeper audit.', 'tint');
+
+  /* ── 8b · Public-source enrichment (only when a snapshot exists) ─ */
+  if (input.enrichment) enrichmentSection(doc, input.enrichment);
 
   /* ── 9 · Conclusion ───────────────────────────────────────────── */
   doc.h2('9.  Conclusion');

@@ -22,6 +22,8 @@ import { understand } from '../lib/audit-express-understanding';
 import type { ExtractSnapshot } from '../lib/audit-express-extract';
 import type { Understanding } from '../lib/audit-express-understanding';
 import { buildAuditExpressPdf } from '../lib/audit-express-pdf';
+import { loadEnrichmentReport, type EnrichmentReportView } from '../lib/enrichment-report';
+import { firestoreGet } from '../lib/firestoreAdmin';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
 
@@ -30,6 +32,11 @@ const pdf = new Hono<AppEnv>();
 type PdfBindings = AppEnv['Bindings'] & {
   APP_ENV?:           string;
   FIREBASE_PROJECT_ID?: string;
+};
+
+const safeId = (raw: unknown): string => {
+  const s = typeof raw === 'string' ? raw : '';
+  return /^[A-Za-z0-9._-]{1,128}$/.test(s) ? s : '';
 };
 
 /** Light structural guard so understand() receives a usable snapshot. */
@@ -92,12 +99,35 @@ pdf.post('/api/public/audit-express/pdf', async c => {
     createdAt = new Date(obj.createdAt).toISOString();
   }
 
-  // 5. Render deterministic PDF bytes. Understanding is recomputed (pure) from the
+  // 5. Optional public-source enrichment. The snapshot is read from Firestore by
+  //    id, never accepted from the body: a client-supplied evidence set would let
+  //    anyone print arbitrary "findings" onto a report that looks authoritative.
+  //    Membership is verified so one workspace cannot render another's evidence.
+  let enrichment: EnrichmentReportView | undefined;
+  const orgId = safeId(obj.orgId);
+  const snapshotId = safeId(obj.enrichmentSnapshotId);
+  if (orgId && snapshotId) {
+    const sa = (env as { FIREBASE_SERVICE_ACCOUNT_JSON?: string }).FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!sa) return c.json({ error: 'Server misconfigured.', code: 'CONFIG_ERROR' }, 500);
+    const member = await firestoreGet(sa, `organizations/${orgId}/members/${uid}`);
+    if (!member) return c.json({ error: 'Not a member of this workspace.', code: 'FORBIDDEN' }, 403);
+    const loaded = await loadEnrichmentReport(sa, orgId, snapshotId);
+    // A requested-but-unusable snapshot is an error, not a silent omission: the
+    // export would otherwise look complete while missing what was asked for.
+    if (!loaded.ok) {
+      return c.json(loaded.reason === 'INTEGRITY_FAILED'
+        ? { error: 'This evidence snapshot no longer matches its recorded fingerprint.', code: 'INTEGRITY_FAILED' }
+        : { error: 'Evidence snapshot not found.', code: 'SNAPSHOT_NOT_FOUND' }, loaded.reason === 'INTEGRITY_FAILED' ? 409 : 404);
+    }
+    enrichment = loaded.view;
+  }
+
+  // 6. Render deterministic PDF bytes. Understanding is recomputed (pure) from the
   //    supplied snapshot. Any failure becomes a clean, non-PII error code.
   let bytes: Uint8Array;
   try {
     const understanding: Understanding | undefined = extractSnapshot ? understand(extractSnapshot) : undefined;
-    bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding });
+    bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding, enrichment });
   } catch (err) {
     const reqId = c.req.header('CF-Ray') ?? 'n/a';
     // DEBUG-gated: log only an error code + request id. No PII, no payload.

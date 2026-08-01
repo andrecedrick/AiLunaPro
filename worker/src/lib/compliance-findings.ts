@@ -62,6 +62,13 @@ export interface Finding {
   ruleId:      string;
   gapKind:     GapKind;
   subject:     string;
+  /**
+   * Links back to the observed subject and the registry entry the gap concerns.
+   * Carried so a report can render finding → observed → declared without
+   * re-deriving the association by matching display strings.
+   */
+  subjectKey:  string;
+  systemId:    string;
   riskLevel:   RiskLevel;
   title:       string;
   /** Why this finding exists, in the customer's terms (§26.11). */
@@ -233,6 +240,8 @@ export function buildFindings(
       ruleId,
       gapKind: gap.gapKind,
       subject: gap.subject,
+      subjectKey: gap.subjectKey,
+      systemId: gap.systemId,
       riskLevel: rule.risk,
       title: rule.title,
       explanation: rule.explanation,

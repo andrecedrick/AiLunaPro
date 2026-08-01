@@ -27,6 +27,12 @@ export interface Report {
   /** Optional flags lifted from the audit at snapshot time, for table filters / chips. */
   industry?: string;
   weakestSection?: SectionKey;
+  /**
+   * Frozen public-source evidence backing the enrichment section (§26.10).
+   * The id only: the assembled view is fetched from the worker, so listing
+   * reports never drags every stored excerpt into the browser.
+   */
+  enrichmentSnapshotId?: string;
 }
 
 export type ExportKind = 'pdf' | 'email' | 'print' | 'share-link';

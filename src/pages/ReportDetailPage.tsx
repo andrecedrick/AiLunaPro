@@ -13,6 +13,7 @@ import {
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { ReportHeader } from '../components/reports/ReportHeader';
 import { ExportHistory } from '../components/reports/ExportHistory';
+import { EnrichmentPanel } from '../components/reports/EnrichmentPanel';
 import { Button } from '../components/ui/Button';
 import { ResultHero } from '../components/result/ResultHero';
 import { AudioExplanation } from '../components/result/AudioExplanation';
@@ -265,6 +266,15 @@ export function ReportDetailPage() {
           </div>
           <ActionPlan result={result} />
           <Roadmap result={result} />
+
+          {/* Public-source enrichment (§26.10). Rendered only when a frozen
+              evidence snapshot is attached — an empty panel would read as
+              "nothing found" rather than "never collected". */}
+          {orgId && displayReport.enrichmentSnapshotId && (
+            <div style={{ marginBottom: 20 }}>
+              <EnrichmentPanel orgId={orgId} snapshotId={displayReport.enrichmentSnapshotId} />
+            </div>
+          )}
 
           {/* J9: mandatory advisory disclaimer. */}
           <Disclaimer />

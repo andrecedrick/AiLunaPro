@@ -73,6 +73,8 @@ export interface SavedAuditDetail {
   sharedExpiresAt: string;
   shareRevokedAt: string;
   sharingDisabled: boolean;
+  /** Frozen public-source evidence backing the enrichment section (§26.10). */
+  enrichmentSnapshotId: string;
   recommendedAgents: RecommendedAgent[];
 }
 
@@ -103,6 +105,7 @@ export async function getSavedAuditDetail(orgId: string, auditId: string): Promi
     sharedExpiresAt: typeof j.sharedExpiresAt === 'string' ? j.sharedExpiresAt : '',
     shareRevokedAt: typeof j.shareRevokedAt === 'string' ? j.shareRevokedAt : '',
     sharingDisabled: j.sharingDisabled === true,
+    enrichmentSnapshotId: typeof j.enrichmentSnapshotId === 'string' ? j.enrichmentSnapshotId : '',
   };
 }
 

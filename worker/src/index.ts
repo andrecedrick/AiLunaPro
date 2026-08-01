@@ -74,6 +74,7 @@ import companiesTwentyRoutes  from './routes/companies-twenty';
 import contactsOneRoutes     from './routes/contacts-one';
 import pipelineRoutes        from './routes/pipeline';
 import salesRoutes           from './routes/sales';
+import enrichmentRoutes      from './routes/enrichment';
 import { runReminderSweep }  from './lib/reminders';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
@@ -263,6 +264,7 @@ app.route('/', companiesTwentyRoutes);
 app.route('/', contactsOneRoutes);
 app.route('/', pipelineRoutes);
 app.route('/', salesRoutes);
+app.route('/', enrichmentRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

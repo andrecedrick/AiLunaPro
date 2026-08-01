@@ -16,6 +16,8 @@
 import { PdfBuilder } from './pdf/pdf-doc';
 import { drawReadinessBar, drawKpiTiles, drawBarChart, drawOpportunityMatrix, drawSchematic } from './pdf/pdf-charts';
 import { coverPage, conceptBox } from './pdf/pdf-whitepaper';
+import { enrichmentSection } from './pdf/pdf-enrichment';
+import type { EnrichmentReportView } from './enrichment-report';
 import type { Trace } from './determinism';
 import type { AuditExpressPreview } from './audit-express-preview';
 import type { ExtractSnapshot } from './audit-express-extract';
@@ -31,6 +33,12 @@ export interface AuditPdfInput {
   understanding?:   Understanding;
   /** Optional metadata title (deterministic header input; does not change scores). */
   title?:           string;
+  /**
+   * Public-source enrichment (§26.10). Optional: omitted entirely when no
+   * evidence snapshot is attached, because an empty section would read as
+   * "nothing found" rather than "not collected".
+   */
+  enrichment?:      EnrichmentReportView;
 }
 
 /** Unique, stable-ordered ref ids from a Trace. id = `${kind}:${ref}`. */
@@ -237,6 +245,9 @@ export function buildAuditExpressPdf(input: AuditPdfInput): Uint8Array {
   doc.callout('Estimates are indicative and based on your inputs - a starting point for your decision, not a guarantee or a legal classification.', 'amber');
 
   // ── Appendix: Sources & reasons (human label + raw id) ──
+  // Enrichment before the appendix: it is report content, not a reference list.
+  if (input.enrichment) enrichmentSection(doc, input.enrichment);
+
   doc.h2('Sources & reasons');
   doc.muted('Each [n] above links here. References are the rules/benchmarks behind every figure.');
   doc.spacer(4);

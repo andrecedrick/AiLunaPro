@@ -22,6 +22,7 @@ import { buildAuditExpressPdf } from '../lib/audit-express-pdf';
 import { stableHash, scrubPii, type ExtractSnapshot, type ExtractErrorCode, type ExtractDepth } from '../lib/audit-express-extract';
 import { runExtraction } from '../lib/audit-express-extract-fetch';
 import type { Understanding } from '../lib/audit-express-understanding';
+import { loadEnrichmentReport, type EnrichmentReportView } from '../lib/enrichment-report';
 import { enforcePdfQuota } from '../lib/audit-express-quota';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { dlog } from '../lib/log';
@@ -127,6 +128,24 @@ store.post('/api/audit-express/save', async c => {
 
   if (!env.AUDIT_PDFS) return c.json({ error: 'Storage unavailable.', code: 'STORAGE_UNAVAILABLE' }, 500);
 
+  // Optional public-source enrichment (§26.10). Read from Firestore by id under
+  // the already-gated org — never accepted from the body, or a caller could
+  // print arbitrary "findings" onto a report that looks authoritative.
+  let enrichment: EnrichmentReportView | undefined;
+  const enrichmentSnapshotId = safeId(body.enrichmentSnapshotId);
+  if (enrichmentSnapshotId) {
+    const loaded = await loadEnrichmentReport(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, enrichmentSnapshotId);
+    // The PDF is rendered once and stored: a snapshot that cannot be read must
+    // fail the save rather than silently produce an export missing the section
+    // the caller asked for.
+    if (!loaded.ok) {
+      return c.json(loaded.reason === 'INTEGRITY_FAILED'
+        ? { error: 'This evidence snapshot no longer matches its recorded fingerprint.', code: 'INTEGRITY_FAILED' }
+        : { error: 'Evidence snapshot not found.', code: 'SNAPSHOT_NOT_FOUND' }, loaded.reason === 'INTEGRITY_FAILED' ? 409 : 404);
+    }
+    enrichment = loaded.view;
+  }
+
   const workflow = (body.taps as { workflow?: string }).workflow ?? '';
   let bytes: Uint8Array;
   let understanding: Understanding | undefined;
@@ -140,7 +159,7 @@ store.post('/api/audit-express/save', async c => {
       extractSnapshot?.canonicalUrl ?? '',
       workflow,
     );
-    bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding, title });
+    bytes = buildAuditExpressPdf({ createdAt, preview, extractSnapshot, understanding, title, enrichment });
   } catch (err) {
     dlog(env as Record<string, unknown>, '[audit-express-store] RENDER_FAILED', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
     return c.json({ error: 'Could not render the report.', code: 'PDF_RENDER_FAILED' }, 500);

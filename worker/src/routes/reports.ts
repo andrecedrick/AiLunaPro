@@ -4,6 +4,7 @@ import { verifyIdToken } from '../middleware/auth';
 import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
 import { computeAuditResult, type AuditAnswers } from '../lib/audit-scoring';
 import { buildReportPdf } from '../lib/report-pdf';
+import { loadEnrichmentReport, type EnrichmentReportView } from '../lib/enrichment-report';
 import { enforcePdfQuota } from '../lib/audit-express-quota';
 import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { scrubPii } from '../lib/audit-express-extract';
@@ -97,8 +98,30 @@ reports.get('/api/reports/detail/:reportId', async c => {
     sharedExpiresAt: String(doc.sharedExpiresAt ?? ''),
     shareRevokedAt: String(doc.shareRevokedAt ?? ''),
     sharingDisabled: doc.sharingDisabled === true,
+    // The id only. The evidence view is fetched from /api/enrichment/report so a
+    // report list or detail call never drags every stored excerpt with it.
+    enrichmentSnapshotId: safeId(doc.enrichmentSnapshotId),
   });
 });
+
+/**
+ * Load the enrichment view attached to a report, if any.
+ *
+ * Returns undefined when nothing is attached OR when the attached snapshot is
+ * unreadable. A PDF export must not fail because enrichment is unavailable — the
+ * compliance report itself is still valid — but an unusable snapshot must not be
+ * rendered as if it were intact either, so it is dropped and logged.
+ */
+async function attachedEnrichment(
+  env: Bindings, c: Context<AppEnv>, orgId: string, doc: Record<string, unknown>,
+): Promise<EnrichmentReportView | undefined> {
+  const snapshotId = safeId(doc.enrichmentSnapshotId);
+  if (!snapshotId) return undefined;
+  const loaded = await loadEnrichmentReport(env.FIREBASE_SERVICE_ACCOUNT_JSON!, orgId, snapshotId);
+  if (loaded.ok) return loaded.view;
+  dlog(env as Record<string, unknown>, '[reports] ENRICHMENT_UNAVAILABLE', c.req.header('CF-Ray') ?? 'n/a', loaded.reason);
+  return undefined;
+}
 
 reports.get('/api/reports/file/:reportId', async c => {
   const env = c.env as Bindings;
@@ -119,6 +142,8 @@ reports.get('/api/reports/file/:reportId', async c => {
   });
   if (!quota.ok) return c.json({ error: quota.code === 'PDF_LIMIT_REACHED' ? 'Free PDF limit reached.' : 'Not enough tokens.', code: quota.code, balance: quota.balance, required: quota.required }, quota.status);
 
+  const enrichment = await attachedEnrichment(env, c, orgId, doc);
+
   let bytes: Uint8Array;
   try {
     const answers = (doc.answersSnapshot ?? {}) as AuditAnswers;
@@ -127,6 +152,7 @@ reports.get('/api/reports/file/:reportId', async c => {
       createdAt: String(doc.createdAt ?? ''),
       result: computeAuditResult(answers),
       answers,
+      enrichment,
     });
   } catch (err) {
     dlog(env as Record<string, unknown>, '[reports] PDF_RENDER_FAILED', c.req.header('CF-Ray') ?? 'n/a', err instanceof Error ? err.message : '');
@@ -271,6 +297,10 @@ reports.get('/api/reports/shared/:token', async c => {
   let bytes: Uint8Array;
   try {
     const answers = (doc.answersSnapshot ?? {}) as AuditAnswers;
+    // NO ENRICHMENT ON A PUBLIC SHARE LINK. Anyone holding the URL can open it,
+    // and the evidence set names the organisation's vendors, registry entries and
+    // internal system names. That belongs behind authentication, not behind a
+    // link that can be forwarded.
     bytes = buildReportPdf({
       title: String(doc.title ?? 'AI Compliance Report'),
       createdAt: String(doc.createdAt ?? ''),

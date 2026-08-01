@@ -7,6 +7,7 @@ import { getSavedAuditDetail, renameAudit, createShareLink, regenerateShareLink,
 import { usePdfDownload } from '../lib/auditExpress/usePdfDownload';
 import { PdfLimitModal } from '../components/auditExpress/PdfLimitModal';
 import { AuditResultView, type AuditPreview, type AuditUnderstanding } from '../components/auditExpress/AuditResultView';
+import { EnrichmentPanel } from '../components/reports/EnrichmentPanel';
 
 /** Full in-app view of one saved audit (recomputed, non-PII). Download / rename / back. */
 export function AuditExpressDetailPage() {
@@ -231,6 +232,14 @@ export function AuditExpressDetailPage() {
             );
           })()}
         </>
+      )}
+
+      {/* Public-source enrichment (§26.10). Shown only when a frozen evidence
+          snapshot is attached to this audit. */}
+      {orgId && detail?.enrichmentSnapshotId && (
+        <div style={{ marginTop: 20 }}>
+          <EnrichmentPanel orgId={orgId} snapshotId={detail.enrichmentSnapshotId} />
+        </div>
       )}
 
       <PdfLimitModal
