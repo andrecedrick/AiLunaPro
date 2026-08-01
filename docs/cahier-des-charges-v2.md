@@ -3888,6 +3888,299 @@ trail intact ; les lectures agrégées passent désormais par les rollups).
 
 ---
 
+## 26. AUDIT ENRICHMENT ENGINE *(approved 2026-08-02 — OFFICIAL SPECIFICATION · NOT IMPLEMENTED)*
+
+> **Status:** SPECIFICATION. No code, no deployment. This section is the authoritative
+> requirement set for the feature; any implementation is measured against it.
+>
+> **Language:** English, per the project Language Rule. Earlier sections predate that rule.
+>
+> **Approval:** requirements confirmed by the product owner across four clarification
+> rounds. Business decisions recorded in §26.13 and §26.14 are LOCKED and are not to be
+> reopened by an implementer.
+
+### 26.1 — Objectives
+
+Make AiLunaPro capable of **discovering evidence the customer did not declare about
+themselves**. A compliance audit built only on a questionnaire cannot find Shadow AI —
+Shadow AI is by definition the AI the organisation does not know about or does not
+declare. Independent observation of the customer's public surface closes that gap.
+
+The engine must discover:
+
+- Shadow AI
+- Undeclared AI systems
+- AI providers
+- AI deployments
+- AI vendors
+- AI-related compliance risks
+- AI usage signals
+- Public AI claims
+- AI transparency gaps
+
+The deliverable is **Observed vs Declared**: a structured, scored, evidence-backed
+difference between what the customer stated and what is publicly observable.
+
+### 26.2 — Scope
+
+**In scope — the engine enriches exactly three surfaces:**
+
+| Surface | Existing implementation |
+|---|---|
+| Audit Express | `worker/src/routes/audit-express*.ts`, `worker/src/lib/audit-express-*.ts` |
+| Full Audit | `worker/src/routes/audits.ts`, `worker/src/lib/audit-scoring.ts` |
+| Diagnostic | `worker/src/routes/diagnostic.ts`, `worker/src/lib/diagnostic-shared.ts` |
+
+**The subject of collection is the customer's own organisation.** This is an audit the
+customer commissioned about themselves. It is not, and must never become, observation of
+a third party for commercial purposes.
+
+### 26.3 — Data Sources
+
+Two collection layers, complementary rather than redundant.
+
+**Apify — breadth across the customer's web estate.** Structured, repeatable crawling at
+a scale and reliability beyond the current in-worker fetcher: JS-rendered pages, script
+and vendor detection, many pages per run.
+
+**Agent-Reach — depth on surfaces a web crawler reads poorly.** GitHub repositories,
+video transcription, RSS/changelog feeds, social platforms. Public Python CLI
+(`Panniantong/Agent-Reach`), described upstream as *"Give your AI agent eyes to see the
+entire internet"* — a reader, not an outreach tool.
+
+**Surface list (all in scope):**
+
+Website · subdomains · legal pages · privacy policies · terms · AI policies · DPA pages ·
+processor / sub-processor lists · public documentation · RSS · blogs · GitHub · YouTube ·
+LinkedIn · Instagram · Facebook · public social networks · public videos · public
+presentations · public technical repositories · public media references.
+
+**Social networks are explicitly IN SCOPE.** LinkedIn, Instagram and Facebook are not to
+be excluded. See §26.13 for the accepted risk position.
+
+**Signal value note.** Processor / sub-processor and DPA pages are the highest-value
+single source: they name AI vendors contractually and distinguish *provider* from
+*deployer*, which is the distinction the EU AI Act obligations hang on.
+
+### 26.4 — Evidence Collection
+
+Every collected observation is tagged with four attributes, without exception:
+
+| Attribute | Meaning |
+|---|---|
+| `source` | Origin surface and URL |
+| `timestamp` | When the observation was captured |
+| `confidence` | Strength of the observation (§26.8) |
+| `collector` | Which layer produced it (Apify actor id, Agent-Reach path, in-worker fetcher) |
+
+Collection is **the only stage permitted to perform network I/O**, and the only stage
+permitted to use model-assisted extraction (§26.6).
+
+### 26.5 — Observed vs Declared
+
+The core comparison and the core value.
+
+```
+DECLARED  (registry entries · worksheet · diagnostic answers)
+OBSERVED  (evidence snapshot)
+   ↓
+GAP       (undeclared systems · unlisted vendors · transparency gaps)
+   ↓
+FINDING   (Shadow AI finding · registry gap · compliance finding)
+   ↓
+RECOMMENDATION
+```
+
+Worked example: customer declares 3 AI systems; 7 are observed; 4 are undeclared. Each of
+the 4 becomes a finding carrying its own evidence.
+
+**Dependency — the accuracy ceiling.** The comparison is only as reliable as the
+*declared* side. A free-text declaration ("we use some AI for support") cannot produce a
+defensible gap. The structure of the declared inventory (AI registry, `worker/src/routes/agents.ts`,
+`src/pages/RegistryPage.tsx`) governs the trustworthiness of the entire engine. See
+§26.15 open decision D2.
+
+### 26.6 — Snapshot Architecture
+
+**Rule 1 — scoring never touches the live web.** Collection produces an immutable
+snapshot. Scoring reads the snapshot. There is no path from a scoring rule to a network
+call.
+
+**Rule 2 — the extraction boundary.** Classifying "this page shows an AI chatbot from
+vendor X" from raw HTML or a video transcript is a classification problem and may use
+model assistance. That is permitted **only at collection time**, and its output is frozen
+into the snapshot. Scoring then applies pure rules to frozen input and is therefore
+deterministic. Model output is evidence; it is never a score.
+
+This boundary already exists in the codebase and is extended, not crossed:
+`audit-express-extract-fetch.ts` performs I/O → deterministic snapshot →
+`audit-express-extract.ts` is pure.
+
+**Rule 3 — reproducibility triple.** A report is reproducible from
+`(snapshotId, engineVersion, rulesetVersion)`. Today outputs are stamped with the latter
+two (`worker/src/lib/determinism.ts`); the snapshot id becomes the third.
+
+**Rule 4 — re-audit semantics.** A new audit creates a new snapshot. Change over time is
+measured by comparing two snapshots, never by re-reading the web against an old score.
+
+### 26.7 — Evidence Storage
+
+Every finding stores, and every finding is invalid without:
+
+| Field | Purpose |
+|---|---|
+| Source URL | Pointer to the origin |
+| Timestamp | When captured |
+| Confidence level | §26.8 |
+| **Captured evidence** | The matched excerpt itself |
+| **Evidence hash** | Integrity of the captured excerpt |
+| Collector | Which layer produced it |
+
+**Why the captured excerpt is mandatory and a URL is not sufficient.** A URL proves
+nothing once the page changes, and the page changes precisely when a finding is disputed.
+The captured excerpt plus hash means a March finding remains defensible in June after the
+widget was removed. The URL is the pointer; the excerpt is the evidence.
+
+Retention must outlive the audit report that cites it.
+
+### 26.8 — Confidence Model
+
+Confidence expresses evidential strength, not model certainty. Indicative ordering:
+
+| Level | Example |
+|---|---|
+| High | Vendor SDK/script tag present; named AI processor in a DPA or sub-processor list |
+| Medium | AI feature described in product documentation or changelog |
+| Low | Marketing claim ("AI-powered"); passing mention in a transcript |
+
+**Constraint.** If confidence feeds scoring, confidence must be deterministic. A
+model-assigned confidence that influences a score reintroduces non-determinism through the
+back door and breaks §26.9. Either confidence is rule-derived, or it is frozen in the
+snapshot like any other collected value. See §26.15 open decision D4.
+
+### 26.9 — Deterministic Scoring
+
+Observed vs Declared is a **structured scoring component**, not a narrative aside. It is
+bound by the existing non-negotiable contract in `worker/src/lib/determinism.ts`:
+
+- Rule-based and pure — identical normalised input yields identical output
+- No randomness, no clock, no locale, no I/O inside scoring
+- Every produced number, risk and range carries a structured reason reference (rule id
+  and/or benchmark key) — never a free-form unsourced number
+- Every output stamped with `engineVersion` + `rulesetVersion`
+
+**Explicitly forbidden:** AI-generated scores, dynamic scoring, unexplainable scores.
+
+**Gating requirement.** Because the gap affects a number the customer is judged on, a
+confidence or severity threshold must gate what is allowed to influence the score, as
+distinct from what is merely reported. Penalising a customer because their marketing page
+says "AI-powered" is a false positive with a real consequence.
+
+### 26.10 — Reporting Model
+
+Findings appear in the audit report as sourced, evidence-backed items. Each carries its
+observed value, the declared value it contradicts, the resulting gap, the risk, and the
+recommended action. Report generation continues through the existing path
+(`report-ai-sections.ts`, `report-narrative.ts`, `report-pdf.ts`).
+
+### 26.11 — Customer Visibility
+
+The customer-facing chain is mandatory and ordered:
+
+```
+Finding → Evidence → Observed → Declared → Gap → Risk → Recommendation
+```
+
+The customer must be able to answer three questions from the report alone:
+
+1. Why does this finding exist?
+2. What proof supports it?
+3. What action is recommended?
+
+Evidence is shown to the customer, not hidden behind a derived conclusion.
+
+### 26.12 — Failure Handling
+
+**No silent failure.** A collector that fails, is rate-limited, or is blocked must be
+recorded in the snapshot and surfaced in the report.
+
+This matters more here than anywhere else in the product: a customer reading "no
+undeclared AI systems found" cannot distinguish a clean result from a collection failure.
+An incomplete audit presented as a complete one is a compliance failure the customer paid
+to prevent.
+
+Requirements:
+
+- Per-collector status stored in the snapshot (succeeded / partial / failed, with reason)
+- Coverage stated in the report — which surfaces were read, which were not
+- Credential expiry and platform blocking treated as operational alerts, not as absence of
+  evidence
+
+### 26.13 — Compliance Notes
+
+**Position: risks are known, accepted, and to be managed as the product matures. These are
+LOCKED decisions.**
+
+**Social networks — accepted.** LinkedIn, Instagram and Facebook remain in scope.
+Consequences recorded: platform terms generally prohibit automated collection;
+Agent-Reach reaches these platforms with operator-held credentials, so ban and
+rate-limit exposure sits on AiLunaPro's own accounts; throughput does not scale linearly
+with customer count on a shared identity. Treated as a reliability concern under §26.12.
+
+**Domain ownership verification — NOT mandatory.** Customer assertion is sufficient in
+phase one. Rationale: adoption, ease of use, rapid onboarding. Verification may later
+become optional or premium. **It must not be a blocking requirement.**
+
+**Recorded consequence of that decision.** With verification non-blocking and social
+networks in scope, the platform can be pointed at an organisation that is not the
+customer. Exposure: use for competitor intelligence under the guise of self-audit; and
+processing of a non-customer's staff personal data without lawful basis or Article 14
+notice. Mitigation direction agreed as non-blocking: **record the assertion** — who
+claimed which domain, and when — so responsibility is attributable and an audit trail
+exists if challenged.
+
+**Third-party personal data.** Evidence should favour organisational signals over
+individual profiling. A company's AI vendor list is organisational; an employee's personal
+social activity is not.
+
+**Robots.txt.** The existing in-worker fetcher parses and respects it
+(`audit-express-extract-fetch.ts`). Apify actors generally do not by default. Stance for
+the website layer is an open decision — §26.15 D3.
+
+**Accuracy as liability.** The report is a professional deliverable a customer may rely on
+for regulatory compliance. A false "you have undeclared high-risk AI" is a defamatory-
+adjacent claim; a missed one is the failure the engagement existed to prevent. This is the
+reason for §26.7 (held evidence) and the §26.9 gating requirement.
+
+### 26.14 — Out of Scope
+
+**LOCKED. These are prohibitions, not preferences.**
+
+The Audit Enrichment Engine must NEVER:
+
+- Create CRM leads
+- Create contacts
+- Modify the CRM pipeline
+- Modify the company registry as a prospecting store
+- Modify, create or push anything to Twenty CRM
+- Be used for outbound prospecting, lead generation or marketing lists
+
+It is an Audit Engine feature. It is not a Sales feature. Contacts, Companies,
+Assignments, Pipeline, Timeline, Sales Dashboard and Twenty CRM are untouched by it.
+
+### 26.15 — Open decisions *(must be closed before implementation)*
+
+| # | Decision | Impact if unresolved |
+|---|---|---|
+| D1 | Enrichment automatic on every audit, or opt-in deeper tier? | Cost model. Crawling + model-assisted extraction across ~20 surface types is a new variable cost per audit that `audit-express-quota.ts` and `token-costs.ts` do not describe. Touches billing. |
+| D2 | How structured must the DECLARED inventory be? | Accuracy ceiling of the whole engine (§26.5). Free-text declarations cannot yield a defensible gap. |
+| D3 | Robots.txt — hold the strict line for the Apify layer? | Divergence from the standard the in-worker fetcher already meets; reputational for a compliance vendor. |
+| D4 | Confidence rule-derived or model-assigned? | If model-assigned and score-affecting, breaks the determinism contract (§26.8, §26.9). |
+
+**Statut §26 :** SPECIFICATION — no code, no deployment, four open decisions.
+
+---
+
 **Fin du cahier des charges v2.**
 
 *Document maintenu en parallèle de l'implémentation. Toute décision architecturale ou
