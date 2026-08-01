@@ -73,7 +73,8 @@ export function legacyFromPipeline(s: PipelineStatus): string {
   return 'contacted';   // contacted, attempted_contact
 }
 
-const DAY = 24 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
 
 /**
  * How long a lead may sit in a stage before it is chased, in days.
@@ -134,8 +135,15 @@ export interface FollowUpState {
 
 export interface OverdueVerdict {
   overdue:     boolean;
-  /** Whole days past due. 0 when not overdue. */
+  /** Whole days past due. 0 when not overdue — and 0 for anything under 24h. */
   daysOverdue: number;
+  /**
+   * Whole HOURS past due. Carried because `daysOverdue` truncates: a lead that
+   * went overdue twenty hours ago reported "0d late" while sitting in an overdue
+   * queue, which reads as "not late" and is the one number the operator uses to
+   * decide whether to act. Always ≥ 1 when `overdue` is true.
+   */
+  hoursOverdue: number;
   reason:      'follow_up_missed' | 'stage_stale' | '';
 }
 
@@ -151,16 +159,24 @@ export interface OverdueVerdict {
  * invisible to a to-do list, so it needs the clock to speak for it.
  */
 export function evaluateOverdue(state: FollowUpState, nowIso: string): OverdueVerdict {
-  const none = { overdue: false, daysOverdue: 0, reason: '' as const };
+  const none = { overdue: false, daysOverdue: 0, hoursOverdue: 0, reason: '' as const };
   if (isTerminal(state.pipelineStatus)) return none;
   const now = new Date(nowIso).getTime();
   if (!Number.isFinite(now)) return none;
+
+  /** Lateness in ms → the verdict. `hoursOverdue` never rounds down to 0. */
+  const late = (ms: number, reason: 'follow_up_missed' | 'stage_stale'): OverdueVerdict => ({
+    overdue: true,
+    daysOverdue: Math.floor(ms / DAY),
+    hoursOverdue: Math.max(1, Math.floor(ms / HOUR)),
+    reason,
+  });
 
   if (state.nextFollowUpAt) {
     const due = new Date(state.nextFollowUpAt).getTime();
     if (!Number.isFinite(due)) return none;
     if (now <= due) return none;
-    return { overdue: true, daysOverdue: Math.floor((now - due) / DAY), reason: 'follow_up_missed' };
+    return late(now - due, 'follow_up_missed');
   }
 
   const sla = STAGE_SLA_DAYS[state.pipelineStatus];
@@ -174,7 +190,10 @@ export function evaluateOverdue(state: FollowUpState, nowIso: string): OverdueVe
   if (!Number.isFinite(from)) return none;
   const elapsed = now - from;
   if (elapsed <= sla * DAY) return none;
-  return { overdue: true, daysOverdue: Math.floor(elapsed / DAY) - sla, reason: 'stage_stale' };
+  // Lateness is measured from the moment the SLA expired, not from stage entry.
+  // Subtracting whole days AFTER flooring lost the fraction and reported a lead
+  // twenty hours late as "0d".
+  return late(elapsed - sla * DAY, 'stage_stale');
 }
 
 /**

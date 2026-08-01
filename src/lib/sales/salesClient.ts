@@ -36,7 +36,8 @@ export interface TimelineEvent {
 export interface QueueItem {
   contactId: string; orgId: string; name: string; company: string;
   stage: PipelineStatus; owner: string; priority: Priority;
-  daysOverdue: number; reason: string;
+  /** `daysOverdue` truncates under 24h; `hoursOverdue` is never 0 when overdue. */
+  daysOverdue: number; hoursOverdue: number; reason: string;
   nextFollowUpAt: string; lastContactAt: string;
 }
 

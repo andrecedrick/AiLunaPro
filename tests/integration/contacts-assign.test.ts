@@ -97,6 +97,41 @@ describe('assignment — who may assign', () => {
     expect(doc.lastReassignedAt).toBeUndefined();    // first assignment is not a transfer
   });
 
+  /**
+   * The ownership ledger on the contact records only the CURRENT holder, and a
+   * transfer overwrites assignedAt — so the write that ends a tenure destroys
+   * the evidence of it. Without a timeline event, "who had this lead in July"
+   * was unanswerable. TIMELINE_KINDS declared assigned/reassigned/unassigned and
+   * nothing ever wrote them.
+   */
+  it('writes an ASSIGNED event to the timeline', async () => {
+    await post(assignRoutes, '/api/contacts/assign', 'ops', { orgId: 'orgA', contactId: 'c1', assignToUid: 'sales1' }, OPS);
+    const ev = [...state.docs.entries()].find(([p]) => p.includes('/contacts/c1/timeline/'))![1] as Record<string, string>;
+    expect(ev).toMatchObject({ kind: 'assigned', actor: OPS, data_to: 'sales1' });
+    expect(ev.summary).toContain('Assigned to');
+  });
+
+  it('records a transfer as REASSIGNED, keeping the previous holder', async () => {
+    await post(assignRoutes, '/api/contacts/assign', 'ops', { orgId: 'orgA', contactId: 'c1', assignToUid: 'sales1' }, OPS);
+    await post(assignRoutes, '/api/contacts/assign', 'ops', { orgId: 'orgA', contactId: 'c1', assignToUid: 'sales2' }, OPS);
+    const evs = [...state.docs.entries()]
+      .filter(([p]) => p.includes('/contacts/c1/timeline/'))
+      .map(([, f]) => f as Record<string, string>);
+    const re = evs.find(e => e.kind === 'reassigned')!;
+    expect(re).toMatchObject({ data_from: 'sales1', data_to: 'sales2' });
+    // Both events survive: the history is append-only.
+    expect(evs.map(e => e.kind).sort()).toEqual(['assigned', 'reassigned']);
+  });
+
+  it('records an UNASSIGN', async () => {
+    await post(assignRoutes, '/api/contacts/assign', 'ops', { orgId: 'orgA', contactId: 'c1', assignToUid: 'sales1' }, OPS);
+    await post(assignRoutes, '/api/contacts/assign', 'ops', { orgId: 'orgA', contactId: 'c1', assignToUid: '' }, OPS);
+    const kinds = [...state.docs.entries()]
+      .filter(([p]) => p.includes('/contacts/c1/timeline/'))
+      .map(([, f]) => (f as Record<string, string>).kind);
+    expect(kinds).toContain('unassigned');
+  });
+
   it('an ORG ADMIN cannot assign (403) — assignment is not a role power', async () => {
     const r = await post(assignRoutes, '/api/contacts/assign', 'sales2', { orgId: 'orgA', contactId: 'c1', assignToUid: 'sales1' }, 'sales2@acme.com');
     expect(r.status).toBe(403);

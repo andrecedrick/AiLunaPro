@@ -116,8 +116,10 @@ export function SalesDashboard({ orgId, onOpenContact, loadingContactId = '', re
                   {loadingContactId === q.contactId && <span style={{ color: 'var(--text-muted)' }}> …</span>}
                 </button>
                 <span style={{ color: 'var(--text-muted)', minWidth: 110 }}>{t(`stage_${q.stage}`)}</span>
-                <span style={{ color: 'var(--red-text)', minWidth: 70, textAlign: 'right' }}>
-                  {q.daysOverdue}d {t('salesLate')}
+                {/* Hours below a day. "0d late" on a lead that IS late reads as
+                    "not late", and this is the number the operator acts on. */}
+                <span style={{ color: 'var(--red-text)', minWidth: 78, textAlign: 'right' }}>
+                  {q.daysOverdue >= 1 ? `${q.daysOverdue}d` : `${q.hoursOverdue}h`} {t('salesLate')}
                 </span>
               </div>
             ))}

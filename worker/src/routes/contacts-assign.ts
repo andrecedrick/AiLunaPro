@@ -29,6 +29,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePlatformAdmin } from '../lib/platformAdmin';
 import { firestoreGet, firestoreSet, firestoreRunQuery } from '../lib/firestoreAdmin';
+import { appendEvent } from '../lib/timeline';
 import type { AppEnv } from '../index';
 
 const assign = new Hono<AppEnv>();
@@ -125,6 +126,19 @@ assign.post('/api/contacts/assign', requireAuth(), requirePlatformAdmin(), async
   };
 
   await firestoreSet(saJson, path, patch as unknown as Parameters<typeof firestoreSet>[2], { merge: true });
+
+  // Timeline. This was missing: the ownership LEDGER on the contact records only
+  // the current holder, and a transfer overwrites assignedAt — so the previous
+  // holder's tenure was destroyed by the very write that ended it. Without an
+  // event, "who had this lead in July" was unanswerable.
+  await appendEvent(saJson, orgId, contactId, {
+    kind: !toUid ? 'unassigned' : isTransfer ? 'reassigned' : 'assigned',
+    at: now, actor,
+    summary: !toUid ? 'Returned to the unassigned pool'
+      : isTransfer ? `Transferred to ${toEmail || toUid}` : `Assigned to ${toEmail || toUid}`,
+    data: { to: toUid, from: previous, ...(toEmail ? { toEmail } : {}) },
+  });
+
   console.log(`[contacts-assign] org=${orgId} contact=${contactId} ${isTransfer ? 'transferred' : 'assigned'} assigned=${toUid ? 'yes' : 'unassigned'}`);
   return c.json({ ok: true, contactId, assignedToUid: toUid, assignedToEmail: toEmail, transferred: isTransfer });
 });

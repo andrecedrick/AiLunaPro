@@ -77,6 +77,7 @@ export async function runReminderSweep(saJson: string, nowIso = new Date().toISO
     const stored = (['low', 'normal', 'high', 'urgent'] as const).includes(s(f.priority) as Priority)
       ? (s(f.priority) as Priority) : 'normal';
     const rank = overduePriority(stage, verdict.daysOverdue, stored);
+    const late = verdict.daysOverdue >= 1 ? `${verdict.daysOverdue}d` : `${verdict.hoursOverdue}h`;
     // Only the top two bands interrupt anyone. A lead one day past a soft SLA is
     // a dashboard row, not a notification — that distinction is what keeps the
     // bell worth looking at.
@@ -89,9 +90,11 @@ export async function runReminderSweep(saJson: string, nowIso = new Date().toISO
       targetType: 'contact', targetId: contactId, route: 'contacts',
       // No name, no company: a notification title is the one CRM surface that can
       // reach a phone lock screen.
+      // Hours below a day, for the same reason the queue shows them: "overdue by
+      // 0d" is a contradiction that reads as noise and gets ignored.
       title: ownerUid
-        ? `Follow-up overdue by ${verdict.daysOverdue}d (${stage})`
-        : `Unassigned lead waiting ${verdict.daysOverdue}d`,
+        ? `Follow-up overdue by ${late} (${stage})`
+        : `Unassigned lead waiting ${late}`,
       severity,
       id: `${ownerUid ? 'fu' : 'unassigned'}_${orgId}_${contactId}_${day}`,
     });

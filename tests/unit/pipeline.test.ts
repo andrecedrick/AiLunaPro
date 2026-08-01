@@ -67,6 +67,43 @@ describe('pipeline — overdue detection', () => {
     expect(evaluateOverdue({ ...base, stageEnteredAt: daysAgo(1) }, NOW).overdue).toBe(false);
   });
 
+  /**
+   * Production showed three leads in the overdue queue all reporting "0d late",
+   * because daysOverdue truncates anything under 24h. "0d late" on a lead that
+   * IS late reads as "not late", and it is the number the operator acts on.
+   */
+  it('reports HOURS for a lead less than a day past due, never a bare 0', () => {
+    const hoursAgo = (n: number) => new Date(Date.parse(NOW) - n * 3600000).toISOString();
+    const v = evaluateOverdue({ ...base, nextFollowUpAt: hoursAgo(20) }, NOW);
+    expect(v.overdue).toBe(true);
+    expect(v.daysOverdue).toBe(0);
+    expect(v.hoursOverdue).toBe(20);
+  });
+
+  it('hoursOverdue is never 0 while overdue, even one minute past', () => {
+    const v = evaluateOverdue({ ...base, nextFollowUpAt: new Date(Date.parse(NOW) - 60000).toISOString() }, NOW);
+    expect(v.overdue).toBe(true);
+    expect(v.hoursOverdue).toBeGreaterThanOrEqual(1);
+  });
+
+  it('stage lateness is measured from SLA EXPIRY, not from stage entry', () => {
+    // 'contacted' allows 3 days. Entered 3.5 days ago = 12 hours late, not 84.
+    const v = evaluateOverdue({ ...base, stageEnteredAt: new Date(Date.parse(NOW) - 3.5 * 86400000).toISOString() }, NOW);
+    expect(v.daysOverdue).toBe(0);
+    expect(v.hoursOverdue).toBe(12);
+  });
+
+  it('a lead days past its SLA still reports whole days', () => {
+    const v = evaluateOverdue({ ...base, stageEnteredAt: daysAgo(5) }, NOW);
+    expect(v).toMatchObject({ overdue: true, daysOverdue: 2, reason: 'stage_stale' });
+    expect(v.hoursOverdue).toBe(48);
+  });
+
+  it('not-overdue verdicts carry zero on both counters', () => {
+    const v = evaluateOverdue({ ...base, nextFollowUpAt: daysAhead(2) }, NOW);
+    expect(v).toMatchObject({ overdue: false, daysOverdue: 0, hoursOverdue: 0 });
+  });
+
   it('a CLOSED lead is never overdue', () => {
     for (const st of ['won', 'lost', 'archived'] as PipelineStatus[]) {
       expect(evaluateOverdue({ ...base, pipelineStatus: st, nextFollowUpAt: daysAgo(90) }, NOW).overdue).toBe(false);

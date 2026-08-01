@@ -98,7 +98,7 @@ sales.get('/api/sales/dashboard', requireAuth(), requireRole(ORG_ROLES), async c
   const open = leads.length - won - lost - byStage.archived;
 
   // ── Follow-up queue ──
-  const queue: Array<Lead & { daysOverdue: number; reason: string; rank: Priority }> = [];
+  const queue: Array<Lead & { daysOverdue: number; hoursOverdue: number; reason: string; rank: Priority }> = [];
   let dueToday = 0, noNextStep = 0;
   for (const l of leads) {
     if (isTerminal(l.stage)) continue;
@@ -112,10 +112,15 @@ sales.get('/api/sales/dashboard', requireAuth(), requireRole(ORG_ROLES), async c
       lastContactAt: l.lastContactAt, stageEnteredAt: l.stageEnteredAt || l.createdAt,
     }, nowIso);
     if (!v.overdue) continue;
-    queue.push({ ...l, daysOverdue: v.daysOverdue, reason: v.reason, rank: overduePriority(l.stage, v.daysOverdue, l.priority) });
+    queue.push({
+      ...l, daysOverdue: v.daysOverdue, hoursOverdue: v.hoursOverdue, reason: v.reason,
+      rank: overduePriority(l.stage, v.daysOverdue, l.priority),
+    });
   }
   const RANK: Record<Priority, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
-  queue.sort((a, b) => RANK[a.rank] - RANK[b.rank] || b.daysOverdue - a.daysOverdue);
+  // Ties broken on HOURS, not days: three leads all reporting "0d" were being
+  // ordered arbitrarily when one of them was 23 hours later than another.
+  queue.sort((a, b) => RANK[a.rank] - RANK[b.rank] || b.hoursOverdue - a.hoursOverdue);
 
   // ── Analytics ──
   const group = (key: (l: Lead) => string) => {
@@ -173,7 +178,7 @@ sales.get('/api/sales/dashboard', requireAuth(), requireRole(ORG_ROLES), async c
     queue: queue.slice(0, QUEUE_MAX).map(l => ({
       contactId: l.contactId, orgId: l.orgId, name: l.name, company: l.company,
       stage: l.stage, owner: l.owner, priority: l.rank,
-      daysOverdue: l.daysOverdue, reason: l.reason,
+      daysOverdue: l.daysOverdue, hoursOverdue: l.hoursOverdue, reason: l.reason,
       nextFollowUpAt: l.nextFollowUpAt, lastContactAt: l.lastContactAt,
     })),
     scanned: rows.length,
