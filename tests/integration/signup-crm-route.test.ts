@@ -51,6 +51,8 @@ import signupCrm from '../../worker/src/routes/signup-crm';
 // Twenty is intentionally NOT configured here: the CRM contact must be created
 // whether or not the sales CRM is reachable.
 const ENV = { FIREBASE_PROJECT_ID: 'p', FIREBASE_SERVICE_ACCOUNT_JSON: '{}' } as unknown as Record<string, unknown>;
+/** Same, with Twenty configured — used only where the push path must be exercised. */
+const TWENTY_ENV = { ...ENV, TWENTY_API_KEY: 'k', TWENTY_BASE_URL: 'https://twenty.test' } as unknown as Record<string, unknown>;
 
 const call = (body: unknown) => signupCrm.request('/api/signup/crm', {
   method: 'POST',
@@ -127,6 +129,35 @@ describe('signup → CRM', () => {
     await call({ orgId: 'orgA', name: 'Ada', company: 'Acme' });
     await call({ orgId: 'orgA', name: 'Ada', company: 'Acme' });
     expect([...state.docs.keys()].filter(p => p.includes('/contacts/'))).toHaveLength(1);
+  });
+
+  /**
+   * The mismatch incident: with no company, the old code skipped the Twenty
+   * company create and sent an UNLINKED person, which Twenty then filled from
+   * the email domain. It must now fail loudly instead.
+   */
+  it('never reaches Twenty with an empty company — it alerts instead', async () => {
+    state.docs.set('organizations/orgA', { name: '' });   // no workspace name either
+    const original = globalThis.fetch;
+    // Any outbound call here would BE the bug: an unlinked person is exactly what
+    // Twenty fills from the email domain.
+    const reached = vi.fn(async () => new Response('{}', { status: 200 }));
+    globalThis.fetch = reached as typeof fetch;
+    try {
+      const res = await signupCrm.request('/api/signup/crm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer t', 'CF-IPCountry': 'FR' },
+        body: JSON.stringify({ orgId: 'orgA', name: 'Ada' }),
+      }, TWENTY_ENV);
+      expect(res.status).toBe(200);                        // signup itself never fails
+      expect(contact()!.company).toBe('');
+      expect(reached).not.toHaveBeenCalled();
+      // The alert is the loud failure. A silent skip is what created the bad data.
+      expect(state.alerts.map(a => a.kind)).toContain('crm_push_failed');
+      expect(state.alerts.find(a => a.kind === 'crm_push_failed')!.message).toContain('NOT Twenty');
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 
   it('rejects a caller who is not a member of the workspace (403)', async () => {

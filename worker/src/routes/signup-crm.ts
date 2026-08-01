@@ -29,7 +29,7 @@ import { recordBillingAlert } from '../lib/billing-alerts';
 import { upsertLeadContact } from '../lib/lead-contact';
 import { normalizePhone, isValidPhone } from '../lib/support-shared';
 import { phoneCountryIso } from '../lib/phone-country';
-import { createCompany, createPerson, createNote, createNoteTarget, type TwentyLead } from '../lib/twenty';
+import { createCompany, createLinkedPerson, createNote, createNoteTarget, type TwentyLead } from '../lib/twenty';
 import { upsertCompany, linkTwentyCompany } from '../lib/company-registry';
 import type { AppEnv } from '../index';
 
@@ -154,7 +154,12 @@ signupCrm.post('/api/signup/crm', async c => {
           const reg = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/companies/${companyId}`);
           if (reg && typeof reg.twentyCompanyId === 'string') twentyCompanyId = reg.twentyCompanyId;
         }
-        if (company && !twentyCompanyId) {
+        // Company is mandatory on every prospect surface and signup falls back to
+        // the workspace name, so an empty value here is a DEFECT, not a normal
+        // state. It used to skip the company create and hand Twenty a person with
+        // no link, which Twenty then filled from the email domain. Fail loudly.
+        if (!company) throw new Error('company missing at Twenty push — refusing to create an unlinked person');
+        if (!twentyCompanyId) {
           const co = await createCompany(key, url, lead);
           if (!co.ok) throw new Error(co.error ?? 'company create failed');
           twentyCompanyId = co.id ?? '';
@@ -162,8 +167,9 @@ signupCrm.post('/api/signup/crm', async c => {
           await linkTwentyCompany(env.FIREBASE_SERVICE_ACCOUNT_JSON, orgId, companyId, twentyCompanyId)
             .catch(err => console.warn('[signup-crm] twenty link failed:', err instanceof Error ? err.message : ''));
         }
-        const person = await createPerson(key, url, lead, twentyCompanyId || undefined);
+        const person = await createLinkedPerson(key, url, lead, twentyCompanyId);
         if (!person.ok) throw new Error(person.error ?? 'person create failed');
+        if (person.corrected) console.warn('[signup-crm] Twenty had attached the wrong company; corrected:', person.id);
         twentyPersonId = person.id ?? '';
         // Persist BEFORE the note so a later failure cannot double-create.
         await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON, contactPath,

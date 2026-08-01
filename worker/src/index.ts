@@ -70,6 +70,7 @@ import contactsAssignRoutes   from './routes/contacts-assign';
 import contactsImportRoutes   from './routes/contacts-import';
 import contactsBackfillRoutes from './routes/contacts-backfill';
 import companiesRoutes        from './routes/companies';
+import companiesTwentyRoutes  from './routes/companies-twenty';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -234,6 +235,7 @@ app.route('/', contactsAssignRoutes);
 app.route('/', contactsImportRoutes);
 app.route('/', contactsBackfillRoutes);
 app.route('/', companiesRoutes);
+app.route('/', companiesTwentyRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));

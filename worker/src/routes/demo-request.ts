@@ -7,7 +7,7 @@ import { upsertLeadContact } from '../lib/lead-contact';
 import { upsertCompany, linkTwentyCompany } from '../lib/company-registry';
 import { normalizePhone, isValidPhone } from '../lib/support-shared';
 import { phoneCountryIso } from '../lib/phone-country';
-import { createCompany, createPerson, createNote, createNoteTarget, type TwentyLead } from '../lib/twenty';
+import { createCompany, createLinkedPerson, createNote, createNoteTarget, type TwentyLead } from '../lib/twenty';
 
 /**
  * B2.2 — Demo-request capture (authed dashboard CTA).
@@ -287,15 +287,20 @@ demoRequest.post('/api/demo-request', async c => {
           const reg = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/companies/${registryCompanyId}`);
           if (reg && typeof reg.twentyCompanyId === 'string') companyId = reg.twentyCompanyId;
         }
-        if (company && !companyId) {
+        // Same rule as signup: an empty company here is a DEFECT. Skipping the
+        // company create handed Twenty an unlinked person, which Twenty then
+        // filled from the email domain — the source of the CRM mismatch.
+        if (!company) throw new Error('company missing at Twenty push — refusing to create an unlinked person');
+        if (!companyId) {
           const co = await createCompany(key, url, lead);
           if (!co.ok) throw new Error(co.error ?? 'company create failed');
           companyId = co.id ?? '';
           await linkTwentyCompany(env.FIREBASE_SERVICE_ACCOUNT_JSON, orgId, registryCompanyId, companyId)
             .catch(err => console.warn('[demo-request] twenty link failed:', err instanceof Error ? err.message : ''));
         }
-        const person = await createPerson(key, url, lead, companyId || undefined);
+        const person = await createLinkedPerson(key, url, lead, companyId);
         if (!person.ok) throw new Error(person.error ?? 'person create failed');
+        if (person.corrected) console.warn('[demo-request] Twenty had attached the wrong company; corrected:', person.id);
         personId = person.id ?? '';
         // Persist BEFORE the note: if the note then fails, a retry must not
         // create a second Person.

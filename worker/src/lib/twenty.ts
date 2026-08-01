@@ -91,6 +91,55 @@ async function post(
 }
 
 /**
+ * Read the company a Person is actually linked to.
+ *
+ * WHY THIS EXISTS: a Person created with no `companyId` does not stay
+ * company-less in Twenty — the workspace attaches one derived from the email
+ * address, so `demonst@inboxbear.com` produced a company literally named
+ * "inboxbear.com". This codebase contains no domain logic whatsoever (nothing
+ * splits an address, nothing reads a domain), so that name can only have come
+ * from Twenty. Sending `companyId` prevents it; reading the link back PROVES it,
+ * which is the difference between believing the two CRMs agree and knowing.
+ */
+export async function getPersonCompanyId(apiKey: string, baseUrl: string, personId: string): Promise<TwentyResult> {
+  let res: Response;
+  try {
+    res = await fetch(`${base(baseUrl)}/rest/people/${personId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message.slice(0, 140) : 'network error' };
+  }
+  const raw = await res.text().catch(() => '');
+  if (!res.ok) return { ok: false, error: `Twenty read person failed (HTTP ${res.status}): ${scrub(raw)}` };
+  try {
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const rec = ((j.data as Record<string, unknown>)?.person ?? (j.data as Record<string, unknown>) ?? j) as Record<string, unknown>;
+    // '' is a legitimate answer: it means Twenty linked no company at all.
+    return { ok: true, id: typeof rec.companyId === 'string' ? rec.companyId : '' };
+  } catch {
+    return { ok: false, error: 'Twenty read person returned an unparseable body' };
+  }
+}
+
+/** Point an existing Person at the correct company. Used to repair a mismatch. */
+export async function setPersonCompany(apiKey: string, baseUrl: string, personId: string, companyId: string): Promise<TwentyResult> {
+  let res: Response;
+  try {
+    res = await fetch(`${base(baseUrl)}/rest/people/${personId}`, {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ companyId }),
+    });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message.slice(0, 140) : 'network error' };
+  }
+  const raw = await res.text().catch(() => '');
+  if (!res.ok) return { ok: false, error: `Twenty patch person failed (HTTP ${res.status}): ${scrub(raw)}` };
+  return { ok: true, id: personId };
+}
+
+/**
  * PII-scrub a provider body before it reaches a log or the alert panel. A CRM
  * push carries name/email/phone, so an unscrubbed echo would leak the whole lead
  * into an operator surface.
@@ -238,6 +287,44 @@ export function noteTargetPayload(noteId: string, personId: string, companyId?: 
 
 export const createCompany = (k: string, u: string, lead: TwentyLead) => post(k, u, '/rest/companies', companyPayload(lead));
 export const createPerson  = (k: string, u: string, lead: TwentyLead, companyId?: string) => post(k, u, '/rest/people', personPayload(lead, companyId));
+
+export interface LinkedPersonResult extends TwentyResult {
+  /** True when Twenty had attached a different company and we corrected it. */
+  corrected?: boolean;
+}
+
+/**
+ * Create a Person and PROVE it is linked to `companyId`.
+ *
+ * Both push paths (signup and demo request) need exactly this, so it lives here
+ * rather than being written twice and drifting.
+ *
+ * `companyId` is REQUIRED. A Person created without one does not stay
+ * company-less: Twenty attaches a company derived from the email address, which
+ * is how "Greyvoid" in the internal CRM became "inboxbear.com" in Twenty. Passing
+ * the id is the fix; reading it back and correcting a mismatch is what makes the
+ * two CRMs agree by construction instead of by assumption.
+ */
+export async function createLinkedPerson(
+  k: string, u: string, lead: TwentyLead, companyId: string,
+): Promise<LinkedPersonResult> {
+  if (!companyId) {
+    return { ok: false, error: 'refusing to create a Twenty person with no company link' };
+  }
+  const person = await createPerson(k, u, lead, companyId);
+  if (!person.ok || !person.id) return person;
+
+  const linked = await getPersonCompanyId(k, u, person.id);
+  // A failed read-back is NOT a failed push: the person exists and is almost
+  // certainly correct. Report success and let the caller log the unverified read
+  // rather than raising a critical alert over a GET.
+  if (!linked.ok) return { ok: true, id: person.id, error: linked.error };
+  if (linked.id === companyId) return { ok: true, id: person.id, corrected: false };
+
+  const fixed = await setPersonCompany(k, u, person.id, companyId);
+  if (!fixed.ok) return { ok: false, id: person.id, error: `person linked to the wrong company: ${fixed.error}` };
+  return { ok: true, id: person.id, corrected: true };
+}
 export const createNote    = (k: string, u: string, lead: TwentyLead) => post(k, u, '/rest/notes', notePayload(lead));
 export const createNoteTarget = (k: string, u: string, noteId: string, personId: string, companyId?: string) =>
   post(k, u, '/rest/noteTargets', noteTargetPayload(noteId, personId, companyId));

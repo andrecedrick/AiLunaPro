@@ -445,8 +445,25 @@ describe('demo request — Twenty CRM push', () => {
 
   it('creates company, person and note, then records the ids for idempotency', async () => {
     await submit(VALID, CRM_ENV);
-    expect(store.crmCalls.map(c => c.path)).toEqual(['/rest/companies', '/rest/people', '/rest/notes', '/rest/noteTargets']);
+    // The two /rest/people/id-2 calls are the company-link VERIFICATION: a GET to
+    // read the company Twenty actually attached, then a PATCH because this stub
+    // returns a person with no company — which is exactly the incident that put
+    // "inboxbear.com" in Twenty against a prospect stored as "Greyvoid".
+    expect(store.crmCalls.map(c => c.path)).toEqual([
+      '/rest/companies', '/rest/people', '/rest/people/id-2', '/rest/people/id-2',
+      '/rest/notes', '/rest/noteTargets',
+    ]);
     expect(contacts()[0][1]).toMatchObject({ twentyPersonId: 'id-2', twentyCompanyId: 'id-1' });
+  });
+
+  it('the person is created WITH the company id, never unlinked', async () => {
+    await submit(VALID, CRM_ENV);
+    const create = store.crmCalls.find(c => c.path === '/rest/people')!;
+    expect((create.body as { companyId?: string }).companyId).toBe('id-1');
+    // And the correction points at the same company, never at anything derived
+    // from the email address.
+    const patch = store.crmCalls.filter(c => c.path === '/rest/people/id-2').pop()!;
+    expect((patch.body as { companyId?: string }).companyId).toBe('id-1');
   });
 
   it('a returning prospect adds only a NOTE — never a second person', async () => {
