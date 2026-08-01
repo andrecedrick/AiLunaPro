@@ -145,6 +145,14 @@ export type AppEnv = {
      */
     APIFY_ACTORS?:                 string;
     APIFY_MEMORY_MB?:              string;
+    /**
+     * Operator-hosted Agent-Reach bridge. Agent-Reach is a Python CLI and cannot
+     * run inside a V8 isolate, so it is reached over the HTTP contract documented
+     * in lib/agent-reach-client.ts. Absent → the collector is not constructed and
+     * its sources report `not_attempted`, never silence. https only.
+     */
+    AGENT_REACH_URL?:              string;
+    AGENT_REACH_TOKEN?:            string;
   };
   Variables: {
     uid:    string;
