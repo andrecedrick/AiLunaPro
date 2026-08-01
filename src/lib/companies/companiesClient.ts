@@ -95,3 +95,35 @@ export async function reconcileCompanies(dryRun = true): Promise<ReconcileResult
   if (!res.ok) return readError(res);
   return await res.json() as ReconcileResult;
 }
+
+export interface TwentySyncResult {
+  dryRun:           boolean;
+  people:           number;
+  checked:          number;
+  skipped:          number;
+  mismatched:       number;
+  corrected:        number;
+  companiesCreated: number;
+  failures:         number;
+  sample: {
+    mismatched: Array<{ orgId: string; company: string }>;
+    failures:   Array<{ orgId: string; reason: string }>;
+  };
+}
+
+/**
+ * Compare every pushed contact's company against Twenty and repair mismatches.
+ *
+ * Exposed in the app rather than left as a curl command because the operator is
+ * already authenticated here — copying a one-hour Firebase ID token out of the
+ * network tab to call the same endpoint is friction with no security benefit,
+ * and the token is the thing most likely to be pasted wrong or to expire mid-run.
+ */
+export async function syncTwentyCompanies(dryRun = true): Promise<TwentySyncResult> {
+  const res = await authed('/api/companies/twenty-sync', {
+    method: 'POST',
+    body: JSON.stringify({ dryRun }),
+  });
+  if (!res.ok) return readError(res);
+  return await res.json() as TwentySyncResult;
+}

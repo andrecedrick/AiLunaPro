@@ -3440,6 +3440,36 @@ export const zh: Dict = {
 
     companyReconcileWritten: "已写入记录",
 
+
+    companyTwentyCheck: "检查 Twenty",
+
+
+    companyTwentyRepair: "修复 Twenty",
+
+
+    companyTwentySyncConfirm: "现在修复 Twenty？每个关联到错误公司的人员都将重新指向此处保存的公司。此操作会写入 Twenty。",
+
+
+    companyTwentyPeople: "Twenty 中的人员",
+
+
+    companyTwentyChecked: "已检查",
+
+
+    companyTwentySkipped: "已跳过（无公司关联）",
+
+
+    companyTwentyMismatched: "Twenty 中公司错误",
+
+
+    companyTwentyCorrected: "已修复",
+
+
+    companyTwentyCreated: "在 Twenty 中创建的公司",
+
+
+    companyTwentyFailures: "失败",
+
     unassigned: "未分配",
     assignmentSection: "分配",
     assignedTo: "分配给",

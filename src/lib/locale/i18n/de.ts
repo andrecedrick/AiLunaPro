@@ -3438,6 +3438,36 @@ export const de: Dict = {
 
     companyReconcileWritten: "Geschriebene Datensätze",
 
+
+    companyTwentyCheck: "Twenty prüfen",
+
+
+    companyTwentyRepair: "Twenty reparieren",
+
+
+    companyTwentySyncConfirm: "Twenty jetzt reparieren? Jede Person mit dem falschen Unternehmen wird auf das hier gespeicherte Unternehmen umgehängt. Dies schreibt in Twenty.",
+
+
+    companyTwentyPeople: "Personen in Twenty",
+
+
+    companyTwentyChecked: "Geprüft",
+
+
+    companyTwentySkipped: "Übersprungen (keine Unternehmensverknüpfung)",
+
+
+    companyTwentyMismatched: "Falsches Unternehmen in Twenty",
+
+
+    companyTwentyCorrected: "Repariert",
+
+
+    companyTwentyCreated: "In Twenty erstellte Unternehmen",
+
+
+    companyTwentyFailures: "Fehler",
+
     unassigned: "Nicht zugewiesen",
     assignmentSection: "Zuweisung",
     assignedTo: "Zugewiesen an",

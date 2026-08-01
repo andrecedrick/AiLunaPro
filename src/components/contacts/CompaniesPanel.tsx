@@ -16,8 +16,8 @@ import { useLocale } from '../../context/LocaleContext';
 import { Button } from '../ui/Button';
 import { useVirtualRows } from '../../lib/ui/useVirtualRows';
 import {
-  listCompanies, renameCompany, mergeCompanies, reconcileCompanies,
-  CompanyError, type Company, type ReconcileResult,
+  listCompanies, renameCompany, mergeCompanies, reconcileCompanies, syncTwentyCompanies,
+  CompanyError, type Company, type ReconcileResult, type TwentySyncResult,
 } from '../../lib/companies/companiesClient';
 
 const ROW_HEIGHT = 44;
@@ -50,6 +50,7 @@ export function CompaniesPanel() {
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [recon, setRecon] = useState<ReconcileResult | null>(null);
+  const [twenty, setTwenty] = useState<TwentySyncResult | null>(null);
   /** Survivor selected for the next merge. */
   const [keep, setKeep] = useState<Company | null>(null);
 
@@ -106,6 +107,15 @@ export function CompaniesPanel() {
 
   const doReconcile = (dryRun: boolean) => act(async () => { setRecon(await reconcileCompanies(dryRun)); });
 
+  /**
+   * Applying writes to Twenty, so the apply path confirms first. The dry run is
+   * unguarded — it only reads.
+   */
+  const doTwentySync = (dryRun: boolean) => {
+    if (!dryRun && !globalThis.confirm(C.companyTwentySyncConfirm)) return;
+    return act(async () => { setTwenty(await syncTwentyCompanies(dryRun)); });
+  };
+
   const errMsg = (code: string) => (C.errors as Record<string, string>)[code] ?? code;
 
   return (
@@ -114,6 +124,10 @@ export function CompaniesPanel() {
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder={C.companySearch} style={{ ...field, flex: '1 1 220px', minWidth: 180 }} />
         <Button variant="secondary" size="md" onClick={() => void doReconcile(true)} disabled={busy}>{C.companyReconcileDry}</Button>
         <Button variant="secondary" size="md" onClick={() => void doReconcile(false)} disabled={busy}>{C.companyReconcileApply}</Button>
+        {/* Twenty comparison + repair. Run the dry check first: it reads Twenty
+            and reports how many people are linked to the wrong company. */}
+        <Button variant="secondary" size="md" onClick={() => void doTwentySync(true)} disabled={busy}>{C.companyTwentyCheck}</Button>
+        <Button variant="primary" size="md" onClick={() => void doTwentySync(false)} disabled={busy}>{C.companyTwentyRepair}</Button>
       </section>
 
       {recon && (
@@ -125,6 +139,32 @@ export function CompaniesPanel() {
           <div>{C.companyReconcileUnlinked}: {recon.unlinked} · {C.companyReconcileCreated}: {recon.createdCount}</div>
           <div>{C.companyReconcileDuplicates}: {recon.duplicates} · {C.companyReconcileOrphans}: {recon.orphans} · {C.companyReconcileNoTwenty}: {recon.noTwentyId}</div>
           {!recon.dryRun && <div>{C.companyReconcileWritten}: {recon.written}</div>}
+        </section>
+      )}
+
+      {twenty && (
+        <section style={{ ...card, fontSize: 13, lineHeight: 1.7 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            {twenty.dryRun ? C.companyTwentyCheck : C.companyTwentyRepair}
+          </div>
+          <div>{C.companyTwentyPeople}: {twenty.people} · {C.companyTwentyChecked}: {twenty.checked} · {C.companyTwentySkipped}: {twenty.skipped}</div>
+          <div>
+            {C.companyTwentyMismatched}:{' '}
+            <strong style={{ color: twenty.mismatched ? 'var(--red-text)' : 'var(--green-text)' }}>{twenty.mismatched}</strong>
+            {!twenty.dryRun && <> · {C.companyTwentyCorrected}: <strong style={{ color: 'var(--green-text)' }}>{twenty.corrected}</strong></>}
+            {' · '}{C.companyTwentyCreated}: {twenty.companiesCreated}
+          </div>
+          {twenty.failures > 0 && (
+            <div style={{ color: 'var(--red-text)' }}>
+              {C.companyTwentyFailures}: {twenty.failures}
+              {twenty.sample.failures.map((f, i) => <div key={i} style={{ fontSize: 12 }}>· {f.reason}</div>)}
+            </div>
+          )}
+          {twenty.sample.mismatched.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--text-muted)' }}>
+              {twenty.sample.mismatched.map(m => m.company).join(', ')}
+            </div>
+          )}
         </section>
       )}
 
