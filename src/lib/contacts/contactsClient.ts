@@ -8,7 +8,16 @@ import { WORKER_BASE } from '../billing/stripeClient';
 import { getIdToken } from '../team/teamApiClient';
 
 export type ContactStatus = 'active' | 'inactive' | 'blocked';
-export type ContactSource = 'worksheet' | 'quote' | 'manual' | 'visibility' | 'import' | 'demo_request';
+/**
+ * Every source the platform writes. `signup` and `reconcile` are system-written
+ * only — they appear in filters and in the table, but an operator cannot select
+ * them when creating a contact by hand, because claiming a contact arrived via
+ * signup when it did not would corrupt the funnel the source field exists to
+ * measure.
+ */
+export type ContactSource =
+  | 'worksheet' | 'quote' | 'manual' | 'visibility' | 'import' | 'demo_request'
+  | 'signup' | 'reconcile';
 /** Sales funnel stage. Distinct from ContactStatus (the CRM record state). */
 export type LeadStatus = '' | 'new' | 'contacted' | 'qualified' | 'won' | 'lost';
 

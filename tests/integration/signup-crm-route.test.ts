@@ -23,11 +23,15 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
     const prev = opts?.merge ? (state.docs.get(path) ?? {}) : {};
     state.docs.set(path, { ...prev, ...data });
   }),
+  // Generic over collectionId: the route queries `contacts` AND `companies`, and
+  // a mock hard-coded to contacts made every company lookup miss, so the registry
+  // appeared to create a duplicate on every signup.
   firestoreRunQuery: vi.fn(async (_sa: string, sq: Record<string, unknown>, parent: string) => {
+    const collection = (sq.from as Array<{ collectionId: string }>)[0].collectionId;
     const where = sq.where as { fieldFilter?: { field: { fieldPath: string }; value: { stringValue: string } } } | undefined;
     const out: Array<{ name: string; fields: Record<string, unknown> }> = [];
     for (const [p, f] of state.docs) {
-      if (!p.startsWith(`${parent}/contacts/`)) continue;
+      if (!p.startsWith(`${parent}/${collection}/`)) continue;
       if (where?.fieldFilter) {
         const { field, value } = where.fieldFilter;
         if ((f[field.fieldPath] ?? '') !== value.stringValue) continue;
@@ -71,8 +75,31 @@ describe('signup → CRM', () => {
     expect(contact()).toMatchObject({
       name: 'Ada Lovelace', email: 'ada@acme.com', company: 'Acme Ltd',
       phone: '+33612345678', countryCode: 'FR', phoneCountry: 'FR',
-      source: 'demo_request', leadStatus: 'new',
+      // Was 'demo_request' — upsertLeadContact hard-coded it, so the ENTIRE
+      // signup population was filed as demo requests and any funnel counted
+      // from the source column was wrong.
+      source: 'signup', leadStatus: 'new',
     });
+  });
+
+  it('registers the company and links the contact to it', async () => {
+    await call({ orgId: 'orgA', name: 'Ada Lovelace', company: 'Acme Ltd' });
+    const companies = [...state.docs.entries()].filter(([p]) => p.includes('/companies/'));
+    expect(companies).toHaveLength(1);
+    expect(companies[0][1]).toMatchObject({ name: 'Acme Ltd', nameKey: 'acme', source: 'signup' });
+    // The contact carries the registry id, so no reconciliation pass is needed.
+    expect(contact()!.companyId).toBe((companies[0][1] as { companyId: string }).companyId);
+  });
+
+  it('a second signup at the SAME company reuses the registry entry', async () => {
+    await call({ orgId: 'orgA', name: 'Ada', company: 'Acme Ltd' });
+    state.claims = { uid: 'colleague', email: 'grace@acme.com' };
+    state.docs.set('organizations/orgA/members/colleague', { role: 'member' });
+    await call({ orgId: 'orgA', name: 'Grace', company: 'ACME  ltd.' });   // sloppy spelling
+    const companies = [...state.docs.entries()].filter(([p]) => p.includes('/companies/'));
+    expect(companies).toHaveLength(1);
+    // The first spelling stays: an operator correction must not be undone.
+    expect((companies[0][1] as { name: string }).name).toBe('Acme Ltd');
   });
 
   it('COMPANY FALLBACK: a lost stash falls back to the workspace name', async () => {

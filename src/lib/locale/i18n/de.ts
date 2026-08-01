@@ -3384,6 +3384,60 @@ export const de: Dict = {
     notesLabel: "Notizen",
     cancel: "Abbrechen",
     save: "Speichern",
+    modeCompanies: "Unternehmen",
+
+    companyName: "Unternehmen",
+
+    companyContacts: "Kontakte",
+
+    companyTwentyId: "Twenty-Unternehmens-ID",
+
+    companyNoTwentyId: "nicht verknüpft",
+
+    companyUpdated: "Aktualisiert",
+
+    companySearch: "Unternehmen oder Organisation suchen…",
+
+    companyEmpty: "Noch keine Unternehmen.",
+
+    companyCount: "Unternehmen",
+
+    companyDuplicate: "DUPLIKAT",
+
+    companyRename: "Umbenennen",
+
+    companyRenamePrompt: "Neuer Unternehmensname:",
+
+    companyMerge: "Zusammenführen",
+
+    companyMergeInto: "In behaltenes zusammenführen",
+
+    companyMergeKeeping: "Behalten",
+
+    companyMergePick: "wählen Sie jetzt das Duplikat, das hineingeführt wird.",
+
+    companyMergeConfirm: "Diese Unternehmen zusammenführen? Alle Kontakte wechseln zum behaltenen Unternehmen. Nicht umkehrbar.",
+
+    companyReconcileDry: "Konsistenz prüfen",
+
+    companyReconcileApply: "Jetzt reparieren",
+
+    companyReconcileContacts: "Geprüfte Kontakte",
+
+    companyReconcileRegistry: "Unternehmen im Register",
+
+    companyReconcileUnlinked: "Kontakte ohne Unternehmensverknüpfung",
+
+    companyReconcileCreated: "Zu erstellende Unternehmen",
+
+    companyReconcileDuplicates: "Doppelte Unternehmen",
+
+    companyReconcileOrphans: "Unternehmen ohne Kontakte",
+
+    companyReconcileNoTwenty: "Nicht mit Twenty verknüpfte Unternehmen",
+
+    companyReconcileWritten: "Geschriebene Datensätze",
+
     unassigned: "Nicht zugewiesen",
     assignmentSection: "Zuweisung",
     assignedTo: "Zugewiesen an",
@@ -3462,6 +3516,10 @@ export const de: Dict = {
       visibility: "Sichtbarkeits-Audit",
       import: "Import",
       demo_request: "Demo-Anfrage",
+
+      signup: "Registrierung",
+
+      reconcile: "Abgleich",
     },
     statuses: {
       active: "Aktiv",
@@ -3480,6 +3538,21 @@ export const de: Dict = {
       MEMBER_DISABLED: "Dieses Mitglied ist deaktiviert.",
 
       BATCH_TOO_LARGE: "Dieser Stapel ist zu groß. Bitte teilen Sie die Datei auf.",
+
+
+      DUPLICATE_COMPANY: "Ein anderes Unternehmen verwendet diesen Namen bereits. Führen Sie sie stattdessen zusammen.",
+
+
+      INVALID_NAME: "Ein Unternehmensname ist erforderlich.",
+
+
+      SAME_COMPANY: "Ein Unternehmen kann nicht mit sich selbst zusammengeführt werden.",
+
+
+      ALREADY_MERGED: "Dieses Unternehmen wurde bereits zusammengeführt.",
+
+
+      CROSS_ORG_MERGE: "Unternehmen aus verschiedenen Organisationen können nicht zusammengeführt werden.",
 
       IMPORT_FAILED: "Der Import wurde gestoppt. Bereits importierte Zeilen wurden gespeichert.",
       INVALID_INPUT: "Bitte überprüfe die Kontaktdaten (ein gültiger Name und eine gültige E-Mail-Adresse sind erforderlich).",

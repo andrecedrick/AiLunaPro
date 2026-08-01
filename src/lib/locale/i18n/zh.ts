@@ -3386,6 +3386,60 @@ export const zh: Dict = {
     notesLabel: "备注",
     cancel: "取消",
     save: "保存",
+    modeCompanies: "公司",
+
+    companyName: "公司",
+
+    companyContacts: "联系人",
+
+    companyTwentyId: "Twenty 公司 ID",
+
+    companyNoTwentyId: "未关联",
+
+    companyUpdated: "更新时间",
+
+    companySearch: "搜索公司或组织…",
+
+    companyEmpty: "暂无公司。",
+
+    companyCount: "家公司",
+
+    companyDuplicate: "重复",
+
+    companyRename: "重命名",
+
+    companyRenamePrompt: "新的公司名称：",
+
+    companyMerge: "合并",
+
+    companyMergeInto: "合并到保留项",
+
+    companyMergeKeeping: "保留",
+
+    companyMergePick: "现在选择要并入的重复项。",
+
+    companyMergeConfirm: "合并这些公司？所有联系人将移至保留的公司。此操作无法撤销。",
+
+    companyReconcileDry: "检查一致性",
+
+    companyReconcileApply: "立即修复",
+
+    companyReconcileContacts: "已扫描联系人",
+
+    companyReconcileRegistry: "注册表中的公司",
+
+    companyReconcileUnlinked: "未关联公司的联系人",
+
+    companyReconcileCreated: "将创建的公司",
+
+    companyReconcileDuplicates: "重复的公司",
+
+    companyReconcileOrphans: "没有联系人的公司",
+
+    companyReconcileNoTwenty: "未关联 Twenty 的公司",
+
+    companyReconcileWritten: "已写入记录",
+
     unassigned: "未分配",
     assignmentSection: "分配",
     assignedTo: "分配给",
@@ -3464,6 +3518,10 @@ export const zh: Dict = {
       visibility: "可见性审计",
       import: "导入",
       demo_request: "演示请求",
+
+      signup: "注册",
+
+      reconcile: "对账",
     },
     statuses: {
       active: "活跃",
@@ -3482,6 +3540,21 @@ export const zh: Dict = {
       MEMBER_DISABLED: "该成员已被停用。",
 
       BATCH_TOO_LARGE: "该批次过大，请拆分文件。",
+
+
+      DUPLICATE_COMPANY: "另一家公司已使用该名称。请改为合并。",
+
+
+      INVALID_NAME: "需要填写公司名称。",
+
+
+      SAME_COMPANY: "公司不能与自身合并。",
+
+
+      ALREADY_MERGED: "该公司已被合并。",
+
+
+      CROSS_ORG_MERGE: "不同组织的公司无法合并。",
 
       IMPORT_FAILED: "导入已停止。已导入的行已保存。",
       INVALID_INPUT: "请检查联系人信息（需要有效的姓名和邮箱）。",

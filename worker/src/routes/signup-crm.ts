@@ -30,6 +30,7 @@ import { upsertLeadContact } from '../lib/lead-contact';
 import { normalizePhone, isValidPhone } from '../lib/support-shared';
 import { phoneCountryIso } from '../lib/phone-country';
 import { createCompany, createPerson, createNote, createNoteTarget, type TwentyLead } from '../lib/twenty';
+import { upsertCompany, linkTwentyCompany } from '../lib/company-registry';
 import type { AppEnv } from '../index';
 
 interface Bindings {
@@ -97,11 +98,26 @@ signupCrm.post('/api/signup/crm', async c => {
   let twentyPersonId = '';
   let twentyCompanyId = '';
 
+  // Company registry entry FIRST, so the contact is born linked rather than
+  // needing a reconciliation pass to attach it later.
+  let companyId = '';
+  try {
+    const reg = await upsertCompany(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+      orgId, name: company, source: 'signup', uid: g.uid,
+    });
+    companyId = reg.companyId;
+    // The registry's stored spelling wins: an operator may already have corrected
+    // this company's name, and a new signup must not reintroduce the old one.
+    if (reg.name) company = reg.name;
+  } catch (err) {
+    console.warn('[signup-crm] company registry upsert failed:', err instanceof Error ? err.message : '');
+  }
+
   try {
     const contact = await upsertLeadContact(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
       orgId, name: name || email, contactEmail: email, identityEmail: email,
-      phone, countryCode, phoneCountry, company,
-      message: '', uid: g.uid,
+      phone, countryCode, phoneCountry, company, companyId,
+      message: '', uid: g.uid, source: 'signup',
     });
     contactId = contact.contactId;
     created = contact.created;
@@ -130,10 +146,21 @@ signupCrm.post('/api/signup/crm', async c => {
     };
     try {
       if (!twentyPersonId) {
+        // The Twenty company id is read from the REGISTRY, not from this contact.
+        // Reading it off the contact meant the second person at a company had no
+        // id to find and created a SECOND Twenty company — one duplicate per
+        // colleague who signed up. The registry holds one id per company.
+        if (company && !twentyCompanyId && companyId) {
+          const reg = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/companies/${companyId}`);
+          if (reg && typeof reg.twentyCompanyId === 'string') twentyCompanyId = reg.twentyCompanyId;
+        }
         if (company && !twentyCompanyId) {
           const co = await createCompany(key, url, lead);
           if (!co.ok) throw new Error(co.error ?? 'company create failed');
           twentyCompanyId = co.id ?? '';
+          // Record it on the company, so the next colleague reuses it.
+          await linkTwentyCompany(env.FIREBASE_SERVICE_ACCOUNT_JSON, orgId, companyId, twentyCompanyId)
+            .catch(err => console.warn('[signup-crm] twenty link failed:', err instanceof Error ? err.message : ''));
         }
         const person = await createPerson(key, url, lead, twentyCompanyId || undefined);
         if (!person.ok) throw new Error(person.error ?? 'person create failed');

@@ -20,10 +20,48 @@ export const ROW_HEIGHT = 44;
 /** Viewport cap for the scroll container. Beyond this the window does the work. */
 const MAX_BODY_HEIGHT = 620;
 
+/**
+ * Explicit column widths, in render order.
+ *
+ * The table previously declared `tableLayout: fixed` with `minWidth: 900` and no
+ * per-column widths. On a 1180px page that squeezed fourteen columns to ~84px
+ * each, and because every cell also carries `overflow: hidden`, the Actions
+ * buttons were CLIPPED rather than reachable — and no horizontal scrollbar
+ * appeared, because the table never became wider than its container. The columns
+ * were not merely cramped; they were unreachable.
+ *
+ * Declaring real widths makes the table wider than the page, which is what turns
+ * the container's `overflow-x: auto` into an actual scrollbar.
+ */
+const COLUMNS = [
+  { key: 'name',    width: 150 },
+  { key: 'email',   width: 210 },
+  { key: 'company', width: 150 },
+  { key: 'org',     width: 120, readOnlyOnly: true },
+  { key: 'phone',   width: 140 },
+  { key: 'country', width: 80 },
+  { key: 'lead',    width: 110 },
+  { key: 'owner',   width: 190 },
+  { key: 'message', width: 220 },
+  { key: 'tags',    width: 120 },
+  { key: 'source',  width: 110 },
+  { key: 'status',  width: 100 },
+  { key: 'created', width: 110 },
+  { key: 'actions', width: 210, writableOnly: true },
+] as const;
+
+function visibleColumns(readOnly: boolean) {
+  return COLUMNS.filter(c =>
+    ('readOnlyOnly' in c && c.readOnlyOnly ? readOnly : true) &&
+    ('writableOnly' in c && c.writableOnly ? !readOnly : true));
+}
+
 const th: React.CSSProperties = { padding: '10px 12px', fontWeight: 700 };
+// No maxWidth here: the colgroup owns column sizing now. A cell-level maxWidth
+// fought the declared width and was half the reason content was clipped.
 const td: React.CSSProperties = {
   padding: '0 12px', height: ROW_HEIGHT, verticalAlign: 'middle',
-  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 220,
+  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
 };
 const tagPill: React.CSSProperties = { padding: '2px 7px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border)' };
 
@@ -46,14 +84,21 @@ export function ContactsTable(p: ContactsTableProps) {
   const list = p.rows ?? [];
   const v = useVirtualRows({ count: list.length, rowHeight: ROW_HEIGHT });
   const window = list.slice(v.start, v.end);
-  const colCount = p.readOnly ? 14 : 14;
+  const cols = visibleColumns(p.readOnly);
+  const colCount = cols.length;
+  const tableWidth = cols.reduce((n, c) => n + c.width, 0);
 
   return (
     <div
       ref={v.ref}
+      // Both axes scroll: vertical for the virtualized rows, horizontal so every
+      // column stays reachable instead of being clipped at the page edge.
       style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: MAX_BODY_HEIGHT }}
     >
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 900, tableLayout: 'fixed' }}>
+      <table style={{ width: tableWidth, minWidth: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
+        <colgroup>
+          {cols.map(c => <col key={c.key} style={{ width: c.width }} />)}
+        </colgroup>
         <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--surface)' }}>
           <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4 }}>
             <th style={th}>{C.colName}</th>

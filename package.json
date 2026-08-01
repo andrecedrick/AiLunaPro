@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b --force && vite build",
-    "typecheck": "tsc -b --force",
+    "build": "tsc -b --force && npm run typecheck:worker && vite build",
+    "typecheck": "tsc -b --force && npm run typecheck:worker",
+    "typecheck:worker": "cd worker && tsc --noEmit --rootDir .. -p tsconfig.json",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",

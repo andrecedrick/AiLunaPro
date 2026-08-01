@@ -42,6 +42,15 @@ export interface LeadContactInput {
   message:       string;
   /** Verified uid of the submitter, recorded as provenance. */
   uid:           string;
+  /**
+   * Where this lead came from. Was hard-coded to 'demo_request', so every account
+   * created through signup was filed in the CRM as a demo request — the source
+   * column lied for the entire signup population, and any funnel counted from it
+   * was wrong. Required, so a new caller cannot silently inherit someone else's.
+   */
+  source:        string;
+  /** Registry id for `company`. Resolved by the caller via upsertCompany. */
+  companyId?:    string;
 }
 
 export interface LeadContactResult {
@@ -94,12 +103,19 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
 
   if (existingId) {
     const current = await firestoreGet(saJson, `${COLLECTION(input.orgId)}/${existingId}`) as Record<string, unknown> | null;
-    const patch: Record<string, unknown> = {
+    // Typed as string, not unknown: every value written below IS a string, and
+    // `Record<string, unknown>` did not satisfy firestoreSet's WritableValue —
+    // an error the root build gate never surfaced because it does not compile
+    // the worker at all (see worker/package.json "typecheck").
+    const patch: Record<string, string> = {
       identityEmail:  input.identityEmail,
       lastActivityAt: now,
       updatedAt:      now,
     };
     if (input.company && !(typeof current?.company === 'string' && current.company)) patch.company = input.company;
+    // Registry link fills a blank too: a contact written before the registry
+    // existed gets attached the next time the same prospect comes through.
+    if (input.companyId && !(typeof current?.companyId === 'string' && current.companyId)) patch.companyId = input.companyId;
     // Same fill-a-blank rule as company: an operator may have corrected the number
     // by hand, and a repeat request must not overwrite that correction.
     if (input.phone && !(typeof current?.phone === 'string' && current.phone)) patch.phone = input.phone;
@@ -130,13 +146,14 @@ export async function upsertLeadContact(saJson: string, input: LeadContactInput)
     countryCode:    input.countryCode,
     phoneCountry:   input.phoneCountry,
     company:        input.company,
+    companyId:      input.companyId ?? '',
     lastMessage:    input.message,
     owner:          '',          // unassigned until an operator takes the lead
     notes:          '',
     tags:           [],
     status:         'active',       // CRM record status (active/inactive/blocked)
     leadStatus:     'new',          // sales pipeline stage, distinct from `status`
-    source:         'demo_request',
+    source:         input.source,
     twentyPersonId: '',   // filled by the CRM push; also its idempotency key
     twentyCompanyId: '',
     linkedQuoteId:  '',

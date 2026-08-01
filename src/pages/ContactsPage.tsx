@@ -27,6 +27,7 @@ import { ContactDetailPanel } from '../components/contacts/ContactDetailPanel';
 import { ContactImportModal } from '../components/contacts/ContactImportModal';
 import { ContactsTable } from '../components/contacts/ContactsTable';
 import { ContactsCards } from '../components/contacts/ContactsCards';
+import { CompaniesPanel } from '../components/contacts/CompaniesPanel';
 import { useViewport } from '../lib/ui/useViewport';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
@@ -35,7 +36,14 @@ import {
   type AssignableMember,
 } from '../lib/contacts/contactsClient';
 
-const SOURCES: ContactSource[] = ['manual', 'quote', 'worksheet', 'visibility', 'import', 'demo_request'];
+/** Filterable sources — everything the platform can write. */
+const SOURCES: ContactSource[] = ['manual', 'quote', 'worksheet', 'visibility', 'import', 'demo_request', 'signup', 'reconcile'];
+/**
+ * Selectable when creating or editing by hand. `signup` and `reconcile` are
+ * system-written: letting an operator claim a contact arrived via signup would
+ * corrupt the very funnel the source field exists to measure.
+ */
+const MANUAL_SOURCES: ContactSource[] = ['manual', 'quote', 'worksheet', 'visibility', 'import', 'demo_request'];
 const STATUSES: ContactStatus[] = ['active', 'inactive', 'blocked'];
 const PAGE_SIZES = [50, 100, 200];
 
@@ -61,7 +69,9 @@ export function ContactsPage() {
   const isDesktop = viewport === 'desktop';
 
   const [isSuperAdmin, setSuper] = useState(false);
-  const [mode, setMode] = useState<'org' | 'all'>('org');
+  // 'companies' is the operator-only registry view. It is a MODE rather than a
+  // route because it shares this page's guard, operator check and data.
+  const [mode, setMode] = useState<'org' | 'all' | 'companies'>('org');
   useEffect(() => {
     let alive = true;
     fetchPlatformMe()
@@ -84,6 +94,9 @@ export function ContactsPage() {
 
   /** Fetch one page. `append` distinguishes "load more" from a fresh query. */
   const fetchPage = useCallback(async (nextCursor: string, append: boolean) => {
+    // The registry view loads its own data; fetching contacts for it would be a
+    // wasted page of Firestore reads on every toggle.
+    if (mode === 'companies') { setRows([]); setCursor(''); return; }
     const filters = { tag: fTag, source: fSource, status: fStatus };
     const page = mode === 'all'
       ? await listAllContacts({ limit: pageSize, cursor: nextCursor })
@@ -223,10 +236,12 @@ export function ContactsPage() {
           <p style={{ fontSize: 13.5, color: 'var(--text-muted)', margin: 0 }}>{readOnly ? C.subtitleAll : C.subtitleOrg}</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {isSuperAdmin && isContentRole && (
+          {isSuperAdmin && (
             <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-              <button onClick={() => setMode('org')} style={{ ...toggleBtn, ...(mode === 'org' ? toggleOn : {}) }}>{C.modeOrg}</button>
+              {isContentRole && <button onClick={() => setMode('org')} style={{ ...toggleBtn, ...(mode === 'org' ? toggleOn : {}) }}>{C.modeOrg}</button>}
               <button onClick={() => setMode('all')} style={{ ...toggleBtn, ...(mode === 'all' ? toggleOn : {}) }}>{C.modeAll}</button>
+              {/* The company registry — operator only, server re-enforced. */}
+              <button onClick={() => setMode('companies')} style={{ ...toggleBtn, ...(mode === 'companies' ? toggleOn : {}) }}>{C.modeCompanies}</button>
             </div>
           )}
           {/* Export is Super Admin only: it bundles customer PII into a file that
@@ -244,6 +259,11 @@ export function ContactsPage() {
       </header>
 
       {readOnly && <div style={{ ...card, fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 12 }}>{C.readOnlyNotice}</div>}
+
+      {/* The registry replaces the contact list entirely — it has its own filters,
+          its own table and its own actions, and stacking both would leave two
+          scrolling tables competing for the same screen. */}
+      {mode === 'companies' ? <CompaniesPanel /> : <>
 
       <section style={{ ...card, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder={C.searchPlaceholder} style={{ ...field, flex: '1 1 220px', minWidth: 180 }} />
@@ -300,6 +320,7 @@ export function ContactsPage() {
           </Button>
         )}
       </div>
+      </>}
 
       {draft && (
         <div style={overlay} onClick={() => !saving && setDraft(null)}>
@@ -313,7 +334,10 @@ export function ContactsPage() {
               <Labeled label={C.colCompany} req><input value={draft.company} onChange={e => setDraft({ ...draft, company: e.target.value })} style={field} /></Labeled>
               <Labeled label={C.colSource}>
                 <select value={draft.source} onChange={e => setDraft({ ...draft, source: e.target.value as ContactSource })} style={field}>
-                  {SOURCES.map(s => <option key={s} value={s}>{(C.sources as Record<string, string>)[s]}</option>)}
+                  {/* A system source already on the record stays selectable, so
+                      editing a signup contact cannot silently relabel it. */}
+                  {(MANUAL_SOURCES.includes(draft.source) ? MANUAL_SOURCES : [draft.source, ...MANUAL_SOURCES])
+                    .map(s => <option key={s} value={s}>{(C.sources as Record<string, string>)[s] ?? s}</option>)}
                 </select>
               </Labeled>
               {isManager && (

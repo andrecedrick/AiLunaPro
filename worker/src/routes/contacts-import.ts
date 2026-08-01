@@ -26,6 +26,7 @@ import { requireRole, type Role } from '../middleware/requireRole';
 import { isSuperAdmin } from '../lib/platformAdmin';
 import { firestoreGet, firestoreCommit, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { planImport, IMPORT_MAX_ROWS, type ImportRow } from '../lib/contact-import';
+import { upsertCompany, companyNameKey } from '../lib/company-registry';
 import type { AppEnv } from '../index';
 
 const imp = new Hono<AppEnv>();
@@ -96,6 +97,26 @@ imp.post('/api/contacts/import', requireAuth(), requireRole(ORG_ROLES), async c 
   const plan = planImport(rows, existing);
   const now = new Date().toISOString();
 
+  // Resolve companies ONCE PER DISTINCT NAME, not once per row. A 500-row import
+  // from one trade show is often 40 companies; upserting per row would be 500
+  // registry round trips to create 40 records, and rows sharing a company would
+  // race to create it. Keyed by the normalised name so "Acme" and "ACME Ltd."
+  // resolve to the same registry entry within a single batch.
+  const companyIds = new Map<string, { companyId: string; name: string }>();
+  for (const r of plan.valid) {
+    const key = companyNameKey(r.company);
+    if (!key || companyIds.has(key)) continue;
+    try {
+      const reg = await upsertCompany(saJson, { orgId, name: r.company, source: 'import', uid });
+      companyIds.set(key, { companyId: reg.companyId, name: reg.name || r.company });
+    } catch (err) {
+      // A registry failure must not lose the lead: the contact is still written
+      // with its company STRING, and reconcile attaches it later.
+      console.warn('[contacts-import] company registry upsert failed:', err instanceof Error ? err.message : '');
+      companyIds.set(key, { companyId: '', name: r.company });
+    }
+  }
+
   // ONE Firestore commit for the whole batch.
   //
   // This was 500 sequential PATCHes issued in waves of 8 — roughly 63 round trips
@@ -108,13 +129,15 @@ imp.post('/api/contacts/import', requireAuth(), requireRole(ORG_ROLES), async c 
   try {
     await firestoreCommit(saJson, plan.valid.map(r => {
       const contactId = genId();
+      const reg = companyIds.get(companyNameKey(r.company));
       return {
         path: `organizations/${orgId}/contacts/${contactId}`,
         data: {
           contactId, orgId,
           name: r.name, email: r.email, emailKey: r.email, identityEmail: '',
           phone: r.phone, countryCode: r.countryCode, phoneCountry: r.phoneCountry,
-          company: r.company, notes: r.notes, lastMessage: '',
+          company: reg?.name ?? r.company, companyId: reg?.companyId ?? '',
+          notes: r.notes, lastMessage: '',
           tags: [], status: 'active', leadStatus: 'new', source: 'import',
           owner: ownerEmail,
           assignedToUid: ownerUid, assignedToEmail: ownerEmail,

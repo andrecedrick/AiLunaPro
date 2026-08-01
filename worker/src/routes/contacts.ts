@@ -29,6 +29,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole, type Role } from '../middleware/requireRole';
 import { requirePlatformAdmin, isSuperAdmin } from '../lib/platformAdmin';
 import { canEditContact, canViewContact } from '../lib/contact-access';
+import { upsertCompany } from '../lib/company-registry';
 import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
@@ -41,10 +42,14 @@ const safeId = (v: unknown): string => (typeof v === 'string' ? v.replace(/[^a-z
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STATUS_VALUES: readonly string[] = ['active', 'inactive', 'blocked'];
-// 'demo_request' is written by the lead → contact bridge (lib/lead-contact.ts).
-// Listed here so an operator can also set it by hand and so validation does not
-// reject a contact the platform itself created.
-const SOURCE_VALUES: readonly string[] = ['worksheet', 'quote', 'manual', 'visibility', 'import', 'demo_request'];
+// Every source the platform itself writes, plus the ones an operator may set by
+// hand. 'signup' was missing while lib/lead-contact.ts hard-coded 'demo_request'
+// for BOTH signups and demo requests, so the whole signup population was filed
+// under the wrong source and no funnel counted from it could be right.
+// 'reconcile' is written only by the company reconciliation pass.
+const SOURCE_VALUES: readonly string[] = [
+  'worksheet', 'quote', 'manual', 'visibility', 'import', 'demo_request', 'signup', 'reconcile',
+];
 const ORG_ROLES: readonly Role[]    = ['owner', 'admin', 'member']; // billing/client excluded
 const MANAGE_ROLES: readonly Role[] = ['owner', 'admin'];           // block + delete-any
 
@@ -148,6 +153,7 @@ function toItem(name: string, f: Record<string, unknown>) {
     email:         typeof f.email === 'string' ? f.email : '',
     phone:         typeof f.phone === 'string' ? f.phone : '',
     company:       typeof f.company === 'string' ? f.company : '',
+    companyId:     typeof f.companyId === 'string' ? f.companyId : '',
     tags:          Array.isArray(f.tags) ? f.tags.filter((t): t is string => typeof t === 'string') : [],
     notes:         typeof f.notes === 'string' ? f.notes : '',
     status:        typeof f.status === 'string' ? f.status : 'active',
@@ -208,13 +214,13 @@ const DEFAULT_LIMIT = 50, MAX_LIMIT = 200;
 const MAX_SCAN_PER_PAGE = 1000;
 
 export const encodeCursor = (createdAt: string, docId: string): string =>
-  btoa(`${createdAt} ${docId}`).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  btoa(`${createdAt}\u0000${docId}`).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
 export function decodeCursor(raw: string): { createdAt: string; docId: string } | null {
   if (!raw) return null;
   try {
     const s = atob(raw.replace(/-/g, '+').replace(/_/g, '/'));
-    const i = s.indexOf(' ');
+    const i = s.indexOf('\u0000');
     if (i < 0) return null;
     return { createdAt: s.slice(0, i), docId: s.slice(i + 1) };
   } catch { return null; }
@@ -379,10 +385,25 @@ contacts.post('/api/contacts/create', requireAuth(), requireRole(ORG_ROLES), asy
   const contactId = genId();
   const now = new Date().toISOString();
   const email = c.get('email') ?? '';
+
+  // Registry entry before the contact, so a manually-typed company joins the same
+  // deduplicated registry the automated flows use. The registry's stored spelling
+  // wins over a fresh one so an operator correction is not undone by the next
+  // person who types the sloppy version.
+  let companyId = '';
+  let company = f.company ?? '';
+  try {
+    const reg = await upsertCompany(saJson, { orgId, name: company, source: f.source ?? 'manual', uid });
+    companyId = reg.companyId;
+    if (reg.name) company = reg.name;
+  } catch (err) {
+    console.warn('[contacts] company registry upsert failed:', err instanceof Error ? err.message : '');
+  }
+
   const doc = {
     contactId, orgId,
     name: f.name!, email: f.email!, emailKey: f.email!,
-    phone: f.phone ?? '', company: f.company ?? '', notes: f.notes ?? '',
+    phone: f.phone ?? '', company, companyId, notes: f.notes ?? '',
     tags: f.tags ?? [], status: f.status ?? 'active', source: f.source ?? 'manual',
     linkedQuoteId: f.linkedQuoteId ?? '', linkedAuditId: f.linkedAuditId ?? '',
     createdByUid: uid, createdAt: now, updatedAt: now,
