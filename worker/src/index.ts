@@ -133,6 +133,18 @@ export type AppEnv = {
     // Operator sets via `wrangler secret put ANTHROPIC_API_KEY --env production`.
     // Absent → Luna falls back to the deterministic responder (no error).
     ANTHROPIC_API_KEY?:            string;
+    // Audit Enrichment Engine (cahier §26). Absent → the Apify collector is not
+    // constructed and every source it would have read is reported as
+    // `not_attempted`, never as silence.
+    APIFY_TOKEN?:                  string;
+    /**
+     * Actor id overrides, JSON: {"linkedin":"some/actor"}. Apify's catalogue is a
+     * third-party marketplace whose ids change independently of this codebase, so
+     * only verified actors are defaulted in lib/apify-collector.ts and the rest
+     * are operator-configured.
+     */
+    APIFY_ACTORS?:                 string;
+    APIFY_MEMORY_MB?:              string;
   };
   Variables: {
     uid:    string;

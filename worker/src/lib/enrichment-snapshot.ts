@@ -32,11 +32,22 @@ import {
 export const SNAPSHOT_SCHEMA_VERSION = 1;
 
 /**
- * Per-source outcome. `not_attempted` and `blocked` are distinct on purpose:
- * "we did not look" and "we looked and were refused" are different statements to
- * put in front of a customer.
+ * Per-source outcome (§26.12).
+ *
+ * Every state is distinct because each is a different statement to a customer:
+ *   succeeded     — read in full
+ *   partial       — read, but not completely (budget or cap reached)
+ *   rate_limited  — the platform throttled us; retrying later would work
+ *   blocked       — the platform refused us; retrying would not
+ *   unavailable   — the source itself was down or absent
+ *   not_attempted — we never looked (no credential, no actor configured)
+ *
+ * Collapsing rate_limited into blocked would tell a customer their source is
+ * unreachable when it is merely busy.
  */
-export const COVERAGE_STATES = ['succeeded', 'partial', 'unavailable', 'blocked', 'not_attempted'] as const;
+export const COVERAGE_STATES = [
+  'succeeded', 'partial', 'rate_limited', 'unavailable', 'blocked', 'not_attempted',
+] as const;
 export type CoverageState = (typeof COVERAGE_STATES)[number];
 
 export const isCoverageState = (v: unknown): v is CoverageState =>
@@ -124,6 +135,7 @@ export interface CoverageSummary {
   total:        number;
   succeeded:    number;
   partial:      number;
+  rateLimited:  number;
   unavailable:  number;
   blocked:      number;
   notAttempted: number;
@@ -147,6 +159,7 @@ export function summariseCoverage(snapshot: EvidenceSnapshot): CoverageSummary {
     total:        snapshot.coverage.length,
     succeeded:    by('succeeded').length,
     partial:      by('partial').length,
+    rateLimited:  by('rate_limited').length,
     unavailable:  by('unavailable').length,
     blocked:      by('blocked').length,
     notAttempted: by('not_attempted').length,
