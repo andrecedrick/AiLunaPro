@@ -28,6 +28,7 @@ import { ContactImportModal } from '../components/contacts/ContactImportModal';
 import { ContactsTable } from '../components/contacts/ContactsTable';
 import { ContactsCards } from '../components/contacts/ContactsCards';
 import { CompaniesPanel } from '../components/contacts/CompaniesPanel';
+import { SalesDashboard } from '../components/contacts/SalesDashboard';
 import { useViewport } from '../lib/ui/useViewport';
 import {
   listContacts, listAllContacts, createContact, patchContact, deleteContact,
@@ -71,7 +72,7 @@ export function ContactsPage() {
   const [isSuperAdmin, setSuper] = useState(false);
   // 'companies' is the operator-only registry view. It is a MODE rather than a
   // route because it shares this page's guard, operator check and data.
-  const [mode, setMode] = useState<'org' | 'all' | 'companies'>('org');
+  const [mode, setMode] = useState<'org' | 'all' | 'companies' | 'sales'>('org');
   useEffect(() => {
     let alive = true;
     fetchPlatformMe()
@@ -96,7 +97,7 @@ export function ContactsPage() {
   const fetchPage = useCallback(async (nextCursor: string, append: boolean) => {
     // The registry view loads its own data; fetching contacts for it would be a
     // wasted page of Firestore reads on every toggle.
-    if (mode === 'companies') { setRows([]); setCursor(''); return; }
+    if (mode === 'companies' || mode === 'sales') { setRows([]); setCursor(''); return; }
     const filters = { tag: fTag, source: fSource, status: fStatus };
     const page = mode === 'all'
       ? await listAllContacts({ limit: pageSize, cursor: nextCursor })
@@ -236,14 +237,15 @@ export function ContactsPage() {
           <p style={{ fontSize: 13.5, color: 'var(--text-muted)', margin: 0 }}>{readOnly ? C.subtitleAll : C.subtitleOrg}</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {isSuperAdmin && (
-            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-              {isContentRole && <button onClick={() => setMode('org')} style={{ ...toggleBtn, ...(mode === 'org' ? toggleOn : {}) }}>{C.modeOrg}</button>}
-              <button onClick={() => setMode('all')} style={{ ...toggleBtn, ...(mode === 'all' ? toggleOn : {}) }}>{C.modeAll}</button>
-              {/* The company registry — operator only, server re-enforced. */}
-              <button onClick={() => setMode('companies')} style={{ ...toggleBtn, ...(mode === 'companies' ? toggleOn : {}) }}>{C.modeCompanies}</button>
-            </div>
-          )}
+          <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+            {isContentRole && <button onClick={() => setMode('org')} style={{ ...toggleBtn, ...(mode === 'org' ? toggleOn : {}) }}>{C.modeOrg}</button>}
+            {isSuperAdmin && <button onClick={() => setMode('all')} style={{ ...toggleBtn, ...(mode === 'all' ? toggleOn : {}) }}>{C.modeAll}</button>}
+            {/* The company registry — operator only, server re-enforced. */}
+            {isSuperAdmin && <button onClick={() => setMode('companies')} style={{ ...toggleBtn, ...(mode === 'companies' ? toggleOn : {}) }}>{C.modeCompanies}</button>}
+            {/* Sales is open to every content role: a rep sees their OWN pipeline,
+                scoped server-side. It is the surface that stops leads rotting. */}
+            {isContentRole && <button onClick={() => setMode('sales')} style={{ ...toggleBtn, ...(mode === 'sales' ? toggleOn : {}) }}>{C.modeSales}</button>}
+          </div>
           {/* Export is Super Admin only: it bundles customer PII into a file that
               leaves the app. Server-side the route is operator-gated too. */}
           {isSuperAdmin && (
@@ -263,7 +265,21 @@ export function ContactsPage() {
       {/* The registry replaces the contact list entirely — it has its own filters,
           its own table and its own actions, and stacking both would leave two
           scrolling tables competing for the same screen. */}
-      {mode === 'companies' ? <CompaniesPanel /> : <>
+      {mode === 'sales' ? (
+        <SalesDashboard
+          orgId={orgId}
+          // Opening from the queue loads the record straight into the detail
+          // panel, so the operator goes from "this is overdue" to acting on it
+          // without hunting for the row.
+          onOpenContact={(contactId, contactOrg) => {
+            const hit = (rows ?? []).find(r => r.contactId === contactId);
+            if (hit) { setDetail(hit); return; }
+            listContacts(contactOrg || orgId, undefined, { limit: 200 })
+              .then(p => { const f = p.contacts.find(x => x.contactId === contactId); if (f) setDetail(f); })
+              .catch(() => {});
+          }}
+        />
+      ) : mode === 'companies' ? <CompaniesPanel /> : <>
 
       <section style={{ ...card, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder={C.searchPlaceholder} style={{ ...field, flex: '1 1 220px', minWidth: 180 }} />
@@ -377,7 +393,9 @@ export function ContactsPage() {
           // PROSPECT's workspace, so handing one to a rep is a cross-org write.
           canAssign={isSuperAdmin}
           assignable={assignable}
+          orgId={orgId}
           onAssign={doAssign}
+          onRefresh={reload}
           onClose={() => setDetail(null)}
           onSaveNotes={saveNotes}
         />

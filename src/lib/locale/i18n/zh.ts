@@ -3470,6 +3470,255 @@ export const zh: Dict = {
 
     companyTwentyFailures: "失败",
 
+    modeSales: "销售",
+
+
+    pipelineSection: "销售流程",
+
+
+    pipelineStage: "阶段",
+
+
+    pipelinePriority: "优先级",
+
+
+    pipelineNextFollowUp: "下次跟进",
+
+
+    pipelineLastContact: "最近联系",
+
+
+    pipelineNoNextStep: "未安排下一步",
+
+
+    pipelineOverdue: "已逾期",
+
+
+    pipelineLogActivity: "记录活动",
+
+
+    pipelineChannel: "渠道",
+
+
+    pipelineOutcome: "结果",
+
+
+    pipelineNoOutcome: "无结果",
+
+
+    pipelineLog: "记录",
+
+
+    pipelineNotePlaceholder: "发生了什么？（选填）",
+
+
+    pipelineRemindIn: "提醒我",
+
+
+    pipelineTimeline: "历史记录",
+
+
+    pipelineNoHistory: "暂无记录。",
+
+
+    pipelineNextSet: "下次跟进时间",
+
+
+    pipelineBounced: "邮件被退回——未安排跟进。请先更正地址。",
+
+
+    stage_new: "新建",
+
+
+    stage_assigned: "已分配",
+
+
+    stage_contacted: "已联系",
+
+
+    stage_attempted_contact: "尝试联系",
+
+
+    stage_qualified: "已确认商机",
+
+
+    stage_demo_scheduled: "已预约演示",
+
+
+    stage_demo_completed: "演示已完成",
+
+
+    stage_proposal_sent: "已发送方案",
+
+
+    stage_negotiation: "商务谈判",
+
+
+    stage_won: "赢单",
+
+
+    stage_lost: "丢单",
+
+
+    stage_archived: "已归档",
+
+
+    channel_email: "邮件",
+
+
+    channel_sms: "短信",
+
+
+    channel_call: "电话",
+
+
+    channel_note: "备注",
+
+
+    priority_low: "低",
+
+
+    priority_normal: "普通",
+
+
+    priority_high: "高",
+
+
+    priority_urgent: "紧急",
+
+
+    outcome_connected: "已接通",
+
+
+    outcome_no_answer: "无人接听",
+
+
+    outcome_left_message: "已留言",
+
+
+    outcome_positive: "积极",
+
+
+    outcome_negative: "消极",
+
+
+    outcome_bounced: "已退回",
+
+
+    event_created: "创建",
+
+
+    event_signup: "注册",
+
+
+    event_import: "导入",
+
+
+    event_demo_request: "演示申请",
+
+
+    event_assigned: "已分配",
+
+
+    event_reassigned: "已转交",
+
+
+    event_unassigned: "取消分配",
+
+
+    event_status_changed: "阶段",
+
+
+    event_follow_up_scheduled: "跟进",
+
+
+    event_email: "邮件",
+
+
+    event_sms: "短信",
+
+
+    event_call: "电话",
+
+
+    event_note: "备注",
+
+
+    event_company_changed: "公司",
+
+
+    event_twenty_synced: "Twenty 同步",
+
+
+    salesQueue: "跟进队列",
+
+
+    salesQueueClear: "没有逾期。每条线索都有下一步。",
+
+
+    salesRefresh: "刷新",
+
+
+    salesLate: "逾期",
+
+
+    salesTotalLeads: "线索总数",
+
+
+    salesOpen: "进行中",
+
+
+    salesWon: "赢单",
+
+
+    salesLost: "丢单",
+
+
+    salesConversion: "转化率",
+
+
+    salesAvgCycle: "平均周期",
+
+
+    salesFollowUpRate: "跟进率",
+
+
+    salesOverdue: "逾期",
+
+
+    salesDueToday: "今日到期",
+
+
+    salesNoNextStep: "无下一步",
+
+
+    salesFunnel: "漏斗",
+
+
+    salesBySource: "按来源",
+
+
+    salesByOwner: "按负责人",
+
+
+    salesByCompany: "按公司",
+
+
+    salesByOrg: "按组织",
+
+
+    salesConvHint: "总数 / 已决策线索的转化率",
+
+
+    salesScope: "范围",
+
+
+    salesScopeAll: "全部线索",
+
+
+    salesScopeAssigned: "分配给你的线索",
+
+
     unassigned: "未分配",
     assignmentSection: "分配",
     assignedTo: "分配给",

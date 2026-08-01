@@ -3468,6 +3468,255 @@ export const de: Dict = {
 
     companyTwentyFailures: "Fehler",
 
+    modeSales: "Vertrieb",
+
+
+    pipelineSection: "Pipeline",
+
+
+    pipelineStage: "Phase",
+
+
+    pipelinePriority: "Priorität",
+
+
+    pipelineNextFollowUp: "Nächste Nachfassung",
+
+
+    pipelineLastContact: "Letzter Kontakt",
+
+
+    pipelineNoNextStep: "Keine Nachfassung geplant",
+
+
+    pipelineOverdue: "ÜBERFÄLLIG",
+
+
+    pipelineLogActivity: "Aktivität erfassen",
+
+
+    pipelineChannel: "Kanal",
+
+
+    pipelineOutcome: "Ergebnis",
+
+
+    pipelineNoOutcome: "Kein Ergebnis",
+
+
+    pipelineLog: "Erfassen",
+
+
+    pipelineNotePlaceholder: "Was ist passiert? (optional)",
+
+
+    pipelineRemindIn: "Erinnern in",
+
+
+    pipelineTimeline: "Verlauf",
+
+
+    pipelineNoHistory: "Noch nichts erfasst.",
+
+
+    pipelineNextSet: "Nächste Nachfassung am",
+
+
+    pipelineBounced: "Adresse unzustellbar — nichts geplant. Bitte zuerst die Adresse korrigieren.",
+
+
+    stage_new: "Neu",
+
+
+    stage_assigned: "Zugewiesen",
+
+
+    stage_contacted: "Kontaktiert",
+
+
+    stage_attempted_contact: "Kontaktversuch",
+
+
+    stage_qualified: "Qualifiziert",
+
+
+    stage_demo_scheduled: "Demo geplant",
+
+
+    stage_demo_completed: "Demo durchgeführt",
+
+
+    stage_proposal_sent: "Angebot gesendet",
+
+
+    stage_negotiation: "Verhandlung",
+
+
+    stage_won: "Gewonnen",
+
+
+    stage_lost: "Verloren",
+
+
+    stage_archived: "Archiviert",
+
+
+    channel_email: "E-Mail",
+
+
+    channel_sms: "SMS",
+
+
+    channel_call: "Anruf",
+
+
+    channel_note: "Notiz",
+
+
+    priority_low: "Niedrig",
+
+
+    priority_normal: "Normal",
+
+
+    priority_high: "Hoch",
+
+
+    priority_urgent: "Dringend",
+
+
+    outcome_connected: "Erreicht",
+
+
+    outcome_no_answer: "Keine Antwort",
+
+
+    outcome_left_message: "Nachricht hinterlassen",
+
+
+    outcome_positive: "Positiv",
+
+
+    outcome_negative: "Negativ",
+
+
+    outcome_bounced: "Unzustellbar",
+
+
+    event_created: "Erstellt",
+
+
+    event_signup: "Registrierung",
+
+
+    event_import: "Import",
+
+
+    event_demo_request: "Demo-Anfrage",
+
+
+    event_assigned: "Zugewiesen",
+
+
+    event_reassigned: "Neu zugewiesen",
+
+
+    event_unassigned: "Nicht zugewiesen",
+
+
+    event_status_changed: "Phase",
+
+
+    event_follow_up_scheduled: "Nachfassung",
+
+
+    event_email: "E-Mail",
+
+
+    event_sms: "SMS",
+
+
+    event_call: "Anruf",
+
+
+    event_note: "Notiz",
+
+
+    event_company_changed: "Unternehmen",
+
+
+    event_twenty_synced: "Twenty-Sync",
+
+
+    salesQueue: "Nachfass-Liste",
+
+
+    salesQueueClear: "Nichts überfällig. Jeder Lead hat einen nächsten Schritt.",
+
+
+    salesRefresh: "Aktualisieren",
+
+
+    salesLate: "überfällig",
+
+
+    salesTotalLeads: "Leads gesamt",
+
+
+    salesOpen: "Offen",
+
+
+    salesWon: "Gewonnen",
+
+
+    salesLost: "Verloren",
+
+
+    salesConversion: "Konversion",
+
+
+    salesAvgCycle: "Ø Zyklus",
+
+
+    salesFollowUpRate: "Nachfassquote",
+
+
+    salesOverdue: "Überfällig",
+
+
+    salesDueToday: "Heute fällig",
+
+
+    salesNoNextStep: "Ohne nächsten Schritt",
+
+
+    salesFunnel: "Funnel",
+
+
+    salesBySource: "Nach Quelle",
+
+
+    salesByOwner: "Nach Betreuer",
+
+
+    salesByCompany: "Nach Unternehmen",
+
+
+    salesByOrg: "Nach Organisation",
+
+
+    salesConvHint: "gesamt / Konversion entschiedener Leads",
+
+
+    salesScope: "Umfang",
+
+
+    salesScopeAll: "alle Leads",
+
+
+    salesScopeAssigned: "Ihnen zugewiesene Leads",
+
+
     unassigned: "Nicht zugewiesen",
     assignmentSection: "Zuweisung",
     assignedTo: "Zugewiesen an",

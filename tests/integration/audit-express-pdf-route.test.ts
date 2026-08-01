@@ -7,7 +7,9 @@ vi.mock('../../worker/src/middleware/auth', async (importOriginal) => {
 });
 
 import pdfRoute from '../../worker/src/routes/audit-express-pdf';
-import app from '../../worker/src/index';
+// Named import: the default export is now `{ fetch, scheduled }` because the
+// worker has a cron handler, so it is no longer the Hono instance.
+import { app } from '../../worker/src/index';
 import { assembleSnapshot, extractPageSignals, type PageCapture } from '../../worker/src/lib/audit-express-extract';
 
 /*

@@ -30,6 +30,13 @@ ALLOWED_ORIGINS     = "https://audit.ailunapro.com"
 APP_BASE_URL        = "https://audit.ailunapro.com"
 APP_ENV             = "production"
 
+# Commercial reminder sweep. Twice a day rather than hourly: notification ids
+# carry the date, so a lead produces at most one reminder per day no matter how
+# often this fires — the second run exists to catch a follow-up that fell due
+# after the morning sweep, not to notify again.
+[env.production.triggers]
+crons = ["0 7 * * *", "0 15 * * *"]
+
 # ── Billing SCOPE moved out of this deploy file ──────────────────────────────
 # Plan-limit + overflow-charge scope (ENABLE_PLAN_LIMITS[_ORGS],
 # ENABLE_RECOMMENDATION_CHARGE[_ORGS]) is NO LONGER set here. A business rule in a

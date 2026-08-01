@@ -19,6 +19,7 @@
 import { useEffect, useState } from 'react';
 import { useLocale } from '../../context/LocaleContext';
 import { Button } from '../ui/Button';
+import { PipelinePanel } from './PipelinePanel';
 import type { Contact, AssignableMember } from '../../lib/contacts/contactsClient';
 
 const overlay = {
@@ -41,10 +42,14 @@ function Field({ k, v }: { k: string; v: string }) {
 }
 
 export function ContactDetailPanel({
-  contact, canEdit, canAssign = false, assignable = [], onClose, onSaveNotes, onAssign,
+  contact, canEdit, canAssign = false, assignable = [], orgId = '', onClose, onSaveNotes, onAssign, onRefresh,
 }: {
   contact: Contact;
   canEdit: boolean;
+  /** Fallback org for a contact opened outside the cross-org view. */
+  orgId?: string;
+  /** Reload the list after a pipeline change, so the table reflects the new stage. */
+  onRefresh?: () => Promise<void> | void;
   /** Super admin only. Assigning is the one action a role can never grant. */
   canAssign?: boolean;
   assignable?: readonly AssignableMember[];
@@ -181,6 +186,16 @@ export function ContactDetailPanel({
             </div>
           </section>
         )}
+
+        {/* Commercial pipeline: stage, follow-up, activity logging and the
+            immutable timeline. Sits above the prospect's request because it is
+            what an operator opening this panel is here to do. */}
+        <PipelinePanel
+          contact={contact}
+          orgId={orgId}
+          canEdit={canEdit}
+          onChanged={async () => { await onRefresh?.(); }}
+        />
 
         {/* Original request — READ-ONLY. Full text, wrapped, never truncated. */}
         <section style={{ marginBottom: 18 }}>

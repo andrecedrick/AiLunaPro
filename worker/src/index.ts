@@ -71,6 +71,9 @@ import contactsImportRoutes   from './routes/contacts-import';
 import contactsBackfillRoutes from './routes/contacts-backfill';
 import companiesRoutes        from './routes/companies';
 import companiesTwentyRoutes  from './routes/companies-twenty';
+import pipelineRoutes        from './routes/pipeline';
+import salesRoutes           from './routes/sales';
+import { runReminderSweep }  from './lib/reminders';
 
 // ─── Env bindings type ────────────────────────────────────────────────────────
 
@@ -236,8 +239,37 @@ app.route('/', contactsImportRoutes);
 app.route('/', contactsBackfillRoutes);
 app.route('/', companiesRoutes);
 app.route('/', companiesTwentyRoutes);
+app.route('/', pipelineRoutes);
+app.route('/', salesRoutes);
 
 // 404 fallback
 app.notFound(c => c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404));
 
-export default app;
+/**
+ * The Hono app itself, exported by name.
+ *
+ * The default export is now `{ fetch, scheduled }` because the worker has a cron
+ * handler, which means it is no longer the Hono instance and no longer has
+ * `.request()`. Tests that exercise the whole app need the instance, so it is
+ * exported here rather than having every test reach for `default.fetch`.
+ */
+export { app };
+
+/**
+ * Cron entry point — the commercial reminder sweep.
+ *
+ * Exported alongside `fetch` because a dashboard only warns whoever opens it, and
+ * the rep who stops opening it is precisely the one whose leads go quiet. The
+ * sweep is idempotent (notification ids carry the date), so a missed or repeated
+ * firing cannot double-notify.
+ */
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledController, env: AppEnv['Bindings'], ctx: ExecutionContext): Promise<void> {
+    const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!saJson) { console.warn('[cron] no service account — reminder sweep skipped'); return; }
+    // waitUntil so the sweep is not cut short when the handler returns.
+    ctx.waitUntil(runReminderSweep(saJson).catch(err =>
+      console.error('[cron] reminder sweep failed:', err instanceof Error ? err.message : '')));
+  },
+};
