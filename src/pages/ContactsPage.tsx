@@ -31,7 +31,7 @@ import { CompaniesPanel } from '../components/contacts/CompaniesPanel';
 import { SalesDashboard } from '../components/contacts/SalesDashboard';
 import { useViewport } from '../lib/ui/useViewport';
 import {
-  listContacts, listAllContacts, createContact, patchContact, deleteContact,
+  listContacts, listAllContacts, fetchContact, createContact, patchContact, deleteContact,
   listAssignable, assignContact,
   ContactError, type Contact, type ContactInput, type ContactStatus, type ContactSource, type LeadStatus,
   type AssignableMember,
@@ -107,8 +107,14 @@ export function ContactsPage() {
     setScanned(s => (append ? s + page.scanned : page.scanned));
   }, [mode, orgId, pageSize, fTag, fSource, fStatus]);
 
+  /** Bumped on every reload so the sales dashboard re-fetches with the page. */
+  const [reloadKey, setReloadKey] = useState(0);
+
   const reload = useCallback(async () => {
     setError(null); setRows(null); setCursor('');
+    // Bumping here — not only in the contacts branch — is what makes a lead leave
+    // the follow-up queue after it has been worked.
+    setReloadKey(k => k + 1);
     try { await fetchPage('', false); }
     catch (e) { setRows([]); setError(e instanceof ContactError ? e.code : 'LOAD_FAILED'); }
   }, [fetchPage]);
@@ -191,6 +197,8 @@ export function ContactsPage() {
 
   const [showImport, setShowImport] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** Contact id currently being fetched from the queue, so the row can say so. */
+  const [detailLoading, setDetailLoading] = useState('');
 
   const toggleBlock = async (c: Contact) => {
     setBusyId(c.contactId);
@@ -271,13 +279,19 @@ export function ContactsPage() {
           // Opening from the queue loads the record straight into the detail
           // panel, so the operator goes from "this is overdue" to acting on it
           // without hunting for the row.
+          // ONE document read, and cross-org capable. The previous version listed
+          // 200 contacts and searched them in memory; for a super admin it called
+          // the org-scoped list for the PROSPECT's org, 403'd behind requireRole,
+          // and swallowed the error — which is why the click did nothing at all.
           onOpenContact={(contactId, contactOrg) => {
-            const hit = (rows ?? []).find(r => r.contactId === contactId);
-            if (hit) { setDetail(hit); return; }
-            listContacts(contactOrg || orgId, undefined, { limit: 200 })
-              .then(p => { const f = p.contacts.find(x => x.contactId === contactId); if (f) setDetail(f); })
-              .catch(() => {});
+            setDetailLoading(contactId); setError(null);
+            fetchContact(contactOrg || orgId, contactId)
+              .then(setDetail)
+              .catch(e => setError(e instanceof ContactError ? e.code : 'LOAD_FAILED'))
+              .finally(() => setDetailLoading(''));
           }}
+          loadingContactId={detailLoading}
+          reloadKey={reloadKey}
         />
       ) : mode === 'companies' ? <CompaniesPanel /> : <>
 

@@ -71,6 +71,7 @@ import contactsImportRoutes   from './routes/contacts-import';
 import contactsBackfillRoutes from './routes/contacts-backfill';
 import companiesRoutes        from './routes/companies';
 import companiesTwentyRoutes  from './routes/companies-twenty';
+import contactsOneRoutes     from './routes/contacts-one';
 import pipelineRoutes        from './routes/pipeline';
 import salesRoutes           from './routes/sales';
 import { runReminderSweep }  from './lib/reminders';
@@ -239,6 +240,7 @@ app.route('/', contactsImportRoutes);
 app.route('/', contactsBackfillRoutes);
 app.route('/', companiesRoutes);
 app.route('/', companiesTwentyRoutes);
+app.route('/', contactsOneRoutes);
 app.route('/', pipelineRoutes);
 app.route('/', salesRoutes);
 

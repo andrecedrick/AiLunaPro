@@ -55,9 +55,17 @@ function GroupTable({ title, rows, t }: { title: string; rows: GroupStat[]; t: (
   );
 }
 
-export function SalesDashboard({ orgId, onOpenContact }: {
+export function SalesDashboard({ orgId, onOpenContact, loadingContactId = '', reloadKey = 0 }: {
   orgId: string;
   onOpenContact?: (contactId: string, orgId: string) => void;
+  /** Row currently being fetched, so the click has immediate visible feedback. */
+  loadingContactId?: string;
+  /**
+   * Bumped by the page after a pipeline change. Without it, acting on a lead left
+   * it sitting in the queue it should have just left — the queue looked broken
+   * precisely when the operator had done the right thing.
+   */
+  reloadKey?: number;
 }) {
   const C = useLocale().contacts;
   const t = (k: string) => (C as unknown as Record<string, string>)[k] ?? k;
@@ -66,11 +74,14 @@ export function SalesDashboard({ orgId, onOpenContact }: {
   const [err, setErr] = useState('');
 
   const load = useCallback(async () => {
-    setErr(''); setData(null);
+    setErr('');
     try { setData(await fetchSalesDashboard(orgId)); }
     catch (e) { setErr(e instanceof SalesError ? e.code : 'LOAD_FAILED'); }
   }, [orgId]);
-  useEffect(() => { void load(); }, [load]);
+  // `reloadKey` re-runs this after a pipeline change. `data` is NOT cleared first:
+  // blanking the whole dashboard to re-fetch it made every stage change look like
+  // a full page reload.
+  useEffect(() => { void load(); }, [load, reloadKey]);
 
   if (err) return <div style={{ ...card, color: 'var(--red-text)', fontSize: 13 }}>{(C.errors as Record<string, string>)[err] ?? err}</div>;
   if (!data) return <div style={{ ...card, fontSize: 13, color: 'var(--text-muted)' }}>{C.loading}</div>;
@@ -95,9 +106,14 @@ export function SalesDashboard({ orgId, onOpenContact }: {
                 <button
                   type="button"
                   onClick={() => onOpenContact?.(q.contactId, q.orgId)}
-                  style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--violet-text)', cursor: onOpenContact ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  disabled={Boolean(loadingContactId)}
+                  style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--violet-text)', cursor: onOpenContact ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: loadingContactId && loadingContactId !== q.contactId ? 0.5 : 1 }}
                 >
                   {q.name}{q.company ? ` — ${q.company}` : ''}
+                  {/* Immediate feedback on the row that was clicked. The click
+                      used to look unresponsive because nothing changed until the
+                      panel appeared — or, on a 403, ever. */}
+                  {loadingContactId === q.contactId && <span style={{ color: 'var(--text-muted)' }}> …</span>}
                 </button>
                 <span style={{ color: 'var(--text-muted)', minWidth: 110 }}>{t(`stage_${q.stage}`)}</span>
                 <span style={{ color: 'var(--red-text)', minWidth: 70, textAlign: 'right' }}>

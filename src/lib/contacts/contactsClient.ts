@@ -135,6 +135,27 @@ export async function listContacts(orgId: string, filters?: ContactFilters, page
   }));
 }
 
+/**
+ * One contact by id — ONE document read.
+ *
+ * Opening a lead from the sales queue used to list up to 200 contacts and search
+ * the result in memory. For a super admin it was worse than slow: the queue is
+ * cross-org, so the list call targeted the PROSPECT's organisation, which is
+ * behind requireRole, and a platform operator is never a member of a tenant org.
+ * It 403'd, the error was swallowed, and the panel simply never opened.
+ */
+export async function fetchContact(orgId: string, contactId: string): Promise<Contact> {
+  const idToken = await getIdToken();
+  const q = new URLSearchParams({ orgId, contactId });
+  const res = await fetch(`${WORKER_BASE}/api/contacts/one?${q.toString()}`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+  if (!res.ok) return readError(res);
+  const j = await res.json().catch(() => null) as { contact?: Contact } | null;
+  if (!j?.contact) throw new ContactError('NOT_FOUND');
+  return j.contact;
+}
+
 /** Super-admin (platform operator) cross-org READ-ONLY page. */
 export async function listAllContacts(page?: PageQuery): Promise<ContactPage> {
   const idToken = await getIdToken();

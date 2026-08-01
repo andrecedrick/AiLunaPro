@@ -30,6 +30,7 @@ import { requireRole, type Role } from '../middleware/requireRole';
 import { requirePlatformAdmin, isSuperAdmin } from '../lib/platformAdmin';
 import { canEditContact, canViewContact } from '../lib/contact-access';
 import { upsertCompany } from '../lib/company-registry';
+import { toContactItem } from '../lib/contact-item';
 import { firestoreGet, firestoreSet, firestoreDelete, firestoreRunQuery } from '../lib/firestoreAdmin';
 import { dlog } from '../lib/log';
 import type { AppEnv } from '../index';
@@ -145,48 +146,12 @@ function validate(body: Record<string, unknown>, partial: boolean): { ok: true; 
   return { ok: true, value: v };
 }
 
-/** Map a stored doc to the API shape (no internal-only fields beyond what the UI needs). */
-function toItem(name: string, f: Record<string, unknown>) {
-  return {
-    contactId:     name.split('/').pop() ?? '',
-    name:          typeof f.name === 'string' ? f.name : '',
-    email:         typeof f.email === 'string' ? f.email : '',
-    phone:         typeof f.phone === 'string' ? f.phone : '',
-    company:       typeof f.company === 'string' ? f.company : '',
-    companyId:     typeof f.companyId === 'string' ? f.companyId : '',
-    tags:          Array.isArray(f.tags) ? f.tags.filter((t): t is string => typeof t === 'string') : [],
-    notes:         typeof f.notes === 'string' ? f.notes : '',
-    status:        typeof f.status === 'string' ? f.status : 'active',
-    source:        typeof f.source === 'string' ? f.source : 'manual',
-    linkedQuoteId: typeof f.linkedQuoteId === 'string' ? f.linkedQuoteId : '',
-    linkedAuditId: typeof f.linkedAuditId === 'string' ? f.linkedAuditId : '',
-    createdByUid:  typeof f.createdByUid === 'string' ? f.createdByUid : '',
-    createdAt:     typeof f.createdAt === 'string' ? f.createdAt : '',
-    updatedAt:     typeof f.updatedAt === 'string' ? f.updatedAt : '',
-    // Written by the lead → contact bridge. Manually-created contacts have
-    // neither, so both default rather than rendering as undefined.
-    identityEmail:  typeof f.identityEmail === 'string' ? f.identityEmail : '',
-    leadStatus:     typeof f.leadStatus === 'string' ? f.leadStatus : '',
-    countryCode:    typeof f.countryCode === 'string' ? f.countryCode : '',
-    phoneCountry:   typeof f.phoneCountry === 'string' ? f.phoneCountry : '',
-    lastActivityAt: typeof f.lastActivityAt === 'string' ? f.lastActivityAt : '',
-    owner:          typeof f.owner === 'string' ? f.owner : '',
-    // Ownership ledger. `assignedToUid` is the authorisation key; the *Email and
-    // *At fields exist so an operator can see WHO holds the lead and WHEN it
-    // changed hands without resolving uids by hand.
-    assignedToUid:        typeof f.assignedToUid === 'string' ? f.assignedToUid : '',
-    assignedToEmail:      typeof f.assignedToEmail === 'string' ? f.assignedToEmail : '',
-    assignedByEmail:      typeof f.assignedByEmail === 'string' ? f.assignedByEmail : '',
-    assignedAt:           typeof f.assignedAt === 'string' ? f.assignedAt : '',
-    lastReassignedByEmail: typeof f.lastReassignedByEmail === 'string' ? f.lastReassignedByEmail : '',
-    lastReassignedAt:      typeof f.lastReassignedAt === 'string' ? f.lastReassignedAt : '',
-    // Reconciliation link into Twenty. Written by the CRM push; empty for
-    // manually-created contacts and for leads captured before the integration.
-    twentyPersonId:  typeof f.twentyPersonId === 'string' ? f.twentyPersonId : '',
-    twentyCompanyId: typeof f.twentyCompanyId === 'string' ? f.twentyCompanyId : '',
-    lastMessage:    typeof f.lastMessage === 'string' ? f.lastMessage : '',
-  };
-}
+/**
+ * Local adapter: routes here key off the Firestore document PATH, the shared
+ * mapper off the document id. One projection, two call shapes.
+ */
+const toItem = (name: string, f: Record<string, unknown>) =>
+  toContactItem(name.split(String.fromCharCode(47)).pop() ?? '', f);
 
 /** Find an existing contact in the org with this emailKey (dedup). Excludes `exceptId`. */
 async function findByEmail(saJson: string, orgId: string, emailKey: string, exceptId: string): Promise<boolean> {
