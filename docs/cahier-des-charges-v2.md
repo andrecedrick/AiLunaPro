@@ -4168,16 +4168,42 @@ The Audit Enrichment Engine must NEVER:
 It is an Audit Engine feature. It is not a Sales feature. Contacts, Companies,
 Assignments, Pipeline, Timeline, Sales Dashboard and Twenty CRM are untouched by it.
 
-### 26.15 — Open decisions *(must be closed before implementation)*
+### 26.15 — Decisions *(D1, D2, D4 CLOSED 2026-08-02 · D3 open, non-blocking)*
 
-| # | Decision | Impact if unresolved |
-|---|---|---|
-| D1 | Enrichment automatic on every audit, or opt-in deeper tier? | Cost model. Crawling + model-assisted extraction across ~20 surface types is a new variable cost per audit that `audit-express-quota.ts` and `token-costs.ts` do not describe. Touches billing. |
-| D2 | How structured must the DECLARED inventory be? | Accuracy ceiling of the whole engine (§26.5). Free-text declarations cannot yield a defensible gap. |
-| D3 | Robots.txt — hold the strict line for the Apify layer? | Divergence from the standard the in-worker fetcher already meets; reputational for a compliance vendor. |
-| D4 | Confidence rule-derived or model-assigned? | If model-assigned and score-affecting, breaks the determinism contract (§26.8, §26.9). |
+**D1 — CLOSED. Enrichment depth per surface.**
 
-**Statut §26 :** SPECIFICATION — no code, no deployment, four open decisions.
+| Surface | Enrichment | Collectors | Constraint |
+|---|---|---|---|
+| Audit Express | **Limited** — core evidence collection only | in-worker fetcher (+ minimal Apify) | Must remain fast and cost-controlled |
+| Full Audit | **Automatic, full** | Apify + Agent-Reach | Evidence collection · Observed vs Declared · compliance findings |
+| Diagnostic | **Automatic** | Apify + Agent-Reach | Observed vs Declared · recommendations · compliance signal enrichment |
+
+**D2 — CLOSED. The AI Registry is the primary structured declaration source.**
+
+Observed vs Declared comparisons rely on **structured registry fields only**. Free-text
+declarations must never directly affect scoring. Scoring requires structured inputs; any
+free-text declaration may inform narrative but is excluded from the scored comparison.
+This bounds the false-positive surface at its origin.
+
+**D4 — CLOSED by the approved scoring rules.** Confidence is **rule-derived**, never
+model-assigned, because it feeds scoring and scoring must be deterministic, versioned,
+explainable, rule-based and reproducible (§26.9). A model may extract a signal; it may
+never grade one.
+
+**D3 — OPEN, non-blocking.** Robots.txt stance for the Apify layer. Does not block Phases
+1–3; must be settled before the Apify collector is enabled against customer domains.
+
+**Failure disclosure (approved, binding on §26.12).** When a source cannot be analysed the
+report must state which, using explicit states: *source unavailable*, *source blocked*,
+*source not analysed*. The customer must understand the audit is partial. Applies to
+LinkedIn, Instagram, Facebook, YouTube, GitHub, Apify and Agent-Reach alike.
+
+**Evidence model (approved, binding on §26.7).** Every finding carries: source URL ·
+timestamp · collector · confidence · captured evidence · evidence hash · **snapshot id**.
+No finding is valid without evidence.
+
+**Statut §26 :** APPROVED SPECIFICATION — implementation in progress from 2026-08-02.
+D1/D2/D4 closed; D3 open and non-blocking.
 
 ---
 
