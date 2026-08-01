@@ -39,9 +39,19 @@ const MIN_SOURCE_BUDGET_MS = 4000;
  * Source type → Agent-Reach platform.
  *
  * A source type with no mapping is not something this collector can read, and is
- * reported as such. `website`, `privacy_policy` and the other page surfaces are
- * deliberately absent: Apify owns them, and having two collectors crawl the same
- * pages would double the cost to produce one deduplicated observation.
+ * reported as such.
+ *
+ * `blog` and `documentation` map to the `web` path (Jina Reader) even though
+ * Apify also crawls them. That overlap is intentional and safe: the two
+ * collectors reach a page by different routes — Apify renders JS, the Jina path
+ * does not — so one may succeed where the other is blocked. Phase 2's
+ * normaliseEvidence dedupes on evidenceId, so the same observation seen twice
+ * counts once. The caller decides which collector is asked for which source; the
+ * map only states what this one is CAPABLE of reading.
+ *
+ * The strictly page-only legal surfaces stay absent: `website`,
+ * `privacy_policy`, `terms` and `dpa` are Apify's, and asking a reader API to
+ * discover them adds cost without adding reach.
  */
 export const PLATFORM_MAP: Partial<Record<SourceType, AgentReachPlatform>> = {
   github:           'github',
@@ -54,6 +64,8 @@ export const PLATFORM_MAP: Partial<Record<SourceType, AgentReachPlatform>> = {
   facebook:         'facebook',
   social:           'twitter',
   rss:              'rss',
+  blog:             'web',
+  documentation:    'web',
   media_reference:  'web',
 };
 

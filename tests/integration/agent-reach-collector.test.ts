@@ -87,6 +87,20 @@ describe('platform mapping', () => {
     expect(AGENT_REACH_SOURCES).toContain('github');
     expect(AGENT_REACH_SOURCES).not.toContain('website');
   });
+
+  it('covers every source this phase requires', () => {
+    for (const s of ['github', 'youtube', 'rss', 'blog', 'documentation',
+      'linkedin', 'instagram', 'facebook', 'social', 'video', 'presentation'] as SourceType[]) {
+      expect(PLATFORM_MAP[s]).toBeTruthy();
+    }
+  });
+
+  it('reads blogs and documentation through the web path', () => {
+    // Overlaps Apify by design: different routes to the same page, and Phase 2's
+    // dedup means the same observation seen twice counts once.
+    expect(PLATFORM_MAP.blog).toBe('web');
+    expect(PLATFORM_MAP.documentation).toBe('web');
+  });
 });
 
 describe('document text', () => {
