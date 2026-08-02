@@ -4358,7 +4358,8 @@ was `Deploy pages`.
 | **P1.1** | Invoice correctness — accounting-grade. Currency support · VAT · subtotal · billing address · organization information · Stripe payment reference · Stripe payment intent · sequential invoice numbering · payment information | **DONE** 2026-08-02 | P0.0a |
 | **P1.2a** | Live-activation preflight: readiness engine, `GET /api/billing/admin/live-readiness`, durable webhook-verification evidence | **DONE** 2026-08-02 | P1.1 |
 | **P1.2 Phase A** | Environment-driven plan products (`STRIPE_PRODUCT_*`) + extended readiness validation (products · prices · currency mappings · active · livemode) | **DONE** 2026-08-02 | P1.2a |
-| **P1.2b** | Stripe Live activation itself: Stripe dashboard setup, install live credentials, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase A + owner action |
+| **P1.2 Phase B** | Stripe dashboard preparation — live products, prices, token packs, webhook, portal, promotions (runbook below) | **DOCUMENTED** 2026-08-02 — awaiting owner execution in the Stripe dashboard | Phase A |
+| **P1.2 Phase C** | Install live credentials, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase B + owner action |
 
 **P1.2 Phase A closure evidence (2026-08-02).** Two defects found during the P1.2
 inspection, both of which would have made a live switch fail while reporting
@@ -4480,6 +4481,47 @@ have broken billing on its own:
 
 Invoices issued before this change keep rendering exactly what they charged — no
 VAT breakdown is retro-fitted onto a settled document.
+
+**P1.2 Phase B — Stripe dashboard runbook (documented 2026-08-02).**
+
+Every Stripe object the platform depends on, derived from the code that consumes
+it. All ids below are **mode-specific**: nothing created in test mode exists in
+live mode.
+
+| # | Object | Type | Name / key | Configuration | Currencies | Consumed by |
+|---|---|---|---|---|---|---|
+| 1 | Starter plan | Product | `Starter` | active | — | `STRIPE_PRODUCT_STARTER` |
+| 2 | Professional plan | Product | `Professional` | active | — | `STRIPE_PRODUCT_PROFESSIONAL` |
+| 3 | Enterprise plan | Product | `Enterprise` | active | — | `STRIPE_PRODUCT_ENTERPRISE` |
+| 4 | Plan prices | Price | — | **recurring, monthly**, active | `usd` + every enabled currency | `prices.list({product, active, type:'recurring', currency})` |
+| 5 | Token packs ×4 | Price | — | **one-off** (`mode:'payment'`), active | one currency each | `STRIPE_TOKEN_PRICE_OVERAGE/STARTER/PRO/MAX` |
+| 6 | Webhook endpoint | Webhook | — | `https://api.ailunapro.com/api/stripe/webhook`, 5 events | — | `STRIPE_WEBHOOK_SECRET` |
+| 7 | Portal configuration | Billing portal | — | active, *Payment methods* enabled | — | `billingPortal.sessions.create` |
+| 8 | Promotion codes | Coupon + promo code | — | `applies_to.products` = plan product id | — | `allow_promotion_codes: true` |
+
+**Webhook events (exactly these five).** `checkout.session.completed` ·
+`customer.subscription.created` · `customer.subscription.updated` ·
+`customer.subscription.deleted` · `invoice.payment_failed`.
+
+**Currency rule.** `SUPPORTED_CURRENCIES = usd, eur, gbp, cad, aud`; an org's
+`enabledCurrencies` defaults to `['usd']`. Checkout resolves detected → org
+default → **`usd`**, so `usd` is the final fallback and every plan product must
+have a `usd` monthly price. Token-pack prices are a single price id each and are
+therefore single-currency by design.
+
+**No dashboard price is needed for one-off invoices.** They build `price_data`
+inline in the invoice's own currency (§27 P1.1), so quote→invoice payments are
+unaffected by this setup.
+
+**Verification.** `GET /api/billing/admin/live-readiness` (owner-only) is the
+single check: it retrieves each plan product and its prices, each token-pack and
+plan price id, and the portal configuration, and validates existence, `livemode`,
+`active` and per-currency coverage. `ready: true` requires an observed **live**
+verified webhook event, so it can only turn true after a real payment.
+
+**Phase B is complete when** every object above exists in live mode and their
+ids are recorded for Phase C. No credentials are installed in Phase B; nothing in
+production changes.
 
 > **P1.1 is a hard prerequisite of P1.2, not a parallel track.** In test mode an
 > incomplete invoice is a defect; in live mode it is a customer-visible financial
