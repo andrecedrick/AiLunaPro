@@ -4262,7 +4262,9 @@ as evidence.
 | Enrichment API routes | **DONE** | `/report`, `/snapshots`, `/run` mounted and auth-gated |
 | Enrichment collection in production | **BLOCKED** | No provider configured — see §27.4 B1/B2 |
 | Stripe billing | **BLOCKED** | `stripeMode: "test"` — see §27.4 B3 |
-| CI gate on shipped code | **BLOCKED** | 22 commits unpushed — see §27.4 B0 |
+| CI gate on shipped code | **DONE** | Green on `59fabef` (run #3) |
+| CI auto-deploy | **BLOCKED** | Deploy job red — see §27.4 B5 |
+| Repository visibility | **BLOCKED** | Public — see §27.4 B6 |
 
 **Build reproducibility.** The frontend build is intentionally NOT reproducible:
 `BUILD_ID = new Date()` is baked in for stale-bundle recovery. A bundle-hash
@@ -4281,7 +4283,8 @@ wording should be read accordingly.
 | Reports lifecycle (A+B+C) | **DONE** | — |
 | Audit Express chain | **DONE** | — |
 | CI/CD pipeline defined | **DONE** | — |
-| CI/CD actually gating deploys | **BLOCKED** | B0 |
+| CI/CD gate running on every push | **DONE** | — |
+| CI/CD auto-deploy | **BLOCKED** | B5 |
 | Invoice completeness (tax, subtotal, currency, address, Stripe ref) | **PENDING** | — |
 | Stripe Live activation | **BLOCKED** | P1.1 |
 | Enrichment collection live (Apify) | **BLOCKED** | B1, D3 |
@@ -4296,7 +4299,9 @@ wording should be read accordingly.
 
 | ID | Blocker | Impact | Clears when |
 |---|---|---|---|
-| **B0** | 22 commits unpushed; `origin/main` at `3fad2b4` (2026-07-31) | No off-machine backup. CI has never run on the Enrichment Engine, the sales pipeline or the CRM work. Every deploy this cycle bypassed the hard gate the repo defines. | P0.0 |
+| ~~**B0**~~ | ~~22 commits unpushed; `origin/main` at `3fad2b4` (2026-07-31)~~ | **CLEARED 2026-08-02** by P0.0a — pushed `3fad2b4..59fabef`, CI gate green | ✅ |
+| **B5** | CI `deploy (production)` job fails at `Deploy worker` | Auto-deploy does not work; deploys stay manual. Not an outage. Near-certain cause is the Cloudflare GitHub Actions secrets, unconfirmed because step logs need auth. | Owner sets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in repo settings, then re-runs the job |
+| **B6** | **The GitHub repository is PUBLIC** (`"visibility": "public"`) | The entire commercial codebase — worker, business logic, scoring rules, Firestore structure, security-rule design — is world-readable. No secret is exposed (`.env.local`, `.env.production`, `worker/.dev.vars` are all gitignored and untracked; a pre-push scan found only a synthetic token inside a redaction test). The exposure is intellectual property and attack-surface reconnaissance, not credentials. | Owner decides: flip to private, or accept deliberately |
 | **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
 | **B3** | `stripeMode: "test"` in production | No revenue | P1.2 |
@@ -4312,7 +4317,24 @@ wording should be read accordingly.
 
 | Task | Description | Status | Depends on |
 |---|---|---|---|
-| **P0.0** | Push 22 commits to `origin/main`; confirm the CI gate runs green; confirm `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` exist as GitHub secrets so the deploy job is not red | **IN PROGRESS** | — |
+| **P0.0a** | Push all commits to `origin/main`; CI gate runs green | **DONE** 2026-08-02 | — |
+| **P0.0b** | CI deploy job green (`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions secrets) | **BLOCKED** — B5 | P0.0a |
+
+**P0.0a closure evidence.** 23 commits pushed, `3fad2b4..59fabef`. CI run #3 on
+`59fabef`: gate job **success** — checkout, both `npm ci`, typecheck (frontend),
+typecheck (worker), build (tsc gate + vite), full test suite, all green on Linux
+CI. B0 is cleared: the work is backed up off-machine and the gate now runs on
+every push.
+
+**P0.0b outcome.** The `deploy (production)` job **failed** at the `Deploy worker`
+step (`Deploy pages` skipped as a consequence). The gate job passed in full and
+the deploy job's own checkout, install and build steps passed, so this is not a
+code defect — it is `wrangler deploy` failing in CI. Step logs require
+authentication and could not be read, so the precise cause is **not confirmed**;
+the only environment-specific inputs to that step are the two Cloudflare secrets.
+Production is unaffected: worker `b9a5db19` (deployed manually 07:52) is the same
+code as `59fabef`, and `/healthz` is ok. The consequence is narrower than it
+looks — deploys remain manual until this clears, but nothing is broken.
 
 #### P1 — Revenue *(the only items that change the business)*
 
