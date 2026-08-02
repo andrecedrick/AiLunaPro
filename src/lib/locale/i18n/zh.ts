@@ -3914,4 +3914,31 @@ export const zh: Dict = {
     recommendationTitle: '建议',
   },
 
+
+  /** Invoice issuer identity + tax configuration (Settings -> Organization, §27 P1.1). */
+  invoiceIdentity: {
+    heading: '发票信息',
+    subtitle: '由谁开具发票，以及税额如何计算。',
+    ownerOnly: '仅所有者和管理员可修改发票信息。',
+    incomplete: '缺少必填信息。此时开具的发票在法律上并不完整。',
+    fLegalName: '公司法定名称',
+    fAddress1: '地址',
+    fAddress2: '地址（第二行）',
+    fPostalCode: '邮政编码',
+    fCity: '城市',
+    fCountry: '国家/地区（ISO-2）',
+    fVatNumber: '增值税号',
+    fRegistration: '公司注册号',
+    fTaxRate: '税率（%）',
+    fTaxLabel: '税种名称',
+    fCurrency: '货币',
+    fPaymentTerms: '付款期限（天）',
+    fFooter: '发票页脚',
+    snapshotNote: '每张发票都会保存开具时的这些信息副本。修改仅对今后的发票生效。',
+    vatMalformed: '已保存，但增值税号与该国家/地区的预期格式不符。',
+    save: '保存',
+    saved: '发票信息已保存。',
+    saveError: '无法保存发票信息。',
+  },
+
 };

@@ -4264,7 +4264,7 @@ as evidence.
 | Stripe billing | **BLOCKED** | `stripeMode: "test"` — see §27.4 B3 |
 | CI gate on shipped code | **DONE** | Green on `59fabef` (run #3) |
 | CI auto-deploy | **BLOCKED** | Deploy job red — see §27.4 B5 |
-| Repository visibility | **BLOCKED** | Public — see §27.4 B6 |
+| Repository visibility | **DONE** | Set PRIVATE — approved 2026-08-02 |
 
 **Build reproducibility.** The frontend build is intentionally NOT reproducible:
 `BUILD_ID = new Date()` is baked in for stale-bundle recovery. A bundle-hash
@@ -4285,8 +4285,8 @@ wording should be read accordingly.
 | CI/CD pipeline defined | **DONE** | — |
 | CI/CD gate running on every push | **DONE** | — |
 | CI/CD auto-deploy | **BLOCKED** | B5 |
-| Invoice completeness (tax, subtotal, currency, address, Stripe ref) | **PENDING** | — |
-| Stripe Live activation | **BLOCKED** | P1.1 |
+| Invoice completeness (tax, subtotal, currency, address, Stripe refs, numbering) | **DONE** | — |
+| Stripe Live activation | **PENDING** | owner-supplied live keys |
 | Enrichment collection live (Apify) | **BLOCKED** | B1, D3 |
 | Enrichment collection live (Agent-Reach) | **BLOCKED** | B2 |
 | Super Admin notification coverage | **PENDING** | — |
@@ -4301,7 +4301,7 @@ wording should be read accordingly.
 |---|---|---|---|
 | ~~**B0**~~ | ~~22 commits unpushed; `origin/main` at `3fad2b4` (2026-07-31)~~ | **CLEARED 2026-08-02** by P0.0a — pushed `3fad2b4..59fabef`, CI gate green | ✅ |
 | **B5** | CI `deploy (production)` job fails at `Deploy worker` | Auto-deploy does not work; deploys stay manual. Not an outage. Near-certain cause is the Cloudflare GitHub Actions secrets, unconfirmed because step logs need auth. | Owner sets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in repo settings, then re-runs the job |
-| **B6** | **The GitHub repository is PUBLIC** (`"visibility": "public"`) | The entire commercial codebase — worker, business logic, scoring rules, Firestore structure, security-rule design — is world-readable. No secret is exposed (`.env.local`, `.env.production`, `worker/.dev.vars` are all gitignored and untracked; a pre-push scan found only a synthetic token inside a redaction test). The exposure is intellectual property and attack-surface reconnaissance, not credentials. | Owner decides: flip to private, or accept deliberately |
+| ~~**B6**~~ | ~~**The GitHub repository is PUBLIC**~~ **RESOLVED 2026-08-02 — set to PRIVATE (owner-approved).** Original finding retained for the record: (`"visibility": "public"`) | The entire commercial codebase — worker, business logic, scoring rules, Firestore structure, security-rule design — is world-readable. No secret is exposed (`.env.local`, `.env.production`, `worker/.dev.vars` are all gitignored and untracked; a pre-push scan found only a synthetic token inside a redaction test). The exposure is intellectual property and attack-surface reconnaissance, not credentials. | Owner decides: flip to private, or accept deliberately |
 | **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
 | **B3** | `stripeMode: "test"` in production | No revenue | P1.2 |
@@ -4318,7 +4318,7 @@ wording should be read accordingly.
 | Task | Description | Status | Depends on |
 |---|---|---|---|
 | **P0.0a** | Push all commits to `origin/main`; CI gate runs green | **DONE** 2026-08-02 | — |
-| **P0.0b** | CI deploy job green (`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions secrets) | **BLOCKED** — B5 | P0.0a |
+| **P0.0b** | CI deploy job green (`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions secrets) | **BLOCKED** — awaiting owner-supplied Cloudflare secrets (B5) | P0.0a + owner action |
 
 **P0.0a closure evidence.** 23 commits pushed, `3fad2b4..59fabef`. CI run #3 on
 `59fabef`: gate job **success** — checkout, both `npm ci`, typecheck (frontend),
@@ -4340,8 +4340,46 @@ looks — deploys remain manual until this clears, but nothing is broken.
 
 | Task | Description | Status | Depends on |
 |---|---|---|---|
-| **P1.1** | Invoice correctness: tax/VAT breakdown, subtotal, real currency (`invoices.ts` hardcodes `'usd'` at 4 sites despite shipped multi-currency + FX snapshots), billing address, Stripe reference, sequential numbering | **PENDING** | P0.0 |
-| **P1.2** | Stripe Live activation: `sk_live_` key, live webhook secret, live price ids, verify `/healthz` reports `stripeMode: "live"` | **BLOCKED** | P1.1 |
+| **P1.1** | Invoice correctness — accounting-grade. Currency support · VAT · subtotal · billing address · organization information · Stripe payment reference · Stripe payment intent · sequential invoice numbering · payment information | **DONE** 2026-08-02 | P0.0a |
+| **P1.2** | Stripe Live activation: `sk_live_` key, live webhook secret, live price ids, verify `/healthz` reports `stripeMode: "live"` | **PENDING** — unblocked by P1.1; requires owner-supplied live Stripe keys | P1.1 |
+
+> **P0.0b does not block P1.1 or anything below it.** It gates automated
+> deployment only; deploys continue manually and are verified the same way
+> (worker version id + `/healthz` + bundle hash against the artifact deployed).
+
+**P1.1 closure evidence (2026-08-02).**
+
+| Requirement | Delivered |
+|---|---|
+| Currency support | Invoice issued in the org's configured currency (usd/eur/gbp/cad/aud). `'usd'` is no longer hardcoded on the record, the Stripe charge, the PDF, the receipt page or the emails. |
+| VAT | `decideTax` — domestic standard rate · EU B2B **reverse charge** (Art. 196, zero-rated) · export outside the EU · no EU VAT for a non-EU supplier. VAT numbers are FORMAT-checked, not VIES-validated (a live lookup would make the engine non-deterministic); a malformed number falls back to charging, which is the safe direction. |
+| Subtotal | Net / tax / gross stored in **integer minor units**. `subtotal + tax === total` holds by construction. |
+| Billing address | `billTo` party snapshotted on the invoice, rendered on the PDF and the receipt page. |
+| Organization information | Issuer identity (legal name, address, country, VAT no., registration no.) captured in Settings → Organization and snapshotted per invoice. |
+| Stripe payment reference | `stripeSessionId` / `paymentSessionId` recorded and printed on a paid invoice. |
+| Stripe payment intent | `stripePaymentIntentId` captured from the webhook session and printed on a paid invoice. |
+| Invoice numbering | `INV-{year}-{000000}` — per-org, per-year, allocated by compare-and-swap. Unique and gapless under concurrency; fails loudly rather than issuing a duplicate. |
+| Payment information | Method, due date, region-aware bank details, and the payment references. |
+
+New: `worker/src/lib/{invoice-model,invoice-number,invoice-settings}.ts`,
+`src/components/billing/InvoiceIdentityCard.tsx`, `src/lib/billing/invoiceSettings.ts`,
+`PUT /api/org/invoice-settings`. 47 new tests; suite 1716 passing, 0 failing.
+Worker `47c3fef1-d497-4153-8d29-93b47da4c519`; bundle `index-ChRBiGef.js`.
+
+Three coupling defects were found and fixed while wiring this, each of which would
+have broken billing on its own:
+1. **Stripe charged the net while the webhook reconciled the net** — with VAT added,
+   charging the gross without changing the reconcile (or vice versa) would leave
+   every VAT invoice permanently unpaid. Both now use one `invoiceChargeMinor`.
+2. **The shared billing-settings PUT would have blanked the issuer identity** every
+   time someone saved their IBAN, because the bank form does not submit issuer
+   fields. Invoicing identity moved to its own route, and the bank write now merges.
+3. **The supplier block is stored as a JSON string**; passing it straight to
+   `toParty` produced an empty issuer and would have printed a blank "Issued by"
+   block on every invoice.
+
+Invoices issued before this change keep rendering exactly what they charged — no
+VAT breakdown is retro-fitted onto a settled document.
 
 > **P1.1 is a hard prerequisite of P1.2, not a parallel track.** In test mode an
 > incomplete invoice is a defect; in live mode it is a customer-visible financial

@@ -92,7 +92,7 @@ describe('POST /api/invoices/:id/confirm — re-send only (no re-amount)', () =>
     const send = seq.sends.find(s => s.slug === 'invoice-client')!;
     expect(send.to).toBe('c@x.com');
     const v = send.variables as Record<string, string>;
-    expect(v.AMOUNT).toBe('$15,000');
+    expect(v.AMOUNT).toBe('15,000.00 USD');
     // The client is NOT an org member: their link must be the signed no-login invoice,
     // never /#/invoices (the member panel = sign-in wall). This assertion previously
     // pinned that exact customer-facing defect.
@@ -294,7 +294,7 @@ describe('CUSTOMER invoice access — no account, no sign-in (GET /api/invoices/
     const html = await res.text();
     // Everything the customer must see, without an account:
     expect(html).toContain('Payment received');          // status: PAID
-    expect(html).toContain('$6,500');                    // amount paid
+    expect(html).toContain('6,500.00 USD');                    // amount paid
     expect(html).toContain('quote_a');                   // invoice number
     expect(html).toContain('Acme bot');                  // project
     expect(html).toContain('2026-07-15');                // payment date

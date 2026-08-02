@@ -46,6 +46,14 @@ vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
     if (map.has(path)) throw new Error('ALREADY_EXISTS');
     map.set(path, data);
   }),
+  // Invoice numbering uses compare-and-swap on a counter document.
+  firestoreGetWithMeta: vi.fn(async (_sa: string, path: string) => {
+    const d = store.writes.get(path);
+    return d ? { data: { ...d }, updateTime: 't1' } : null;
+  }),
+  firestoreSetIfMatch: vi.fn(async (_sa: string, path: string, data: Record<string, unknown>) => {
+    store.writes.set(path, { ...(store.writes.get(path) ?? {}), ...data });
+  }),
   firestoreDelete: vi.fn(async () => {}),
 }));
 vi.mock('../../worker/src/lib/audit-express-share', () => ({
@@ -200,7 +208,7 @@ describe('Accept → auto-invoice at the locked price (Quote → Accept → Pay)
     const inv = store.invoices.get('invoices/quote_q1') as Record<string, unknown>;
     expect(inv.amount).toBe(13500);        // invoice charges the adjusted value, not the base
     const v = seq.sends.find(s => s.slug === 'invoice-client')!.variables as Record<string, string>;
-    expect(v.AMOUNT).toBe('$13,500');      // the client email carries the adjusted value too
+    expect(v.AMOUNT).toBe('13,500.00 USD');      // the client email carries the adjusted value too
   });
 
   it('negotiation is DISABLED — discussion → 400 NEGOTIATION_DISABLED, no write', async () => {

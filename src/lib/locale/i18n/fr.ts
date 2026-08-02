@@ -3662,4 +3662,31 @@ export const fr: Dict = {
     recommendationTitle: 'Recommandation',
   },
 
+
+  /** Invoice issuer identity + tax configuration (Settings -> Organization, §27 P1.1). */
+  invoiceIdentity: {
+    heading: 'Détails de facturation',
+    subtitle: 'Qui émet vos factures, et comment la TVA est appliquée.',
+    ownerOnly: 'Seuls les propriétaires et administrateurs peuvent modifier les détails de facturation.',
+    incomplete: 'Des informations obligatoires manquent. Les factures émises maintenant ne seront pas légalement complètes.',
+    fLegalName: 'Raison sociale',
+    fAddress1: 'Adresse',
+    fAddress2: 'Adresse (ligne 2)',
+    fPostalCode: 'Code postal',
+    fCity: 'Ville',
+    fCountry: 'Pays (ISO-2)',
+    fVatNumber: 'Numéro de TVA',
+    fRegistration: 'Numéro d’immatriculation',
+    fTaxRate: 'Taux de TVA (%)',
+    fTaxLabel: 'Libellé de la taxe',
+    fCurrency: 'Devise',
+    fPaymentTerms: 'Délai de paiement (jours)',
+    fFooter: 'Pied de facture',
+    snapshotNote: 'Chaque facture conserve une copie de ces informations telles qu’elles étaient à son émission. Les modifications ne s’appliquent qu’aux factures futures.',
+    vatMalformed: 'Enregistré, mais le numéro de TVA ne correspond pas au format attendu pour ce pays.',
+    save: 'Enregistrer',
+    saved: 'Détails de facturation enregistrés.',
+    saveError: 'Impossible d’enregistrer les détails de facturation.',
+  },
+
 };

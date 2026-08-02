@@ -20,6 +20,7 @@
 import { PdfBuilder, PDF_COLORS as C } from './pdf/pdf-doc';
 import { wrapText } from './pdf/helvetica-metrics';
 import { LOGO_ASSET } from './pdf/logo-asset';
+import { formatMoney, formatRate, type Currency } from './invoice-model';
 
 export const QUOTE_PDF_VERSION = 'Quote Engine v1';
 
@@ -205,23 +206,60 @@ export function buildQuotePdf(input: QuotePdfInput): Uint8Array {
 
 export interface InvoicePdfInput {
   invoiceId:     string;
+  /** Sequential accounting number (INV-2026-000042). Falls back to the doc id. */
+  invoiceNumber?: string;
   reference:     string;        // quote id
   quoteTitle:    string;
   customerEmail: string;
+  /** Legacy net amount in major units. Used only when the minor-unit fields are absent. */
   amountUsd:     number;
   status:        string;        // 'paid' | 'pending' | 'awaiting_transfer' | …
   paymentMethod: string;        // 'stripe' | 'bank_transfer'
   createdAt:     string;
   paidAt:        string | null;
+
+  /* ── Accounting block (§27 P1.1). Absent on legacy invoices. ── */
+  supplierLines?: string[];
+  billToLines?:   string[];
+  currency?:      Currency;
+  subtotalMinor?: number;
+  taxRateBp?:     number;
+  taxMinor?:      number;
+  totalMinor?:    number;
+  taxLabel?:      string;
+  taxNote?:       string;
+  dueAt?:         string;
+  bankDetails?:   string;
+  stripePaymentIntentId?: string;
+  stripeSessionId?: string;
+  invoiceFooter?: string;
 }
 
+/**
+ * The invoice PDF. Pure and deterministic: identical input yields identical bytes.
+ *
+ * Renders a real accounting document — issuer, bill-to, sequential number, net /
+ * VAT / gross breakdown, due date, payment references. Legacy invoices written
+ * before those fields existed still render: their sections are omitted rather
+ * than printed blank, because a blank issuer block looks like a defective invoice
+ * while an omitted one is simply an older, simpler document.
+ */
 export function buildInvoicePdf(i: InvoicePdfInput): Uint8Array {
   const doc = new PdfBuilder();
   const paid = i.status === 'paid';
+  const number = i.invoiceNumber || i.invoiceId;
+  const currency: Currency = i.currency ?? 'usd';
 
-  const metaRows: Array<[string, string]> = [['Invoice no.', i.invoiceId], ['Reference', i.reference]];
-  if (has(i.customerEmail)) metaRows.push(['Billed to', fold(i.customerEmail)]);
+  // Minor units when present; otherwise the legacy net amount, which IS what an
+  // older invoice charged. Never re-derive VAT for a document issued without it.
+  const hasBreakdown = typeof i.totalMinor === 'number' && i.totalMinor > 0;
+  const subtotal = hasBreakdown ? (i.subtotalMinor ?? 0) : Math.round(i.amountUsd * 100);
+  const taxMinor = hasBreakdown ? (i.taxMinor ?? 0) : 0;
+  const total    = hasBreakdown ? (i.totalMinor ?? 0) : subtotal;
+
+  const metaRows: Array<[string, string]> = [['Invoice no.', fold(number)], ['Reference', fold(i.reference)]];
   metaRows.push(['Issued', isoDate(i.createdAt)]);
+  if (i.dueAt) metaRows.push(['Due', isoDate(i.dueAt)]);
   if (paid && i.paidAt) metaRows.push(['Paid on', isoDate(i.paidAt)]);
   quoteCover(doc, {
     title:    paid ? 'Invoice - PAID' : 'Invoice',
@@ -229,9 +267,36 @@ export function buildInvoicePdf(i: InvoicePdfInput): Uint8Array {
     metaRows,
   });
 
-  doc.h2('Amount');
-  doc.h1(`$${Math.round(i.amountUsd).toLocaleString('en-US')} USD`);
+  /* ── Parties ─────────────────────────────────────────────────── */
+  if (i.supplierLines?.length) {
+    doc.h2('Issued by');
+    for (const line of i.supplierLines) doc.muted(fold(line), 10.5);
+  }
+  if (i.billToLines?.length) {
+    doc.h2('Billed to');
+    for (const line of i.billToLines) doc.muted(fold(line), 10.5);
+  } else if (has(i.customerEmail)) {
+    doc.h2('Billed to');
+    doc.muted(fold(i.customerEmail), 10.5);
+  }
 
+  /* ── Line item + totals ──────────────────────────────────────── */
+  doc.h2('Details');
+  doc.row(fold(i.quoteTitle || 'Professional services'), formatMoney(subtotal, currency));
+  doc.hr();
+  doc.row('Subtotal (net)', formatMoney(subtotal, currency));
+  const taxLabel = i.taxLabel || 'VAT';
+  doc.row(
+    `${fold(taxLabel)} ${formatRate(i.taxRateBp ?? 0)}`,
+    formatMoney(taxMinor, currency),
+  );
+  doc.hr();
+  doc.h2(paid ? 'Total paid' : 'Total due');
+  doc.h1(formatMoney(total, currency));
+
+  if (i.taxNote) doc.callout(fold(i.taxNote), 'tint');
+
+  /* ── Status ──────────────────────────────────────────────────── */
   doc.h2('Status');
   doc.callout(
     paid
@@ -242,11 +307,24 @@ export function buildInvoicePdf(i: InvoicePdfInput): Uint8Array {
     paid ? 'tint' : 'amber',
   );
 
-  doc.h2('Payment method');
-  doc.para(i.paymentMethod === 'bank_transfer' ? 'Bank transfer (reference above).' : 'Online payment (secure card checkout).');
+  /* ── Payment information ─────────────────────────────────────── */
+  doc.h2('Payment information');
+  doc.para(i.paymentMethod === 'bank_transfer'
+    ? 'Bank transfer. Quote the reference above on the wire so the payment can be matched.'
+    : 'Online payment (secure card checkout).');
+  if (i.bankDetails) for (const line of i.bankDetails.split('\n')) if (line.trim()) doc.muted(fold(line), 10);
+
+  // Payment references belong on a paid invoice: they are what a finance team
+  // reconciles against in Stripe and on a bank statement.
+  if (paid && (i.stripePaymentIntentId || i.stripeSessionId)) {
+    if (i.stripePaymentIntentId) doc.kv('Payment intent', fold(i.stripePaymentIntentId));
+    if (i.stripeSessionId) doc.kv('Checkout session', fold(i.stripeSessionId));
+  }
+
+  if (i.invoiceFooter) { doc.spacer(6); doc.muted(fold(i.invoiceFooter), 9); }
 
   return doc.serialize({
     createdAt:     i.createdAt,
-    footerVersion: fold(`Invoice ${i.invoiceId} - ${QUOTE_PDF_VERSION}`),
+    footerVersion: fold(`Invoice ${number} - ${QUOTE_PDF_VERSION}`),
   });
 }

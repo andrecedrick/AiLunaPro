@@ -25,7 +25,7 @@ import { incrementBalance, syncBalanceAllocation } from '../lib/tokens';
 import { TOKEN_PACKS, isValidPack } from '../lib/token-costs';
 import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
 import { recordWebhookEvent } from './billing-config';
-import { sendPaymentConfirmation } from './invoices';
+import { sendPaymentConfirmation, invoiceChargeMinor } from './invoices';
 import { recordBillingAlert, RetryableWebhookError } from '../lib/billing-alerts';
 import { createNotification } from '../lib/notifications';
 import type { AppEnv } from '../index';
@@ -248,12 +248,22 @@ async function handleEvent(
         // Reconcile: the settled total MUST equal the invoice amount (USD → cents).
         // Only an exact match marks paid; a mismatch is flagged for manual review and
         // left pending (never silently mark a wrong-amount payment as fully settled).
-        const expectedCents = Math.round(Number(inv.amount) || 0) * 100;
+        // The SAME definition the payment link charged: gross total in minor units
+        // (legacy invoices fall back to their net USD amount). Reconciling against
+        // the net while charging the gross would reject every VAT invoice as a
+        // mismatch and none would ever settle.
+        const expectedCents = invoiceChargeMinor(inv).minor;
         const paidCents = typeof session.amount_total === 'number' ? session.amount_total : -1;
         if (expectedCents > 0 && paidCents === expectedCents) {
           const paidIso = new Date().toISOString();
           await firestoreSet(saJson, `invoices/${invoiceId}`, {
             status: 'paid', paidAt: paidIso, paidAmount: paidCents, stripeSessionId: session.id, updatedAt: paidIso,
+            // Accounting-grade payment references (§27 P1.1). The PaymentIntent is
+            // the id a finance team reconciles against in Stripe and in a bank
+            // statement; the session id alone is not enough to trace a settlement.
+            stripePaymentIntentId: typeof session.payment_intent === 'string'
+              ? session.payment_intent : (session.payment_intent?.id ?? ''),
+            paidCurrency: typeof session.currency === 'string' ? session.currency : '',
           }, { merge: true });
           // BUG 5 — mirror the quote lifecycle to 'paid' (parity with admin mark-paid)
           // so admin/platform panels and activity feeds see the settled state.

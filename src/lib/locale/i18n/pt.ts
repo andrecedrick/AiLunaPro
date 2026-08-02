@@ -3662,4 +3662,31 @@ export const pt: Dict = {
     recommendationTitle: 'Recomendação',
   },
 
+
+  /** Invoice issuer identity + tax configuration (Settings -> Organization, §27 P1.1). */
+  invoiceIdentity: {
+    heading: 'Dados de faturação',
+    subtitle: 'Quem emite as tuas faturas e como o imposto é aplicado.',
+    ownerOnly: 'Apenas proprietários e administradores podem alterar os dados de faturação.',
+    incomplete: 'Faltam dados obrigatórios. As faturas emitidas agora não estarão legalmente completas.',
+    fLegalName: 'Denominação social',
+    fAddress1: 'Morada',
+    fAddress2: 'Morada (linha 2)',
+    fPostalCode: 'Código postal',
+    fCity: 'Cidade',
+    fCountry: 'País (ISO-2)',
+    fVatNumber: 'Número de IVA',
+    fRegistration: 'Número de registo comercial',
+    fTaxRate: 'Taxa de imposto (%)',
+    fTaxLabel: 'Etiqueta do imposto',
+    fCurrency: 'Moeda',
+    fPaymentTerms: 'Prazo de pagamento (dias)',
+    fFooter: 'Rodapé da fatura',
+    snapshotNote: 'Cada fatura guarda uma cópia destes dados tal como estavam na emissão. As alterações aplicam-se apenas a faturas futuras.',
+    vatMalformed: 'Guardado, mas o número de IVA não corresponde ao formato esperado para esse país.',
+    save: 'Guardar',
+    saved: 'Dados de faturação guardados.',
+    saveError: 'Não foi possível guardar os dados de faturação.',
+  },
+
 };

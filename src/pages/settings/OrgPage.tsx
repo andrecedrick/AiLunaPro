@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useLocale } from '../../context/LocaleContext';
 import { format } from '../../lib/locale/i18n';
 import { BankDetailsCard } from '../../components/billing/BankDetailsCard';
+import { InvoiceIdentityCard } from '../../components/billing/InvoiceIdentityCard';
 
 /**
  * Settings — Organization.
@@ -155,6 +156,7 @@ export function OrgPage() {
       </div>
 
       {/* Bank-transfer details (region-aware; shown on invoices) */}
+      <InvoiceIdentityCard />
       <BankDetailsCard />
 
       {/* Danger zone */}

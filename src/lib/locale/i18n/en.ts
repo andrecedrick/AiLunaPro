@@ -3678,6 +3678,33 @@ export const en = {
     recommendationTitle: 'Recommendation',
   },
 
+
+  /** Invoice issuer identity + tax configuration (Settings -> Organization, §27 P1.1). */
+  invoiceIdentity: {
+    heading: 'Invoice details',
+    subtitle: 'Who issues your invoices, and how tax is applied.',
+    ownerOnly: 'Only owners and admins can change invoice details.',
+    incomplete: 'Some required details are missing. Invoices issued now will not be legally complete.',
+    fLegalName: 'Legal company name',
+    fAddress1: 'Address',
+    fAddress2: 'Address (line 2)',
+    fPostalCode: 'Postal code',
+    fCity: 'City',
+    fCountry: 'Country (ISO-2)',
+    fVatNumber: 'VAT number',
+    fRegistration: 'Company registration number',
+    fTaxRate: 'Tax rate (%)',
+    fTaxLabel: 'Tax label',
+    fCurrency: 'Currency',
+    fPaymentTerms: 'Payment terms (days)',
+    fFooter: 'Invoice footer',
+    snapshotNote: 'Each invoice keeps a copy of these details as they were when it was issued. Changes apply to future invoices only.',
+    vatMalformed: 'Saved, but the VAT number does not match the expected format for that country.',
+    save: 'Save',
+    saved: 'Invoice details saved.',
+    saveError: 'Could not save invoice details.',
+  },
+
 } as const;
 
 /** Deep map of the catalog shape to plain `string` leaves. Locales are typed

@@ -3662,4 +3662,31 @@ export const it: Dict = {
     recommendationTitle: 'Raccomandazione',
   },
 
+
+  /** Invoice issuer identity + tax configuration (Settings -> Organization, §27 P1.1). */
+  invoiceIdentity: {
+    heading: 'Dati di fatturazione',
+    subtitle: 'Chi emette le tue fatture e come viene applicata l’imposta.',
+    ownerOnly: 'Solo proprietari e amministratori possono modificare i dati di fatturazione.',
+    incomplete: 'Mancano dati obbligatori. Le fatture emesse ora non saranno legalmente complete.',
+    fLegalName: 'Ragione sociale',
+    fAddress1: 'Indirizzo',
+    fAddress2: 'Indirizzo (riga 2)',
+    fPostalCode: 'CAP',
+    fCity: 'Città',
+    fCountry: 'Paese (ISO-2)',
+    fVatNumber: 'Partita IVA',
+    fRegistration: 'Numero di registrazione',
+    fTaxRate: 'Aliquota (%)',
+    fTaxLabel: 'Etichetta imposta',
+    fCurrency: 'Valuta',
+    fPaymentTerms: 'Termini di pagamento (giorni)',
+    fFooter: 'Piè di pagina fattura',
+    snapshotNote: 'Ogni fattura conserva una copia di questi dati com’erano al momento dell’emissione. Le modifiche valgono solo per le fatture future.',
+    vatMalformed: 'Salvato, ma la partita IVA non corrisponde al formato previsto per quel paese.',
+    save: 'Salva',
+    saved: 'Dati di fatturazione salvati.',
+    saveError: 'Impossibile salvare i dati di fatturazione.',
+  },
+
 };

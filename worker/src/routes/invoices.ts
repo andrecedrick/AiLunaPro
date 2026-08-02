@@ -21,6 +21,13 @@ import { signShareToken, verifyShareToken } from '../lib/audit-express-share';
 import { sendTransactional } from '../lib/sequenzy';
 import { recordBillingAlert } from '../lib/billing-alerts';
 import { formatBankDetails, bankDetailsFields } from '../lib/bank-details';
+import {
+  toParty, decideTax, computeTotals, toMinor, formatMoney, formatRate, partyLines,
+  type InvoiceParty, type InvoiceTotals, type Currency,
+} from '../lib/invoice-model';
+import { isSupportedCurrency } from '../lib/currency';
+import { readInvoiceSettings, dueDateIso } from '../lib/invoice-settings';
+import { allocateInvoiceNumber, InvoiceNumberError } from '../lib/invoice-number';
 import { getStripe } from '../lib/stripe';
 import { SMB_MAX_USD } from '../data/quote-config';
 import { dlog } from '../lib/log';
@@ -63,14 +70,29 @@ const BRAND_LOGO_URL = 'https://res.cloudinary.com/dhtnegf9d/image/upload/c_crop
 function customerReceiptPage(d: InvoicePdfInput): string {
   const paid = d.status === 'paid';
   const method = d.paymentMethod === 'bank_transfer' ? 'Bank transfer' : 'Card (online payment)';
+  // The same figures the PDF prints. A receipt page that disagrees with the
+  // invoice attached to it is the kind of thing a customer's accountant notices.
+  const currency: Currency = d.currency ?? 'usd';
+  const hasBreakdown = typeof d.totalMinor === 'number' && d.totalMinor > 0;
+  const subtotal = hasBreakdown ? (d.subtotalMinor ?? 0) : Math.round(d.amountUsd * 100);
+  const total    = hasBreakdown ? (d.totalMinor ?? 0) : subtotal;
+
   const rows: Array<[string, string]> = [
-    ['Invoice number', d.invoiceId],
+    ['Invoice number', d.invoiceNumber || d.invoiceId],
     ['Project', d.quoteTitle || 'Project quote'],
-    ['Billed to', d.customerEmail || '—'],
+    ['Billed to', (d.billToLines?.length ? d.billToLines.join(', ') : d.customerEmail) || '—'],
     ['Issued on', d.createdAt.slice(0, 10)],
+    ...(d.dueAt ? ([['Due on', d.dueAt.slice(0, 10)]] as Array<[string, string]>) : []),
+    ['Subtotal (net)', formatMoney(subtotal, currency)],
+    ...(hasBreakdown
+      ? ([[`${d.taxLabel || 'VAT'} ${formatRate(d.taxRateBp ?? 0)}`, formatMoney(d.taxMinor ?? 0, currency)]] as Array<[string, string]>)
+      : []),
+    ['Total', formatMoney(total, currency)],
     ...(paid ? ([['Payment date', (d.paidAt ?? '').slice(0, 10) || '—'], ['Payment method', method]] as Array<[string, string]>) : []),
+    ...(paid && d.stripePaymentIntentId ? ([['Payment intent', d.stripePaymentIntentId]] as Array<[string, string]>) : []),
     ['Payment reference', d.reference],
-    ['Billed by', 'AiLunaPro'],
+    ['Billed by', d.supplierLines?.[0] || 'AiLunaPro'],
+    ...(d.taxNote ? ([['Tax treatment', d.taxNote]] as Array<[string, string]>) : []),
   ];
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -94,7 +116,7 @@ function customerReceiptPage(d: InvoicePdfInput): string {
 <img class="brand" src="${BRAND_LOGO_URL}" alt="AiLunaPro" width="164" height="50" />
 <h1>${paid ? '✅ Payment received — thank you!' : 'Invoice'}</h1>
 <p class="sub">${paid ? 'This page is your receipt. No account needed — keep this link to retrieve it any time.' : 'This invoice is awaiting payment.'}</p>
-<div class="amt"><div class="k">${paid ? 'Amount paid' : 'Amount due'}</div><div class="v">$${d.amountUsd.toLocaleString('en-US')} USD</div></div>
+<div class="amt"><div class="k">${paid ? 'Amount paid' : 'Amount due'}</div><div class="v">${esc(formatMoney(total, currency))}</div></div>
 <table>${rows.map(([k, v]) => `<tr><td class="k">${esc(k)}</td><td class="v">${esc(v)}</td></tr>`).join('')}</table>
 <a class="btn" href="?dl=1">Download invoice PDF</a>
 <p class="note">Questions? Just reply to the email that brought you here.</p>
@@ -108,7 +130,7 @@ function customerReceiptPage(d: InvoicePdfInput): string {
  *  USD value → unit_amount in cents. Idempotent enough: reuses a stored url if present. */
 async function ensureInvoicePaymentLink(
   env: AppEnv['Bindings'], saJson: string,
-  a: { orgId: string; invoiceId: string; amount: number; project: string; appBase: string; existingUrl?: string; prevSessionId?: string },
+  a: { orgId: string; invoiceId: string; amountMinor: number; currency: string; project: string; appBase: string; existingUrl?: string; prevSessionId?: string },
 ): Promise<string | null> {
   if (a.existingUrl) return a.existingUrl;
   const key = (env as { STRIPE_SECRET_KEY?: string }).STRIPE_SECRET_KEY;
@@ -123,7 +145,11 @@ async function ensureInvoicePaymentLink(
     }
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      line_items: [{ price_data: { currency: 'usd', product_data: { name: a.project || 'Invoice' }, unit_amount: Math.round(a.amount) * 100 }, quantity: 1 }],
+      // GROSS, in the invoice's own currency. Charging the net would collect no VAT
+      // and the webhook reconcile — which compares against the invoice total — would
+      // then reject every payment as a mismatch. The two must agree or invoices
+      // never settle.
+      line_items: [{ price_data: { currency: a.currency, product_data: { name: a.project || 'Invoice' }, unit_amount: Math.round(a.amountMinor) }, quantity: 1 }],
       // BUG 1 — the payer is usually the CLIENT (not an org member): land on the PUBLIC
       // quote-status page (paid confirmation view), never the auth-walled /invoices.
       success_url: `${a.appBase}/#/quote/status?quoteId=${encodeURIComponent(a.invoiceId.startsWith('quote_') ? a.invoiceId.slice(6) : a.invoiceId)}&state=invoice&paid=1`,
@@ -153,7 +179,7 @@ async function resolveBankDetails(saJson: string, orgId: string): Promise<string
 }
 
 /** Send the invoice-client email (best-effort, non-fatal). Shared by confirm + finalize. */
-async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; paymentUrl?: string | null; method?: 'stripe' | 'bank_transfer'; reference?: string; deadlineIso?: string | null }): Promise<{ emailed: boolean; emailError?: string }> {
+async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; amountDisplay: string; appBase: string; paymentUrl?: string | null; method?: 'stripe' | 'bank_transfer'; reference?: string; deadlineIso?: string | null }): Promise<{ emailed: boolean; emailError?: string }> {
   if (!a.customer) return { emailed: false };
   const bankDetails = await resolveBankDetails(saJson, a.orgId);
   // CUSTOMER-FACING: the client is not an org member — never send them /#/invoices (the
@@ -171,7 +197,9 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
     replyTo: env.ADMIN_EMAIL,
     variables: {
       PROJECT:      a.project,
-      AMOUNT:       `$${a.amount.toLocaleString('en-US')}`,
+      // The GROSS the customer actually owes, in the invoice currency. A mail saying
+      // ,000 for an invoice that charges 1,200.00 EUR is a dispute waiting to happen.
+      AMOUNT:       a.amountDisplay,
       // Deep-link to the exact invoice so the panel highlights + scrolls to it.
       INVOICE_URL:  appInvoiceUrl,
       // "Pay online": Stripe Checkout for SMB (≤ SMB_MAX_USD). For bank transfer the
@@ -204,7 +232,7 @@ async function sendClientInvoice(env: AppEnv['Bindings'], saJson: string, a: { o
 /** BUG 1 — payment-confirmation email (paid receipt). Sent when an invoice becomes paid
  *  (Stripe webhook exact-amount reconcile + admin bank-transfer mark-paid) and re-sent by
  *  /confirm on an already-paid invoice. Best-effort, non-fatal; exported for stripe.ts. */
-export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; appBase: string; reference?: string; paidAt?: string | null; paymentMethod?: string }): Promise<{ emailed: boolean; emailError?: string }> {
+export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: string, a: { orgId: string; invoiceId: string; project: string; customer: string; amount: number; amountDisplay?: string; appBase: string; reference?: string; paidAt?: string | null; paymentMethod?: string }): Promise<{ emailed: boolean; emailError?: string }> {
   if (!a.customer) return { emailed: false };
   // The receipt link is the CUSTOMER's: a signed no-login PDF (never /#/invoices, which
   // is the org-member panel and would ask a paying client to sign in). Falls back to the
@@ -216,7 +244,9 @@ export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: s
     replyTo: env.ADMIN_EMAIL,
     variables: {
       PROJECT:     a.project,
-      AMOUNT:      `$${a.amount.toLocaleString('en-US')}`,
+      // Receipts are sent from several places, some of which only know the net
+      // amount; fall back rather than print an empty total on a receipt.
+      AMOUNT:      a.amountDisplay || `$${a.amount.toLocaleString('en-US')}`,
       REFERENCE:   a.reference ?? a.invoiceId,
       // A real receipt: invoice number, payment date and method — not just an amount.
       INVOICE_NO:  a.invoiceId,
@@ -237,6 +267,134 @@ export async function sendPaymentConfirmation(env: AppEnv['Bindings'], saJson: s
   }
   else await firestoreSet(saJson, `invoices/${a.invoiceId}`, { confirmationEmailedAt: new Date().toISOString() }, { merge: true }).catch(() => { /* audit best-effort */ });
   return { emailed: res.ok, emailError: res.error };
+}
+
+/**
+ * Accounting fields for a new invoice (§27 P1.1).
+ *
+ * Everything a legal invoice needs beyond an amount: who issued it, who is billed,
+ * a sequential number, the net/VAT/total breakdown and the due date.
+ *
+ * The invoice is a SNAPSHOT. Supplier identity, tax rate and treatment are copied
+ * onto the document at birth and never re-read: an invoice issued in March must
+ * still show March's VAT rate and March's company address after the org edits its
+ * settings in June. Re-deriving them at render time would silently rewrite
+ * history, and a document that changes after it was sent is not an invoice.
+ */
+async function buildAccountingFields(
+  saJson: string,
+  a: { orgId: string; amountMajor: number; issuedAtIso: string; billTo?: unknown },
+): Promise<Record<string, unknown>> {
+  let settingsDoc: Record<string, unknown> | null = null;
+  try { settingsDoc = await firestoreGet(saJson, `organizations/${a.orgId}/settings/billing`) as Record<string, unknown> | null; }
+  catch { /* settings are optional; the invoice records what is missing */ }
+
+  const settings = readInvoiceSettings(settingsDoc);
+  const supplier = settings.supplier;
+  const customer: InvoiceParty = toParty(a.billTo ?? {});
+
+  const tax = decideTax(supplier, customer, settings.taxRateBp);
+  const totals: InvoiceTotals = computeTotals(toMinor(a.amountMajor), settings.currency, tax);
+
+  // Numbering must not silently fall back to something non-sequential: an invoice
+  // without a valid number is not issuable, so a failure here is recorded on the
+  // document and surfaced rather than papered over with the quote id.
+  let invoiceNumber = '';
+  let numberingError = '';
+  try {
+    const allocated = await allocateInvoiceNumber(saJson, a.orgId, new Date(a.issuedAtIso).getUTCFullYear());
+    invoiceNumber = allocated.invoiceNumber;
+  } catch (err) {
+    numberingError = err instanceof InvoiceNumberError ? err.code : 'STORE_FAILED';
+    console.error('[invoices] invoice numbering failed for org', a.orgId, numberingError);
+  }
+
+  return {
+    invoiceNumber,
+    ...(numberingError ? { numberingError } : {}),
+    issuedAt:   a.issuedAtIso,
+    dueAt:      dueDateIso(a.issuedAtIso, settings.paymentTermsDays),
+    currency:   totals.currency,
+    subtotalMinor: totals.subtotalMinor,
+    taxRateBp:  totals.taxRateBp,
+    taxMinor:   totals.taxMinor,
+    totalMinor: totals.totalMinor,
+    taxTreatment: totals.treatment,
+    taxNote:      totals.taxNote,
+    taxLabel:     settings.taxLabel,
+    customerVatWellFormed: tax.customerVatWellFormed,
+    supplierJson: JSON.stringify(supplier),
+    billToJson:   JSON.stringify(customer),
+    invoiceFooter: settings.invoiceFooter,
+    accountingSchemaVersion: 2,
+  };
+}
+
+/**
+ * What this invoice actually charges, in minor units.
+ *
+ * ONE definition, used by the payment link, the webhook reconcile, the PDF and
+ * the customer page. Legacy invoices (written before the accounting fields
+ * existed) have no `totalMinor`, so they fall back to their net `amount` in USD —
+ * which is exactly what they were charged at the time, and re-deriving a VAT
+ * total for them would rewrite a settled document.
+ */
+export function invoiceChargeMinor(inv: Record<string, unknown>): { minor: number; currency: string } {
+  const currency = typeof inv.currency === 'string' && inv.currency ? inv.currency : 'usd';
+  if (typeof inv.totalMinor === 'number' && inv.totalMinor > 0) return { minor: inv.totalMinor, currency };
+  return { minor: Math.round((Number(inv.amount) || 0) * 100), currency };
+}
+
+/**
+ * Stored invoice → PDF/receipt input.
+ *
+ * ONE mapper for the authenticated download, the customer's signed link and the
+ * receipt page. They previously each built the object inline, which is how two
+ * surfaces of the same invoice drift apart.
+ */
+export function toInvoiceDocument(
+  invoiceId: string, inv: Record<string, unknown>, bankDetails: string,
+): InvoicePdfInput {
+  const s = (k: string): string => (typeof inv[k] === 'string' ? inv[k] as string : '');
+  const n = (k: string): number | undefined => (typeof inv[k] === 'number' ? inv[k] as number : undefined);
+  const { supplier, billTo } = invoiceParties(inv);
+
+  return {
+    invoiceId,
+    invoiceNumber: s('invoiceNumber'),
+    reference:     s('quoteId') || invoiceId,
+    quoteTitle:    s('quoteTitle'),
+    customerEmail: s('customerEmail'),
+    amountUsd:     typeof inv.amount === 'number' ? inv.amount : 0,
+    status:        s('status') || 'pending',
+    paymentMethod: s('paymentMethod') || 'stripe',
+    createdAt:     s('createdAt') || new Date().toISOString(),
+    paidAt:        s('paidAt') || null,
+
+    supplierLines: partyLines(supplier),
+    billToLines:   partyLines(billTo),
+    currency:      isSupportedCurrency(s('currency')) ? s('currency') as Currency : 'usd',
+    subtotalMinor: n('subtotalMinor'),
+    taxRateBp:     n('taxRateBp'),
+    taxMinor:      n('taxMinor'),
+    totalMinor:    n('totalMinor'),
+    taxLabel:      s('taxLabel'),
+    taxNote:       s('taxNote'),
+    dueAt:         s('dueAt'),
+    bankDetails,
+    stripePaymentIntentId: s('stripePaymentIntentId'),
+    stripeSessionId:       s('stripeSessionId') || s('paymentSessionId'),
+    invoiceFooter: s('invoiceFooter'),
+  };
+}
+
+/** Read the party blocks back off a stored invoice. Legacy docs yield empty parties. */
+function invoiceParties(inv: Record<string, unknown>): { supplier: InvoiceParty; billTo: InvoiceParty } {
+  const parse = (raw: unknown): InvoiceParty => {
+    if (typeof raw !== 'string' || !raw) return toParty({});
+    try { return toParty(JSON.parse(raw)); } catch { return toParty({}); }
+  };
+  return { supplier: parse(inv.supplierJson), billTo: parse(inv.billToJson) };
 }
 
 /**
@@ -282,11 +440,23 @@ export async function finalizeQuoteInvoice(
   const transferDeadline = paymentMethod === 'bank_transfer'
     ? new Date(Date.parse(nowIso) + 14 * 24 * 60 * 60 * 1000).toISOString() : null;
 
+  // Accounting fields are built BEFORE the create so the invoice is born complete:
+  // a document that acquires its number or its VAT breakdown in a second write can
+  // be read, emailed or exported in between, and an invoice without a number is
+  // not an invoice.
+  const accounting = await buildAccountingFields(saJson, {
+    orgId, amountMajor: amount, issuedAtIso: nowIso,
+    billTo: { ...(quote.billTo ?? {}), email: customer },
+  });
+
   const invoice = {
     id: invoiceId, quoteId, orgId, quoteTitle, customerEmail: customer,
     rangeMinUsd, rangeMaxUsd,
     expectedBudgetUsd: typeof quote.expectedBudgetUsd === 'number' ? quote.expectedBudgetUsd : null,
-    amount, currency: 'usd', status: 'pending', source: 'quote', schemaVersion: 1,
+    // `amount` stays the major-unit net for every existing reader (Stripe link,
+    // emails, admin panel). The minor-unit breakdown is additive.
+    amount, status: 'pending', source: 'quote', schemaVersion: 1,
+    ...accounting,
     paymentMethod, ...(transferDeadline ? { transferDeadline } : {}),
     createdAt: nowIso, confirmedAt: nowIso,
   };
@@ -312,9 +482,9 @@ export async function finalizeQuoteInvoice(
 
   // Bank transfer → never mint a Stripe link.
   const paymentUrl = paymentMethod === 'stripe'
-    ? await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId, amount, project: quoteTitle, appBase })
+    ? await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId, amountMinor: Number(accounting.totalMinor) || toMinor(amount), currency: String(accounting.currency ?? 'usd'), project: quoteTitle, appBase })
     : null;
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId, project: quoteTitle, customer, amount, appBase, paymentUrl, method: paymentMethod, reference: quoteId, deadlineIso: transferDeadline });
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId, project: quoteTitle, customer, amount, amountDisplay: formatMoney(Number(accounting.totalMinor) || toMinor(amount), (accounting.currency as Currency) ?? 'usd'), appBase, paymentUrl, method: paymentMethod, reference: quoteId, deadlineIso: transferDeadline });
   if (emailed) await firestoreSet(saJson, QUOTE_DOC(orgId, quoteId), { stage: 'invoice_sent', invoiceSentAt: nowIso }, { merge: true });
   return { invoiceId, status: 'pending', amount, paymentUrl, emailed, emailError, alreadyFinalized: false };
 }
@@ -435,9 +605,9 @@ invoices.post('/api/invoices/:id/confirm', requireAuth(), requireRole(CONFIRM_RO
   // no Stripe link), so a bank-transfer / awaiting_transfer invoice re-sends its instructions.
   const method: 'stripe' | 'bank_transfer' = (inv.paymentMethod === 'bank_transfer' || amount > SMB_MAX_USD) ? 'bank_transfer' : 'stripe';
   const paymentUrl = method === 'stripe'
-    ? await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined })
+    ? await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amountMinor: invoiceChargeMinor(inv).minor, currency: invoiceChargeMinor(inv).currency, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined })
     : null;
-  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, appBase, paymentUrl, method, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id, deadlineIso: typeof inv.transferDeadline === 'string' ? inv.transferDeadline : null });
+  const { emailed, emailError } = await sendClientInvoice(env, saJson, { orgId, invoiceId: id, project, customer, amount, amountDisplay: formatMoney(invoiceChargeMinor(inv).minor, invoiceChargeMinor(inv).currency as Currency), appBase, paymentUrl, method, reference: typeof inv.quoteId === 'string' ? inv.quoteId : id, deadlineIso: typeof inv.transferDeadline === 'string' ? inv.transferDeadline : null });
   // FIX 2 — audit the resend (durable trail; requested "log resend action").
   if (emailed) {
     const uid = c.get('uid') as string | undefined;
@@ -479,7 +649,7 @@ invoices.post('/api/invoices/:id/payment-link', requireAuth(), requireRole(CONFI
 
   const project = typeof inv.quoteTitle === 'string' && inv.quoteTitle ? inv.quoteTitle : id;
   const appBase = (env.APP_BASE_URL ?? new URL(c.req.url).origin).replace(/\/+$/, '');
-  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amount, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined });
+  const paymentUrl = await ensureInvoicePaymentLink(env, saJson, { orgId, invoiceId: id, amountMinor: invoiceChargeMinor(inv).minor, currency: invoiceChargeMinor(inv).currency, project, appBase, existingUrl: typeof inv.paymentUrl === 'string' ? inv.paymentUrl : undefined });
   if (!paymentUrl) return c.json({ error: 'Online payment is not configured.', code: 'PAYMENT_UNAVAILABLE' }, 503);
   return c.json({ ok: true, paymentUrl });
 });
@@ -627,17 +797,7 @@ invoices.get('/api/invoices/shared/:token', async c => {
   const amount = typeof inv.amount === 'number' ? inv.amount : 0;
   if (amount <= 0) return c.json({ error: 'Invoice has no amount.', code: 'NO_AMOUNT' }, 409);
 
-  const doc = {
-    invoiceId,
-    reference:     typeof inv.quoteId === 'string' && inv.quoteId ? inv.quoteId : invoiceId,
-    quoteTitle:    typeof inv.quoteTitle === 'string' ? inv.quoteTitle : '',
-    customerEmail: typeof inv.customerEmail === 'string' ? inv.customerEmail : '',
-    amountUsd:     amount,
-    status:        typeof inv.status === 'string' ? inv.status : 'pending',
-    paymentMethod: typeof inv.paymentMethod === 'string' ? inv.paymentMethod : 'stripe',
-    createdAt:     typeof inv.createdAt === 'string' ? inv.createdAt : new Date().toISOString(),
-    paidAt:        typeof inv.paidAt === 'string' ? inv.paidAt : null,
-  };
+  const doc = toInvoiceDocument(invoiceId, inv, await resolveBankDetails(saJson, orgId));
 
   // ?dl=1 → the PDF itself (the button on the page below, and any direct link).
   if (c.req.query('dl') === '1') {
@@ -671,17 +831,7 @@ invoices.get('/api/invoices/:id/pdf', requireAuth(), requireRole(INVOICE_ROLES),
   const amount = typeof inv.amount === 'number' ? inv.amount : 0;
   if (amount <= 0) return c.json({ error: 'Invoice has no amount.', code: 'NO_AMOUNT' }, 409);
 
-  const bytes = buildInvoicePdf({
-    invoiceId:     id,
-    reference:     typeof inv.quoteId === 'string' && inv.quoteId ? inv.quoteId : id,
-    quoteTitle:    typeof inv.quoteTitle === 'string' ? inv.quoteTitle : '',
-    customerEmail: typeof inv.customerEmail === 'string' ? inv.customerEmail : '',
-    amountUsd:     amount,
-    status:        typeof inv.status === 'string' ? inv.status : 'pending',
-    paymentMethod: typeof inv.paymentMethod === 'string' ? inv.paymentMethod : 'stripe',
-    createdAt:     typeof inv.createdAt === 'string' ? inv.createdAt : new Date().toISOString(),
-    paidAt:        typeof inv.paidAt === 'string' ? inv.paidAt : null,
-  });
+  const bytes = buildInvoicePdf(toInvoiceDocument(id, inv, await resolveBankDetails(saJson, orgId)));
   return new Response(bytes.slice().buffer as ArrayBuffer, {
     headers: {
       'Content-Type': 'application/pdf',

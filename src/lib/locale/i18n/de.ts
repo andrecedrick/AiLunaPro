@@ -3912,4 +3912,31 @@ export const de: Dict = {
     recommendationTitle: 'Empfehlung',
   },
 
+
+  /** Invoice issuer identity + tax configuration (Settings -> Organization, §27 P1.1). */
+  invoiceIdentity: {
+    heading: 'Rechnungsangaben',
+    subtitle: 'Wer Ihre Rechnungen ausstellt und wie die Steuer angewendet wird.',
+    ownerOnly: 'Nur Inhaber und Administratoren können die Rechnungsangaben ändern.',
+    incomplete: 'Es fehlen Pflichtangaben. Jetzt ausgestellte Rechnungen sind rechtlich unvollständig.',
+    fLegalName: 'Firmenname (rechtlich)',
+    fAddress1: 'Adresse',
+    fAddress2: 'Adresse (Zeile 2)',
+    fPostalCode: 'Postleitzahl',
+    fCity: 'Stadt',
+    fCountry: 'Land (ISO-2)',
+    fVatNumber: 'USt-IdNr.',
+    fRegistration: 'Handelsregisternummer',
+    fTaxRate: 'Steuersatz (%)',
+    fTaxLabel: 'Steuerbezeichnung',
+    fCurrency: 'Währung',
+    fPaymentTerms: 'Zahlungsziel (Tage)',
+    fFooter: 'Rechnungsfußzeile',
+    snapshotNote: 'Jede Rechnung speichert diese Angaben so, wie sie bei der Ausstellung waren. Änderungen gelten nur für künftige Rechnungen.',
+    vatMalformed: 'Gespeichert, aber die USt-IdNr. entspricht nicht dem erwarteten Format für dieses Land.',
+    save: 'Speichern',
+    saved: 'Rechnungsangaben gespeichert.',
+    saveError: 'Rechnungsangaben konnten nicht gespeichert werden.',
+  },
+
 };
