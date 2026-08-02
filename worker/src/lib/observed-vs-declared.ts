@@ -19,6 +19,7 @@
 import type { EvidenceSnapshot } from './enrichment-snapshot';
 import type { EvidenceItem, Confidence, SignalType } from './enrichment-evidence';
 import { normaliseVendorKey, type DeclaredInventory, type DeclaredSystem } from './enrichment-declared';
+import { isGenericSubject } from './enrichment-signals';
 
 /** Bumped when the comparison logic changes in a way that alters output. */
 export const OVD_ENGINE_VERSION = 'ovd-1.0.0';
@@ -117,6 +118,13 @@ export function groupObserved(evidence: readonly EvidenceItem[]): ObservedSubjec
 
   for (const e of evidence) {
     if (!VENDOR_BEARING.includes(e.signalType)) continue;
+    // A repo dependency is vendor-bearing, but the detector falls back to the
+    // category "AI/ML dependency" when it recognises a library without
+    // recognising its vendor. That is real evidence about a practice, not the
+    // name of a system — turning it into a subject produced a HIGH-risk finding
+    // accusing the customer of failing to declare "AI/ML dependency", which they
+    // could never satisfy.
+    if (isGenericSubject(e.observedValue)) continue;
     const key = normaliseVendorKey(e.observedValue);
     if (!key) continue;
 

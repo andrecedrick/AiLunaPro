@@ -99,6 +99,24 @@ const CONTRACTUAL_SOURCES: readonly SourceType[] = ['dpa', 'processor_list', 'pr
 const CODE_SOURCES: readonly SourceType[] = ['repository', 'github'];
 
 /**
+ * Placeholder subjects used when a pattern fires but names no vendor.
+ *
+ * "AI/ML dependency" is a CATEGORY, not a system. It must never be treated as
+ * the name of something the customer failed to declare — nobody can add
+ * "AI/ML dependency" to an AI registry, and a finding demanding it would be
+ * both unactionable and wrong. Exported so the comparison engine and the report
+ * share one definition instead of each keeping its own guess.
+ */
+export const GENERIC_SUBJECTS: ReadonlySet<string> = new Set([
+  'Automated decision-making', 'AI policy', 'AI/ML dependency',
+  'AI capability', 'AI/ML hiring', 'AI marketing claim',
+]);
+
+/** True when an observation names no identifiable system. */
+export const isGenericSubject = (observedValue: string): boolean =>
+  GENERIC_SUBJECTS.has(observedValue);
+
+/**
  * Excerpt around a match, snapped to a fixed window and whitespace-normalised.
  *
  * Deterministic by construction: the same match position in the same text always

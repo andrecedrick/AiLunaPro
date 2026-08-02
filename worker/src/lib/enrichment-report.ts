@@ -22,6 +22,7 @@ import { summariseCoverage, verifySnapshotIntegrity, type EvidenceSnapshot, type
 import { hashEvidence, type EvidenceItem, type Confidence, type SignalType } from './enrichment-evidence';
 import { loadDeclaredInventory, normaliseVendorKey, type DeclaredInventory } from './enrichment-declared';
 import { compareObservedVsDeclared, OVD_ENGINE_VERSION, OVD_RULESET_VERSION, type ComparisonResult, type Gap } from './observed-vs-declared';
+import { isGenericSubject } from './enrichment-signals';
 import { buildFindings, FINDINGS_RULESET_VERSION, type Finding } from './compliance-findings';
 import { ENGINE_VERSION } from './determinism';
 
@@ -119,6 +120,10 @@ export function buildObservedSystems(
 
   for (const e of evidence) {
     if (!VENDOR_BEARING.includes(e.signalType)) continue;
+    // Same exclusion as the comparison engine, from the same table. If the two
+    // ever diverged, "Observed systems" would list a subject that no gap
+    // mentions, and the transparency chain would break at its first link.
+    if (isGenericSubject(e.observedValue)) continue;
     const key = normaliseVendorKey(e.observedValue);
     if (!key) continue;
 
