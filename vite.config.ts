@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
@@ -29,9 +29,47 @@ function buildIdPlugin(): Plugin {
   }
 }
 
+/**
+ * Client configuration required for the app to boot at all.
+ *
+ * Vite inlines `import.meta.env.VITE_*` at BUILD time. A build without them
+ * produces a bundle whose Firebase config is empty strings — it compiles, it
+ * deploys, and then every visitor sits on "Still connecting…" forever because
+ * auth can never initialise. There is no runtime error to catch and no log to
+ * read; the app is simply dead.
+ *
+ * That is exactly what happened when CI took over deployment: local builds
+ * picked up `.env.production` from disk, and the CI runner has no such file.
+ * A build that cannot produce a working bundle must FAIL, not ship.
+ */
+const REQUIRED_CLIENT_ENV = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_APP_ID',
+] as const
+
+function requiredEnvPlugin(env: Record<string, string>): Plugin {
+  return {
+    name: 'ailunapro-required-client-env',
+    apply: 'build',
+    buildStart() {
+      const missing = REQUIRED_CLIENT_ENV.filter(k => !(env[k] ?? '').trim())
+      if (missing.length === 0) return
+      throw new Error(
+        `Cannot build a working bundle: missing ${missing.join(', ')}.\n` +
+        'These are inlined at build time; without them the deployed app cannot ' +
+        'initialise Firebase and every visitor is stuck on "Still connecting…".\n' +
+        'Locally: set them in .env.production. In CI: add them to the build step ' +
+        'env (see .github/workflows/ci.yml).',
+      )
+    },
+  }
+}
+
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss(), buildIdPlugin()],
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), tailwindcss(), buildIdPlugin(), requiredEnvPlugin(loadEnv(mode, __dirname, 'VITE_'))],
   define: {
     __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
@@ -88,4 +126,4 @@ export default defineConfig({
       '/healthz': { target: 'http://127.0.0.1:8787', changeOrigin: true, secure: false },
     },
   },
-})
+}))

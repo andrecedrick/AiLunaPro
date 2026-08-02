@@ -38,8 +38,34 @@ jobs:
         working-directory: worker
         run: npm run typecheck
 
+      # Vite inlines VITE_* at BUILD time. Without them the bundle compiles and
+      # deploys but cannot initialise Firebase, and every visitor is stuck on
+      # "Still connecting…". vite.config.ts now fails the build rather than
+      # shipping such a bundle, so these must be set for CI to go green.
+      # All of these are PUBLISHABLE client values — they ship in the browser
+      # bundle by design — but they are held as repository secrets rather than
+      # committed, per the project rule on never committing env files.
       - name: Build (tsc gate + vite)
         run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY:             ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN:         ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID:          ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET:      ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID:              ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_WORKER_URL:                   ${{ secrets.VITE_WORKER_URL }}
+          VITE_TURNSTILE_SITE_KEY:           ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_RECAPTCHA_APPCHECK_KEY:       ${{ secrets.VITE_RECAPTCHA_APPCHECK_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY:       ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_POSTHOG_KEY:                  ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST:                 ${{ secrets.VITE_POSTHOG_HOST }}
+          VITE_DATA_LAYER:                   ${{ vars.VITE_DATA_LAYER }}
+          VITE_AUTH_LAYER:                   ${{ vars.VITE_AUTH_LAYER }}
+          VITE_REGISTRY_LAYER:               ${{ vars.VITE_REGISTRY_LAYER }}
+          VITE_AUDIT_LAYER:                  ${{ vars.VITE_AUDIT_LAYER }}
+          VITE_REPORTS_LAYER:                ${{ vars.VITE_REPORTS_LAYER }}
+          VITE_BILLING_LAYER:                ${{ vars.VITE_BILLING_LAYER }}
 
       - name: Test
         run: npm run test -- --run
@@ -66,9 +92,30 @@ jobs:
         working-directory: worker
         run: npm ci
 
-      # Rebuild in the deploy job so the deployed dist is exactly what the gate verified.
+      # Rebuild in the deploy job so the deployed dist is exactly what the gate
+      # verified. This is the build that actually SHIPS, so it needs the same
+      # VITE_* values — without them it emits a bundle that cannot boot.
       - name: Build
         run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY:             ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN:         ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID:          ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET:      ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID:              ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_WORKER_URL:                   ${{ secrets.VITE_WORKER_URL }}
+          VITE_TURNSTILE_SITE_KEY:           ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_RECAPTCHA_APPCHECK_KEY:       ${{ secrets.VITE_RECAPTCHA_APPCHECK_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY:       ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_POSTHOG_KEY:                  ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST:                 ${{ secrets.VITE_POSTHOG_HOST }}
+          VITE_DATA_LAYER:                   ${{ vars.VITE_DATA_LAYER }}
+          VITE_AUTH_LAYER:                   ${{ vars.VITE_AUTH_LAYER }}
+          VITE_REGISTRY_LAYER:               ${{ vars.VITE_REGISTRY_LAYER }}
+          VITE_AUDIT_LAYER:                  ${{ vars.VITE_AUDIT_LAYER }}
+          VITE_REPORTS_LAYER:                ${{ vars.VITE_REPORTS_LAYER }}
+          VITE_BILLING_LAYER:                ${{ vars.VITE_BILLING_LAYER }}
 
       - name: Deploy worker
         working-directory: worker

@@ -4307,8 +4307,43 @@ wording should be read accordingly.
 | **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
 | **B3** | `stripeMode: "test"` in production | No revenue | P1.2b |
+| **B8** | `VITE_*` repository secrets not yet set in GitHub | **CI build now fails by design** until they are added, so no further CI deploy can ship a bundle that cannot boot. Production is healthy (restored by a local deploy). Deploys stay manual until this clears. | Owner adds the secrets/variables listed in `.github/workflows/ci.yml` |
 | **B7** | Live Stripe credentials not installed | P1.2b cannot be closed. Preflight is deployed and will verify the switch the moment it is made. | Owner installs live keys, price ids and webhook secret, then runs the preflight |
 | **D3** | robots.txt stance for the Apify layer undecided (§26.15) | Legal exposure the moment a customer domain is crawled | P2.0 |
+
+### 27.4b Production incident — CI deployed a bundle that could not boot (2026-08-02)
+
+**Symptom.** `audit.ailunapro.com` served the "Still connecting…" card to every
+visitor. No error, no log: the app simply never finished booting.
+
+**Root cause.** Vite inlines `import.meta.env.VITE_*` at **build** time. Local
+builds picked those up from `.env.production` on the developer machine; the CI
+runner has no such file and `ci.yml` set none. The moment P0.0b handed deployment
+to CI (run #8), the shipped bundle carried an **empty Firebase config** —
+compiled fine, deployed fine, and could never initialise auth.
+
+**Evidence.** The production `firebase-*` and `featureFlags-*` chunks contained
+**zero** occurrences of the Firebase project id; the locally built chunks
+contained it.
+
+**Immediate restoration.** Rebuilt locally with the env present and deployed to
+Pages; the config-bearing chunks were confirmed live again.
+
+**Permanent fixes.**
+1. `vite.config.ts` now **fails the build** when `VITE_FIREBASE_API_KEY`,
+   `_AUTH_DOMAIN`, `_PROJECT_ID` or `_APP_ID` are absent. Verified by moving the
+   env files aside and observing exit 1. A build that cannot produce a working
+   bundle must not ship — the previous behaviour turned a missing variable into a
+   silent, total outage with nothing to diagnose.
+2. `ci.yml` supplies the `VITE_*` values to **both** build steps — the gate build
+   and the deploy build. Only the gate step was wired at first; the deploy step
+   has a different name (`Build`) and is the one that actually ships.
+
+**Lesson recorded.** "Deploys work" and "deploys produce a working app" are
+different claims. Verification after this point checks that the served bundle
+contains its client configuration, not merely that the bundle hash changed.
+
+**Blocker B8** (below) tracks the repository secrets this now requires.
 
 ### 27.5 Approved execution roadmap
 
