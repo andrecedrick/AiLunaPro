@@ -4263,7 +4263,7 @@ as evidence.
 | Enrichment collection in production | **BLOCKED** | No provider configured — see §27.4 B1/B2 |
 | Stripe billing | **BLOCKED** | `stripeMode: "test"` — see §27.4 B3 |
 | CI gate on shipped code | **DONE** | Green on `59fabef` (run #3) |
-| CI auto-deploy | **BLOCKED** | Deploy job red — see §27.4 B5 |
+| CI auto-deploy | **DONE** | Run #6 green — gate + deploy |
 | Repository visibility | **DONE** | Set PRIVATE — approved 2026-08-02 |
 
 **Build reproducibility.** The frontend build is intentionally NOT reproducible:
@@ -4284,9 +4284,10 @@ wording should be read accordingly.
 | Audit Express chain | **DONE** | — |
 | CI/CD pipeline defined | **DONE** | — |
 | CI/CD gate running on every push | **DONE** | — |
-| CI/CD auto-deploy | **BLOCKED** | B5 |
+| CI/CD auto-deploy | **DONE** | — |
 | Invoice completeness (tax, subtotal, currency, address, Stripe refs, numbering) | **DONE** | — |
 | Stripe live-activation preflight | **DONE** | — |
+| Stripe plan products environment-driven | **DONE** | — |
 | Stripe Live activation | **BLOCKED** | owner-supplied live credentials (B7) |
 | Enrichment collection live (Apify) | **BLOCKED** | B1, D3 |
 | Enrichment collection live (Agent-Reach) | **BLOCKED** | B2 |
@@ -4301,7 +4302,7 @@ wording should be read accordingly.
 | ID | Blocker | Impact | Clears when |
 |---|---|---|---|
 | ~~**B0**~~ | ~~22 commits unpushed; `origin/main` at `3fad2b4` (2026-07-31)~~ | **CLEARED 2026-08-02** by P0.0a — pushed `3fad2b4..59fabef`, CI gate green | ✅ |
-| **B5** | CI `deploy (production)` job fails at `Deploy worker` | Auto-deploy does not work; deploys stay manual. Not an outage. Near-certain cause is the Cloudflare GitHub Actions secrets, unconfirmed because step logs need auth. | Owner sets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in repo settings, then re-runs the job |
+| ~~**B5**~~ | ~~CI `deploy (production)` job fails~~ **RESOLVED 2026-08-02.** Root cause: the CI Account API Token had `Workers Scripts:Edit` but not `Cloudflare Pages:Edit`, so `Deploy worker` succeeded and `Deploy pages` returned Cloudflare error 10000. Local deploys were unaffected because local wrangler authenticates with an OAuth token that already carries `pages (write)`. Fixed by adding the Pages permission to the token; run #6 fully green. Original entry: | Auto-deploy does not work; deploys stay manual. Not an outage. Near-certain cause is the Cloudflare GitHub Actions secrets, unconfirmed because step logs need auth. | Owner sets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in repo settings, then re-runs the job |
 | ~~**B6**~~ | ~~**The GitHub repository is PUBLIC**~~ **RESOLVED 2026-08-02 — set to PRIVATE (owner-approved).** Original finding retained for the record: (`"visibility": "public"`) | The entire commercial codebase — worker, business logic, scoring rules, Firestore structure, security-rule design — is world-readable. No secret is exposed (`.env.local`, `.env.production`, `worker/.dev.vars` are all gitignored and untracked; a pre-push scan found only a synthetic token inside a redaction test). The exposure is intellectual property and attack-surface reconnaissance, not credentials. | Owner decides: flip to private, or accept deliberately |
 | **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
@@ -4320,7 +4321,7 @@ wording should be read accordingly.
 | Task | Description | Status | Depends on |
 |---|---|---|---|
 | **P0.0a** | Push all commits to `origin/main`; CI gate runs green | **DONE** 2026-08-02 | — |
-| **P0.0b** | CI deploy job green (`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions secrets) | **BLOCKED** — awaiting owner-supplied Cloudflare secrets (B5) | P0.0a + owner action |
+| **P0.0b** | CI deploy job green (`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions secrets) | **DONE** 2026-08-02 | P0.0a |
 
 **P0.0a closure evidence.** 23 commits pushed, `3fad2b4..59fabef`. CI run #3 on
 `59fabef`: gate job **success** — checkout, both `npm ci`, typecheck (frontend),
@@ -4328,15 +4329,27 @@ typecheck (worker), build (tsc gate + vite), full test suite, all green on Linux
 CI. B0 is cleared: the work is backed up off-machine and the gate now runs on
 every push.
 
-**P0.0b outcome.** The `deploy (production)` job **failed** at the `Deploy worker`
-step (`Deploy pages` skipped as a consequence). The gate job passed in full and
-the deploy job's own checkout, install and build steps passed, so this is not a
-code defect — it is `wrangler deploy` failing in CI. Step logs require
-authentication and could not be read, so the precise cause is **not confirmed**;
-the only environment-specific inputs to that step are the two Cloudflare secrets.
-Production is unaffected: worker `b9a5db19` (deployed manually 07:52) is the same
-code as `59fabef`, and `/healthz` is ok. The consequence is narrower than it
-looks — deploys remain manual until this clears, but nothing is broken.
+**P0.0b closure evidence (2026-08-02).** CI run **#6** on `d469625` fully green:
+`typecheck · build · test` **success** and `deploy (production)` **success** —
+both `Deploy worker` and `Deploy pages`. Deployment is now CI-gated end to end;
+manual `wrangler` deploys are no longer the only path to production.
+
+**Root cause of the earlier failure, confirmed from the exposed logs.** The CI
+Account API Token carried `Workers Scripts:Edit` but **not** `Cloudflare
+Pages:Edit`. `Deploy worker` therefore succeeded while `Deploy pages` failed with
+Cloudflare error **10000** on `/accounts/…/pages/projects/ailunapro-app`. Local
+deploys were never affected because local wrangler authenticates with an **OAuth
+token** that already carries `pages (write)` — a different credential type with a
+different scope set, which is why "works locally" was not evidence about CI. The
+`User → Memberships → Read` hint in the log was wrangler's generic diagnostic
+block, not the cause; the token had already resolved the account by then. Fixed by
+adding the Pages permission to the existing token. **No code or workflow change
+was required — `.github/workflows/ci.yml` was correct as written.**
+
+An earlier note in this section recorded the cause as "near-certain, unconfirmed"
+because the step logs needed authentication. That reading was correct in its
+caution but wrong in its target: it named `Deploy worker`, and the failing step
+was `Deploy pages`.
 
 #### P1 — Revenue *(the only items that change the business)*
 
@@ -4344,7 +4357,46 @@ looks — deploys remain manual until this clears, but nothing is broken.
 |---|---|---|---|
 | **P1.1** | Invoice correctness — accounting-grade. Currency support · VAT · subtotal · billing address · organization information · Stripe payment reference · Stripe payment intent · sequential invoice numbering · payment information | **DONE** 2026-08-02 | P0.0a |
 | **P1.2a** | Live-activation preflight: readiness engine, `GET /api/billing/admin/live-readiness`, durable webhook-verification evidence | **DONE** 2026-08-02 | P1.1 |
-| **P1.2b** | Stripe Live activation itself: install `sk_live_`, `pk_live_`, live webhook secret, live price ids; run the preflight; end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | P1.2a + owner action |
+| **P1.2 Phase A** | Environment-driven plan products (`STRIPE_PRODUCT_*`) + extended readiness validation (products · prices · currency mappings · active · livemode) | **DONE** 2026-08-02 | P1.2a |
+| **P1.2b** | Stripe Live activation itself: Stripe dashboard setup, install live credentials, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase A + owner action |
+
+**P1.2 Phase A closure evidence (2026-08-02).** Two defects found during the P1.2
+inspection, both of which would have made a live switch fail while reporting
+success:
+
+**Finding A — plan product ids were compiled into the source.**
+`billing-admin-shared.ts` hardcoded `prod_USl…` ×3. A Stripe product id exists
+only in the mode that created it, so against a live key `products.retrieve` 404s,
+no price resolves, and checkout fails for **every plan** with *"No active Stripe
+price found"*. Now read from `STRIPE_PRODUCT_STARTER|PROFESSIONAL|ENTERPRISE`,
+with the existing values kept as defaults — the test environment is byte-for-byte
+unchanged and going live is a secret, not a code change. A malformed value is
+ignored rather than forwarded to Stripe.
+
+Every consumer resolves from the environment: checkout, admin products, promo
+coupons, the webhook and the sync fallback. The last pair matters —
+`planLabelFromProductId` falls back to `'Starter'` for an unknown product, so
+leaving it on the compiled defaults would have recorded **every live subscription
+as Starter regardless of the plan purchased**. An unknown id is now logged rather
+than absorbed silently.
+
+**Finding B — the preflight could report ready while checkout was broken.**
+It validated the `STRIPE_PRICE_*` variables, which plan checkout **never reads**
+(they are consumed only by a config-status panel). Checkout resolves a price from
+the plan's PRODUCT. The preflight now retrieves each plan product and verifies
+existence, `livemode`, `active`, and that an active recurring price exists in
+every required currency — mirroring checkout's own resolution, including that
+`usd` is the final fallback and therefore cannot be missing. Required currencies
+come from the org's own billing config, so a business is never failed for not
+selling a currency it does not offer.
+
+The verdict is additionally gated on `productsVerified` and `portalVerified`, and
+coerced with `Boolean()`: an omitted gate previously made the conjunction
+`undefined`, which a caller testing `ready === false` would have missed. A safety
+verdict has to be a real boolean.
+
+38 readiness tests; suite 1754 passing, 0 failing. Commit `1648ee0`, deployed by
+CI (P0.0b now operational).
 
 **P1.2a closure evidence.** `worker/src/lib/stripe-readiness.ts` (pure) +
 `worker/src/routes/billing-admin-readiness.ts` (owner-only). Preflight covers:
