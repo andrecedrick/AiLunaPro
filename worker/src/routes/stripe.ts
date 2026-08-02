@@ -78,6 +78,23 @@ stripe.post('/api/stripe/webhook', async c => {
     return c.json({ received: true, warning: 'No service account — sync skipped' });
   }
 
+  // DURABLE proof that the signing secret is the right one (§27 P1.2).
+  // recordWebhookEvent is module-level memory and dies with the isolate, so it
+  // can confirm nothing minutes later. A stale test secret is invisible to any
+  // static check — both modes use whsec_ — and its only symptom is payments
+  // succeeding while no invoice is ever marked paid. One durable record of a
+  // verified event is what makes live readiness provable rather than assumed.
+  await firestoreSet(env.FIREBASE_SERVICE_ACCOUNT_JSON, 'platform/stripe_webhook_health', {
+    lastVerifiedEventId:   event.id,
+    lastVerifiedEventType: event.type,
+    lastVerifiedAt:        new Date().toISOString(),
+    lastVerifiedLivemode:  event.livemode === true,
+  }, { merge: true }).catch(err => {
+    // Never fail the webhook over telemetry: Stripe would retry a payment event
+    // that was already handled correctly.
+    console.warn('[stripe:webhook] could not record webhook health:', err instanceof Error ? err.message : '');
+  });
+
   try {
     await handleEvent(event, env.FIREBASE_SERVICE_ACCOUNT_JSON, stripeClient, env as AppEnv['Bindings']);
   } catch (err) {

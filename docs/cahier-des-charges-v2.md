@@ -4286,7 +4286,8 @@ wording should be read accordingly.
 | CI/CD gate running on every push | **DONE** | — |
 | CI/CD auto-deploy | **BLOCKED** | B5 |
 | Invoice completeness (tax, subtotal, currency, address, Stripe refs, numbering) | **DONE** | — |
-| Stripe Live activation | **PENDING** | owner-supplied live keys |
+| Stripe live-activation preflight | **DONE** | — |
+| Stripe Live activation | **BLOCKED** | owner-supplied live credentials (B7) |
 | Enrichment collection live (Apify) | **BLOCKED** | B1, D3 |
 | Enrichment collection live (Agent-Reach) | **BLOCKED** | B2 |
 | Super Admin notification coverage | **PENDING** | — |
@@ -4304,7 +4305,8 @@ wording should be read accordingly.
 | ~~**B6**~~ | ~~**The GitHub repository is PUBLIC**~~ **RESOLVED 2026-08-02 — set to PRIVATE (owner-approved).** Original finding retained for the record: (`"visibility": "public"`) | The entire commercial codebase — worker, business logic, scoring rules, Firestore structure, security-rule design — is world-readable. No secret is exposed (`.env.local`, `.env.production`, `worker/.dev.vars` are all gitignored and untracked; a pre-push scan found only a synthetic token inside a redaction test). The exposure is intellectual property and attack-surface reconnaissance, not credentials. | Owner decides: flip to private, or accept deliberately |
 | **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
-| **B3** | `stripeMode: "test"` in production | No revenue | P1.2 |
+| **B3** | `stripeMode: "test"` in production | No revenue | P1.2b |
+| **B7** | Live Stripe credentials not installed | P1.2b cannot be closed. Preflight is deployed and will verify the switch the moment it is made. | Owner installs live keys, price ids and webhook secret, then runs the preflight |
 | **D3** | robots.txt stance for the Apify layer undecided (§26.15) | Legal exposure the moment a customer domain is crawled | P2.0 |
 
 ### 27.5 Approved execution roadmap
@@ -4341,7 +4343,53 @@ looks — deploys remain manual until this clears, but nothing is broken.
 | Task | Description | Status | Depends on |
 |---|---|---|---|
 | **P1.1** | Invoice correctness — accounting-grade. Currency support · VAT · subtotal · billing address · organization information · Stripe payment reference · Stripe payment intent · sequential invoice numbering · payment information | **DONE** 2026-08-02 | P0.0a |
-| **P1.2** | Stripe Live activation: `sk_live_` key, live webhook secret, live price ids, verify `/healthz` reports `stripeMode: "live"` | **PENDING** — unblocked by P1.1; requires owner-supplied live Stripe keys | P1.1 |
+| **P1.2a** | Live-activation preflight: readiness engine, `GET /api/billing/admin/live-readiness`, durable webhook-verification evidence | **DONE** 2026-08-02 | P1.1 |
+| **P1.2b** | Stripe Live activation itself: install `sk_live_`, `pk_live_`, live webhook secret, live price ids; run the preflight; end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | P1.2a + owner action |
+
+**P1.2a closure evidence.** `worker/src/lib/stripe-readiness.ts` (pure) +
+`worker/src/routes/billing-admin-readiness.ts` (owner-only). Preflight covers:
+secret/publishable key mode agreement · webhook secret shape · required
+variables present · **every price id retrieved from Stripe and checked for
+existence, `livemode` and `active`** · active billing-portal configuration and
+its livemode · durable evidence of a verified live webhook event. 21 tests.
+Deployed `ce76102a-0e04-4bbd-ab50-66d9ed7cfeb3`; route live and gated (401).
+
+The preflight exists because flipping to live is not one change but six, and
+each omission fails silently in a way only a paying customer discovers:
+
+| Omission | Symptom |
+|---|---|
+| Test price ids kept with a live key | `No such price` — **nobody can check out** |
+| Test webhook signing secret | Payments succeed, **no invoice is ever marked paid** |
+| `pk_test_` left on the frontend | Browser runs test mode while the server charges real money |
+| No live portal configuration | Customers pay, then cannot manage their subscription |
+
+**Durable webhook evidence added.** `recordWebhookEvent` is module-level memory
+that dies with the isolate, so it can certify nothing minutes after a deploy.
+Verified events now also write `platform/stripe_webhook_health`
+(id, type, timestamp, `livemode`), and the preflight requires a **live** verified
+event before reporting ready. Telemetry failure never fails the webhook — Stripe
+would redeliver an already-handled payment.
+
+**Why P1.2b cannot be closed from here.** Its closure criteria are "Stripe Live
+works / end-to-end payment succeeds / webhook verification succeeds". Those
+require installing live API credentials and putting a real card through checkout.
+Handling payment credentials is outside what may be done on the owner's behalf,
+so the switch is an owner action. Everything that does NOT require the
+credentials is delivered, and the preflight is what verifies the switch once made.
+
+**Owner runbook for P1.2b**
+1. `wrangler secret put STRIPE_SECRET_KEY --env production` → `sk_live_…`
+2. Same for `STRIPE_PUBLISHABLE_KEY` (`pk_live_…`) and `STRIPE_WEBHOOK_SECRET`
+   (the signing secret of the **live** endpoint, not the test one).
+3. Replace `STRIPE_PRICE_STARTER|PROFESSIONAL|ENTERPRISE` and the four
+   `STRIPE_TOKEN_PRICE_*` with live price ids.
+4. Confirm the live billing-portal configuration exists and is active.
+5. `GET /api/billing/admin/live-readiness` → expect `ready: true` and an empty
+   `findings` array. It will still report not-ready until step 6.
+6. Complete one real checkout. The webhook must arrive, verify, and mark the
+   invoice paid; re-run the preflight — `webhookObserved` then becomes true.
+7. `GET /healthz` → `stripeMode: "live"`.
 
 > **P0.0b does not block P1.1 or anything below it.** It gates automated
 > deployment only; deploys continue manually and are verified the same way
