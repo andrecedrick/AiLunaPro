@@ -135,6 +135,9 @@ export function BillingSuccessPage() {
       const id = setTimeout(() => navigate({ name: 'billing' }), 1200);
       return () => clearTimeout(id);
     }
+    // Explicit: an effect that returns a cleanup on one path and nothing on
+    // another is the shape that leaks timers when a branch is later added.
+    return undefined;
   }, [state, hasActiveSubscription, navigate]);
 
   // Hard fallback: after 6 s of synced-but-context-not-updated, navigate anyway

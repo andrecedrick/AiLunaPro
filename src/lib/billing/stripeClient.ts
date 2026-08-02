@@ -20,7 +20,7 @@ export const WORKER_BASE = RAW_BASE.replace(/\/+$/, '');
 
 export class CheckoutError extends Error {
   url: string;
-  cause: unknown;
+  override cause: unknown;
   constructor(url: string, cause: unknown, message: string) {
     super(message);
     this.name  = 'CheckoutError';
@@ -31,7 +31,7 @@ export class CheckoutError extends Error {
 
 export class PortalError extends Error {
   url: string;
-  cause: unknown;
+  override cause: unknown;
   constructor(url: string, cause: unknown, message: string) {
     super(message);
     this.name  = 'PortalError';
@@ -42,7 +42,7 @@ export class PortalError extends Error {
 
 export class WorkerFetchError extends Error {
   url: string;
-  cause: unknown;
+  override cause: unknown;
   constructor(url: string, cause: unknown, message: string) {
     super(message);
     this.name  = 'WorkerFetchError';

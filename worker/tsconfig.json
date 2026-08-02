@@ -6,6 +6,7 @@
     "lib": ["ESNext"],
     "types": ["@cloudflare/workers-types"],
     "strict": true,
+    "noImplicitOverride": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,

@@ -18,7 +18,21 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
+    /* Linting.
+       `strict` was previously OFF for the whole frontend while the worker had it
+       on — so null/undefined bugs, the commonest runtime crash class in a React
+       app, were unguarded in src/. Turning it on produced ZERO errors: the code
+       was already strict-clean, it simply was not enforced, and nothing stopped
+       the next change from regressing it.
+
+       Measured cost of the remaining flags, for whoever picks this up:
+         noUncheckedIndexedAccess    63 errors  (worker: 107)
+         exactOptionalPropertyTypes  81 errors
+       Both are real work, not a config flip, so they stay off until someone
+       budgets for them rather than being half-applied. */
+    "strict": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

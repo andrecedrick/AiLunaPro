@@ -27,7 +27,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log error for debugging
     console.error('ErrorBoundary caught error:', error, errorInfo);
 
@@ -56,7 +56,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     );
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
