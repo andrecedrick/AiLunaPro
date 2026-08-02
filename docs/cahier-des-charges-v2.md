@@ -3888,7 +3888,13 @@ trail intact ; les lectures agrégées passent désormais par les rollups).
 
 ---
 
-## 26. AUDIT ENRICHMENT ENGINE *(approved 2026-08-02 — OFFICIAL SPECIFICATION · NOT IMPLEMENTED)*
+## 26. AUDIT ENRICHMENT ENGINE *(approved 2026-08-02 — OFFICIAL SPECIFICATION · ✅ IMPLEMENTED, Phases 1–7 closed)*
+
+> **Implementation status (2026-08-02):** Phases 1–7 **DONE**, certified end-to-end,
+> deployed at commit `5c367ff`. The engine collects nothing in production yet: no
+> collector provider is configured. See **§27** for delivery status, blockers and
+> the approved roadmap. The specification text below is unchanged and remains
+> authoritative for behaviour.
 
 > **Status:** SPECIFICATION. No code, no deployment. This section is the authoritative
 > requirement set for the feature; any implementation is measured against it.
@@ -4202,8 +4208,174 @@ LinkedIn, Instagram, Facebook, YouTube, GitHub, Apify and Agent-Reach alike.
 timestamp · collector · confidence · captured evidence · evidence hash · **snapshot id**.
 No finding is valid without evidence.
 
-**Statut §26 :** APPROVED SPECIFICATION — implementation in progress from 2026-08-02.
-D1/D2/D4 closed; D3 open and non-blocking.
+**Statut §26 :** ✅ IMPLEMENTED — Phases 1–7 closed 2026-08-02, commit `5c367ff`.
+D1/D2/D4 closed; **D3 open — now BLOCKING** (see §27.4): it was correctly
+non-blocking while nothing crawled, and becomes a live legal question the moment
+Apify is pointed at a customer domain.
+
+---
+
+## 27. DELIVERY STATUS & EXECUTION ROADMAP *(2026-08-02 — production and code are authoritative)*
+
+> **Purpose.** §26 says what the engine must do. This section says what is
+> actually shipped, what is actually blocked, and in what order the remaining work
+> is executed. Where §18–§26 and this section disagree on delivery state, **§27
+> prevails** — it is written against verified production and repository facts.
+>
+> **Legend:** `DONE` shipped, tested, deployed, verified · `IN PROGRESS` started,
+> not closed · `PENDING` approved, not started · `BLOCKED` cannot proceed until a
+> named dependency clears.
+
+### 27.1 Audit Enrichment Engine — completion status per phase
+
+| Phase | Scope | Status | Commit | Evidence |
+|---|---|---|---|---|
+| 1 | Evidence model, hashing, snapshot architecture | **DONE** | `af4b83c` | Deterministic ids; SHA-256 excerpt hashes; snapshot digest |
+| 2 | Apify layer, collector contract, snapshot pipeline | **DONE** | `51b7a86` | Bearer-only auth; 4 MB stream cap; per-collector failure traps |
+| 3 | Agent-Reach layer over an HTTP bridge | **DONE** | `615c5e3`, `0d43dad` | Bridge contract; https-only; malformed 200 treated as failure |
+| 4 | Observed vs Declared engine | **DONE** | `c38d551` | `ovd-1.0.0` / `ovd-rules-1`; vendor aliasing; score gating |
+| 5 | Compliance Findings engine | **DONE** | `fc9af3b` | `cf-rules-1`; rule-derived risk; capped total impact |
+| 6 | Report integration (app, API, PDF) | **DONE** | `e7ed75d` | Full transparency chain on screen and in both PDFs |
+| 7 | End-to-end certification | **DONE** | `5c367ff` | Both collectors run for real over a faked HTTP layer |
+
+**Test coverage:** 1 669 passing · 60 skipped · 0 failing. Build gate
+(`tsc -b --force` + `typecheck:worker` + `vite build`) PASS.
+
+**Phase 7 defect found and fixed (`5c367ff`).** The detector labels a recognised
+AI library whose vendor it cannot identify as the category `"AI/ML dependency"`.
+That signal type is vendor-bearing, so the comparison engine made the category a
+gap subject and the findings engine raised CF-002 — HIGH risk, −12 points —
+telling the customer they had failed to declare a system called "AI/ML
+dependency". Unactionable and wrong, and it would have fired on any customer with
+a public repository pulling a known AI library. Invisible to Phases 1–6 because
+every earlier test fed the engines hand-built vendor names; only a real collector
+run produces the fallback label. Generic subjects are now excluded by both the
+comparison engine and the report assembler, and the observation is still retained
+as evidence.
+
+### 27.2 Production readiness
+
+| Component | Status | Note |
+|---|---|---|
+| Worker `ailunapro-worker` | **DONE** | `b9a5db19-9c8a-4d71-95fe-6fc3637ddc38`; `/healthz` ok |
+| Frontend `ailunapro-app` | **DONE** | `assets/index-mp8sk6Hz.js` |
+| Enrichment API routes | **DONE** | `/report`, `/snapshots`, `/run` mounted and auth-gated |
+| Enrichment collection in production | **BLOCKED** | No provider configured — see §27.4 B1/B2 |
+| Stripe billing | **BLOCKED** | `stripeMode: "test"` — see §27.4 B3 |
+| CI gate on shipped code | **BLOCKED** | 22 commits unpushed — see §27.4 B0 |
+
+**Build reproducibility.** The frontend build is intentionally NOT reproducible:
+`BUILD_ID = new Date()` is baked in for stale-bundle recovery. A bundle-hash
+comparison therefore proves *the artifact you deployed*, never source identity, and
+must be run against the build just deployed — not a fresh rebuild. The §17 gate
+wording should be read accordingly.
+
+### 27.3 Feature completion status (platform-wide)
+
+| Feature | Status | Blocked by |
+|---|---|---|
+| Audit Enrichment Engine (§26) | **DONE** | — |
+| Sales engine & commercial pipeline | **DONE** | — |
+| CRM: ownership, import, company registry | **DONE** | — |
+| Twenty CRM sync & repair | **DONE** | — |
+| Reports lifecycle (A+B+C) | **DONE** | — |
+| Audit Express chain | **DONE** | — |
+| CI/CD pipeline defined | **DONE** | — |
+| CI/CD actually gating deploys | **BLOCKED** | B0 |
+| Invoice completeness (tax, subtotal, currency, address, Stripe ref) | **PENDING** | — |
+| Stripe Live activation | **BLOCKED** | P1.1 |
+| Enrichment collection live (Apify) | **BLOCKED** | B1, D3 |
+| Enrichment collection live (Agent-Reach) | **BLOCKED** | B2 |
+| Super Admin notification coverage | **PENDING** | — |
+| Admin Center redesign | **PENDING** | — |
+| Luna agentic upgrade | **PENDING** | — |
+| PDF i18n (B6.3) / Arabic RTL (B6.6) | **PENDING** | — |
+| Files over 500 lines (18 real, 8 i18n catalogs) | **PENDING** | deliberately deferred |
+
+### 27.4 Remaining blockers
+
+| ID | Blocker | Impact | Clears when |
+|---|---|---|---|
+| **B0** | 22 commits unpushed; `origin/main` at `3fad2b4` (2026-07-31) | No off-machine backup. CI has never run on the Enrichment Engine, the sales pipeline or the CRM work. Every deploy this cycle bypassed the hard gate the repo defines. | P0.0 |
+| **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
+| **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
+| **B3** | `stripeMode: "test"` in production | No revenue | P1.2 |
+| **D3** | robots.txt stance for the Apify layer undecided (§26.15) | Legal exposure the moment a customer domain is crawled | P2.0 |
+
+### 27.5 Approved execution roadmap
+
+> **Discipline.** Strictly sequential. Each task is Implemented → Tested →
+> Deployed → Verified → Closed before the next begins. No task is left partially
+> complete. This section is updated at every milestone closure.
+
+#### P0 — Restore the safety net *(before anything else)*
+
+| Task | Description | Status | Depends on |
+|---|---|---|---|
+| **P0.0** | Push 22 commits to `origin/main`; confirm the CI gate runs green; confirm `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` exist as GitHub secrets so the deploy job is not red | **IN PROGRESS** | — |
+
+#### P1 — Revenue *(the only items that change the business)*
+
+| Task | Description | Status | Depends on |
+|---|---|---|---|
+| **P1.1** | Invoice correctness: tax/VAT breakdown, subtotal, real currency (`invoices.ts` hardcodes `'usd'` at 4 sites despite shipped multi-currency + FX snapshots), billing address, Stripe reference, sequential numbering | **PENDING** | P0.0 |
+| **P1.2** | Stripe Live activation: `sk_live_` key, live webhook secret, live price ids, verify `/healthz` reports `stripeMode: "live"` | **BLOCKED** | P1.1 |
+
+> **P1.1 is a hard prerequisite of P1.2, not a parallel track.** In test mode an
+> incomplete invoice is a defect; in live mode it is a customer-visible financial
+> document that must be legally corrected. For EU B2B customers an invoice without
+> VAT breakdown, currency and sequential numbering is not a valid invoice — and
+> this product sells EU AI Act compliance.
+
+#### P2 — Make the Enrichment Engine deliver value
+
+| Task | Description | Status | Depends on |
+|---|---|---|---|
+| **P2.0** | Close §26.15 **D3**: robots.txt stance for the Apify layer. A decision, not development. | **PENDING** | P0.0 |
+| **P2.1** | Configure `APIFY_TOKEN` (+ optional `APIFY_ACTORS`, `APIFY_MEMORY_MB`) in production | **BLOCKED** | P2.0 |
+| **P2.2** | First real run against `ailunapro.com` — a domain we own, no customer exposure. Verifies actor output shapes and wire formats that Phase 7 could only certify against a faked HTTP layer. | **BLOCKED** | P2.1 |
+| **P2.3** | Super Admin notification coverage for billing and collector failures | **PENDING** | P1.2, P2.2 |
+
+> **Why P2.3 sits here.** P1.2 and P2.2 are the first paths in this codebase that
+> spend real money per request — Stripe charges, Apify meters per run. Without
+> alerting, the first signal that either broke is a customer email.
+
+#### P3 — Deferred
+
+| Task | Description | Status | Depends on |
+|---|---|---|---|
+| **P3.1** | Agent-Reach bridge service: build and host the Python service implementing the §26 contract | **PENDING** | P2.2 |
+| **P3.2** | Admin Center redesign | **PENDING** | — |
+| **P3.3** | Luna agentic upgrade (currently 167 lines, curated KB, no tool calls, no Firestore reads) | **PENDING** | — |
+
+> **Apify and Agent-Reach are not one blocker.** Apify needs one secret and covers
+> the highest-evidence-density surfaces in §26.3 — website, privacy policy, terms,
+> DPA, processor list — and produces the strongest finding the engine has (CF-001,
+> contractual, high risk). `apify/website-content-crawler` is the only verified
+> actor. Agent-Reach requires building and hosting a service that does not exist,
+> for lower-density social and repo signals. Hence P2 vs P3.
+
+### 27.6 Dependency graph
+
+```
+P0.0  push + CI green
+  ├─> P1.1  invoices ──> P1.2  Stripe live ──┐
+  └─> P2.0  D3 decision ──> P2.1  APIFY_TOKEN ──> P2.2  first real run ──┤
+                                                                         ├─> P2.3  notifications
+                                                                         └─> P3.1  Agent-Reach service
+
+P3.2  Admin Center   (no dependency — deferred on value, not blockers)
+P3.3  Luna agentic   (no dependency — deferred on value, not blockers)
+```
+
+### 27.7 Correction to earlier status wording
+
+The Agent-Reach layer is marked ✅ in §27.1 and that is accurate **for the client
+and collector**, which are complete, tested and deployed. The **service they call
+does not exist**. Phases 1–7 are genuinely closed; the engine nonetheless collects
+nothing in production today — not because it is broken, but because neither
+provider is configured. Both statements are true and must be held together when
+planning P2 and P3.
 
 ---
 
