@@ -94,6 +94,12 @@ export type AppEnv = {
     STRIPE_TOKEN_PRICE_MAX?:       string;
     // Phase 6 — small self-serve overage pack (300 tokens). Operator-set price ID.
     STRIPE_TOKEN_PRICE_OVERAGE?:   string;
+    // §27 P1.2 — plan products. A Stripe product id exists only in the mode that
+    // created it, so the compiled test-mode ids cannot work against a live key.
+    // Unset → the defaults in lib/billing-admin-shared.ts (test mode).
+    STRIPE_PRODUCT_STARTER?:       string;
+    STRIPE_PRODUCT_PROFESSIONAL?:  string;
+    STRIPE_PRODUCT_ENTERPRISE?:    string;
     // Plan-limit enforcement + controlled overflow billing scopes (vars, not secrets).
     // Both default OFF; '*' = explicit global. See lib/usage-limits.ts.
     ENABLE_PLAN_LIMITS?:               string;

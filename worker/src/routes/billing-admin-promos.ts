@@ -17,7 +17,7 @@ import { requireOwner } from '../middleware/requireOwner';
 import { getStripe } from '../lib/stripe';
 import { dlog } from '../lib/log';
 import {
-  PLAN_TO_PRODUCT,
+  resolvePlanProducts,
   generatePromoCode,
   isValidPlan,
   stripSecrets,
@@ -45,11 +45,11 @@ interface PromoListItem {
   createdAt:        string;
 }
 
-function appliesToFromCoupon(coupon: Stripe.Coupon | null | undefined): AppliesTo {
+function appliesToFromCoupon(coupon: Stripe.Coupon | null | undefined, products: Record<Plan, string>): AppliesTo {
   if (!coupon?.applies_to?.products || coupon.applies_to.products.length === 0) return 'all';
   const productId = coupon.applies_to.products[0];
   for (const p of ['starter', 'professional', 'enterprise'] as Plan[]) {
-    if (PLAN_TO_PRODUCT[p] === productId) return p;
+    if (products[p] === productId) return p;
   }
   return 'all';
 }
@@ -89,7 +89,7 @@ promos.get('/api/billing/admin/promotion-codes', requireAuth(), requireOwner(), 
       maxRedemptions:   pc.max_redemptions ?? null,
       timesRedeemed:    pc.times_redeemed,
       expiresAt:        pc.expires_at ? new Date(pc.expires_at * 1000).toISOString() : null,
-      appliesTo:        appliesToFromCoupon(coupon),
+      appliesTo:        appliesToFromCoupon(coupon, resolvePlanProducts(env)),
       createdAt:        new Date(pc.created * 1000).toISOString(),
     };
   });
@@ -164,7 +164,7 @@ promos.post('/api/billing/admin/promotion-codes', requireAuth(), requireOwner(),
   if (expiresAtUnix) couponParams.redeem_by = expiresAtUnix;
 
   if (body.appliesTo !== 'all') {
-    couponParams.applies_to = { products: [PLAN_TO_PRODUCT[body.appliesTo as Plan]] };
+    couponParams.applies_to = { products: [resolvePlanProducts(env)[body.appliesTo as Plan]] };
   }
 
   let coupon: Stripe.Coupon;

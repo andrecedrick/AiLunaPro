@@ -132,7 +132,7 @@ describe('price probes', () => {
 });
 
 describe('the readiness verdict', () => {
-  const clean = { staticChecks: true, pricesVerified: true, portalVerified: true, webhookObserved: true };
+  const clean = { staticChecks: true, pricesVerified: true, productsVerified: true, portalVerified: true, webhookObserved: true };
 
   it('is ready only when everything checked out AND the mode is live', () => {
     expect(buildReport('live', [], clean).ready).toBe(true);
@@ -160,5 +160,122 @@ describe('the readiness verdict', () => {
   it('always explains the webhook limitation rather than implying certainty', () => {
     expect(buildReport('live', [], clean).webhookNote).toBe(WEBHOOK_NOTE);
     expect(WEBHOOK_NOTE).toContain('marked paid');
+  });
+});
+
+/* ── P1.2 Phase A — the false pass this closes ─────────────────────────── */
+
+import { checkProductProbes, type ProductProbe } from '../../worker/src/lib/stripe-readiness';
+import { resolvePlanProducts, DEFAULT_PLAN_PRODUCTS, productToPlan, planLabelFromProductId } from '../../worker/src/lib/billing-admin-shared';
+
+describe('plan products come from the environment', () => {
+  it('falls back to the compiled test ids when nothing is set', () => {
+    expect(resolvePlanProducts({})).toEqual(DEFAULT_PLAN_PRODUCTS);
+    expect(resolvePlanProducts(undefined)).toEqual(DEFAULT_PLAN_PRODUCTS);
+  });
+
+  it('uses the configured live products when supplied', () => {
+    const r = resolvePlanProducts({
+      STRIPE_PRODUCT_STARTER: 'prod_live1',
+      STRIPE_PRODUCT_PROFESSIONAL: 'prod_live2',
+      STRIPE_PRODUCT_ENTERPRISE: 'prod_live3',
+    });
+    expect(r).toEqual({ starter: 'prod_live1', professional: 'prod_live2', enterprise: 'prod_live3' });
+  });
+
+  it('overrides per plan, so a partial switch is still coherent', () => {
+    const r = resolvePlanProducts({ STRIPE_PRODUCT_STARTER: 'prod_liveOnly' });
+    expect(r.starter).toBe('prod_liveOnly');
+    expect(r.professional).toBe(DEFAULT_PLAN_PRODUCTS.professional);
+  });
+
+  it('IGNORES a malformed value rather than sending garbage to Stripe', () => {
+    expect(resolvePlanProducts({ STRIPE_PRODUCT_STARTER: 'price_wrongKind' }).starter)
+      .toBe(DEFAULT_PLAN_PRODUCTS.starter);
+    expect(resolvePlanProducts({ STRIPE_PRODUCT_STARTER: '   ' }).starter)
+      .toBe(DEFAULT_PLAN_PRODUCTS.starter);
+  });
+
+  it('maps a product back to its plan against the ACTIVE set', () => {
+    const live = resolvePlanProducts({ STRIPE_PRODUCT_PROFESSIONAL: 'prod_liveP' });
+    expect(productToPlan('prod_liveP', live)).toBe('professional');
+    expect(productToPlan(DEFAULT_PLAN_PRODUCTS.professional, live)).toBeNull();
+  });
+
+  it('labels a subscription from the environment products, not the defaults', () => {
+    // Otherwise every live subscription would silently record as "Starter".
+    const live = resolvePlanProducts({ STRIPE_PRODUCT_ENTERPRISE: 'prod_liveE' });
+    expect(planLabelFromProductId('prod_liveE', live)).toBe('Enterprise');
+  });
+
+  it('still defaults an unknown product to Starter (pre-existing behaviour)', () => {
+    expect(planLabelFromProductId('prod_unknown', DEFAULT_PLAN_PRODUCTS)).toBe('Starter');
+    expect(planLabelFromProductId(null)).toBe('Starter');
+  });
+});
+
+describe('product probes — no false pass', () => {
+  const probe = (o: Partial<ProductProbe> = {}): ProductProbe => ({
+    plan: 'starter', variable: 'STRIPE_PRODUCT_STARTER', productId: 'prod_1',
+    found: true, livemode: true, active: true, currencies: ['usd'], ...o,
+  });
+
+  it('CATCHES a test product left behind after switching to live', () => {
+    // The exact false pass: prices validated, products never checked, and every
+    // plan purchase fails with "No active Stripe price found".
+    const f = checkProductProbes('live', [probe({ found: false, livemode: null, active: null, currencies: [] })], ['usd']);
+    expect(f[0].code).toBe('NOT_FOUND_IN_STRIPE');
+    expect(f[0].detail).toContain('every customer');
+  });
+
+  it('catches a product that exists but in the wrong mode', () => {
+    expect(checkProductProbes('live', [probe({ livemode: false })], ['usd'])[0].code).toBe('WRONG_LIVEMODE');
+    expect(checkProductProbes('test', [probe({ livemode: true })], ['usd'])[0].code).toBe('WRONG_LIVEMODE');
+  });
+
+  it('catches an archived product', () => {
+    expect(checkProductProbes('live', [probe({ active: false })], ['usd'])[0].code).toBe('INACTIVE');
+  });
+
+  it('catches a product with NO price in a required currency', () => {
+    const f = checkProductProbes('live', [probe({ currencies: ['usd'] })], ['eur', 'usd']);
+    expect(f[0].code).toBe('MISSING');
+    expect(f[0].detail).toContain('eur');
+  });
+
+  it('says so plainly when usd itself is missing — the final fallback', () => {
+    const f = checkProductProbes('live', [probe({ currencies: ['eur'] })], ['eur', 'usd']);
+    expect(f[0].detail).toContain('nothing left to fall back to');
+  });
+
+  it('passes a correct live product', () => {
+    expect(checkProductProbes('live', [probe({ currencies: ['eur', 'usd'] })], ['eur', 'usd'])).toEqual([]);
+  });
+});
+
+describe('the verdict gates on products', () => {
+  const clean = { staticChecks: true, pricesVerified: true, productsVerified: true, portalVerified: true, webhookObserved: true };
+
+  it('is NOT ready when products were never verified, even with prices green', () => {
+    expect(buildReport('live', [], { ...clean, productsVerified: false }).ready).toBe(false);
+  });
+
+  it('is NOT ready without a verified portal configuration', () => {
+    expect(buildReport('live', [], { ...clean, portalVerified: false }).ready).toBe(false);
+  });
+
+  it('is ready only when every gate holds', () => {
+    expect(buildReport('live', [], clean).ready).toBe(true);
+  });
+});
+
+describe('the verdict is always a real boolean', () => {
+  it('reads as NOT ready when a gate is absent, never as undefined', () => {
+    // `ready` is a safety verdict. A caller testing `=== false` must not be
+    // defeated by an omitted field turning the conjunction into undefined.
+    const partial = { staticChecks: true, pricesVerified: true, portalVerified: true, webhookObserved: true };
+    const r = buildReport('live', [], partial as unknown as Parameters<typeof buildReport>[2]);
+    expect(r.ready).toBe(false);
+    expect(typeof r.ready).toBe('boolean');
   });
 });

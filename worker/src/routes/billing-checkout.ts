@@ -27,7 +27,7 @@ import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import { isSupportedCurrency, type Currency } from '../lib/currency';
 import { detectCurrencyFromRequest } from '../lib/geo-currency';
-import { PLAN_TO_PRODUCT, isValidPlan, type Plan } from '../lib/billing-admin-shared';
+import { resolvePlanProducts, isValidPlan, type Plan } from '../lib/billing-admin-shared';
 import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
@@ -155,7 +155,7 @@ checkout.post('/api/billing/checkout', requireAuth(), requireRole(['owner', 'bil
 
   // Resolve productId
   const productId = explicitProductId
-    ?? (plan ? PLAN_TO_PRODUCT[plan] : undefined);
+    ?? (plan ? resolvePlanProducts(env)[plan] : undefined);
   if (!productId) {
     return c.json({ error: `Unknown plan: ${plan}` }, 400);
   }

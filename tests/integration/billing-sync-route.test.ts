@@ -47,6 +47,9 @@ vi.mock('../../worker/src/lib/tokens', () => ({ syncBalanceAllocation: vi.fn(asy
 vi.mock('../../worker/src/lib/billing-admin-shared', () => ({
   planLabelFromProductId: () => 'Professional',
   extractProductIdFromSubscription: () => 'prod_1',
+  // Plan products are environment-driven (§27 P1.2 Phase A); the route resolves
+  // them before labelling a subscription.
+  resolvePlanProducts: () => ({ starter: 'prod_1', professional: 'prod_2', enterprise: 'prod_3' }),
 }));
 
 import sync from '../../worker/src/routes/billing-sync';

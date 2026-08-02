@@ -23,7 +23,7 @@ import { firestoreSet, firestoreGet, firestoreGetWithMeta, firestoreSetIfMatch }
 import { firestoreCreateIfNotExists } from '../lib/firestoreAdmin';
 import { incrementBalance, syncBalanceAllocation } from '../lib/tokens';
 import { TOKEN_PACKS, isValidPack } from '../lib/token-costs';
-import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
+import { planLabelFromProductId, extractProductIdFromSubscription, resolvePlanProducts } from '../lib/billing-admin-shared';
 import { recordWebhookEvent } from './billing-config';
 import { sendPaymentConfirmation, invoiceChargeMinor } from './invoices';
 import { recordBillingAlert, RetryableWebhookError } from '../lib/billing-alerts';
@@ -354,7 +354,7 @@ async function handleEvent(
       });
 
       const productId = extractProductIdFromSubscription(sub);
-      const plan      = planLabelFromProductId(productId);
+      const plan      = planLabelFromProductId(productId, resolvePlanProducts(env));
       const item      = sub.items?.data?.[0];
 
       await firestoreSet(saJson, `organizations/${orgId}/subscriptions/current`, {
@@ -396,7 +396,7 @@ async function handleEvent(
       }
 
       const productId = extractProductIdFromSubscription(sub);
-      const plan      = planLabelFromProductId(productId);
+      const plan      = planLabelFromProductId(productId, resolvePlanProducts(env));
       const item      = sub.items?.data?.[0];
 
       await firestoreSet(saJson, `organizations/${orgId}/subscriptions/current`, {

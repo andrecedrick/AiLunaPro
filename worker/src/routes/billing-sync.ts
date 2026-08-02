@@ -25,7 +25,7 @@ import { getStripe } from '../lib/stripe';
 import { firestoreSet, firestoreGet } from '../lib/firestoreAdmin';
 import { dlog } from '../lib/log';
 import { syncBalanceAllocation } from '../lib/tokens';
-import { planLabelFromProductId, extractProductIdFromSubscription } from '../lib/billing-admin-shared';
+import { planLabelFromProductId, extractProductIdFromSubscription, resolvePlanProducts } from '../lib/billing-admin-shared';
 import { assertStripeKeyAllowed } from '../lib/env';
 import type { AppEnv } from '../index';
 
@@ -142,7 +142,7 @@ sync.post('/api/billing/sync-session', requireAuth(), async c => {
   const productId    = extractProductIdFromSubscription(sub);
   const plan = (metadataPlan && ['Starter', 'Professional', 'Enterprise'].includes(metadataPlan as string))
     ? (metadataPlan as 'Starter' | 'Professional' | 'Enterprise')
-    : planLabelFromProductId(productId);
+    : planLabelFromProductId(productId, resolvePlanProducts(env));
 
   dlog(env, '[sync-session] subscriptionId=', sub.id, 'plan=', plan, 'productId=', productId);
 

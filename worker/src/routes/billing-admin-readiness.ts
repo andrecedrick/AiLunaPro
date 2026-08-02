@@ -21,9 +21,10 @@ import { requireOwner } from '../middleware/requireOwner';
 import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import {
-  checkStaticReadiness, checkPriceProbes, buildReport,
-  type PriceProbe, type ReadinessFinding,
+  checkStaticReadiness, checkPriceProbes, checkProductProbes, buildReport,
+  type PriceProbe, type ProductProbe, type ReadinessFinding,
 } from '../lib/stripe-readiness';
+import { resolvePlanProducts } from '../lib/billing-admin-shared';
 import type { AppEnv } from '../index';
 
 const readiness = new Hono<AppEnv>();
@@ -38,8 +39,30 @@ readiness.get('/api/billing/admin/live-readiness', requireAuth(), requireOwner()
   const stat = checkStaticReadiness(env as Record<string, string | undefined>);
   const findings: ReadinessFinding[] = [...stat.findings];
 
+  /**
+   * Currencies a plan must be purchasable in.
+   *
+   * Taken from the org's own billing config rather than the full supported list:
+   * demanding prices in currencies the business does not sell would be a
+   * permanent false failure. `usd` is always included because it is checkout's
+   * last fallback — without it a customer in an unpriced currency has nothing to
+   * fall back to.
+   */
+  const orgId = c.get('orgId') as string;
+  let requiredCurrencies: string[] = ['usd'];
+  if (env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    const cfg = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/billing_config/current`)
+      .catch(() => null) as Record<string, unknown> | null;
+    const cs = (cfg?.currencySettings ?? {}) as { enabledCurrencies?: unknown };
+    if (Array.isArray(cs.enabledCurrencies)) {
+      requiredCurrencies = [...new Set(['usd', ...cs.enabledCurrencies.filter((x): x is string => typeof x === 'string')])].sort();
+    }
+  }
+
   let pricesVerified = false;
+  let productsVerified = false;
   let portalVerified = false;
+  let products: ProductProbe[] = [];
   const portal: { configured: boolean; livemode: boolean | null; error: string } =
     { configured: false, livemode: null, error: '' };
 
@@ -64,6 +87,47 @@ readiness.get('/api/billing/admin/live-readiness', requireAuth(), requireOwner()
     }));
     findings.push(...checkPriceProbes(stat.mode, probes));
     pricesVerified = probes.length > 0 && probes.every(p => p.found);
+
+    // ── Plan products: what checkout ACTUALLY resolves against.
+    //    Checkout never reads STRIPE_PRICE_*; it lists prices for the plan's
+    //    product. Skipping this is what let the preflight report ready while
+    //    every plan purchase failed.
+    const planProducts = resolvePlanProducts(env);
+    const productVars: Record<string, string> = {
+      starter: 'STRIPE_PRODUCT_STARTER',
+      professional: 'STRIPE_PRODUCT_PROFESSIONAL',
+      enterprise: 'STRIPE_PRODUCT_ENTERPRISE',
+    };
+
+    const productProbes: ProductProbe[] = await Promise.all(
+      (Object.keys(planProducts) as Array<keyof typeof planProducts>).map(async plan => {
+        const productId = planProducts[plan];
+        const base: ProductProbe = {
+          plan, variable: productVars[plan], productId,
+          found: false, livemode: null, active: null, currencies: [],
+        };
+        try {
+          const product = await stripe.products.retrieve(productId);
+          base.found = true;
+          base.livemode = product.livemode;
+          base.active = product.active;
+        } catch {
+          return base;   // absent in this mode — the finding says so
+        }
+        try {
+          // Same filter checkout uses: active recurring prices for the product.
+          const prices = await stripe.prices.list({ product: productId, active: true, type: 'recurring', limit: 100 });
+          base.currencies = [...new Set(prices.data.map(p => p.currency))].sort();
+        } catch {
+          // Leave currencies empty: reported as missing rather than assumed present.
+        }
+        return base;
+      }),
+    );
+
+    findings.push(...checkProductProbes(stat.mode, productProbes, requiredCurrencies));
+    productsVerified = productProbes.length > 0 && productProbes.every(p => p.found);
+    products = productProbes;
 
     // ── Customer portal: a live account with no portal configuration means every
     //    "manage subscription" click 500s after the customer has already paid.
@@ -116,10 +180,10 @@ readiness.get('/api/billing/admin/live-readiness', requireAuth(), requireOwner()
   }
 
   const report = buildReport(stat.mode, findings, {
-    staticChecks: true, pricesVerified, portalVerified, webhookObserved,
+    staticChecks: true, pricesVerified, productsVerified, portalVerified, webhookObserved,
   });
 
-  return c.json({ ...report, portal, webhook });
+  return c.json({ ...report, requiredCurrencies, products, portal, webhook });
 });
 
 export default readiness;

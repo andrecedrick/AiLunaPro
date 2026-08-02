@@ -183,12 +183,92 @@ export function checkPriceProbes(mode: StripeMode, probes: readonly PriceProbe[]
   return findings;
 }
 
+/** What Stripe reports about one plan product and its prices. */
+export interface ProductProbe {
+  plan:      string;
+  /** The env variable that supplies it, for a fixable finding. */
+  variable:  string;
+  productId: string;
+  found:     boolean;
+  livemode:  boolean | null;
+  active:    boolean | null;
+  /** Currencies with an active recurring price, exactly as checkout resolves them. */
+  currencies: string[];
+}
+
+/**
+ * Turn product probes into findings.
+ *
+ * THIS IS THE CHECK THAT PREVENTS A FALSE PASS. Plan checkout does not use the
+ * `STRIPE_PRICE_*` variables at all — it resolves a price from the plan's
+ * PRODUCT. Validating only the price variables therefore reports ready while
+ * every plan purchase fails with "No active Stripe price found".
+ *
+ * `requiredCurrencies` mirrors checkout's own fallback chain: it tries the
+ * detected currency, then the org default, then `usd`. A plan missing `usd` has
+ * no final fallback, so that is treated as fatal rather than cosmetic.
+ */
+export function checkProductProbes(
+  mode: StripeMode,
+  probes: readonly ProductProbe[],
+  requiredCurrencies: readonly string[],
+): ReadinessFinding[] {
+  const findings: ReadinessFinding[] = [];
+
+  for (const p of probes) {
+    if (!p.found) {
+      findings.push({
+        variable: p.variable, code: 'NOT_FOUND_IN_STRIPE',
+        detail: `Stripe does not recognise product ${p.productId} in ${mode} mode. Checkout for the ${p.plan} plan would fail for every customer.`,
+      });
+      continue;
+    }
+    if (mode === 'live' && p.livemode === false) {
+      findings.push({
+        variable: p.variable, code: 'WRONG_LIVEMODE',
+        detail: `The ${p.plan} product is a TEST product but the account is running live.`,
+      });
+    }
+    if (mode === 'test' && p.livemode === true) {
+      findings.push({
+        variable: p.variable, code: 'WRONG_LIVEMODE',
+        detail: `The ${p.plan} product is a LIVE product but the account is running in test mode.`,
+      });
+    }
+    if (p.active === false) {
+      findings.push({
+        variable: p.variable, code: 'INACTIVE',
+        detail: `The ${p.plan} product is archived in Stripe.`,
+      });
+    }
+
+    const missing = requiredCurrencies.filter(c => !p.currencies.includes(c));
+    if (missing.length > 0) {
+      findings.push({
+        variable: p.variable, code: 'MISSING',
+        detail: `The ${p.plan} product has no active recurring price in: ${missing.join(', ')}. `
+          + (missing.includes('usd')
+            ? 'usd is the final fallback in checkout, so there is nothing left to fall back to.'
+            : 'Checkout falls back to another currency, so customers would be billed in the wrong one.'),
+      });
+    }
+  }
+  return findings;
+}
+
 export interface ReadinessReport {
   mode:     StripeMode;
   /** True only when nothing would break. Deliberately strict. */
   ready:    boolean;
   findings: ReadinessFinding[];
-  checked:  { staticChecks: boolean; pricesVerified: boolean; portalVerified: boolean; webhookObserved: boolean };
+  checked:  {
+    staticChecks: boolean;
+    pricesVerified: boolean;
+    /** Plan products retrieved from Stripe with a resolvable price per currency. */
+    productsVerified: boolean;
+    portalVerified: boolean;
+    webhookObserved: boolean;
+  };
   /**
    * The one thing no preflight can prove. Both modes use `whsec_`, so a stale
    * test signing secret looks perfectly valid until a real event arrives and
@@ -211,7 +291,22 @@ export function buildReport(
 ): ReadinessReport {
   return {
     mode,
-    ready: findings.length === 0 && mode === 'live' && checked.pricesVerified && checked.webhookObserved,
+    // Deliberately conjunctive: every gate must hold. `productsVerified` is the
+    // one that closes the false pass — without it a configuration whose plan
+    // products are absent from the target mode reported ready while no customer
+    // could subscribe.
+    // Boolean(): a missing gate must read as NOT ready. Without the coercion an
+    // absent field makes the whole conjunction `undefined`, and `undefined` is
+    // not `true` — but a caller checking `if (report.ready === false)` would
+    // miss it. A safety verdict has to be a real boolean.
+    ready: Boolean(
+      findings.length === 0
+      && mode === 'live'
+      && checked.pricesVerified
+      && checked.productsVerified
+      && checked.portalVerified
+      && checked.webhookObserved,
+    ),
     findings: [...findings],
     checked,
     webhookNote: WEBHOOK_NOTE,

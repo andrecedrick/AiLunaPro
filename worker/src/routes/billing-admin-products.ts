@@ -18,7 +18,7 @@ import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
 import { dlog } from '../lib/log';
 import { isSupportedCurrency, isSupportedInterval } from '../lib/currency';
 import {
-  PLAN_TO_PRODUCT,
+  resolvePlanProducts,
   PLAN_NAMES,
   isValidPlan,
   stripSecrets,
@@ -60,7 +60,7 @@ products.get('/api/billing/admin/products', requireAuth(), requireOwner(), async
   }> = [];
 
   for (const plan of ['starter', 'professional', 'enterprise'] as Plan[]) {
-    const productId = PLAN_TO_PRODUCT[plan];
+    const productId = resolvePlanProducts(env)[plan];
     let product: Stripe.Product;
     try {
       product = await stripe.products.retrieve(productId);
@@ -151,7 +151,7 @@ products.post('/api/billing/admin/prices', requireAuth(), requireOwner(), async 
     return c.json({ error: 'amountCents must be an integer ≥ 50' }, 400);
   }
 
-  const productId = PLAN_TO_PRODUCT[body.plan];
+  const productId = resolvePlanProducts(env)[body.plan];
   const stripe    = getStripe(env.STRIPE_SECRET_KEY);
 
   let price: Stripe.Price;

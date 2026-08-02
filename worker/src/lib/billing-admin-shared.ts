@@ -14,16 +14,58 @@ export type Plan = 'starter' | 'professional' | 'enterprise';
  */
 export type PlanLabel = 'Free' | 'Starter' | 'Professional' | 'Enterprise';
 
-export const PLAN_TO_PRODUCT: Record<Plan, string> = {
+/**
+ * Stripe plan products.
+ *
+ * A Stripe product id exists ONLY in the mode that created it, so these test-mode
+ * ids cannot work against a live key: `products.retrieve` 404s, no price resolves,
+ * and checkout fails for every plan. They therefore have to be configurable per
+ * environment rather than compiled in.
+ *
+ * They remain the DEFAULTS so the current test environment keeps working with no
+ * secret set — the switch to live is `wrangler secret put STRIPE_PRODUCT_*`, not
+ * a code change.
+ */
+export const DEFAULT_PLAN_PRODUCTS: Record<Plan, string> = {
   starter:      'prod_USl0378mg0WpXH',
   professional: 'prod_USl1qstrufNmjk',
   enterprise:   'prod_USl2FAygpK0wW2',
 };
 
+/** @deprecated Use `resolvePlanProducts(env)`. Kept so nothing silently breaks. */
+export const PLAN_TO_PRODUCT: Record<Plan, string> = DEFAULT_PLAN_PRODUCTS;
+
+export interface PlanProductEnv {
+  STRIPE_PRODUCT_STARTER?:      string;
+  STRIPE_PRODUCT_PROFESSIONAL?: string;
+  STRIPE_PRODUCT_ENTERPRISE?:   string;
+}
+
+/** The product ids this environment actually uses. Falls back per-plan. */
+export function resolvePlanProducts(env: PlanProductEnv | undefined): Record<Plan, string> {
+  const pick = (v: string | undefined, fallback: string): string => {
+    const s = (v ?? '').trim();
+    return s.startsWith('prod_') ? s : fallback;
+  };
+  return {
+    starter:      pick(env?.STRIPE_PRODUCT_STARTER,      DEFAULT_PLAN_PRODUCTS.starter),
+    professional: pick(env?.STRIPE_PRODUCT_PROFESSIONAL, DEFAULT_PLAN_PRODUCTS.professional),
+    enterprise:   pick(env?.STRIPE_PRODUCT_ENTERPRISE,   DEFAULT_PLAN_PRODUCTS.enterprise),
+  };
+}
+
+/** Reverse map for a given product set. */
+export function productToPlan(productId: string, products: Record<Plan, string>): Plan | null {
+  for (const plan of ['starter', 'professional', 'enterprise'] as const) {
+    if (products[plan] === productId) return plan;
+  }
+  return null;
+}
+
 export const PRODUCT_TO_PLAN: Record<string, Plan> = {
-  [PLAN_TO_PRODUCT.starter]:      'starter',
-  [PLAN_TO_PRODUCT.professional]: 'professional',
-  [PLAN_TO_PRODUCT.enterprise]:   'enterprise',
+  [DEFAULT_PLAN_PRODUCTS.starter]:      'starter',
+  [DEFAULT_PLAN_PRODUCTS.professional]: 'professional',
+  [DEFAULT_PLAN_PRODUCTS.enterprise]:   'enterprise',
 };
 
 export const PLAN_NAMES: Record<Plan, string> = {
@@ -72,18 +114,37 @@ export function stripSecrets<T>(input: T): T {
    subscriptions/current.plan. Used by webhook + sync fallback. */
 
 export const PRODUCT_TO_PLAN_LABEL: Record<string, PlanLabel> = {
-  [PLAN_TO_PRODUCT.starter]:      'Starter',
-  [PLAN_TO_PRODUCT.professional]: 'Professional',
-  [PLAN_TO_PRODUCT.enterprise]:   'Enterprise',
+  [DEFAULT_PLAN_PRODUCTS.starter]:      'Starter',
+  [DEFAULT_PLAN_PRODUCTS.professional]: 'Professional',
+  [DEFAULT_PLAN_PRODUCTS.enterprise]:   'Enterprise',
+};
+
+const PLAN_LABELS: Record<Plan, PlanLabel> = {
+  starter: 'Starter', professional: 'Professional', enterprise: 'Enterprise',
 };
 
 /**
  * Resolve capitalized plan label from Stripe product ID.
- * Defaults to 'Starter' for unknown paid products (mirrors prior J1.1 behavior).
- * 'Free' is set explicitly by the webhook on customer.subscription.deleted.
+ *
+ * `products` should be the environment's resolved set; omitting it falls back to
+ * the compiled defaults, which is only correct in test mode.
+ *
+ * The unknown-product fallback to 'Starter' is PRE-EXISTING behaviour and is
+ * kept, but it is worth knowing what it means once products are environment-
+ * driven: a mismatched product id records every subscription as Starter no
+ * matter which plan was actually bought. That is precisely the failure the
+ * live-readiness product check exists to prevent, so an unknown id is logged
+ * rather than absorbed in silence.
  */
-export function planLabelFromProductId(productId: string | null | undefined): PlanLabel {
-  if (productId && PRODUCT_TO_PLAN_LABEL[productId]) return PRODUCT_TO_PLAN_LABEL[productId];
+export function planLabelFromProductId(
+  productId: string | null | undefined,
+  products: Record<Plan, string> = DEFAULT_PLAN_PRODUCTS,
+): PlanLabel {
+  if (productId) {
+    const plan = productToPlan(productId, products);
+    if (plan) return PLAN_LABELS[plan];
+    console.warn('[billing] unknown Stripe product id — defaulting plan to Starter:', productId);
+  }
   return 'Starter';
 }
 
