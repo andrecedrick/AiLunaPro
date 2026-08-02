@@ -20,10 +20,23 @@
     <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
     <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
     <link rel="dns-prefetch" href="https://securetoken.googleapis.com" />
-    <!-- Google Fonts (P3-b): loaded here (not via CSS @import) so it's discovered
-         during initial HTML parse and fetched in parallel with the bundle.
-         display=swap → text paints immediately in fallback, then swaps (no FOIT). -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" />
+    <!-- Google Fonts — loaded NON-BLOCKING.
+         A plain <link rel="stylesheet"> is render-blocking: the browser paints
+         nothing until it resolves. `display=swap` does NOT change that — it only
+         prevents invisible text once the CSS has already arrived. So when
+         fonts.googleapis.com was slow or blocked (an ad-blocker, a corporate
+         filter, a bad network — exactly what the app's own connection card warns
+         about), first paint waited for the timeout. Measured: TTFB 265 ms,
+         DOM-ready 3.9 s, first paint 32.3 s.
+         media="print" makes the fetch non-blocking; onload promotes it to all
+         media once it arrives. Text renders immediately in the fallback font and
+         swaps when the webfont lands. If it never lands, the app still works. -->
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap"
+          media="print" onload="this.media='all';this.onload=null" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" />
+    </noscript>
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png" />
     <link rel="apple-touch-icon" href="https://res.cloudinary.com/dhtnegf9d/image/upload/v1777320369/5_f5i6ym.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
