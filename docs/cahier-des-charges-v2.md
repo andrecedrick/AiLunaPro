@@ -4263,7 +4263,7 @@ as evidence.
 | Enrichment collection in production | **BLOCKED** | No provider configured — see §27.4 B1/B2 |
 | Stripe billing | **BLOCKED** | `stripeMode: "test"` — see §27.4 B3 |
 | CI gate on shipped code | **DONE** | Green on `59fabef` (run #3) |
-| CI auto-deploy | **DONE** | Run #6 green — gate + deploy |
+| CI auto-deploy | **DONE** | Green end-to-end on `d9fb26f`; deploys worker + pages |
 | Repository visibility | **DONE** | Set PRIVATE — approved 2026-08-02 |
 
 **Build reproducibility.** The frontend build is intentionally NOT reproducible:
@@ -4307,7 +4307,7 @@ wording should be read accordingly.
 | **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
 | **B3** | `stripeMode: "test"` in production | No revenue | P1.2b |
-| **B8** | Client config supplied to CI as ONE aggregate secret (`AILUNAPRO_API_KEY_SECRET`) + ONE aggregate variable (`AILUNAPRO_DB_VARIABLE`), each a block of KEY=VALUE lines. GitHub does not expand an aggregate into individual entries, so `secrets.VITE_*` resolved empty and the build guard fired. The workflow now parses both blobs into `$GITHUB_ENV` (VITE_* keys only; secret values masked). Original entry: 11 secrets + 6 variables. `VITE_STRIPE_PUBLISHABLE_KEY` was removed from the workflow — the frontend never reads it (Stripe config comes from the worker at runtime). The build guard now also checks that the auth/billing data layers resolve to `firebase`, so CI cannot ship a bundle that boots into mock data. | **CI build now fails by design** until they are added, so no further CI deploy can ship a bundle that cannot boot. Production is healthy (restored by a local deploy). Deploys stay manual until this clears. | Owner adds the secrets/variables listed in `.github/workflows/ci.yml` |
+| ~~**B8**~~ | **CLOSED 2026-08-03.** CI and CD green on `d9fb26f`; worker `0d627e0a` and the Pages bundle both deployed by the pipeline, and the CI-built bundle verified to carry its Firebase config and boot (FCP 2.5 s, no connection card). Original entry: Client config supplied to CI as ONE aggregate secret (`AILUNAPRO_API_KEY_SECRET`) + ONE aggregate variable (`AILUNAPRO_DB_VARIABLE`), each a block of KEY=VALUE lines. GitHub does not expand an aggregate into individual entries, so `secrets.VITE_*` resolved empty and the build guard fired. The workflow now parses both blobs into `$GITHUB_ENV` (VITE_* keys only; secret values masked). Original entry: 11 secrets + 6 variables. `VITE_STRIPE_PUBLISHABLE_KEY` was removed from the workflow — the frontend never reads it (Stripe config comes from the worker at runtime). The build guard now also checks that the auth/billing data layers resolve to `firebase`, so CI cannot ship a bundle that boots into mock data. | **CI build now fails by design** until they are added, so no further CI deploy can ship a bundle that cannot boot. Production is healthy (restored by a local deploy). Deploys stay manual until this clears. | Owner adds the secrets/variables listed in `.github/workflows/ci.yml` |
 | **B7** | Live Stripe credentials not installed | P1.2b cannot be closed. Preflight is deployed and will verify the switch the moment it is made. | Owner installs live keys, price ids and webhook secret, then runs the preflight |
 | **D3** | robots.txt stance for the Apify layer undecided (§26.15) | Legal exposure the moment a customer domain is crawled | P2.0 |
 
