@@ -310,9 +310,14 @@ describe('reminder sweep', () => {
   });
 
   it('notifies again on a DIFFERENT day', async () => {
+    // Anchored to the SAME clock as the fixtures. This previously pinned two
+    // literal dates against fixtures built from Date.now(), so it passed until
+    // the real calendar moved past them and then failed for a reason that had
+    // nothing to do with the code. Exactly 24h apart always lands on two
+    // different calendar days, which is the property under test.
     contact('c1', { pipelineStatus: 'contacted', nextFollowUpAt: daysAgo(2) });
-    await runReminderSweep('{}', '2026-08-01T07:00:00.000Z');
-    await runReminderSweep('{}', '2026-08-02T07:00:00.000Z');
+    await runReminderSweep('{}', daysAgo(1));
+    await runReminderSweep('{}', daysAgo(0));
     expect(state.notifs).toHaveLength(2);
   });
 

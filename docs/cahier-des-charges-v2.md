@@ -4393,7 +4393,7 @@ was `Deploy pages`.
 | **P1.1** | Invoice correctness — accounting-grade. Currency support · VAT · subtotal · billing address · organization information · Stripe payment reference · Stripe payment intent · sequential invoice numbering · payment information | **DONE** 2026-08-02 | P0.0a |
 | **P1.2a** | Live-activation preflight: readiness engine, `GET /api/billing/admin/live-readiness`, durable webhook-verification evidence | **DONE** 2026-08-02 | P1.1 |
 | **P1.2 Phase A** | Environment-driven plan products (`STRIPE_PRODUCT_*`) + extended readiness validation (products · prices · currency mappings · active · livemode) | **DONE** 2026-08-02 | P1.2a |
-| **P1.2 Phase B** | Stripe dashboard preparation — live products, prices, token packs, webhook, portal, promotions (runbook below) | **READY FOR OWNER** 2026-08-02 — guide verified against all 17 Stripe call sites; awaiting execution in the Stripe dashboard | Phase A |
+| **P1.2 Phase B** | Stripe dashboard preparation — runbook + idempotent setup script (`scripts/stripe-setup.mjs`) | **DONE** 2026-08-02 — tooling built, tested and verified; awaiting owner execution against Stripe | Phase A |
 | **P1.2 Phase C** | Install live credentials, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase B + owner action |
 
 **P1.2 Phase A closure evidence (2026-08-02).** Two defects found during the P1.2
@@ -4572,6 +4572,38 @@ Two facts confirmed that change what the owner must do:
 - **Prices and coupons can be created from the app** (`billing-admin-products`,
   `billing-admin-promos`) as an alternative to the dashboard. Products cannot —
   they must be created in Stripe.
+
+**Phase B tooling — `scripts/stripe-setup.mjs` (2026-08-02).** Idempotent Stripe
+catalog setup. Zero dependencies (Stripe REST via `fetch`). Reads
+`STRIPE_SECRET_KEY` from the environment only; the value is never written to a
+file, printed, or included in an error message — only its MODE, derived from the
+prefix, is ever displayed.
+
+| Mode | Effect |
+|---|---|
+| *(default)* | **DRY RUN** — plans and prints, writes nothing |
+| `--export` | Reads the current account into `scripts/stripe-catalog.json` |
+| `--apply` | Creates missing objects |
+| `--apply --allow-live` | Required for an `sk_live_` key; `--apply` alone refuses |
+| `--verify` | Prints the Phase C id block |
+
+Creates: 3 products · subscription prices per plan per currency · 4 **one-off**
+token-pack prices · coupons · promotion codes.
+
+Three design decisions worth keeping:
+1. **Idempotency by `metadata.ailuna_key`**, not by name or amount. Matching on
+   name is fragile (names are editable and duplicable); matching on amount would
+   adopt an unrelated object that happened to cost the same.
+2. **Conflicts never auto-resolve.** Stripe prices are immutable, so when a keyed
+   price exists at a different amount the planner stops. Silently creating a
+   second active price for one slot is how an account starts charging two
+   customers two different amounts for the same plan.
+3. **`--export` removes guesswork.** Capture the amounts from the test account,
+   apply that same file to live — no price is ever retyped or invented.
+
+Verified without touching any account: refuses with no key · refuses `--apply`
+on a live key without `--allow-live`, *before any network call* · stops on a
+missing catalog before contacting Stripe. 22 planner tests.
 
 **Phase C data to record** (nothing else is needed to activate):
 `STRIPE_PRODUCT_STARTER|PROFESSIONAL|ENTERPRISE` (3 × `prod_…`) ·
