@@ -4393,7 +4393,7 @@ was `Deploy pages`.
 | **P1.1** | Invoice correctness — accounting-grade. Currency support · VAT · subtotal · billing address · organization information · Stripe payment reference · Stripe payment intent · sequential invoice numbering · payment information | **DONE** 2026-08-02 | P0.0a |
 | **P1.2a** | Live-activation preflight: readiness engine, `GET /api/billing/admin/live-readiness`, durable webhook-verification evidence | **DONE** 2026-08-02 | P1.1 |
 | **P1.2 Phase A** | Environment-driven plan products (`STRIPE_PRODUCT_*`) + extended readiness validation (products · prices · currency mappings · active · livemode) | **DONE** 2026-08-02 | P1.2a |
-| **P1.2 Phase B** | Stripe dashboard preparation — runbook + idempotent setup script (`scripts/stripe-setup.mjs`) | **DONE** 2026-08-02 — tooling built, tested and verified; awaiting owner execution against Stripe | Phase A |
+| **P1.2 Phase B** | Stripe dashboard preparation — runbook + idempotent setup script (`scripts/stripe-setup.mjs`) | **DONE** 2026-08-04 — tooling built, and rehearsed end to end against the TEST account: 12 objects created, second apply `0 to create · 12 already correct · 0 conflict` | Phase A |
 | **P1.2 Phase C** | Install live credentials, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase B + owner action |
 
 **P1.2 Phase A closure evidence (2026-08-02).** Two defects found during the P1.2
@@ -4604,6 +4604,30 @@ Three design decisions worth keeping:
 Verified without touching any account: refuses with no key · refuses `--apply`
 on a live key without `--allow-live`, *before any network call* · stops on a
 missing catalog before contacting Stripe. 22 planner tests.
+
+**Phase B — TEST rehearsal CLOSED (2026-08-04).** The script was exercised end to
+end against the live-mode-free test account, in the order it will be run against
+live: `--export` → catalog review → dry run → `--apply` → `--apply` again.
+
+| Step | Result |
+|---|---|
+| `--export` | catalog captured; 3 plans × 2 currencies + 3 packs |
+| dry run | 12 to create · 0 already correct · 0 conflict · `tokenpack:overage` skipped |
+| apply #1 | 12 objects created — 3 products, 6 recurring prices, 3 one-off pack prices |
+| apply #2 | **0 to create · 12 already correct · 0 conflict** |
+
+`0 already correct` on the first run is correct behaviour, not a miss: the
+pre-existing hand-made products carry no `ailuna_key`, and the planner adopts
+only what it created. Apply #2 is the load-bearing evidence — `planCatalog`
+emits `reuse` **only** when `unit_amount` and `currency` equal the catalog and
+the object is active, and for a pack only when it has no `recurring` field.
+Twelve reuses therefore prove, in one line, that every amount and currency on
+the account matches the catalog and that no token pack became a subscription.
+
+Not exercised, and stated rather than implied: the **conflict** path (nothing
+conflicted), **coupons / promotion codes** (`promotions: []`), and **partial
+failure resume** (no create failed). All three are equally absent from the live
+plan. Unit tests cover them; a real account has not.
 
 **Phase C data to record** (nothing else is needed to activate):
 `STRIPE_PRODUCT_STARTER|PROFESSIONAL|ENTERPRISE` (3 × `prod_…`) ·
