@@ -277,3 +277,49 @@ describe('secret redaction', () => {
     expect(redact(undefined)).toBe('');
   });
 });
+
+describe('a token pack can be explicitly not offered', () => {
+  // The app already tolerates an unconfigured pack — /api/tokens/topup answers
+  // PACK_NOT_CONFIGURED — so demanding a price would be stricter than the
+  // product and would push an operator into inventing an amount.
+  const skipped = (over: Record<string, unknown> = {}) => ({
+    ...VALID,
+    tokenPacks: { ...VALID.tokenPacks, overage: { skip: true, ...over } },
+  });
+
+  it('accepts skip: true with no amount at all', () => {
+    expect(validateCatalog(skipped())).toEqual([]);
+  });
+
+  it('still REJECTS a bare null — unresolved is not the same as not-offered', () => {
+    const c = structuredClone(VALID);
+    (c.tokenPacks.overage as Record<string, unknown>).amountMinor = null;
+    const errs = validateCatalog(c).join();
+    expect(errs).toContain('tokenPacks.overage');
+    expect(errs).toContain('skip');   // the error names the way out
+  });
+
+  it('plans no action for a skipped pack', () => {
+    const actions = planCatalog(skipped(), EMPTY_ACCOUNT);
+    const overage = actions.filter(a => a.key === tokenPriceKey('overage'));
+    expect(overage).toHaveLength(1);
+    expect(overage[0].op).toBe('skip');
+    expect(actions.filter(a => a.op === 'create' && a.type === 'token_price')).toHaveLength(3);
+  });
+
+  it('a skipped pack is not counted as a missing Phase C id', () => {
+    const resolved = Object.fromEntries(
+      Object.keys(ENV_VAR).filter(k => k !== tokenPriceKey('overage')).map(k => [k, `id_${k}`]));
+    const skip = new Set([tokenPriceKey('overage')]);
+    expect(missingPhaseCIds(resolved, skip)).toEqual([]);
+    expect(missingPhaseCIds(resolved)).toEqual([tokenPriceKey('overage')]);   // without the skip set, still missing
+  });
+
+  it('reads as a decision in the Phase C block, not as a failure', () => {
+    const resolved = Object.fromEntries(
+      Object.keys(ENV_VAR).filter(k => k !== tokenPriceKey('overage')).map(k => [k, `id_${k}`]));
+    const out = renderPhaseCBlock(resolved, new Set([tokenPriceKey('overage')]));
+    expect(out).toContain('skipped — pack not offered');
+    expect(out).not.toContain('MISSING');
+  });
+});

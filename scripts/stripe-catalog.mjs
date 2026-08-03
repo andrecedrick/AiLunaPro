@@ -120,8 +120,20 @@ export function validateCatalog(catalog) {
   for (const { pack } of TOKEN_PACKS) {
     const entry = packs[pack];
     if (!entry) { errors.push(`tokenPacks.${pack}: missing`); continue; }
+    // `skip: true` is a DECISION: this pack is not offered, so no price is
+    // created and its STRIPE_TOKEN_PRICE_* stays unset. The app already handles
+    // that — /api/tokens/topup answers PACK_NOT_CONFIGURED — so demanding a
+    // price here would be stricter than the product, and would push an operator
+    // into inventing an amount just to satisfy a validator.
+    //
+    // A bare `amountMinor: null` is NOT the same thing: that is an unresolved
+    // export, and it stays an error. Not-offered must be stated, never inferred
+    // from an absent value.
+    if (entry.skip === true) continue;
     if (!entry.currency) errors.push(`tokenPacks.${pack}: missing currency`);
-    if (!isPosInt(entry.amountMinor)) errors.push(`tokenPacks.${pack}: amountMinor must be a positive integer`);
+    if (!isPosInt(entry.amountMinor)) {
+      errors.push(`tokenPacks.${pack}: amountMinor must be a positive integer, or set "skip": true if this pack is not offered`);
+    }
   }
 
   for (const promo of catalog.promotions ?? []) {
@@ -203,6 +215,10 @@ export function planCatalog(catalog, actual) {
   for (const { pack, credits } of TOKEN_PACKS) {
     const entry = catalog.tokenPacks?.[pack];
     if (!entry) continue;
+    if (entry.skip === true) {
+      actions.push({ type: 'token_price', op: 'skip', key: tokenPriceKey(pack), pack, reason: 'not offered (skip: true)' });
+      continue;
+    }
     const key = tokenPriceKey(pack);
     const found = prices.get(key);
     if (!found) {
@@ -255,11 +271,14 @@ export function summarise(actions) {
  * are deliberately NOT part of this output, because those must never transit a
  * script's stdout.
  */
-export function renderPhaseCBlock(resolved) {
+export function renderPhaseCBlock(resolved, skipped = new Set()) {
   const lines = ['# Phase C — run each, paste the id shown when prompted:'];
   for (const [key, envVar] of Object.entries(ENV_VAR)) {
     const id = resolved[key];
-    lines.push(`${envVar.padEnd(30)} ${id ?? '(MISSING — object was not created)'}`);
+    const label = id ?? (skipped.has(key)
+      ? '(skipped — pack not offered; leave this secret unset)'
+      : '(MISSING — object was not created)');
+    lines.push(`${envVar.padEnd(30)} ${label}`);
   }
   lines.push('');
   lines.push('# Not produced by this script — collect from the Stripe dashboard:');
@@ -270,6 +289,6 @@ export function renderPhaseCBlock(resolved) {
 }
 
 /** Ids that must exist before Phase C can proceed. */
-export function missingPhaseCIds(resolved) {
-  return Object.keys(ENV_VAR).filter(k => !resolved[k]);
+export function missingPhaseCIds(resolved, skipped = new Set()) {
+  return Object.keys(ENV_VAR).filter(k => !resolved[k] && !skipped.has(k));
 }

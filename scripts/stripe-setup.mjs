@@ -325,12 +325,21 @@ async function main() {
   // Pre-seed ids for everything that already exists, so a partial re-run can
   // create only what is missing and still resolve references.
   const resolved = {};
-  for (const a of actions) if (a.op === 'reuse' && a.id) resolved[a.key] = a.id;
+  const skipped = new Set();
+  for (const a of actions) {
+    if (a.op === 'reuse' && a.id) resolved[a.key] = a.id;
+    if (a.op === 'skip') skipped.add(a.key);
+  }
 
   console.log(c.b('Plan:'));
   for (const a of actions) {
-    const tag = a.op === 'create' ? c.warn('CREATE ') : a.op === 'reuse' ? c.dim('reuse  ') : c.err('CONFLICT');
-    const detail = a.op === 'conflict' ? `  ${c.err(a.reason)}` : a.id ? c.dim(`  ${a.id}`) : '';
+    const tag = a.op === 'create' ? c.warn('CREATE ')
+      : a.op === 'reuse' ? c.dim('reuse  ')
+      : a.op === 'skip' ? c.dim('skip   ')
+      : c.err('CONFLICT');
+    const detail = a.op === 'conflict' ? `  ${c.err(a.reason)}`
+      : a.op === 'skip' ? c.dim(`  ${a.reason}`)
+      : a.id ? c.dim(`  ${a.id}`) : '';
     console.log(`  ${tag} ${a.type.padEnd(15)} ${a.key.padEnd(30)}${detail}`);
   }
   const s = summarise(actions);
@@ -342,20 +351,20 @@ async function main() {
 
   if (DRY_RUN) {
     console.log(c.dim('Dry run — nothing was written. Re-run with --apply to create the objects above.\n'));
-    if (MODE_FLAGS.verify) printPhaseC(resolved);
+    if (MODE_FLAGS.verify) printPhaseC(resolved, skipped);
     return;
   }
 
   console.log(c.b('Creating:'));
   await execute(actions, resolved);
   console.log('');
-  printPhaseC(resolved);
+  printPhaseC(resolved, skipped);
 }
 
-function printPhaseC(resolved) {
-  const missing = missingPhaseCIds(resolved);
+function printPhaseC(resolved, skipped = new Set()) {
+  const missing = missingPhaseCIds(resolved, skipped);
   console.log(c.b('Phase C values:\n'));
-  console.log(renderPhaseCBlock(resolved));
+  console.log(renderPhaseCBlock(resolved, skipped));
   console.log('');
   if (missing.length) {
     console.log(c.warn(`  ${missing.length} id(s) still missing — run with --apply to create them.\n`));
