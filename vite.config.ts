@@ -49,18 +49,55 @@ const REQUIRED_CLIENT_ENV = [
   'VITE_FIREBASE_APP_ID',
 ] as const
 
+/**
+ * Data-layer domains that MUST resolve to Firebase in a production bundle.
+ *
+ * `resolveLayer()` falls back to `'mock'` when these are unset, and
+ * `assertProductionLayers()` throws at boot to stop a fake session being shown
+ * over throwaway data. That runtime guard is right, but it fires in the
+ * VISITOR's browser — the bundle still builds, still deploys, and is simply dead
+ * on arrival. Checking here turns that into a failed build, which is the same
+ * reason the Firebase keys are checked: a build that cannot produce a working
+ * bundle must not ship.
+ *
+ * A domain is satisfied by its own var or by the global `VITE_DATA_LAYER`,
+ * mirroring the resolver's own precedence.
+ */
+const REQUIRED_FIREBASE_LAYERS = ['VITE_AUTH_LAYER', 'VITE_BILLING_LAYER'] as const
+
 function requiredEnvPlugin(env: Record<string, string>): Plugin {
   return {
     name: 'ailunapro-required-client-env',
     apply: 'build',
     buildStart() {
+      const problems: string[] = []
+
       const missing = REQUIRED_CLIENT_ENV.filter(k => !(env[k] ?? '').trim())
-      if (missing.length === 0) return
+      if (missing.length) {
+        problems.push(
+          `missing ${missing.join(', ')} — without these the deployed app cannot ` +
+          'initialise Firebase and every visitor is stuck on "Still connecting…"',
+        )
+      }
+
+      const globalLayer = (env.VITE_DATA_LAYER ?? '').trim()
+      const wrongLayer = REQUIRED_FIREBASE_LAYERS.filter(k => {
+        const resolved = (env[k] ?? '').trim() || globalLayer
+        return resolved !== 'firebase'
+      })
+      if (wrongLayer.length) {
+        problems.push(
+          `${wrongLayer.join(', ')} does not resolve to "firebase" (set it, or set ` +
+          'VITE_DATA_LAYER=firebase) — the bundle would boot against mock data and ' +
+          'assertProductionLayers() would throw in the visitor\'s browser',
+        )
+      }
+
+      if (problems.length === 0) return
       throw new Error(
-        `Cannot build a working bundle: missing ${missing.join(', ')}.\n` +
-        'These are inlined at build time; without them the deployed app cannot ' +
-        'initialise Firebase and every visitor is stuck on "Still connecting…".\n' +
-        'Locally: set them in .env.production. In CI: add them to the build step ' +
+        'Cannot build a working bundle:\n' +
+        problems.map(p => `  - ${p}`).join('\n') +
+        '\nLocally: set them in .env.production. In CI: add them to the build step ' +
         'env (see .github/workflows/ci.yml).',
       )
     },
