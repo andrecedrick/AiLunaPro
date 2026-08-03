@@ -156,28 +156,69 @@ async function doExport() {
   const productByKey = new Map(actual.products.filter(p => p.metadata?.[MANAGED_KEY]).map(p => [p.metadata[MANAGED_KEY], p]));
 
   const catalog = { plans: {}, tokenPacks: {}, promotions: [] };
+  const notes = [];
+
+  console.log(c.dim(`  account contains: ${actual.products.length} active product(s), ${actual.prices.length} active price(s)\n`));
 
   for (const plan of PLANS) {
-    // Unmanaged accounts (the current test account) have no ailuna_key, so fall
-    // back to grouping by the product the price points at.
+    // Three ways to find a plan's product, weakest last:
+    //   1. our own metadata key (an account this script already manages)
+    //   2. the STRIPE_PRODUCT_* env var, if the operator has it set locally
+    //   3. the product NAME, case-insensitive
+    // Name matching is the fragile one — a product called "AiLunaPro Starter"
+    // will not match — which is exactly why an empty result is REPORTED rather
+    // than written out as a silent empty array.
+    const envProductId = (process.env[`STRIPE_PRODUCT_${plan.toUpperCase()}`] ?? '').trim();
     const product = productByKey.get(productKey(plan))
-      ?? actual.products.find(p => p.name?.toLowerCase() === plan);
-    const prices = actual.prices.filter(p => p.recurring && product && p.product === product.id);
+      ?? (envProductId ? actual.products.find(p => p.id === envProductId) : undefined)
+      ?? actual.products.find(p => p.name?.toLowerCase() === plan)
+      ?? actual.products.find(p => p.name?.toLowerCase() === PLAN_LABELS[plan].toLowerCase());
+
+    const prices = product ? actual.prices.filter(p => p.recurring && p.product === product.id) : [];
     catalog.plans[plan] = {
       prices: prices.map(p => ({ currency: p.currency, amountMinor: p.unit_amount, interval: p.recurring.interval })),
     };
+
+    if (!product) notes.push(`plans.${plan}: no product found in this ${MODE} account (looked for metadata key, STRIPE_PRODUCT_${plan.toUpperCase()}, and a product named "${PLAN_LABELS[plan]}")`);
+    else if (prices.length === 0) notes.push(`plans.${plan}: product ${product.id} found but it has no ACTIVE RECURRING price`);
   }
 
   for (const { pack } of TOKEN_PACKS) {
-    const p = byKey.get(tokenPriceKey(pack));
-    catalog.tokenPacks[pack] = p
-      ? { currency: p.currency, amountMinor: p.unit_amount }
+    // Token-pack prices carry no product and, on an account this script did not
+    // create, no metadata key either — so there is nothing to search BY. The
+    // operator's own STRIPE_TOKEN_PRICE_* env var is the authoritative pointer,
+    // and is the only way to recover an existing pack's amount.
+    const envVar = `STRIPE_TOKEN_PRICE_${pack.toUpperCase()}`;
+    const envPriceId = (process.env[envVar] ?? '').trim();
+    const found = byKey.get(tokenPriceKey(pack))
+      ?? (envPriceId ? actual.prices.find(p => p.id === envPriceId) : undefined);
+
+    catalog.tokenPacks[pack] = found
+      ? { currency: found.currency, amountMinor: found.unit_amount }
       : { currency: 'usd', amountMinor: null };
+
+    if (!found) notes.push(`tokenPacks.${pack}: not found — set ${envVar} in this shell to recover it from the ${MODE} account, or fill amountMinor in by hand`);
   }
 
   fs.writeFileSync(CATALOG_PATH, JSON.stringify(catalog, null, 2) + '\n');
-  console.log(c.ok(`\n✔ Wrote scripts/stripe-catalog.json from the ${MODE} account.`));
-  console.log(c.dim('  Review it — any null amountMinor must be filled in before --apply.\n'));
+  console.log(c.ok(`✔ Wrote scripts/stripe-catalog.json from the ${MODE} account.`));
+
+  if (notes.length) {
+    // A catalog full of empty arrays and nulls is not a successful export. Say
+    // so, and say why, rather than leaving the operator to infer it from the
+    // file and then hit a wall of validation errors on the next command.
+    console.log(c.warn(`\n  ${notes.length} item(s) could NOT be exported:`));
+    for (const n of notes) console.log(c.warn(`    - ${n}`));
+    if (MODE === 'live') {
+      console.log(c.warn('\n  This is expected on a LIVE account that has not been set up yet:'));
+      console.log(c.warn('  there is nothing there to export. Run --export against your TEST'));
+      console.log(c.warn('  account to capture the amounts you already charge, review that file,'));
+      console.log(c.warn('  then apply it to live.'));
+    }
+    console.log('');
+  } else {
+    console.log(c.dim('  Every plan and pack was captured.\n'));
+  }
 }
 
 /* ── Execution ────────────────────────────────────────────────────── */
@@ -250,8 +291,17 @@ async function main() {
 
   if (MODE === 'unset') die('STRIPE_SECRET_KEY is not set in this shell.');
   if (MODE === 'unknown') die('STRIPE_SECRET_KEY does not look like a Stripe secret key.');
+  // Say what this run will ACTUALLY do. The banner previously derived from
+  // DRY_RUN alone, so `--export` — which only reads — announced itself as
+  // "APPLY — will create objects" against a live account. Frightening and
+  // false; the label now names the real mode.
+  const action = MODE_FLAGS.export
+    ? c.ok('EXPORT (read-only — writes a local file, creates nothing)')
+    : DRY_RUN
+      ? c.ok('DRY RUN (nothing will be written)')
+      : c.warn('APPLY — will create objects in Stripe');
   console.log(`  account mode : ${MODE === 'live' ? c.err('LIVE — real money') : c.ok('test')}`);
-  console.log(`  action       : ${DRY_RUN ? c.ok('DRY RUN (nothing will be written)') : c.warn('APPLY — will create objects')}`);
+  console.log(`  action       : ${action}`);
   console.log('');
 
   if (MODE_FLAGS.apply && MODE === 'live' && !MODE_FLAGS.allowLive) {
