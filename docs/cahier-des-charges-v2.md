@@ -4393,7 +4393,7 @@ was `Deploy pages`.
 | **P1.1** | Invoice correctness — accounting-grade. Currency support · VAT · subtotal · billing address · organization information · Stripe payment reference · Stripe payment intent · sequential invoice numbering · payment information | **DONE** 2026-08-02 | P0.0a |
 | **P1.2a** | Live-activation preflight: readiness engine, `GET /api/billing/admin/live-readiness`, durable webhook-verification evidence | **DONE** 2026-08-02 | P1.1 |
 | **P1.2 Phase A** | Environment-driven plan products (`STRIPE_PRODUCT_*`) + extended readiness validation (products · prices · currency mappings · active · livemode) | **DONE** 2026-08-02 | P1.2a |
-| **P1.2 Phase B** | Stripe dashboard preparation — live products, prices, token packs, webhook, portal, promotions (runbook below) | **DOCUMENTED** 2026-08-02 — awaiting owner execution in the Stripe dashboard | Phase A |
+| **P1.2 Phase B** | Stripe dashboard preparation — live products, prices, token packs, webhook, portal, promotions (runbook below) | **READY FOR OWNER** 2026-08-02 — guide verified against all 17 Stripe call sites; awaiting execution in the Stripe dashboard | Phase A |
 | **P1.2 Phase C** | Install live credentials, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase B + owner action |
 
 **P1.2 Phase A closure evidence (2026-08-02).** Two defects found during the P1.2
@@ -4557,6 +4557,28 @@ verified webhook event, so it can only turn true after a real payment.
 **Phase B is complete when** every object above exists in live mode and their
 ids are recorded for Phase C. No credentials are installed in Phase B; nothing in
 production changes.
+
+**Guide verified against the code (2026-08-02).** All 17 Stripe SDK call sites
+enumerated and mapped: `products.retrieve` · `prices.list/retrieve/create` ·
+`checkout.sessions.create/retrieve/expire` · `billingPortal.configurations.list`
+· `billingPortal.sessions.create` · `coupons.create` ·
+`promotionCodes.create/list/update` · `subscriptions.list/retrieve/update` ·
+`invoices.list`. The last two groups act on customer records created at runtime
+and need no dashboard setup.
+
+Two facts confirmed that change what the owner must do:
+- **Stripe Tax is NOT required.** `automatic_tax` is never set; VAT is computed
+  by our own engine (§27 P1.1). No Stripe tax registration to configure.
+- **Prices and coupons can be created from the app** (`billing-admin-products`,
+  `billing-admin-promos`) as an alternative to the dashboard. Products cannot —
+  they must be created in Stripe.
+
+**Phase C data to record** (nothing else is needed to activate):
+`STRIPE_PRODUCT_STARTER|PROFESSIONAL|ENTERPRISE` (3 × `prod_…`) ·
+`STRIPE_TOKEN_PRICE_OVERAGE|STARTER|PRO|MAX` (4 × `price_…`) ·
+`STRIPE_PRICE_STARTER|PROFESSIONAL|ENTERPRISE` (3 × `price_…`, display panel) ·
+`STRIPE_SECRET_KEY` (`sk_live_…`) · `STRIPE_PUBLISHABLE_KEY` (`pk_live_…`) ·
+`STRIPE_WEBHOOK_SECRET` (`whsec_…`, from the LIVE endpoint).
 
 > **P1.1 is a hard prerequisite of P1.2, not a parallel track.** In test mode an
 > incomplete invoice is a defect; in live mode it is a customer-visible financial
