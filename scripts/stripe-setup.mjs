@@ -33,7 +33,7 @@ import {
   PLANS, PLAN_LABELS, TOKEN_PACKS, MANAGED_KEY, ENV_VAR,
   productKey, priceKey, tokenPriceKey, couponKey,
   detectMode, validateCatalog, planCatalog, hasConflicts, summarise,
-  renderPhaseCBlock, missingPhaseCIds,
+  renderPhaseCBlock, missingPhaseCIds, redact,
 } from './stripe-catalog.mjs';
 
 const API = 'https://api.stripe.com/v1';
@@ -53,7 +53,21 @@ const c = {
   err: s => `\x1b[31m${s}\x1b[0m`, dim: s => `\x1b[2m${s}\x1b[0m`, b: s => `\x1b[1m${s}\x1b[0m`,
 };
 
-function die(msg) { console.error(c.err(`\n✖ ${msg}\n`)); process.exit(1); }
+/** Thrown by die() so the process can unwind cleanly instead of hard-exiting. */
+class ExitError extends Error {}
+
+/**
+ * Abort with a message.
+ *
+ * Sets `exitCode` and throws rather than calling `process.exit()`: exiting while
+ * fetch still holds open sockets aborts the Node process on Windows with a libuv
+ * assertion, turning a clean "invalid key" message into a crash dump.
+ */
+function die(msg) {
+  console.error(c.err(`\n✖ ${redact(msg)}\n`));
+  process.exitCode = 1;
+  throw new ExitError();
+}
 
 /* ── Stripe REST ──────────────────────────────────────────────────── */
 
@@ -251,7 +265,8 @@ async function main() {
   if (errors.length) {
     console.error(c.err('Catalog is not valid:'));
     for (const e of errors) console.error('  - ' + e);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const actual = await readAccount();
@@ -300,7 +315,10 @@ function printPhaseC(resolved) {
 }
 
 main().catch(err => {
+  // die() already reported and set the exit code; nothing more to say.
+  if (err instanceof ExitError) return;
   // Never print the error object wholesale: a thrown fetch error can carry
   // request headers, and those carry the key.
-  die(err instanceof Error ? err.message : 'unexpected failure');
+  console.error(c.err(`\n✖ ${redact(err instanceof Error ? err.message : 'unexpected failure')}\n`));
+  process.exitCode = 1;
 });

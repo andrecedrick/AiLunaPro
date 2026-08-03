@@ -248,3 +248,32 @@ describe('Phase C output', () => {
     expect(out).toContain('STRIPE_WEBHOOK_SECRET');
   });
 });
+
+describe('secret redaction', () => {
+  // @ts-expect-error — plain-JS script module.
+  const { redact } = catalog as { redact: (t: unknown) => string };
+
+  it('removes a key Stripe echoed back in its own error', () => {
+    // Stripe masks all but the last four; those four are still part of the key.
+    const msg = 'Invalid API Key provided: sk_test_**************e123';
+    expect(redact(msg)).toBe('Invalid API Key provided: sk_test_[redacted]');
+    expect(redact(msg)).not.toContain('e123');
+  });
+
+  it('redacts every key form, live and test, secret restricted and publishable', () => {
+    for (const k of ['sk_live_ABC123', 'sk_test_ABC123', 'rk_live_ABC123', 'pk_live_ABC123']) {
+      expect(redact(`failed with ${k} today`)).not.toContain('ABC123');
+    }
+  });
+
+  it('redacts every occurrence, not just the first', () => {
+    const out = redact('sk_live_AAA and sk_live_BBB');
+    expect(out).not.toContain('AAA');
+    expect(out).not.toContain('BBB');
+  });
+
+  it('leaves ordinary text alone', () => {
+    expect(redact('Stripe GET /prices: rate limited')).toBe('Stripe GET /prices: rate limited');
+    expect(redact(undefined)).toBe('');
+  });
+});

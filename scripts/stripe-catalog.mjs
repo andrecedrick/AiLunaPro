@@ -68,6 +68,18 @@ export function detectMode(secretKey) {
   return 'unknown';
 }
 
+/**
+ * Strip anything key-shaped from a message before it reaches a terminal.
+ *
+ * Stripe's own authentication error echoes the key back partially masked, in the
+ * form `sk_test_**************e123`. Those trailing characters would otherwise
+ * land in a terminal, a CI log, or a pasted bug report. The requirement is no
+ * secret values in logs, and "most of it" is not the same as none of it.
+ */
+export function redact(text) {
+  return String(text ?? '').replace(/(sk|rk|pk)_(live|test)_[A-Za-z0-9*]+/g, '$1_$2_[redacted]');
+}
+
 /* ── Catalog validation ───────────────────────────────────────────── */
 
 const isPosInt = (n) => Number.isInteger(n) && n > 0;
