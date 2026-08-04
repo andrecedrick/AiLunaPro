@@ -4306,9 +4306,9 @@ wording should be read accordingly.
 | ~~**B6**~~ | ~~**The GitHub repository is PUBLIC**~~ **RESOLVED 2026-08-02 — set to PRIVATE (owner-approved).** Original finding retained for the record: (`"visibility": "public"`) | The entire commercial codebase — worker, business logic, scoring rules, Firestore structure, security-rule design — is world-readable. No secret is exposed (`.env.local`, `.env.production`, `worker/.dev.vars` are all gitignored and untracked; a pre-push scan found only a synthetic token inside a redaction test). The exposure is intellectual property and attack-surface reconnaissance, not credentials. | Owner decides: flip to private, or accept deliberately |
 | **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
-| **B3** | `stripeMode: "test"` in production | No revenue | P1.2b |
+| **B3** | `stripeMode: "test"` in production | No revenue | P1.2 Phase C activation. **Not a toggle** — `/healthz` derives the mode from the `STRIPE_SECRET_KEY` prefix, so it flips when `sk_live_` is installed. B3 and B7 close together |
 | ~~**B8**~~ | **CLOSED 2026-08-03.** CI and CD green on `d9fb26f`; worker `0d627e0a` and the Pages bundle both deployed by the pipeline, and the CI-built bundle verified to carry its Firebase config and boot (FCP 2.5 s, no connection card). Original entry: Client config supplied to CI as ONE aggregate secret (`AILUNAPRO_API_KEY_SECRET`) + ONE aggregate variable (`AILUNAPRO_DB_VARIABLE`), each a block of KEY=VALUE lines. GitHub does not expand an aggregate into individual entries, so `secrets.VITE_*` resolved empty and the build guard fired. The workflow now parses both blobs into `$GITHUB_ENV` (VITE_* keys only; secret values masked). Original entry: 11 secrets + 6 variables. `VITE_STRIPE_PUBLISHABLE_KEY` was removed from the workflow — the frontend never reads it (Stripe config comes from the worker at runtime). The build guard now also checks that the auth/billing data layers resolve to `firebase`, so CI cannot ship a bundle that boots into mock data. | **CI build now fails by design** until they are added, so no further CI deploy can ship a bundle that cannot boot. Production is healthy (restored by a local deploy). Deploys stay manual until this clears. | Owner adds the secrets/variables listed in `.github/workflows/ci.yml` |
-| **B7** | Live Stripe credentials not installed | P1.2b cannot be closed. Preflight is deployed and will verify the switch the moment it is made. | Owner installs live keys, price ids and webhook secret, then runs the preflight |
+| **B7** | Live Stripe credentials not installed | P1.2 Phase C cannot be closed. **Preparation is complete as of 2026-08-04** — account, webhook, portal, catalog and pricing are all signed off, so this is now the ONLY thing standing between here and live revenue. Preflight is deployed and will verify the switch the moment it is made. | Owner installs live keys, price ids and webhook secret, then runs the preflight |
 | **D3** | robots.txt stance for the Apify layer undecided (§26.15) | Legal exposure the moment a customer domain is crawled | P2.0 |
 
 ### 27.4b Production incident — CI deployed a bundle that could not boot (2026-08-02)
@@ -4394,7 +4394,8 @@ was `Deploy pages`.
 | **P1.2a** | Live-activation preflight: readiness engine, `GET /api/billing/admin/live-readiness`, durable webhook-verification evidence | **DONE** 2026-08-02 | P1.1 |
 | **P1.2 Phase A** | Environment-driven plan products (`STRIPE_PRODUCT_*`) + extended readiness validation (products · prices · currency mappings · active · livemode) | **DONE** 2026-08-02 | P1.2a |
 | **P1.2 Phase B** | Stripe dashboard preparation — runbook + idempotent setup script (`scripts/stripe-setup.mjs`) | **DONE** 2026-08-04 — tooling built, and rehearsed end to end against the TEST account: 12 objects created, second apply `0 to create · 12 already correct · 0 conflict` | Phase A |
-| **P1.2 Phase C** | Install live credentials, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase B + owner action |
+| **P1.2 Phase C — preparation** | Live account, webhook destination, customer portal, API-version compatibility, catalog + pricing sign-off | **DONE** 2026-08-04 — 9 of 11 blockers closed; the 2 open ones ARE the activation | Phase B |
+| **P1.2 Phase C — activation** | Install live credentials, live apply, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase C preparation + owner action |
 
 **P1.2 Phase A closure evidence (2026-08-02).** Two defects found during the P1.2
 inspection, both of which would have made a live switch fail while reporting
@@ -4660,6 +4661,38 @@ Second fix, independent of any API version: the catch-all 2xx path now writes a
 durable `webhook_handler_failed` alert. Keeping the 2xx is correct — a
 permanently bad event must not be retried forever — but a 2xx is also what makes
 such a failure invisible, so it has to survive the request some other way.
+
+**Phase C PREPARATION — CLOSED 2026-08-04.** Everything that can be done before
+real money moves is done. Nine of eleven blockers closed; the two that remain
+are the activation steps themselves.
+
+| Blocker | Close |
+|---|---|
+| Live Stripe account | exists, `pk_live_` issued |
+| Webhook destination | `api-ailunapro-webhook-Beta` → `https://api.ailunapro.com/api/stripe/webhook`, 5 events, Active. Probe returns 400 on a forged signature — route live and verifying |
+| `whsec_` obtainable | on the destination page; deliberately NOT installed (a live signing secret would break test-mode verification while `sk_test_` is still deployed) |
+| Destination API version | closed in CODE, not configuration — see the defect note above |
+| Silent-200-on-throw | durable `webhook_handler_failed` alert |
+| Customer portal | `bpc_1TcLx2DhT4Ik1YJQvitVRG4g`, live, Payment methods ON, Invoice history ON |
+| Dual-endpoint overlap | benign — see below |
+| Pricing | EUR = USD parity, accepted with the FX gap stated |
+| Catalog | verified against the file, field by field |
+| Live keys installed | **open — is activation** |
+| `stripeMode` = live | **open — not a toggle**; `/healthz` derives it from the `STRIPE_SECRET_KEY` prefix, so it flips the moment `sk_live_` is installed |
+
+**Dual-endpoint overlap — why it is benign.** `dashboard.ailunapro.com/webhooks/stripe`
+must stay active (business requirement) and subscribes to `customer.subscription.deleted`
+and `invoice.paid`. The first overlaps our 5; the second does not and has no
+branch here. The overlap is safe for a specific reason: **revocation is
+idempotent, provisioning is not.** Both systems converge on "no paid access".
+`checkout.session.completed` — the event that GRANTS entitlement, where a double
+handler would hand out double value — is not on that endpoint. If it is ever
+added there, this assessment stops holding.
+
+**Catalog scope accepted at launch** (all additive later, no migration):
+monthly only, no annual tier · token packs USD-only · `geo-currency.ts` maps
+GB/CA/AU to gbp/cad/aud but only eur+usd will exist, so those customers fall
+through checkout's chain to USD · no launch promotion.
 
 **Phase C data to record** (nothing else is needed to activate):
 `STRIPE_PRODUCT_STARTER|PROFESSIONAL|ENTERPRISE` (3 × `prod_…`) ·
