@@ -4629,6 +4629,38 @@ conflicted), **coupons / promotion codes** (`promotions: []`), and **partial
 failure resume** (no create failed). All three are equally absent from the live
 plan. Unit tests cover them; a real account has not.
 
+**Webhook API-version defect — found and fixed 2026-08-04 (§27 P1.2 Phase C prep).**
+The live destination `api-ailunapro-webhook-Beta` renders payloads at the account
+default `2023-10-16`; the SDK sends `2026-04-22.dahlia` on outbound calls
+([lib/stripe.ts](../worker/src/lib/stripe.ts)). A destination's API version is
+**read-only after creation** and the account default could not be upgraded — an
+unrelated production integration (`dashboard.ailunapro.com/webhooks/stripe`)
+depends on the old shape. So the two shapes are a permanent fact, not a
+transient misconfiguration.
+
+`current_period_start` / `current_period_end` moved from the Subscription onto
+its ITEMS in the `basil` generation. The handler read the item shape only:
+
+```
+undefined * 1000            -> NaN
+new Date(NaN).toISOString() -> RangeError
+```
+
+thrown inside `handleEvent`, caught, and answered **2xx** — so Stripe filed the
+delivery as successful and never retried. Symptom: a paying customer's
+subscription never written to Firestore, plan never activated, every dashboard
+green. Exactly the failure the readiness gate exists to prevent, and invisible
+to it: `webhookObserved` flips on a *verified* event, which this was.
+
+Fix: `lib/subscription-period.ts` — `periodBounds()` reads the item shape first,
+the subscription shape second, and returns `null` rather than constructing an
+invalid Date. 12 unit tests, one per shape and per malformed value.
+
+Second fix, independent of any API version: the catch-all 2xx path now writes a
+durable `webhook_handler_failed` alert. Keeping the 2xx is correct — a
+permanently bad event must not be retried forever — but a 2xx is also what makes
+such a failure invisible, so it has to survive the request some other way.
+
 **Phase C data to record** (nothing else is needed to activate):
 `STRIPE_PRODUCT_STARTER|PROFESSIONAL|ENTERPRISE` (3 × `prod_…`) ·
 `STRIPE_TOKEN_PRICE_OVERAGE|STARTER|PRO|MAX` (4 × `price_…`) ·

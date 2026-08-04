@@ -27,6 +27,7 @@ import { planLabelFromProductId, extractProductIdFromSubscription, resolvePlanPr
 import { recordWebhookEvent } from './billing-config';
 import { sendPaymentConfirmation, invoiceChargeMinor } from './invoices';
 import { recordBillingAlert, RetryableWebhookError } from '../lib/billing-alerts';
+import { periodBounds } from '../lib/subscription-period';
 import { createNotification } from '../lib/notifications';
 import type { AppEnv } from '../index';
 import type Stripe from 'stripe';
@@ -108,7 +109,17 @@ stripe.post('/api/stripe/webhook', async c => {
       return c.json({ received: false, retry: true, error: msg }, 500);
     }
     // Any other handler error stays 2xx so Stripe does not retry a permanently
-    // bad event forever (unchanged behaviour).
+    // bad event forever (unchanged behaviour) — but 2xx is exactly what makes
+    // such a failure INVISIBLE: Stripe files the delivery as successful, the
+    // dashboard shows a green endpoint, and the work simply never happened.
+    // A durable alert is what turns that into something an operator can see.
+    await recordBillingAlert(env.FIREBASE_SERVICE_ACCOUNT_JSON, {
+      kind:     'webhook_handler_failed',
+      severity: 'critical',
+      refId:    event.id,
+      message:  `Stripe ${event.type} was verified but not processed: ${msg}`,
+      context:  { eventType: event.type, eventId: event.id, livemode: event.livemode === true },
+    });
     return c.json({ received: true, error: msg });
   }
 
@@ -397,7 +408,10 @@ async function handleEvent(
 
       const productId = extractProductIdFromSubscription(sub);
       const plan      = planLabelFromProductId(productId, resolvePlanProducts(env));
-      const item      = sub.items?.data?.[0];
+      // Version-tolerant: the period bounds live on the ITEM from `basil`
+      // onward and on the SUBSCRIPTION before it, and a webhook destination
+      // renders at its own pinned API version. See lib/subscription-period.ts.
+      const period    = periodBounds(sub);
 
       await firestoreSet(saJson, `organizations/${orgId}/subscriptions/current`, {
         stripeCustomerId:     String(sub.customer),
@@ -406,8 +420,8 @@ async function handleEvent(
         plan,
         status:               sub.status,
         currency:             sub.currency ?? null,
-        currentPeriodStart:   item ? new Date(item.current_period_start * 1000).toISOString() : null,
-        currentPeriodEnd:     item ? new Date(item.current_period_end * 1000).toISOString() : null,
+        currentPeriodStart:   period.start,
+        currentPeriodEnd:     period.end,
         cancelAtPeriodEnd:    sub.cancel_at_period_end,
         updatedAt:            new Date().toISOString(),
       });
