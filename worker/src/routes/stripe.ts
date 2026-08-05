@@ -62,7 +62,7 @@ stripe.post('/api/stripe/webhook', async c => {
     event = await stripeClient.webhooks.constructEventAsync(
       rawBody,
       sig,
-      env.STRIPE_WEBHOOK_SECRET,
+      env.STRIPE_WEBHOOK_SECRET.trim(),
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Signature verification failed';
