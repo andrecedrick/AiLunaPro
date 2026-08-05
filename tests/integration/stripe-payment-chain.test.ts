@@ -18,9 +18,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const state = vi.hoisted(() => ({ docs: new Map<string, Record<string, unknown>>() }));
 const seq = vi.hoisted(() => ({ sends: [] as Array<Record<string, unknown>> }));
 const evt = vi.hoisted(() => ({ current: null as unknown }));
+/** What the route actually handed to Stripe's verifier — the secret is the point. */
+const verifyArgs = vi.hoisted(() => ({ secret: null as string | null }));
 
 vi.mock('../../worker/src/lib/stripe', () => ({
-  getStripe: () => ({ webhooks: { constructEventAsync: async () => evt.current } }),
+  getStripe: () => ({
+    webhooks: {
+      constructEventAsync: async (_body: string, _sig: string, secret: string) => {
+        verifyArgs.secret = secret;
+        return evt.current;
+      },
+    },
+  }),
 }));
 vi.mock('../../worker/src/lib/firestoreAdmin', () => ({
   firestoreGet: vi.fn(async (_sa: string, path: string) => state.docs.get(path) ?? null),
@@ -48,9 +57,11 @@ const ENV = {
   SEQUENZY_API_KEY: 'k', ADMIN_EMAIL: 'admin@x.com', APP_BASE_URL: 'https://audit.ailunapro.com',
 } as unknown as Record<string, unknown>;
 
-const post = () => stripeRoute.request('/api/stripe/webhook', {
+const postWith = (env: Record<string, unknown>) => stripeRoute.request('/api/stripe/webhook', {
   method: 'POST', headers: { 'Stripe-Signature': 'sig', 'Content-Type': 'application/json' }, body: '{}',
-}, ENV);
+}, env);
+
+const post = () => postWith(ENV);
 
 /** A completed Checkout Session for an invoice payment (what Stripe sends on pay). */
 const paymentEvent = (amountTotalCents: number) => ({
@@ -113,6 +124,29 @@ describe('BUG 0/4 — Stripe payment → complete finalized state (the previousl
     await post();                                   // Stripe retries the same event
     expect(state.docs.get('invoices/quote_q1')!.paidAt).toBe(paidAt);   // unchanged
     expect(seq.sends.find(s => s.slug === 'payment-confirmation')).toBeFalsy();  // no duplicate receipt
+  });
+
+  /*
+   * P1.2 LIVE INCIDENT, 2026-08-05. `STRIPE_WEBHOOK_SECRET` was stored with a
+   * trailing whitespace character. Every live delivery failed signature
+   * verification with a 400 that reads exactly like a WRONG secret, so nothing
+   * distinguished "padded" from "incorrect". A real customer paid 9.99 USD and
+   * received nothing for 80 minutes; Stripe's own error text was the only clue.
+   *
+   * The route now trims before verifying. These tests assert the VALUE HANDED
+   * TO STRIPE, not the outcome — a mocked verifier accepts anything, so only
+   * the argument itself can prove the padding is gone.
+   */
+  it('a padded signing secret is trimmed before verification', async () => {
+    verifyArgs.secret = null;
+    await postWith({ ...ENV, STRIPE_WEBHOOK_SECRET: '  whsec_padded_value\n' });
+    expect(verifyArgs.secret).toBe('whsec_padded_value');
+  });
+
+  it('a clean signing secret passes through untouched', async () => {
+    verifyArgs.secret = null;
+    await post();
+    expect(verifyArgs.secret).toBe('whsec');
   });
 
   it('cross-org guard: a session whose metadata org != invoice org is ignored', async () => {

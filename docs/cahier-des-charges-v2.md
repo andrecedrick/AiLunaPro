@@ -4306,9 +4306,9 @@ wording should be read accordingly.
 | ~~**B6**~~ | ~~**The GitHub repository is PUBLIC**~~ **RESOLVED 2026-08-02 — set to PRIVATE (owner-approved).** Original finding retained for the record: (`"visibility": "public"`) | The entire commercial codebase — worker, business logic, scoring rules, Firestore structure, security-rule design — is world-readable. No secret is exposed (`.env.local`, `.env.production`, `worker/.dev.vars` are all gitignored and untracked; a pre-push scan found only a synthetic token inside a redaction test). The exposure is intellectual property and attack-surface reconnaissance, not credentials. | Owner decides: flip to private, or accept deliberately |
 | **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
-| **B3** | `stripeMode: "test"` in production | No revenue | P1.2 Phase C activation. **Not a toggle** — `/healthz` derives the mode from the `STRIPE_SECRET_KEY` prefix, so it flips when `sk_live_` is installed. B3 and B7 close together |
+| ~~**B3**~~ | ~~`stripeMode: "test"` in production~~ **RESOLVED 2026-08-05** — `sk_live_` installed; `/healthz` reports `stripeMode: live`. Original entry: | No revenue | P1.2 Phase C activation. **Not a toggle** — `/healthz` derives the mode from the `STRIPE_SECRET_KEY` prefix, so it flips when `sk_live_` is installed. B3 and B7 close together |
 | ~~**B8**~~ | **CLOSED 2026-08-03.** CI and CD green on `d9fb26f`; worker `0d627e0a` and the Pages bundle both deployed by the pipeline, and the CI-built bundle verified to carry its Firebase config and boot (FCP 2.5 s, no connection card). Original entry: Client config supplied to CI as ONE aggregate secret (`AILUNAPRO_API_KEY_SECRET`) + ONE aggregate variable (`AILUNAPRO_DB_VARIABLE`), each a block of KEY=VALUE lines. GitHub does not expand an aggregate into individual entries, so `secrets.VITE_*` resolved empty and the build guard fired. The workflow now parses both blobs into `$GITHUB_ENV` (VITE_* keys only; secret values masked). Original entry: 11 secrets + 6 variables. `VITE_STRIPE_PUBLISHABLE_KEY` was removed from the workflow — the frontend never reads it (Stripe config comes from the worker at runtime). The build guard now also checks that the auth/billing data layers resolve to `firebase`, so CI cannot ship a bundle that boots into mock data. | **CI build now fails by design** until they are added, so no further CI deploy can ship a bundle that cannot boot. Production is healthy (restored by a local deploy). Deploys stay manual until this clears. | Owner adds the secrets/variables listed in `.github/workflows/ci.yml` |
-| **B7** | Live Stripe credentials not installed | P1.2 Phase C cannot be closed. **Preparation is complete as of 2026-08-04** — account, webhook, portal, catalog and pricing are all signed off, so this is now the ONLY thing standing between here and live revenue. Preflight is deployed and will verify the switch the moment it is made. | Owner installs live keys, price ids and webhook secret, then runs the preflight |
+| ~~**B7**~~ | ~~Live Stripe credentials not installed~~ **RESOLVED 2026-08-05** — all 12 secrets installed; one real live payment credited end to end (see 27.4c). Original entry: | P1.2 Phase C cannot be closed. **Preparation is complete as of 2026-08-04** — account, webhook, portal, catalog and pricing are all signed off, so this is now the ONLY thing standing between here and live revenue. Preflight is deployed and will verify the switch the moment it is made. | Owner installs live keys, price ids and webhook secret, then runs the preflight |
 | **D3** | robots.txt stance for the Apify layer undecided (§26.15) | Legal exposure the moment a customer domain is crawled | P2.0 |
 
 ### 27.4b Production incident — CI deployed a bundle that could not boot (2026-08-02)
@@ -4344,6 +4344,54 @@ different claims. Verification after this point checks that the served bundle
 contains its client configuration, not merely that the bundle hash changed.
 
 **Blocker B8** (below) tracks the repository secrets this now requires.
+
+### 27.4c Production incident — a paid live top-up delivered nothing (2026-08-05)
+
+**Impact.** One real customer paid **9.99 USD** at 09:35 CEST for the 5,000-token
+Starter pack and received nothing for **80 minutes**. Five webhook deliveries
+were rejected before the cause was found. No money was lost and no double credit
+occurred; the tokens landed at 10:54 after a Stripe redelivery.
+
+**Root cause.** `STRIPE_WEBHOOK_SECRET` was stored in production **with a
+trailing whitespace character**, introduced by the copy-paste into
+`wrangler secret put`. HMAC over a padded key yields a different digest, so every
+delivery failed signature verification.
+
+**Why it took 80 minutes.** A padded secret and a *wrong* secret produce the
+identical 400 — nothing in the system distinguishes them. Stripe's own error text
+(*"The provided signing secret contains whitespace"*) was the only evidence that
+named the cause, and it is visible only in the delivery's response body. Three
+compounding factors:
+
+| Factor | Consequence |
+|---|---|
+| `config-status.webhook` reads **module-level isolate memory** | shows `null` on a cold isolate, so it can never prove or disprove a delivery |
+| `recordWebhookEvent` is not durable | five failures over 35 minutes raised no alert anywhere |
+| the value is unverifiable by inspection | both modes use `whsec_`; no static check can catch a bad one |
+
+**Fixes.**
+1. Secret rewritten via `wrangler secret bulk` from a JSON file — JSON parsing
+   removes any chance of a stray byte, unlike an interactive paste.
+2. `d50dec2` — the route now trims before verifying
+   ([routes/stripe.ts:65](../worker/src/routes/stripe.ts)), matching what
+   `scripts/stripe-setup.mjs` already does with the API key. A padded secret can
+   no longer take live fulfilment down.
+3. Regression tests in `tests/integration/stripe-payment-chain.test.ts` assert
+   the value **handed to Stripe**, not the outcome — a mocked verifier accepts
+   anything, so only the argument itself can prove the padding is gone. Verified
+   to fail when the trim is reverted.
+
+**What the incident proved, at the cost of one customer's patience.** Two `200`
+deliveries of the same event produced **exactly one credit** (325,000 → 330,000).
+The exactly-once guarantee had been unit-tested since J1.4A; it has now held
+against real Stripe retries on real money.
+
+**Recommended follow-up, not yet implemented:** a durable alert on repeated
+webhook signature failures. `recordWebhookEvent(id, false, msg)` writes only to
+isolate memory, so the one signal that would have caught this in minutes leaves
+no trace. Related: this deployment briefly diverged from `main` because the fix
+shipped via `wrangler deploy` before it was committed — the next CI deploy would
+have silently reverted it.
 
 ### 27.5 Approved execution roadmap
 
@@ -4395,7 +4443,7 @@ was `Deploy pages`.
 | **P1.2 Phase A** | Environment-driven plan products (`STRIPE_PRODUCT_*`) + extended readiness validation (products · prices · currency mappings · active · livemode) | **DONE** 2026-08-02 | P1.2a |
 | **P1.2 Phase B** | Stripe dashboard preparation — runbook + idempotent setup script (`scripts/stripe-setup.mjs`) | **DONE** 2026-08-04 — tooling built, and rehearsed end to end against the TEST account: 12 objects created, second apply `0 to create · 12 already correct · 0 conflict` | Phase A |
 | **P1.2 Phase C — preparation** | Live account, webhook destination, customer portal, API-version compatibility, catalog + pricing sign-off | **DONE** 2026-08-04 — 9 of 11 blockers closed; the 2 open ones ARE the activation | Phase B |
-| **P1.2 Phase C — activation** | Install live credentials, live apply, run the preflight, end-to-end live payment | **BLOCKED** — requires owner-supplied live Stripe credentials | Phase C preparation + owner action |
+| **P1.2 Phase C — activation** | Install live credentials, live apply, run the preflight, end-to-end live payment | **FUNCTIONALLY CLOSED** 2026-08-05 — 12 live objects created, 12 secrets installed, `stripeMode: live`, one real 9.99 USD payment credited exactly once across a duplicate delivery. **Formal closure pending**: invoice generation was never exercised (the token pack runs `mode: payment`, `invoice_creation: false`), and `live-readiness` has never returned `ready: true` because it requires an `owner` account | Phase C preparation + owner action |
 
 **P1.2 Phase A closure evidence (2026-08-02).** Two defects found during the P1.2
 inspection, both of which would have made a live switch fail while reporting
