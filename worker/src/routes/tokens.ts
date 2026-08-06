@@ -88,7 +88,9 @@ tokens.post('/api/tokens/topup', requireAuth(), requireRole(['owner', 'billing']
   if (!isValidPack(body.pack)) return c.json({ error: 'Invalid pack', code: 'INVALID_PACK', pack: body.pack }, 400);
 
   const def = TOKEN_PACKS[body.pack];
-  const priceId = (env as unknown as Record<string, string | undefined>)[def.envVar];
+  // Trimmed for the same reason as the signing secret (§27.4c): these ids are
+  // installed by hand, and a padded value reaches Stripe as a different string.
+  const priceId = ((env as unknown as Record<string, string | undefined>)[def.envVar] ?? '').trim();
   if (!priceId) {
     // Server log keeps the env var name for ops debugging; client response hides it.
     console.warn('[tokens] PACK_NOT_CONFIGURED — missing env var:', def.envVar);

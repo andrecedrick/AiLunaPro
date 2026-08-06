@@ -1829,7 +1829,7 @@ export const en = {
       },
       "secureCheckoutBadge": "Secure checkout powered by Stripe",
       "heading": "Choose the plan that fits your audit workflow",
-      "subheadingPrefix": "Start in Stripe test mode. No real charges are made — use test card",
+      "subheadingPrefix": "Secure checkout powered by Stripe. Change or cancel your plan at any time.",
       "subheadingSuffix": "."
     },
     "currentPlan": {

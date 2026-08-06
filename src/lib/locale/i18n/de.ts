@@ -1717,7 +1717,7 @@ export const de: Dict = {
       },
       "secureCheckoutBadge": "Sicherer Checkout powered by Stripe",
       "heading": "Wählen Sie den Plan, der zu Ihrem Audit-Workflow passt",
-      "subheadingPrefix": "Starten Sie im Stripe-Testmodus. Es werden keine echten Abbuchungen vorgenommen — verwenden Sie die Testkarte",
+      "subheadingPrefix": "Sichere Zahlung über Stripe. Sie können Ihren Tarif jederzeit ändern oder kündigen.",
       "subheadingSuffix": "."
     },
     "currentPlan": {

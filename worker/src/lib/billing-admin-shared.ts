@@ -39,13 +39,29 @@ export interface PlanProductEnv {
   STRIPE_PRODUCT_STARTER?:      string;
   STRIPE_PRODUCT_PROFESSIONAL?: string;
   STRIPE_PRODUCT_ENTERPRISE?:   string;
+  /** Set to 'production' by wrangler.toml [env.production.vars]. */
+  APP_ENV?:                     string;
 }
 
-/** The product ids this environment actually uses. Falls back per-plan. */
+/**
+ * The product ids this environment actually uses.
+ *
+ * IN PRODUCTION THERE IS NO FALLBACK. `DEFAULT_PLAN_PRODUCTS` holds TEST ids, so
+ * silently substituting them for a missing secret means asking a live account
+ * for a product that cannot exist — and readiness would then validate the
+ * substitute instead of reporting the missing configuration. An empty string is
+ * returned instead: `checkProductFallback` reports it, and checkout fails loudly
+ * with "Unknown plan" rather than quietly with a Stripe 404.
+ *
+ * Outside production the fallback stands, so a dev environment keeps working
+ * with no secrets set.
+ */
 export function resolvePlanProducts(env: PlanProductEnv | undefined): Record<Plan, string> {
+  const production = (env?.APP_ENV ?? '').trim().toLowerCase() === 'production';
   const pick = (v: string | undefined, fallback: string): string => {
     const s = (v ?? '').trim();
-    return s.startsWith('prod_') ? s : fallback;
+    if (s.startsWith('prod_')) return s;
+    return production ? '' : fallback;
   };
   return {
     starter:      pick(env?.STRIPE_PRODUCT_STARTER,      DEFAULT_PLAN_PRODUCTS.starter),

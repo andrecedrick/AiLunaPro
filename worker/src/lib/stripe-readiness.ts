@@ -62,7 +62,9 @@ export interface ReadinessFinding {
     | 'MALFORMED'
     | 'NOT_FOUND_IN_STRIPE'
     | 'WRONG_LIVEMODE'
-    | 'INACTIVE';
+    | 'INACTIVE'
+    /** Two plans share one Stripe product — see checkProductUniqueness. */
+    | 'DUPLICATE_PRODUCT';
   detail: string;
 }
 
@@ -254,6 +256,153 @@ export function checkProductProbes(
     }
   }
   return findings;
+}
+
+/**
+ * Two plans sharing one product id.
+ *
+ * P1.2 LIVE INCIDENT, 2026-08-05. Twelve secrets were installed by sequential
+ * paste and two landed shifted by one: PROFESSIONAL held Starter's product and
+ * ENTERPRISE held Professional's. Every id was individually real, live and
+ * active, so `productsVerified` was true and the report read `ready: true` —
+ * while a Professional subscriber would have been charged 49.99 instead of
+ * 149.99 and labelled Starter by the webhook.
+ *
+ * Validating each id in isolation cannot catch this. Only the SET can.
+ */
+export function checkProductUniqueness(probes: readonly ProductProbe[]): ReadinessFinding[] {
+  const byId = new Map<string, string[]>();
+  for (const p of probes) {
+    byId.set(p.productId, [...(byId.get(p.productId) ?? []), p.plan]);
+  }
+  const findings: ReadinessFinding[] = [];
+  for (const [productId, plans] of byId) {
+    if (plans.length < 2) continue;
+    findings.push({
+      variable: 'STRIPE_PRODUCT_*', code: 'DUPLICATE_PRODUCT',
+      detail: `Product ${productId} is mapped to more than one plan: ${plans.join(', ')}. `
+        + 'Checkout resolves the price from the product, so those plans would charge the same amount '
+        + 'and the webhook would label them identically.',
+    });
+  }
+  return findings;
+}
+
+/**
+ * A plan whose product id came from the committed TEST defaults.
+ *
+ * `resolvePlanProducts` falls back to `DEFAULT_PLAN_PRODUCTS` when a
+ * `STRIPE_PRODUCT_*` variable is unset or malformed. Those defaults are
+ * TEST-mode product ids, so in production the fallback silently swaps a real
+ * product for one that cannot exist — and readiness then validates the
+ * fallback rather than the missing configuration.
+ */
+export function checkProductFallback(
+  mode: StripeMode,
+  resolved: Readonly<Record<string, string>>,
+  defaults: Readonly<Record<string, string>>,
+): ReadinessFinding[] {
+  if (mode !== 'live') return [];
+  const findings: ReadinessFinding[] = [];
+  for (const [plan, productId] of Object.entries(resolved)) {
+    const variable = `STRIPE_PRODUCT_${plan.toUpperCase()}`;
+    // Empty: resolvePlanProducts refused to fall back because APP_ENV is
+    // production. The secret is unset or malformed.
+    if (!productId) {
+      findings.push({
+        variable, code: 'MISSING',
+        detail: `The ${plan} plan has no product id. The variable is unset or does not start with prod_, `
+          + 'and production does not fall back to the committed test defaults.',
+      });
+      continue;
+    }
+    // Explicitly set to a known test default — the fallback did not fire, but
+    // the value is still a test product.
+    if (productId === defaults[plan]) {
+      findings.push({
+        variable, code: 'WRONG_LIVEMODE',
+        detail: `The ${plan} plan points at the committed TEST default product (${productId}). `
+          + 'Checkout would ask a live account for a test product.',
+      });
+    }
+  }
+  return findings;
+}
+
+/** What Stripe reports about one org-level price override. */
+export interface OverrideProbe {
+  plan:     string;
+  currency: string;
+  priceId:  string;
+  found:    boolean;
+  livemode: boolean | null;
+  active:   boolean | null;
+}
+
+/**
+ * Per-org price overrides — `billing_config/current.activePriceIdsByCurrency`.
+ *
+ * Checkout returns this value BEFORE consulting Stripe, so an override written
+ * during the test era permanently overrides a correct live catalog. It is
+ * per-org, and readiness is otherwise global: nothing else in this file would
+ * ever look at it.
+ */
+export function checkOverrideProbes(mode: StripeMode, probes: readonly OverrideProbe[]): ReadinessFinding[] {
+  const findings: ReadinessFinding[] = [];
+  for (const p of probes) {
+    const where = `activePriceIdsByCurrency.${p.plan}.${p.currency}`;
+    if (!p.found) {
+      findings.push({
+        variable: where, code: 'NOT_FOUND_IN_STRIPE',
+        detail: `Override ${p.priceId} does not exist in ${mode} mode. Checkout uses this value before `
+          + 'consulting Stripe, so the plan is unbuyable for this organization.',
+      });
+      continue;
+    }
+    if ((mode === 'live' && p.livemode === false) || (mode === 'test' && p.livemode === true)) {
+      findings.push({
+        variable: where, code: 'WRONG_LIVEMODE',
+        detail: `Override ${p.priceId} belongs to the other mode.`,
+      });
+    }
+    if (p.active === false) {
+      findings.push({ variable: where, code: 'INACTIVE', detail: `Override ${p.priceId} is archived in Stripe.` });
+    }
+  }
+  return findings;
+}
+
+/** What Stripe reports about the org's stored customer. */
+export interface CustomerProbe {
+  customerId: string;
+  found:      boolean;
+  livemode:   boolean | null;
+}
+
+/**
+ * The org's stored Stripe customer.
+ *
+ * `stripeCustomerId` survives a mode switch, and a customer created in test is
+ * invisible to a live key. The symptom is not a failed payment — it is the
+ * billing portal and the invoice list 404-ing for a customer who has already
+ * paid, which is exactly the moment they need them.
+ */
+export function checkCustomerProbe(mode: StripeMode, probe: CustomerProbe | null): ReadinessFinding[] {
+  if (!probe) return [];              // no customer yet is a valid state
+  if (!probe.found) {
+    return [{
+      variable: 'subscriptions/current.stripeCustomerId', code: 'NOT_FOUND_IN_STRIPE',
+      detail: `Customer ${probe.customerId} does not exist in ${mode} mode. The billing portal and the `
+        + 'invoice list would fail for this organization.',
+    }];
+  }
+  if ((mode === 'live' && probe.livemode === false) || (mode === 'test' && probe.livemode === true)) {
+    return [{
+      variable: 'subscriptions/current.stripeCustomerId', code: 'WRONG_LIVEMODE',
+      detail: `Customer ${probe.customerId} belongs to the other mode.`,
+    }];
+  }
+  return [];
 }
 
 export interface ReadinessReport {

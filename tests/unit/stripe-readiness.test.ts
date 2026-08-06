@@ -279,3 +279,136 @@ describe('the verdict is always a real boolean', () => {
     expect(typeof r.ready).toBe('boolean');
   });
 });
+
+/*
+ * §27.4c — the live-activation incidents of 2026-08-05. Every case below is a
+ * configuration that produced `ready: true` while production could not sell,
+ * mis-billed, or broke after the customer had already paid.
+ */
+
+import {
+  checkProductUniqueness, checkProductFallback, checkOverrideProbes, checkCustomerProbe,
+  type OverrideProbe, type CustomerProbe,
+} from '../../worker/src/lib/stripe-readiness';
+
+const productProbe = (plan: string, productId: string): ProductProbe => ({
+  plan, variable: `STRIPE_PRODUCT_${plan.toUpperCase()}`, productId,
+  found: true, livemode: true, active: true, currencies: ['eur', 'usd'],
+});
+
+describe('duplicate product detection', () => {
+  it('catches two plans sharing one product — the shifted-secret mis-bill', () => {
+    // What actually shipped: PROFESSIONAL held Starter's product, so a
+    // Professional subscriber would have been charged 49.99, not 149.99.
+    const findings = checkProductUniqueness([
+      productProbe('starter', 'prod_A'),
+      productProbe('professional', 'prod_A'),
+      productProbe('enterprise', 'prod_B'),
+    ]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].code).toBe('DUPLICATE_PRODUCT');
+    expect(findings[0].detail).toContain('starter');
+    expect(findings[0].detail).toContain('professional');
+  });
+
+  it('passes when all three are distinct', () => {
+    expect(checkProductUniqueness([
+      productProbe('starter', 'prod_A'),
+      productProbe('professional', 'prod_B'),
+      productProbe('enterprise', 'prod_C'),
+    ])).toEqual([]);
+  });
+
+  it('every per-id check passing does not save you — only the SET catches it', () => {
+    const probes = [productProbe('starter', 'prod_A'), productProbe('professional', 'prod_A')];
+    expect(checkProductProbes('live', probes, ['usd'])).toEqual([]);   // each id is real, live, active
+    expect(checkProductUniqueness(probes)).toHaveLength(1);
+  });
+});
+
+describe('production never falls back to the committed TEST products', () => {
+  const PROD = { APP_ENV: 'production' };
+
+  it('returns an empty id rather than a test default when the secret is missing', () => {
+    const resolved = resolvePlanProducts({ ...PROD, STRIPE_PRODUCT_STARTER: 'prod_live1' });
+    expect(resolved.starter).toBe('prod_live1');
+    expect(resolved.professional).toBe('');
+    expect(resolved.enterprise).toBe('');
+  });
+
+  it('still falls back outside production, so dev keeps working with no secrets', () => {
+    expect(resolvePlanProducts({}).starter).toBe(DEFAULT_PLAN_PRODUCTS.starter);
+  });
+
+  it('reports the missing product instead of silently substituting one', () => {
+    const resolved = resolvePlanProducts({ ...PROD });
+    const findings = checkProductFallback('live', resolved, DEFAULT_PLAN_PRODUCTS);
+    expect(findings).toHaveLength(3);
+    expect(findings.every(f => f.code === 'MISSING')).toBe(true);
+  });
+
+  it('flags a product explicitly set to a known test default', () => {
+    const findings = checkProductFallback('live', { starter: DEFAULT_PLAN_PRODUCTS.starter }, DEFAULT_PLAN_PRODUCTS);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].code).toBe('WRONG_LIVEMODE');
+  });
+
+  it('says nothing in test mode — the defaults ARE the test products', () => {
+    expect(checkProductFallback('test', { starter: DEFAULT_PLAN_PRODUCTS.starter }, DEFAULT_PLAN_PRODUCTS)).toEqual([]);
+  });
+});
+
+describe('per-org price overrides', () => {
+  const ov = (p: Partial<OverrideProbe> = {}): OverrideProbe => ({
+    plan: 'starter', currency: 'usd', priceId: 'price_x',
+    found: true, livemode: true, active: true, ...p,
+  });
+
+  it('catches an override pointing at a price that does not exist in this mode', () => {
+    const findings = checkOverrideProbes('live', [ov({ found: false, livemode: null, active: null })]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].code).toBe('NOT_FOUND_IN_STRIPE');
+    expect(findings[0].variable).toBe('activePriceIdsByCurrency.starter.usd');
+  });
+
+  it('catches a test-mode override on a live account', () => {
+    expect(checkOverrideProbes('live', [ov({ livemode: false })])[0].code).toBe('WRONG_LIVEMODE');
+  });
+
+  it('catches an archived override', () => {
+    expect(checkOverrideProbes('live', [ov({ active: false })])[0].code).toBe('INACTIVE');
+  });
+
+  it('passes a live, active override', () => {
+    expect(checkOverrideProbes('live', [ov()])).toEqual([]);
+  });
+
+  it('no overrides configured is a valid state', () => {
+    expect(checkOverrideProbes('live', [])).toEqual([]);
+  });
+});
+
+describe("the org's stored Stripe customer", () => {
+  const cust = (p: Partial<CustomerProbe> = {}): CustomerProbe => ({
+    customerId: 'cus_x', found: true, livemode: true, ...p,
+  });
+
+  it('catches a customer that exists only in the other mode', () => {
+    // The symptom lands on someone who has ALREADY paid: portal and invoices 404.
+    const findings = checkCustomerProbe('live', cust({ found: false, livemode: null }));
+    expect(findings).toHaveLength(1);
+    expect(findings[0].code).toBe('NOT_FOUND_IN_STRIPE');
+  });
+
+  it('catches a test customer on a live account', () => {
+    expect(checkCustomerProbe('live', cust({ livemode: false }))[0].code).toBe('WRONG_LIVEMODE');
+  });
+
+  it('passes a live customer', () => {
+    expect(checkCustomerProbe('live', cust())).toEqual([]);
+  });
+
+  it('no customer yet is a valid state, not a finding', () => {
+    expect(checkCustomerProbe('live', null)).toEqual([]);
+  });
+});

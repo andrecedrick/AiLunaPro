@@ -1717,7 +1717,7 @@ export const fr: Dict = {
       },
       "secureCheckoutBadge": "Paiement sécurisé propulsé par Stripe",
       "heading": "Choisissez le forfait adapté à votre flux d'audit",
-      "subheadingPrefix": "Démarrez en mode test Stripe. Aucun débit réel n'est effectué — utilisez la carte de test",
+      "subheadingPrefix": "Paiement sécurisé par Stripe. Changez ou annulez votre forfait à tout moment.",
       "subheadingSuffix": "."
     },
     "currentPlan": {

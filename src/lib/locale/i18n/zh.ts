@@ -1719,7 +1719,7 @@ export const zh: Dict = {
       },
       "secureCheckoutBadge": "由 Stripe 提供安全结账",
       "heading": "选择适合您审计工作流的套餐",
-      "subheadingPrefix": "在 Stripe 测试模式下开始。不会产生任何真实扣费 — 请使用测试卡",
+      "subheadingPrefix": "由 Stripe 提供安全支付。您可以随时更改或取消套餐。",
       "subheadingSuffix": "。"
     },
     "currentPlan": {

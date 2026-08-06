@@ -1717,7 +1717,7 @@ export const pt: Dict = {
       },
       "secureCheckoutBadge": "Pagamento seguro através de Stripe",
       "heading": "Escolha o plano que se adequa ao seu fluxo de auditoria",
-      "subheadingPrefix": "Comece no modo de teste do Stripe. Não são feitas cobranças reais — utilize o cartão de teste",
+      "subheadingPrefix": "Pagamento seguro com Stripe. Altere ou cancele o seu plano a qualquer momento.",
       "subheadingSuffix": "."
     },
     "currentPlan": {

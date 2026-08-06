@@ -63,7 +63,9 @@ async function resolvePriceForCurrency(
   plan: Plan,
 ): Promise<string | null> {
   // A. Firestore admin override
-  const override = activeMap?.[plan]?.[currency];
+  // Trimmed: this value is typed into an admin form, and a padded id reaches
+  // Stripe as a different string (§27.4c).
+  const override = (activeMap?.[plan]?.[currency] ?? '').trim();
   if (override) return override;
 
   // B. Stripe prices.list filtered by currency

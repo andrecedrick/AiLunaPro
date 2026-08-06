@@ -22,9 +22,11 @@ import { getStripe } from '../lib/stripe';
 import { firestoreGet } from '../lib/firestoreAdmin';
 import {
   checkStaticReadiness, checkPriceProbes, checkProductProbes, buildReport,
+  checkProductUniqueness, checkProductFallback, checkOverrideProbes, checkCustomerProbe,
   type PriceProbe, type ProductProbe, type ReadinessFinding,
+  type OverrideProbe, type CustomerProbe,
 } from '../lib/stripe-readiness';
-import { resolvePlanProducts } from '../lib/billing-admin-shared';
+import { resolvePlanProducts, DEFAULT_PLAN_PRODUCTS } from '../lib/billing-admin-shared';
 import type { AppEnv } from '../index';
 
 const readiness = new Hono<AppEnv>();
@@ -50,8 +52,11 @@ readiness.get('/api/billing/admin/live-readiness', requireAuth(), requireOwner()
    */
   const orgId = c.get('orgId') as string;
   let requiredCurrencies: string[] = ['usd'];
+  // Hoisted: the same document also carries activePriceIdsByCurrency, which the
+  // override probe below needs.
+  let cfg: Record<string, unknown> | null = null;
   if (env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const cfg = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/billing_config/current`)
+    cfg = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/billing_config/current`)
       .catch(() => null) as Record<string, unknown> | null;
     const cs = (cfg?.currencySettings ?? {}) as { enabledCurrencies?: unknown };
     if (Array.isArray(cs.enabledCurrencies)) {
@@ -63,6 +68,8 @@ readiness.get('/api/billing/admin/live-readiness', requireAuth(), requireOwner()
   let productsVerified = false;
   let portalVerified = false;
   let products: ProductProbe[] = [];
+  let overrideProbes: OverrideProbe[] = [];
+  let customerProbe: CustomerProbe | null = null;
   const portal: { configured: boolean; livemode: boolean | null; error: string } =
     { configured: false, livemode: null, error: '' };
 
@@ -126,8 +133,56 @@ readiness.get('/api/billing/admin/live-readiness', requireAuth(), requireOwner()
     );
 
     findings.push(...checkProductProbes(stat.mode, productProbes, requiredCurrencies));
+    // Two plans sharing one product passes every per-id check — only the SET
+    // catches it. See the 2026-08-05 shifted-secret incident (§27.4c).
+    findings.push(...checkProductUniqueness(productProbes));
+    // A plan silently using the committed TEST default, or no product at all
+    // because production refuses to fall back.
+    findings.push(...checkProductFallback(stat.mode, planProducts, DEFAULT_PLAN_PRODUCTS));
     productsVerified = productProbes.length > 0 && productProbes.every(p => p.found);
     products = productProbes;
+
+    // ── Per-org price overrides. `activePriceIdsByCurrency` short-circuits the
+    //    product lookup in checkout, so a value written during the test era
+    //    outranks a perfectly correct live catalog — and nothing else in this
+    //    report is per-org.
+    const activeMap = (cfg?.activePriceIdsByCurrency ?? {}) as Record<string, Record<string, string>>;
+    const overrideEntries: Array<{ plan: string; currency: string; priceId: string }> = [];
+    for (const [plan, byCurrency] of Object.entries(activeMap)) {
+      for (const [currency, priceId] of Object.entries(byCurrency ?? {})) {
+        const id = String(priceId ?? '').trim();
+        if (id) overrideEntries.push({ plan, currency, priceId: id });
+      }
+    }
+    overrideProbes = await Promise.all(overrideEntries.map(async e => {
+      const base: OverrideProbe = { ...e, found: false, livemode: null, active: null };
+      try {
+        const price = await stripe.prices.retrieve(e.priceId);
+        base.found = true;
+        base.livemode = price.livemode;
+        base.active = price.active;
+      } catch { /* absent in this mode — the finding says so */ }
+      return base;
+    }));
+    findings.push(...checkOverrideProbes(stat.mode, overrideProbes));
+
+    // ── The org's stored Stripe customer. A `cus_` created in test is invisible
+    //    to a live key, and the symptom lands on a customer who has ALREADY
+    //    paid: the billing portal and the invoice list both 404.
+    if (env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+      const sub = await firestoreGet(env.FIREBASE_SERVICE_ACCOUNT_JSON, `organizations/${orgId}/subscriptions/current`)
+        .catch(() => null) as Record<string, unknown> | null;
+      const customerId = String(sub?.stripeCustomerId ?? '').trim();
+      if (customerId) {
+        customerProbe = { customerId, found: false, livemode: null };
+        try {
+          const customer = await stripe.customers.retrieve(customerId);
+          customerProbe.found = true;
+          customerProbe.livemode = 'livemode' in customer ? customer.livemode : null;
+        } catch { /* absent in this mode — the finding says so */ }
+        findings.push(...checkCustomerProbe(stat.mode, customerProbe));
+      }
+    }
 
     // ── Customer portal: a live account with no portal configuration means every
     //    "manage subscription" click 500s after the customer has already paid.
@@ -183,7 +238,7 @@ readiness.get('/api/billing/admin/live-readiness', requireAuth(), requireOwner()
     staticChecks: true, pricesVerified, productsVerified, portalVerified, webhookObserved,
   });
 
-  return c.json({ ...report, requiredCurrencies, products, portal, webhook });
+  return c.json({ ...report, requiredCurrencies, products, portal, webhook, overrides: overrideProbes, customer: customerProbe });
 });
 
 export default readiness;

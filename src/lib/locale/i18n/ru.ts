@@ -1718,7 +1718,7 @@ export const ru: Dict = {
       },
       "secureCheckoutBadge": "Безопасная оплата с помощью Stripe",
       "heading": "Выберите тариф под ваш процесс аудита",
-      "subheadingPrefix": "Начните в тестовом режиме Stripe. Реальные списания не производятся — используйте тестовую карту",
+      "subheadingPrefix": "Безопасная оплата через Stripe. Вы можете изменить или отменить план в любое время.",
       "subheadingSuffix": "."
     },
     "currentPlan": {

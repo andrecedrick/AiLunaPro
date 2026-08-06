@@ -973,11 +973,11 @@ export function BillingPage() {
               {T.billingPage.pricingSection.heading}
             </h2>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 560, marginInline: 'auto', lineHeight: 1.55 }}>
-              {T.billingPage.pricingSection.subheadingPrefix}{' '}
-              <code style={{ background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
-                4242 4242 4242 4242
-              </code>
-              {T.billingPage.pricingSection.subheadingSuffix}
+              {/* This block used to announce "Stripe test mode — no real charges"
+                  and invite the 4242 test card. Unconditional, so once the
+                  platform went live it told paying customers their card would
+                  not be charged (§27.4c). The copy is now mode-independent. */}
+              {T.billingPage.pricingSection.subheadingPrefix}
             </p>
           </div>
 
