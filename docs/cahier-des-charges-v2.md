@@ -4174,7 +4174,7 @@ The Audit Enrichment Engine must NEVER:
 It is an Audit Engine feature. It is not a Sales feature. Contacts, Companies,
 Assignments, Pipeline, Timeline, Sales Dashboard and Twenty CRM are untouched by it.
 
-### 26.15 — Decisions *(D1, D2, D4 CLOSED 2026-08-02 · D3 open, non-blocking)*
+### 26.15 — Decisions *(D1, D2, D4 CLOSED 2026-08-02 · D3 CLOSED 2026-08-06)*
 
 **D1 — CLOSED. Enrichment depth per surface.**
 
@@ -4196,8 +4196,29 @@ model-assigned, because it feeds scoring and scoring must be deterministic, vers
 explainable, rule-based and reproducible (§26.9). A model may extract a signal; it may
 never grade one.
 
-**D3 — OPEN, non-blocking.** Robots.txt stance for the Apify layer. Does not block Phases
-1–3; must be settled before the Apify collector is enabled against customer domains.
+**D3 — CLOSED 2026-08-06. Robots.txt stance for the collector layer.**
+
+The rule turns on **who owns the asset**, because that is what determines whether
+authorisation exists.
+
+| Target | `robots.txt` | Rationale |
+|---|---|---|
+| **Third-party domain** — anything the customer did not submit as theirs | **Honoured.** A `Disallow` stops the fetch | No authorisation exists. Crawling against a published exclusion is exactly the exposure D3 was opened to bound |
+| **Customer-owned domain** submitted for audit | **Not a blocking condition.** The fetch proceeds | The customer explicitly authorises AiLunaPro to analyse their own assets. A site owner's `robots.txt` addresses uninvited crawlers, not a supplier they commissioned |
+
+**Authorisation rests with the customer.** Ownership — or authority to commission an
+audit of the asset — is asserted at onboarding and again at domain submission. AiLunaPro
+acts on that assertion; it does not independently verify ownership, consistent with the
+standing decision that domain verification must not become onboarding friction.
+
+**Disclosure is mandatory and unconditional.** A third-party source stopped by
+`robots.txt` is reported as **`blocked`**; a source not reached for any other reason is
+**`not_analyzed`**. **Never clean, never silently omitted.** An unexamined source that
+looks examined is a false assurance, and the customer must be able to see that the audit
+is partial. This binds §26.12 and reuses the existing coverage states — no new report
+surface.
+
+**Precedent.** This stance governs every collector added later, not only Apify.
 
 **Failure disclosure (approved, binding on §26.12).** When a source cannot be analysed the
 report must state which, using explicit states: *source unavailable*, *source blocked*,
@@ -4209,9 +4230,9 @@ timestamp · collector · confidence · captured evidence · evidence hash · **
 No finding is valid without evidence.
 
 **Statut §26 :** ✅ IMPLEMENTED — Phases 1–7 closed 2026-08-02, commit `5c367ff`.
-D1/D2/D4 closed; **D3 open — now BLOCKING** (see §27.4): it was correctly
-non-blocking while nothing crawled, and becomes a live legal question the moment
-Apify is pointed at a customer domain.
+D1/D2/D4 closed 2026-08-02; **D3 closed 2026-08-06** (P2.0). It was correctly
+non-blocking while nothing crawled, and was settled before Apify was pointed at
+any domain.
 
 ---
 
@@ -4289,7 +4310,7 @@ wording should be read accordingly.
 | Stripe live-activation preflight | **DONE** | — |
 | Stripe plan products environment-driven | **DONE** | — |
 | Stripe Live activation | **BLOCKED** | owner-supplied live credentials (B7) |
-| Enrichment collection live (Apify) | **BLOCKED** | B1, D3 |
+| Enrichment collection live (Apify) | **BLOCKED** | B1 *(D3 resolved 2026-08-06)* |
 | Enrichment collection live (Agent-Reach) | **BLOCKED** | B2 |
 | Super Admin notification coverage | **PENDING** | — |
 | Admin Center redesign | **PENDING** | — |
@@ -4309,7 +4330,7 @@ wording should be read accordingly.
 | ~~**B3**~~ | ~~`stripeMode: "test"` in production~~ **RESOLVED 2026-08-05** — `sk_live_` installed; `/healthz` reports `stripeMode: live`. Original entry: | No revenue | P1.2 Phase C activation. **Not a toggle** — `/healthz` derives the mode from the `STRIPE_SECRET_KEY` prefix, so it flips when `sk_live_` is installed. B3 and B7 close together |
 | ~~**B8**~~ | **CLOSED 2026-08-03.** CI and CD green on `d9fb26f`; worker `0d627e0a` and the Pages bundle both deployed by the pipeline, and the CI-built bundle verified to carry its Firebase config and boot (FCP 2.5 s, no connection card). Original entry: Client config supplied to CI as ONE aggregate secret (`AILUNAPRO_API_KEY_SECRET`) + ONE aggregate variable (`AILUNAPRO_DB_VARIABLE`), each a block of KEY=VALUE lines. GitHub does not expand an aggregate into individual entries, so `secrets.VITE_*` resolved empty and the build guard fired. The workflow now parses both blobs into `$GITHUB_ENV` (VITE_* keys only; secret values masked). Original entry: 11 secrets + 6 variables. `VITE_STRIPE_PUBLISHABLE_KEY` was removed from the workflow — the frontend never reads it (Stripe config comes from the worker at runtime). The build guard now also checks that the auth/billing data layers resolve to `firebase`, so CI cannot ship a bundle that boots into mock data. | **CI build now fails by design** until they are added, so no further CI deploy can ship a bundle that cannot boot. Production is healthy (restored by a local deploy). Deploys stay manual until this clears. | Owner adds the secrets/variables listed in `.github/workflows/ci.yml` |
 | ~~**B7**~~ | ~~Live Stripe credentials not installed~~ **RESOLVED 2026-08-05** — all 12 secrets installed; one real live payment credited end to end (see 27.4c). Original entry: | P1.2 Phase C cannot be closed. **Preparation is complete as of 2026-08-04** — account, webhook, portal, catalog and pricing are all signed off, so this is now the ONLY thing standing between here and live revenue. Preflight is deployed and will verify the switch the moment it is made. | Owner installs live keys, price ids and webhook secret, then runs the preflight |
-| **D3** | robots.txt stance for the Apify layer undecided (§26.15) | Legal exposure the moment a customer domain is crawled | P2.0 |
+| ~~**D3**~~ | ~~robots.txt stance for the Apify layer undecided (§26.15)~~ **RESOLVED 2026-08-06** — stance decided and recorded in §26.15: honoured for third-party domains, not blocking for customer-owned domains submitted for audit, third-party blocks always reported as `blocked` / `not_analyzed`, never clean. Original entry: | Legal exposure the moment a customer domain is crawled | P2.0 |
 
 ### 27.4b Production incident — CI deployed a bundle that could not boot (2026-08-02)
 
@@ -4789,8 +4810,8 @@ through checkout's chain to USD · no launch promotion.
 
 | Task | Description | Status | Depends on |
 |---|---|---|---|
-| **P2.0** | Close §26.15 **D3**: robots.txt stance for the Apify layer. A decision, not development. | **PENDING** | P0.0 |
-| **P2.1** | Configure `APIFY_TOKEN` (+ optional `APIFY_ACTORS`, `APIFY_MEMORY_MB`) in production | **BLOCKED** | P2.0 |
+| **P2.0** | Close §26.15 **D3**: robots.txt stance for the Apify layer. A decision, not development. | **DONE** 2026-08-06 — stance recorded in §26.15; D3 struck from §27.4; **P2.1 unblocked** | P0.0 |
+| **P2.1** | Configure `APIFY_TOKEN` (+ optional `APIFY_ACTORS`, `APIFY_MEMORY_MB`) in production | **UNBLOCKED** 2026-08-06 — P2.0 closed; awaiting owner-supplied Apify credentials | P2.0 |
 | **P2.2** | First real run against `ailunapro.com` — a domain we own, no customer exposure. Verifies actor output shapes and wire formats that Phase 7 could only certify against a faked HTTP layer. | **BLOCKED** | P2.1 |
 | **P2.3** | Super Admin notification coverage for billing and collector failures | **PENDING** | P1.2, P2.2 |
 
