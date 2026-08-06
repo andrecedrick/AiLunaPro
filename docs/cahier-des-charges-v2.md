@@ -4393,6 +4393,36 @@ no trace. Related: this deployment briefly diverged from `main` because the fix
 shipped via `wrangler deploy` before it was committed — the next CI deploy would
 have silently reverted it.
 
+### 27.4d P1.2 CLOSED — live subscription validated end to end (2026-08-06)
+
+Stripe live billing is operational. Both revenue paths are proven on real money.
+
+| Criterion | Evidence |
+|---|---|
+| Stripe Live works | `stripeMode: live`; `live-readiness` → `ready: true`, `findings: []` |
+| End-to-end payment | `sub_1U1VYwDhT4Ik1YJQOpGA35jf`, `status: active`, 49.99 USD |
+| **Invoice generation** | invoice `F1A27D68-0052`, **paid**, 49.99 USD |
+| Webhook verification | `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` — all **200**, `pending_webhooks: 0` |
+| Live product | `prod_V0oVrHKrIWzSM0` |
+| Live price | `price_1U0msaDhT4Ik1YJQVl3vCdfN`, `livemode: true`, `ailuna_key: plan:starter:usd:month` |
+| **Period bounds** | `current_period_start: 1786039107` · `current_period_end: 1788717507` — the `d29071d` fix proven on live data |
+| Metadata write-back | `orgId` + `plan: starter` persisted onto the subscription, so future events resolve without `client_reference_id` |
+| Token path | 5,000 credited exactly once across a **duplicate** live delivery — the exactly-once guarantee proven against real Stripe retries |
+
+**Blockers closed:** B3 (`stripeMode: test`) and B7 (live credentials).
+
+**Two things this arc established beyond the milestone.** Readiness now probes what
+checkout actually uses — product uniqueness, per-org price overrides, the customer's
+livemode, and the production fallback — after `ready: true` was returned twice over a
+configuration that could not sell (`1dc290f`). And every Stripe secret is trimmed at
+the point of use, after a padded signing secret cost 80 minutes of live fulfilment
+(§27.4c).
+
+**Known state carried forward, not blocking:** `org_ux6EH21A_1779743372219_71670faf`
+holds `plan: Enterprise, status: active` from a test-era subscription with no live
+subscription behind it. Entitlement drift of this shape is undetected by any check —
+readiness validates configuration, never entitlement.
+
 ### 27.5 Approved execution roadmap
 
 > **Discipline.** Strictly sequential. Each task is Implemented → Tested →
@@ -4443,7 +4473,7 @@ was `Deploy pages`.
 | **P1.2 Phase A** | Environment-driven plan products (`STRIPE_PRODUCT_*`) + extended readiness validation (products · prices · currency mappings · active · livemode) | **DONE** 2026-08-02 | P1.2a |
 | **P1.2 Phase B** | Stripe dashboard preparation — runbook + idempotent setup script (`scripts/stripe-setup.mjs`) | **DONE** 2026-08-04 — tooling built, and rehearsed end to end against the TEST account: 12 objects created, second apply `0 to create · 12 already correct · 0 conflict` | Phase A |
 | **P1.2 Phase C — preparation** | Live account, webhook destination, customer portal, API-version compatibility, catalog + pricing sign-off | **DONE** 2026-08-04 — 9 of 11 blockers closed; the 2 open ones ARE the activation | Phase B |
-| **P1.2 Phase C — activation** | Install live credentials, live apply, run the preflight, end-to-end live payment | **FUNCTIONALLY CLOSED** 2026-08-05 — 12 live objects created, 12 secrets installed, `stripeMode: live`, one real 9.99 USD payment credited exactly once across a duplicate delivery. **Formal closure pending**: invoice generation was never exercised (the token pack runs `mode: payment`, `invoice_creation: false`), and `live-readiness` has never returned `ready: true` because it requires an `owner` account | Phase C preparation + owner action |
+| **P1.2 Phase C — activation** | Install live credentials, live apply, run the preflight, end-to-end live payment | **CLOSED** 2026-08-06 — see the closure evidence below | Phase C preparation + owner action |
 
 **P1.2 Phase A closure evidence (2026-08-02).** Two defects found during the P1.2
 inspection, both of which would have made a live switch fail while reporting
