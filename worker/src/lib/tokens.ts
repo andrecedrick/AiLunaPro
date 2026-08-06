@@ -206,8 +206,20 @@ export async function consumeTokens(
   eventId: string,
   metadata: Record<string, unknown> = {},
   mode: UsageMode = 'included',
+  /**
+   * Charge this instead of the table cost.
+   *
+   * Scrape pricing is configuration, not code (`platform_config/billing`), so
+   * the amount is only known at request time. The snapshot written below freezes
+   * whatever was charged, which is what keeps the ledger truthful after a price
+   * change — history must show what each past run actually cost, not what the
+   * current config says it would cost today.
+   */
+  overrideCost?: number,
 ): Promise<ConsumeResult> {
-  const required = TOKEN_COSTS[action];
+  const required = (typeof overrideCost === 'number' && Number.isFinite(overrideCost) && overrideCost > 0)
+    ? Math.floor(overrideCost)
+    : TOKEN_COSTS[action];
   const usagePath = `${BALANCE_PATH(orgId)}/usage/${eventId}`;
 
   const usageDoc = () => ({

@@ -26,6 +26,7 @@ export type BillingAlertKind =
   | 'lead_contact_failed'        // a lead was captured but did NOT reach the CRM
   | 'crm_push_failed'             // a lead was captured but did NOT reach Twenty CRM
   | 'webhook_handler_failed'     // a VERIFIED Stripe event was answered 2xx but not processed
+  | 'scrape_refund_failed'      // a scrape was charged, produced nothing, and the refund failed
   | 'notification_email_failed'; // a notification email did NOT send — makes silent failures visible
 
 export interface BillingAlertInput {

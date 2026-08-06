@@ -23,6 +23,7 @@ export const TOKEN_VALUE_USD: Record<TokenCostAction, number> = {
   'audit_express.pdf':  2,   // branded audit PDF
   'quote.generation':   5,   // personalized project quote
   'luna.message':       1.5, // expert AI compliance answer
+  'enrichment.scrape':  3,   // website / social evidence collection
 };
 
 /** Display-only "value delivered" (USD base) for a paid action. Format via useMoney. */

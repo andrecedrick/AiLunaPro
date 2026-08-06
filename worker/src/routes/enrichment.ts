@@ -17,7 +17,15 @@
 import { Hono, type Context } from 'hono';
 import type { AppEnv } from '../index';
 import { verifyIdToken } from '../middleware/auth';
-import { firestoreGet } from '../lib/firestoreAdmin';
+import { firestoreGet, firestoreSet } from '../lib/firestoreAdmin';
+import { consumeTokens, incrementBalance, ensureTokenCycleFresh } from '../lib/tokens';
+import { allocationForPlan } from '../lib/token-costs';
+import { recordBillingAlert } from '../lib/billing-alerts';
+import {
+  resolveScrapePolicy, decideScrape,
+  type ScrapeClass, type ScrapeDenialCode,
+} from '../lib/scrape-policy';
+import { countScrapeUsage, SCRAPE_ACTION } from '../lib/scrape-quota';
 import { listSnapshots } from '../lib/enrichment-store';
 import { loadEnrichmentReport } from '../lib/enrichment-report';
 import { runEnrichment } from '../lib/enrichment-pipeline';
@@ -65,6 +73,34 @@ async function gate(c: Context<AppEnv>, orgId: string): Promise<Gate | Response>
 }
 
 const isPrivileged = (role: string) => role === 'owner' || role === 'admin';
+
+/**
+ * Why each denial reads differently: the customer's next action differs. Sending
+ * a Free user to the token shop would be useless — buying tokens does not grant
+ * them scraping — and telling a capped Enterprise customer to buy tokens would
+ * be wrong for the same reason.
+ */
+const DENIAL_MESSAGE: Record<ScrapeDenialCode, string> = {
+  PLAN_REQUIRED:
+    'Advanced website and social analysis requires a paid subscription. Upgrade your plan or purchase credits to continue.',
+  DAILY_CAP_REACHED:
+    'You have reached the daily analysis limit for your plan. Try again tomorrow, or upgrade for a higher limit.',
+  MONTHLY_CAP_REACHED:
+    'You have reached the monthly analysis limit for your plan. Upgrade for a higher limit.',
+  INSUFFICIENT_TOKENS:
+    'This analysis requires additional audit credits. Purchase credits to continue.',
+};
+
+/**
+ * Live scrape pricing. Read straight from `platform_config/billing` — the same
+ * document that already holds billing scope — so a price change is a Firestore
+ * edit, never a deploy. An unreadable document falls back to the committed
+ * defaults inside `resolveScrapePolicy`, so a config outage cannot make scraping
+ * free or block every customer.
+ */
+async function readPlatformBilling(saJson: string): Promise<Record<string, unknown> | null> {
+  return firestoreGet(saJson, 'platform_config/billing').catch(() => null) as Promise<Record<string, unknown> | null>;
+}
 
 /**
  * Which collectors are configured.
@@ -131,30 +167,122 @@ enrichment.post('/api/enrichment/run', async c => {
   if (!subjectDomain) return c.json({ error: 'A valid domain is required.', code: 'DOMAIN_REQUIRED' }, 400);
 
   const surface = typeof body.surface === 'string' && SURFACES.has(body.surface) ? body.surface : 'audit_express';
+  const scrapeClass: ScrapeClass = body.scrapeClass === 'social' ? 'social' : 'website';
 
+  // Cheapest gate first: no I/O, no money, and an unconfigured environment must
+  // say so plainly rather than after a round of quota and balance reads.
   const collectors = configuredCollectors(env);
   if (collectors.length === 0) {
     // No silent no-op: a run that could never read anything is refused with the
-    // reason, not recorded as an empty but successful audit.
+    // reason, not recorded as an empty but successful audit. In production this
+    // also fires when APIFY_ACTORS or APIFY_MEMORY_MB are missing — an
+    // incomplete collector config is a refusal, not a partial run.
     return c.json({
       error: 'No enrichment collector is configured for this environment.',
       code: 'NO_COLLECTOR_CONFIGURED',
     }, 503);
   }
 
+  /* ── Billing enforcement ────────────────────────────────────────────────
+   * An Apify run costs real money at the provider. Until P2.1a this route
+   * checked auth and the org role and nothing else — privilege was the only
+   * control, and privilege is not a budget.
+   *
+   * ORDER IS DELIBERATE. Every gate below runs BEFORE the pipeline starts, so a
+   * denied request never reaches the provider. The debit is the reservation:
+   * checking the balance and then calling Apify is a race, and two concurrent
+   * requests would both pass the check and both spend. consumeTokens is atomic
+   * (optimistic concurrency), so winning the debit IS the reservation.
+   */
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_JSON!;
+  const policy = resolveScrapePolicy(await readPlatformBilling(saJson));
+
+  const sub  = await firestoreGet(saJson, `organizations/${orgId}/subscriptions/current`).catch(() => null);
+  const plan = (sub?.plan as string | undefined) ?? null;
+
+  // Fail-CLOSED: if the counters cannot be read we refuse rather than assume
+  // zero, because assuming zero would uncap Apify spend during an outage.
+  let usage;
+  try {
+    usage = await countScrapeUsage(saJson, orgId, new Date());
+  } catch (err) {
+    dlog(env as Record<string, unknown>, '[enrichment] QUOTA_READ_FAILED', orgId, err instanceof Error ? err.message : '');
+    return c.json({ error: 'Usage quota could not be verified. Please try again.', code: 'QUOTA_UNAVAILABLE' }, 503);
+  }
+
+  const balance  = await ensureTokenCycleFresh(saJson, orgId, allocationForPlan(plan));
+  const decision = decideScrape({
+    plan, scrapeClass,
+    usedToday: usage.usedToday, usedThisMonth: usage.usedThisMonth,
+    balance: balance.balance,
+  }, policy);
+
+  if (!decision.allowed) {
+    return c.json({
+      error: DENIAL_MESSAGE[decision.code!],
+      code:  decision.code,
+      ...decision.detail,
+    }, decision.status!);
+  }
+
+  // RESERVE. Nothing below may reach Apify unless this debit committed.
+  const runId  = crypto.randomUUID();
+  const charge = await consumeTokens(
+    saJson, orgId, SCRAPE_ACTION, g.uid, runId,
+    { subjectDomain, surface, scrapeClass, maxPages: policy.maxPages },
+    'included', decision.cost,
+  );
+  if (!charge.ok) {
+    // Lost a race against a concurrent run, or the balance moved between the
+    // check and the debit. Either way no money was spent at the provider.
+    return c.json({
+      error: DENIAL_MESSAGE.INSUFFICIENT_TOKENS, code: 'INSUFFICIENT_TOKENS',
+      ...decision.detail, balance: charge.balance ?? decision.detail.balance,
+    }, 402);
+  }
+
+  /** Give the tokens back. Only ever called when the run produced nothing. */
+  const refund = async (reason: string): Promise<void> => {
+    try {
+      await incrementBalance(saJson, orgId, decision.cost);
+      await firestoreSet(saJson, `organizations/${orgId}/tokens/current/usage/${runId}`, {
+        status: 'refunded', refundedAt: new Date().toISOString(), refundReason: reason,
+      }, { merge: true });
+    } catch (err) {
+      // A swallowed money error is the failure mode this codebase exists to
+      // avoid: surface it durably so it can be reconciled by hand.
+      await recordBillingAlert(saJson, {
+        kind: 'scrape_refund_failed', severity: 'critical', orgId, refId: runId,
+        message: `Scrape charged ${decision.cost} tokens but the refund failed; org is owed credits.`,
+        context: { scrapeClass, cost: decision.cost, reason, error: err instanceof Error ? err.message : 'unknown' },
+      });
+    }
+  };
+
   let result;
   try {
     result = await runEnrichment({
-      saJson: env.FIREBASE_SERVICE_ACCOUNT_JSON!,
+      saJson,
       orgId, subjectDomain, surface, collectors, now: new Date(),
     });
   } catch (err) {
     dlog(env as Record<string, unknown>, '[enrichment] RUN_FAILED', orgId, err instanceof Error ? err.message : '');
+    await refund('RUN_FAILED');
     return c.json({ error: 'Enrichment could not be completed.', code: 'RUN_FAILED' }, 500);
   }
 
+  // Refund ONLY when nothing of value was produced. Partial coverage is a valid
+  // audit result under §26.15 — a blocked source is evidence, not a failure —
+  // so it is charged.
+  if (result.snapshot.evidence.length === 0) await refund('NO_EVIDENCE');
+
   return c.json({
     snapshotId: result.snapshot.snapshotId,
+    scrapeClass,
+    tokensCharged: result.snapshot.evidence.length === 0 ? 0 : decision.cost,
+    balanceAfter:  charge.balanceAfter,
+    warnLowBalance: decision.warnLowBalance,
+    minBalance:     policy.minBalance,
     subjectDomain, surface,
     createdAt:     result.snapshot.createdAt,
     evidenceCount: result.snapshot.evidence.length,

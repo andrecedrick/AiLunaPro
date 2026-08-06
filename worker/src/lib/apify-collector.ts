@@ -81,15 +81,37 @@ export function parseActorConfig(raw: string | undefined): Partial<Record<Source
   return out;
 }
 
-/** Config overrides defaults, so an operator can replace a retired actor without a deploy. */
-export function buildApifyConfig(env: { APIFY_TOKEN?: string; APIFY_ACTORS?: string; APIFY_MEMORY_MB?: string }): ApifyConfig | null {
+/**
+ * Config overrides defaults, so an operator can replace a retired actor without
+ * a deploy.
+ *
+ * PRODUCTION REQUIRES ALL THREE VARIABLES. `DEFAULT_ACTORS` is explicitly
+ * partial and `memoryMb` is unbounded when unset, so an incomplete configuration
+ * means some source types silently have no collector while others run at
+ * whatever Apify defaults to — and the platform pays for it. That is the same
+ * silent-fallback shape as the plan products, which cost two days of live
+ * debugging (§27.4c). In production, absence is fatal: this returns null, the
+ * route answers NO_COLLECTOR_CONFIGURED, and nothing reaches the provider.
+ *
+ * Outside production the defaults stand, so a dev environment needs one token.
+ */
+export function buildApifyConfig(env: {
+  APIFY_TOKEN?: string; APIFY_ACTORS?: string; APIFY_MEMORY_MB?: string; APP_ENV?: string;
+}): ApifyConfig | null {
   const token = (env.APIFY_TOKEN ?? '').trim();
   if (!token) return null;
-  const memory = Number.parseInt(env.APIFY_MEMORY_MB ?? '', 10);
+
+  const production = (env.APP_ENV ?? '').trim().toLowerCase() === 'production';
+  const overrides  = parseActorConfig(env.APIFY_ACTORS);
+  const memory     = Number.parseInt(env.APIFY_MEMORY_MB ?? '', 10);
+  const memoryOk   = Number.isFinite(memory) && memory > 0;
+
+  if (production && (Object.keys(overrides).length === 0 || !memoryOk)) return null;
+
   return {
     token,
-    actors: { ...DEFAULT_ACTORS, ...parseActorConfig(env.APIFY_ACTORS) },
-    memoryMb: Number.isFinite(memory) && memory > 0 ? memory : undefined,
+    actors: { ...DEFAULT_ACTORS, ...overrides },
+    memoryMb: memoryOk ? memory : undefined,
   };
 }
 

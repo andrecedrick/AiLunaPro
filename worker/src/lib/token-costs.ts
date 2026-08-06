@@ -13,6 +13,12 @@ export const TOKEN_COSTS = {
   'audit_express.pdf':  10,   // J16.1 — PDF export beyond the 3 free downloads
   'quote.generation':   60,   // Quote — paid generation (rebalanced 150→60 so a Free plan (100/mo) can complete one quote before the wall; kills the pre-value 402 cliff)
   'luna.message':       50,   // Luna AI chat — per message after the 3 free/day (L2)
+  // P2.1a — Apify collection. This entry is the FLOOR and the fallback: the live
+  // price is per class (website 50 / social 4200) and comes from
+  // platform_config/billing, passed to consumeTokens as an override. The table
+  // value is what a caller gets if the config is unreadable, so it is set to the
+  // cheaper class — a config outage must not overcharge.
+  'enrichment.scrape':  50,
 } as const;
 
 export type TokenAction = keyof typeof TOKEN_COSTS;
@@ -53,6 +59,7 @@ export const TOKEN_VALUE_USD: Record<TokenAction, number> = {
   'audit_express.pdf':  2,
   'quote.generation':   5,
   'luna.message':       1.5,
+  'enrichment.scrape':  3,
 };
 
 /** Target top-up / overflow token price (USD). */

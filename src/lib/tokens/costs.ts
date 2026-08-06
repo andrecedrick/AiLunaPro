@@ -22,6 +22,10 @@ export const TOKEN_COSTS_DISPLAY = {
   'audit_express.pdf':  10,
   'quote.generation':   60,
   'luna.message':       50,
+  // P2.1a — floor/fallback only. The live scrape price is per class
+  // (website / social) and comes from platform_config/billing; the UI must quote
+  // the value the run endpoint returns, never this constant.
+  'enrichment.scrape':  50,
 } as const;
 
 export type TokenCostAction = keyof typeof TOKEN_COSTS_DISPLAY;
