@@ -113,9 +113,13 @@ describe('the Free plan never reaches Apify', () => {
 });
 
 describe('caps are enforced before the provider is called', () => {
+  // Shaped like a real usage row: the counter only counts SETTLED charges, so a
+  // fixture without `status` would silently count as zero.
   const consumedToday = (n: number) => {
     const today = new Date().toISOString().slice(0, 10);
-    state.usageRows = new Array(n).fill(null).map(() => ({ fields: { at: { stringValue: `${today}T09:00:00.000Z` } } }));
+    state.usageRows = new Array(n).fill(null).map(() => ({
+      fields: { at: { stringValue: `${today}T09:00:00.000Z` }, status: { stringValue: 'consumed' } },
+    }));
   };
 
   it('denies at the daily cap with 429 and no provider call', async () => {
