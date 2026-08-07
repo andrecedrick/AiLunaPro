@@ -33,6 +33,15 @@ export const APIFY_COLLECTOR_VERSION = '1.0.0';
 const MAX_ITEMS_PER_SOURCE = 50;
 /** Floor below which starting another actor is pointless. */
 const MIN_SOURCE_BUDGET_MS = 5000;
+/**
+ * Actor runs in flight at once.
+ *
+ * Each slot is a billable Apify run, so this is the blast radius of one customer
+ * request. Five covers the whole Audit Express source list in a single wave;
+ * deeper surfaces queue through the same slots rather than fanning out without
+ * limit.
+ */
+export const MAX_CONCURRENT_SOURCES = 5;
 
 /**
  * Actors verified as existing on the Apify marketplace at time of writing.
@@ -208,6 +217,9 @@ export class ApifyCollector implements EnrichmentCollector {
       return { collector: this.id, version: this.version, observations, coverage: [...coverage.values()] };
     }
 
+    // Sources with no configured actor cost nothing and are settled up front, so
+    // they never occupy a concurrency slot.
+    const tasks: Array<{ sourceType: SourceType; actorId: string }> = [];
     for (const sourceType of req.sourceTypes) {
       const actorId = this.config.actors[sourceType];
       if (!actorId) {
@@ -215,34 +227,74 @@ export class ApifyCollector implements EnrichmentCollector {
           'no Apify actor configured for this source'));
         continue;
       }
-      if (deadline.expired() || deadline.remaining() < MIN_SOURCE_BUDGET_MS) {
-        // Budget exhausted is reported per remaining source, never as silence.
-        coverage.set(sourceType, coverageEntry(sourceType, 'apify', 'not_attempted', at,
-          'collection budget exhausted'));
-        continue;
+      tasks.push({ sourceType, actorId });
+    }
+
+    /*
+     * WHY CONCURRENT (P2.2). Sequential collection made the budget a queue: the
+     * first source consumed the whole Audit Express allowance and the remaining
+     * four reported 'collection budget exhausted' — an audit that only ever read
+     * the homepage, while the legal surfaces that carry the compliance evidence
+     * were never attempted. The sources are independent, so serialising them
+     * bought nothing but latency.
+     *
+     * Bounded, not unlimited: each slot is a billable Apify run, and firing an
+     * unbounded fan-out would turn one customer request into an unpredictable
+     * number of simultaneous provider runs. The cap keeps the blast radius of a
+     * single request equal to the number of sources it declared.
+     */
+    const perSource = new Map<SourceType, RawObservation[]>();
+    let nextTask = 0;
+
+    const worker = async (): Promise<void> => {
+      for (;;) {
+        const index = nextTask++;        // single-threaded event loop: safe
+        if (index >= tasks.length) return;
+        const { sourceType, actorId } = tasks[index];
+
+        if (deadline.expired() || deadline.remaining() < MIN_SOURCE_BUDGET_MS) {
+          // Budget exhausted is reported per remaining source, never as silence.
+          coverage.set(sourceType, coverageEntry(sourceType, 'apify', 'not_attempted', at,
+            'collection budget exhausted'));
+          continue;
+        }
+
+        const remainingMs = deadline.remaining();
+        const timeoutSeconds = Math.min(APIFY_SYNC_MAX_SECONDS, Math.max(1, Math.floor(remainingMs / 1000) - 2));
+
+        let result: ApifyResult<ApifyItem[]> & { truncated?: boolean };
+        try {
+          result = await runActorSync<ApifyItem>(
+            this.config.token, actorId, buildActorInput(sourceType, req.subjectDomain, req.surface),
+            { timeoutSeconds, memoryMb: this.config.memoryMb, requestTimeoutMs: remainingMs },
+          );
+        } catch (err) {
+          // Defensive: runActorSync already traps transport errors. A collector may
+          // not throw, so an unexpected failure still becomes coverage. Inside a
+          // worker this also stops one bad source from killing its siblings.
+          coverage.set(sourceType, coverageEntry(sourceType, 'apify', 'unavailable', at, safeReason(err)));
+          continue;
+        }
+
+        const items = (result.ok ? result.data ?? [] : []).slice(0, MAX_ITEMS_PER_SOURCE);
+        coverage.set(sourceType, coverageFor(sourceType, at, result, items.length));
+        if (!result.ok) continue;
+
+        perSource.set(sourceType, mapDataset(items, { sourceType, collectorRunId: `apify:${actorId}` }));
       }
+    };
 
-      const remainingMs = deadline.remaining();
-      const timeoutSeconds = Math.min(APIFY_SYNC_MAX_SECONDS, Math.max(1, Math.floor(remainingMs / 1000) - 2));
+    await Promise.all(
+      Array.from({ length: Math.min(MAX_CONCURRENT_SOURCES, tasks.length) }, () => worker()),
+    );
 
-      let result: ApifyResult<ApifyItem[]> & { truncated?: boolean };
-      try {
-        result = await runActorSync<ApifyItem>(
-          this.config.token, actorId, buildActorInput(sourceType, req.subjectDomain, req.surface),
-          { timeoutSeconds, memoryMb: this.config.memoryMb, requestTimeoutMs: remainingMs },
-        );
-      } catch (err) {
-        // Defensive: runActorSync already traps transport errors. A collector may
-        // not throw, so an unexpected failure still becomes coverage.
-        coverage.set(sourceType, coverageEntry(sourceType, 'apify', 'unavailable', at, safeReason(err)));
-        continue;
-      }
-
-      const items = (result.ok ? result.data ?? [] : []).slice(0, MAX_ITEMS_PER_SOURCE);
-      coverage.set(sourceType, coverageFor(sourceType, at, result, items.length));
-      if (!result.ok) continue;
-
-      observations.push(...mapDataset(items, { sourceType, collectorRunId: `apify:${actorId}` }));
+    // Observations follow the REQUESTED order, not the order runs happened to
+    // finish. Evidence ids and the snapshot digest derive from this sequence, so
+    // completion order must never leak into the artefact — the same domain must
+    // produce the same snapshot whatever the network did that day (§26.6).
+    for (const sourceType of req.sourceTypes) {
+      const obs = perSource.get(sourceType);
+      if (obs) observations.push(...obs);
     }
 
     return { collector: this.id, version: this.version, observations, coverage: [...coverage.values()] };

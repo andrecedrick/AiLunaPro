@@ -4325,7 +4325,7 @@ wording should be read accordingly.
 | ~~**B0**~~ | ~~22 commits unpushed; `origin/main` at `3fad2b4` (2026-07-31)~~ | **CLEARED 2026-08-02** by P0.0a — pushed `3fad2b4..59fabef`, CI gate green | ✅ |
 | ~~**B5**~~ | ~~CI `deploy (production)` job fails~~ **RESOLVED 2026-08-02.** Root cause: the CI Account API Token had `Workers Scripts:Edit` but not `Cloudflare Pages:Edit`, so `Deploy worker` succeeded and `Deploy pages` returned Cloudflare error 10000. Local deploys were unaffected because local wrangler authenticates with an OAuth token that already carries `pages (write)`. Fixed by adding the Pages permission to the token; run #6 fully green. Original entry: | Auto-deploy does not work; deploys stay manual. Not an outage. Near-certain cause is the Cloudflare GitHub Actions secrets, unconfirmed because step logs need auth. | Owner sets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in repo settings, then re-runs the job |
 | ~~**B6**~~ | ~~**The GitHub repository is PUBLIC**~~ **RESOLVED 2026-08-02 — set to PRIVATE (owner-approved).** Original finding retained for the record: (`"visibility": "public"`) | The entire commercial codebase — worker, business logic, scoring rules, Firestore structure, security-rule design — is world-readable. No secret is exposed (`.env.local`, `.env.production`, `worker/.dev.vars` are all gitignored and untracked; a pre-push scan found only a synthetic token inside a redaction test). The exposure is intellectual property and attack-surface reconnaissance, not credentials. | Owner decides: flip to private, or accept deliberately |
-| **B1** | `APIFY_TOKEN` not set in production | Engine built, collects nothing | P2.1 |
+| ~~**B1**~~ | ~~`APIFY_TOKEN` not set in production~~ **RESOLVED 2026-08-07** — all three Apify secrets installed; first live collection produced 13 evidence items (see 27.4e). Original entry: | Engine built, collects nothing | P2.1 |
 | **B2** | Agent-Reach bridge service does not exist | Social/repo sources permanently `not_attempted` | P3.1 |
 | ~~**B3**~~ | ~~`stripeMode: "test"` in production~~ **RESOLVED 2026-08-05** — `sk_live_` installed; `/healthz` reports `stripeMode: live`. Original entry: | No revenue | P1.2 Phase C activation. **Not a toggle** — `/healthz` derives the mode from the `STRIPE_SECRET_KEY` prefix, so it flips when `sk_live_` is installed. B3 and B7 close together |
 | ~~**B8**~~ | **CLOSED 2026-08-03.** CI and CD green on `d9fb26f`; worker `0d627e0a` and the Pages bundle both deployed by the pipeline, and the CI-built bundle verified to carry its Firebase config and boot (FCP 2.5 s, no connection card). Original entry: Client config supplied to CI as ONE aggregate secret (`AILUNAPRO_API_KEY_SECRET`) + ONE aggregate variable (`AILUNAPRO_DB_VARIABLE`), each a block of KEY=VALUE lines. GitHub does not expand an aggregate into individual entries, so `secrets.VITE_*` resolved empty and the build guard fired. The workflow now parses both blobs into `$GITHUB_ENV` (VITE_* keys only; secret values masked). Original entry: 11 secrets + 6 variables. `VITE_STRIPE_PUBLISHABLE_KEY` was removed from the workflow — the frontend never reads it (Stripe config comes from the worker at runtime). The build guard now also checks that the auth/billing data layers resolve to `firebase`, so CI cannot ship a bundle that boots into mock data. | **CI build now fails by design** until they are added, so no further CI deploy can ship a bundle that cannot boot. Production is healthy (restored by a local deploy). Deploys stay manual until this clears. | Owner adds the secrets/variables listed in `.github/workflows/ci.yml` |
@@ -4443,6 +4443,82 @@ the point of use, after a padded signing secret cost 80 minutes of live fulfilme
 holds `plan: Enterprise, status: active` from a test-era subscription with no live
 subscription behind it. Entitlement drift of this shape is undetected by any check —
 readiness validates configuration, never entitlement.
+
+### 27.4e P2.2 CLOSED — first live collection, with enforcement (2026-08-07)
+
+**Objective.** Run the collector against a domain we own, and verify the actor
+output shapes and wire formats that Phase 7 could only certify against a faked
+HTTP layer. Do it with cost protection active, so a bug cannot become a bill.
+
+**Execution history.** Six live attempts against `ailunapro.com`, each cheap and
+each informative:
+
+| # | Surface | Outcome | What it taught |
+|---|---|---|---|
+| 1 | audit_express | `QUOTA_UNAVAILABLE` | the quota query needed a Firestore composite index |
+| 2 | audit_express | actor `TIMED-OUT` | first Apify contact; refund fired |
+| 3 | full_audit | 8 runs `FAILED` | 180 s changed nothing — so it was never the timeout |
+| 4 | audit_express | `FAILED`, exitCode 137 | **OOM at a 1 GB ceiling** |
+| 5 | audit_express | `TIMED-OUT`, 3 items | memory fixed; browser too slow to start |
+| 6 | audit_express | **SUCCEEDED — 13 evidence items** | `cheerio` engine; charged 50 tokens |
+
+**Failures and root causes.**
+
+| Failure | Root cause | Fix |
+|---|---|---|
+| `QUOTA_UNAVAILABLE` on every run | the usage query filtered on action + status + date range; Firestore requires a composite index for two equalities plus an inequality, and none exists for `usage` | `09eddbd` — one equality on `action`, the rest filtered in code; a read ceiling that throws rather than undercounting |
+| `exitCode 137`, `memMaxBytes` 1 023.9 MB, message still *"Starting the crawler"* | `APIFY_MEMORY_MB=1024` — a figure this report recommended — is below what Chromium needs to launch | raised to 4096 |
+| `TIMED-OUT` after the memory fix, `Crawled 1/7 pages`, 1.86 GB | a headless browser cannot start **and** crawl inside the 30 s Audit Express budget | `c0dcb62` — `crawlerType: 'cheerio'` for Express; browser retained for deeper tiers |
+| 4 of 5 sources `collection budget exhausted` | collection was sequential, so the first source consumed the whole allowance | concurrent collection, bounded at 5 in flight |
+
+**Production evidence.**
+
+```
+snapshotId     snap_YVaTM56Wi-dQeSrLyY5YYg
+evidenceCount  13          real signals from a real site
+tokensCharged  50          charged, not refunded
+coverage       succeeded 1 · partial 0 · notAttempted 4
+stored         true    storeError ""
+```
+
+Apify run `MPaEGDc56yvhbbWO6` (the run before the engine change) is the measured
+basis for that change: `memMaxBytes` 1 862 361 088, `runTimeSecs` 28.3,
+`computeUnits` 0.0315, 3 dataset items, 0 failed requests.
+
+**Enforcement validated end to end, both branches.** Five runs produced no
+evidence and were **refunded automatically**; the sixth produced evidence and was
+**charged**. Plan gate, daily and monthly caps, the atomic reservation, the
+refund rule and coverage disclosure all behaved correctly under live conditions.
+**Total cost of the entire exercise: about $0.02 of Apify compute and, after
+refunds, 50 tokens.**
+
+**Lessons.**
+
+1. **A mocked dependency cannot validate a query shape.** The composite-index bug
+   passed every test because `firestoreRunQuery` was mocked. The regression test
+   now asserts on the *query* — no `compositeFilter`, no second `orderBy` —
+   because that is the only property a mock can prove.
+2. **Configuration figures need a source.** `APIFY_MEMORY_MB=1024` was asserted,
+   not looked up, and cost three failed runs. `crawlerType` was chosen from
+   measured run metrics instead, and worked first time.
+3. **Fail-closed paid for itself.** Every failure stopped before the provider or
+   refunded after it. Not one bad run reached a customer or a bill.
+4. **Sequential collection makes a shared budget a queue.** Independent sources
+   must not compete for one wall clock.
+
+**Validation criteria — all met.**
+
+- [x] Real Apify runs created and inspected by id
+- [x] Actor output mapped into evidence — 13 observations
+- [x] Snapshot stored and reopenable
+- [x] Coverage names every source's state and reason; nothing silently clean
+- [x] Tokens charged on success, refunded on empty
+- [x] Caps, plan gate and reservation enforced before any provider call
+- [x] D3 customer-owned path exercised on a domain we own
+
+**Closure: CLOSED.** The collector produces real evidence under live enforcement.
+Audit Express coverage completeness was the one open item at closure and is
+addressed by concurrent collection, shipped with this entry.
 
 ### 27.5 Approved execution roadmap
 
@@ -4812,7 +4888,7 @@ through checkout's chain to USD · no launch promotion.
 |---|---|---|---|
 | **P2.0** | Close §26.15 **D3**: robots.txt stance for the Apify layer. A decision, not development. | **DONE** 2026-08-06 — stance recorded in §26.15; D3 struck from §27.4; **P2.1 unblocked** | P0.0 |
 | **P2.1** | Configure `APIFY_TOKEN` (+ optional `APIFY_ACTORS`, `APIFY_MEMORY_MB`) in production | **UNBLOCKED** 2026-08-06 — P2.0 closed; awaiting owner-supplied Apify credentials | P2.0 |
-| **P2.2** | First real run against `ailunapro.com` — a domain we own, no customer exposure. Verifies actor output shapes and wire formats that Phase 7 could only certify against a faked HTTP layer. | **BLOCKED** | P2.1 |
+| **P2.2** | First real run against `ailunapro.com` — a domain we own, no customer exposure. Verifies actor output shapes and wire formats that Phase 7 could only certify against a faked HTTP layer. | **DONE** 2026-08-07 — 13 evidence items, 50 tokens charged, enforcement validated on both the charge and refund branches. Closure evidence in 27.4e. Closes B1 | P2.1 |
 | **P2.3** | Super Admin notification coverage for billing and collector failures | **PENDING** | P1.2, P2.2 |
 
 > **Why P2.3 sits here.** P1.2 and P2.2 are the first paths in this codebase that
