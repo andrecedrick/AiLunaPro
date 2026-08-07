@@ -197,6 +197,15 @@ describe('refunds', () => {
     expect(state.balance).toBe(1000);
   });
 
+  it('reports the balance AFTER the refund, not the post-debit figure', async () => {
+    // P2.2: the response quoted 329890 while the true balance was 329940 — the
+    // post-debit value, captured before the refund. The customer would see 50
+    // credits missing that they still had.
+    pipeline.evidence = 0;
+    const res = await run();
+    expect(await res.json()).toMatchObject({ tokensCharged: 0, balanceAfter: 1000 });
+  });
+
   it('does NOT refund a run that produced evidence', async () => {
     // Partial coverage is a valid audit result under §26.15 — a blocked source
     // is evidence, not a failure — so it is charged.

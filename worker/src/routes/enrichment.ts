@@ -241,10 +241,16 @@ enrichment.post('/api/enrichment/run', async c => {
     }, 402);
   }
 
+  // `charge.balanceAfter` is the POST-DEBIT balance. When a refund fires it is
+  // stale — it understates the true balance by the refunded amount, which is
+  // exactly what the customer would notice. Track the restored value instead.
+  let reportedBalance = charge.balanceAfter ?? decision.detail.balance;
+
   /** Give the tokens back. Only ever called when the run produced nothing. */
   const refund = async (reason: string): Promise<void> => {
     try {
-      await incrementBalance(saJson, orgId, decision.cost);
+      const back = await incrementBalance(saJson, orgId, decision.cost);
+      reportedBalance = back.balanceAfter;
       await firestoreSet(saJson, `organizations/${orgId}/tokens/current/usage/${runId}`, {
         status: 'refunded', refundedAt: new Date().toISOString(), refundReason: reason,
       }, { merge: true });
@@ -280,7 +286,7 @@ enrichment.post('/api/enrichment/run', async c => {
     snapshotId: result.snapshot.snapshotId,
     scrapeClass,
     tokensCharged: result.snapshot.evidence.length === 0 ? 0 : decision.cost,
-    balanceAfter:  charge.balanceAfter,
+    balanceAfter:  reportedBalance,
     warnLowBalance: decision.warnLowBalance,
     minBalance:     policy.minBalance,
     subjectDomain, surface,

@@ -70,3 +70,55 @@ describe('actor overrides', () => {
     expect(cfg!.actors.website).toBe('custom/actor');
   });
 });
+
+/*
+ * P2.2 — the crawler engine, chosen from measurement rather than assumption.
+ *
+ * Run MPaEGDc56yvhbbWO6 (ailunapro.com, audit_express): the browser engine used
+ * 1.86 GB and crawled 1 of 7 discovered URLs before the 28-second deadline cut
+ * it off. Two earlier configurations died at a 1 GB ceiling with exitCode 137 —
+ * SIGKILL, out of memory, while still "Starting the crawler".
+ *
+ * Audit Express is the fast, cost-controlled tier (§26.15 D1). These tests pin
+ * the engine per surface so a browser can never be reintroduced there silently.
+ */
+
+import { buildActorInput, crawlerTypeFor } from '../../worker/src/lib/apify-collector';
+
+describe('crawler engine by surface', () => {
+  it('Audit Express never launches a browser', () => {
+    expect(crawlerTypeFor('audit_express')).toBe('cheerio');
+    expect(buildActorInput('privacy_policy', 'example.com', 'audit_express').crawlerType).toBe('cheerio');
+  });
+
+  it('the deeper tiers keep the browser, where JS-rendered content matters', () => {
+    expect(crawlerTypeFor('full_audit')).toBe('playwright:adaptive');
+    expect(crawlerTypeFor('diagnostic')).toBe('playwright:adaptive');
+    expect(buildActorInput('website', 'example.com', 'full_audit').crawlerType).toBe('playwright:adaptive');
+  });
+
+  it('defaults to the fast engine when no surface is supplied', () => {
+    // Safe direction: an unknown caller gets the cheap path, not a 1.9 GB browser.
+    expect(buildActorInput('website', 'example.com').crawlerType).toBe('cheerio');
+  });
+
+  it('leaves the page and depth ceilings untouched', () => {
+    // The engine changed; the cost bounds did not.
+    const site = buildActorInput('website', 'example.com', 'audit_express');
+    expect(site.maxCrawlPages).toBe(20);
+    expect(site.maxCrawlDepth).toBe(2);
+    const legal = buildActorInput('dpa', 'example.com', 'audit_express');
+    expect(legal.maxCrawlPages).toBe(5);
+    expect(legal.maxCrawlDepth).toBe(1);
+  });
+
+  it('keeps the same input schema — this is one field, not a different actor', () => {
+    // apify/cheerio-scraper is a DIFFERENT actor requiring a pageFunction and
+    // maxRequestsPerCrawl; swapping to it via APIFY_ACTORS would fail input
+    // validation. crawlerType is a field of website-content-crawler.
+    const input = buildActorInput('website', 'example.com', 'audit_express');
+    expect(Object.keys(input).sort()).toEqual(
+      ['crawlerType', 'maxCrawlDepth', 'maxCrawlPages', 'saveHtml', 'saveMarkdown', 'startUrls'],
+    );
+  });
+});

@@ -133,13 +133,34 @@ const PATH_HINTS: Partial<Record<SourceType, string[]>> = {
   blog:           ['/blog', '/news'],
 };
 
+/**
+ * Which engine `apify/website-content-crawler` should use.
+ *
+ * MEASURED, NOT GUESSED (P2.2, run MPaEGDc56yvhbbWO6). The browser engine needs
+ * ~1.9 GB and more than 28 s to fetch a handful of pages: it crawled 1 of 7
+ * discovered URLs before the Audit Express deadline cut it off, after two
+ * earlier configurations died at a 1 GB ceiling with exitCode 137.
+ *
+ * Audit Express is defined as the fast, cost-controlled tier (§26.15 D1), and a
+ * headless browser is incompatible with that. It collects privacy policies,
+ * terms, DPAs and processor lists — server-rendered documents where a browser
+ * buys nothing. `cheerio` fetches over HTTP and parses HTML: seconds to start,
+ * a fraction of the memory.
+ *
+ * The deeper tiers keep the browser, where JS-rendered content can matter.
+ */
+export function crawlerTypeFor(surface: string): 'cheerio' | 'playwright:adaptive' {
+  return surface === 'audit_express' ? 'cheerio' : 'playwright:adaptive';
+}
+
 /** Deterministic actor input for a source type. */
-export function buildActorInput(sourceType: SourceType, domain: string): Record<string, unknown> {
+export function buildActorInput(sourceType: SourceType, domain: string, surface = 'audit_express'): Record<string, unknown> {
   const root = `https://${domain}`;
   const hints = PATH_HINTS[sourceType];
   const startUrls = hints ? hints.map(p => ({ url: `${root}${p}` })) : [{ url: root }];
   return {
     startUrls,
+    crawlerType: crawlerTypeFor(surface),
     maxCrawlPages: sourceType === 'website' || sourceType === 'subdomain' ? 20 : 5,
     // Same-domain only: this is the customer's own estate, never a link out to
     // someone else's site.
@@ -207,7 +228,7 @@ export class ApifyCollector implements EnrichmentCollector {
       let result: ApifyResult<ApifyItem[]> & { truncated?: boolean };
       try {
         result = await runActorSync<ApifyItem>(
-          this.config.token, actorId, buildActorInput(sourceType, req.subjectDomain),
+          this.config.token, actorId, buildActorInput(sourceType, req.subjectDomain, req.surface),
           { timeoutSeconds, memoryMb: this.config.memoryMb, requestTimeoutMs: remainingMs },
         );
       } catch (err) {
